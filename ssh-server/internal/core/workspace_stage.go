@@ -53,7 +53,7 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 	if !ok || account.UID != a.UID {
 		return nil, errors.New("workspace account identity unavailable")
 	}
-	limits, err := limitsForSettings(a.Settings)
+	limits, err := e.workspaceCollectionBounds(a)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (e *Engine) buildPrivateWorkspace(a *Attempt, source WorkspaceSource, dest 
 			}
 		}
 		recovery := &RecoveryPreparation{SourceAttempt: prior.ID, Checksum: source.Checksum}
-		if err := e.restoreRecoveryFiles(a, recovery, manifest, dest); err != nil {
+		if err := e.restoreRecoveryFiles(a, recovery, manifest, dest, limits); err != nil {
 			return nil, err
 		}
 	default:

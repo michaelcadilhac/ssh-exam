@@ -161,14 +161,16 @@ func TestWatchHealthyCallbacksStayPromptAfterIdle(t *testing.T) {
 	}
 }
 
-func TestEarlyCollectionDurableCallbacksWithoutGateway(t *testing.T) {
+func TestEarlyCollectionWaitsForPolicyAndQueuesUnavailableCallbacks(t *testing.T) {
 	e, _, source := finalFixture(t, "ACTIVE", Millis()+5400000)
+	gateway := commandKeys(t, e)
 	pub, key, _ := ed25519.GenerateKey(rand.Reader)
 	b, _ := x509.MarshalPKCS8PrivateKey(key)
 	keyPath := filepath.Join(t.TempDir(), "agent.key")
 	os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0600)
 	var mu sync.Mutex
 	available := false
+	policyAvailable := false
 	events := []CallbackEvent{}
 	archives := 0
 	calls := 0
@@ -176,6 +178,24 @@ func TestEarlyCollectionDurableCallbacksWithoutGateway(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		calls++
+		if r.URL.Path == "/api/agent/exam-execution-policy" {
+			payload, _ := io.ReadAll(io.LimitReader(r.Body, 32769))
+			sig, _ := base64.StdEncoding.DecodeString(r.Header.Get("X-Exam-Signature"))
+			var q map[string]any
+			if !ed25519.Verify(pub, payload, sig) || json.Unmarshal(payload, &q) != nil || len(q) != 4 || q["agent"] != "class" || q["exam"] != "exam" {
+				t.Error("policy query unauthenticated or incorrectly scoped")
+				w.WriteHeader(403)
+				return
+			}
+			if !policyAvailable {
+				w.WriteHeader(503)
+				return
+			}
+			policy := executionPolicyFixture()
+			body, _ := json.Marshal(map[string]any{"type": "exam-execution-policy", "audience": "class", "nonce": q["nonce"], "expires": Millis() + 30000, "policy": policy})
+			_ = json.NewEncoder(w).Encode(SignedFrame{Payload: base64.StdEncoding.EncodeToString(body), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(gateway, body))})
+			return
+		}
 		if !available {
 			w.WriteHeader(503)
 			return
@@ -211,12 +231,31 @@ func TestEarlyCollectionDurableCallbacksWithoutGateway(t *testing.T) {
 	e.Config.CallbackURL = server.URL
 	e.Config.CallbackCA = ca
 	e.Config.CallbackKey = keyPath
-	if _, err := e.Call("finalize-attempt", Request{ID: finalID, Reason: "student finish"}); err != nil {
+	originalAttempt := inspectFinal(t, e)
+	if _, err := e.Call("finalize-attempt", Request{ID: finalID, Reason: "student finish"}); err == nil {
+		t.Fatal("new collection ignored unavailable current exam limits")
+	}
+	failed := inspectFinal(t, e)
+	if failed.State != "COLLECTION_FAILED" || failed.Protected || failed.Deadline != originalAttempt.Deadline || failed.Lease != 0 || failed.Authorization != 0 {
+		t.Fatal("policy outage failed to revoke execution and preserve original held work", failed)
+	}
+	if err := e.WithState(func() error {
+		if e.Busy(failed.UID) == nil {
+			t.Fatal("policy outage released the account")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	policyAvailable = true
+	mu.Unlock()
+	if _, err := e.Call("finalize-attempt", Request{ID: finalID, Reason: "explicit retry after current policy is available"}); err != nil {
 		t.Fatal(err)
 	}
 	a := inspectFinal(t, e)
 	if !a.Protected || a.State != "COMPLETED" {
-		t.Fatal("outage prevented local collection")
+		t.Fatal("event/export outage prevented collection with fresh current limits")
 	}
 	if err := e.DeliverCallbacks(); err == nil {
 		t.Fatal("failed callback acknowledged")

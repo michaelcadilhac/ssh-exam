@@ -974,6 +974,14 @@ export class AttemptGrants {
       const supplied = z
         .record(z.string(), z.unknown())
         .parse((input as any).changes);
+      if (
+        Object.keys(supplied).some(
+          (key) => !["duration", "webcam", "earliest", "latest"].includes(key),
+        )
+      )
+        return conflict(
+          `Change shared settings in Exam settings or with examctl web exams update ${row.exam}. Only time limit, webcam, start dates and starting files can change for one attempt. No attempt changed.`,
+        );
       const changes = Object.fromEntries(
         Object.keys(supplied).map((k) => [
           k,

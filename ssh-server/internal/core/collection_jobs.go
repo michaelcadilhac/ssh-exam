@@ -41,7 +41,7 @@ func (e *Engine) attemptCollectionLock(id string) (*os.File, error) {
 }
 
 func collectionFence(a, snapshot *Attempt) bool {
-	return protectedIdentity(a, snapshot) && a.CollectionJob == snapshot.CollectionJob && a.Generation == snapshot.Generation && a.State == snapshot.State && a.Checksum == snapshot.Checksum && a.Protected == snapshot.Protected
+	return protectedIdentity(a, snapshot) && a.CollectionJob == snapshot.CollectionJob && sameCollectionPolicy(a.CollectionPolicy, snapshot.CollectionPolicy) && a.Generation == snapshot.Generation && a.State == snapshot.State && a.Checksum == snapshot.Checksum && a.Protected == snapshot.Protected
 }
 
 // Runs in a resource-bounded worker, not a PTY-owning agent. The worker holds a
@@ -231,6 +231,29 @@ func (e *Engine) collectAndComplete(snapshot *Attempt) error {
 		if err = e.quiesce(snapshot); err != nil {
 			return fail(err)
 		}
+		if snapshot.CollectionPolicy == nil {
+			verified, policyErr := e.refreshExecutionPolicy(snapshot.Exam)
+			if policyErr != nil {
+				return fail(policyErr)
+			}
+			if verified != nil {
+				binding := &CollectionExecutionPolicy{Job: snapshot.CollectionJob, Policy: verified.policy}
+				if _, policyErr = collectionPolicyBounds(binding, snapshot.Exam, snapshot.CollectionJob); policyErr != nil {
+					return fail(policyErr)
+				}
+				if policyErr = e.WithState(func() error {
+					a, findErr := e.Find(snapshot.ID)
+					if findErr != nil || !collectionFence(a, snapshot) {
+						return errors.New("collection policy publication superseded; inspect and retry")
+					}
+					a.CollectionPolicy = binding
+					snapshot.CollectionPolicy = binding
+					return nil
+				}); policyErr != nil {
+					return fail(policyErr)
+				}
+			}
+		}
 		// CompletedAt is part of the immutable receipt, not the coordinator's
 		// mutable fence. Keep the original fence until publication is committed.
 		collected := *snapshot
@@ -256,6 +279,8 @@ func (e *Engine) collectAndComplete(snapshot *Attempt) error {
 			return errors.New("collection publication superseded; inspect and retry")
 		}
 		a.Checksum, a.Protected = m.Checksum, true
+		a.CollectionJob = m.Attempt.CollectionJob
+		a.CollectionPolicy = m.CollectionPolicy // Adopt this archive's exact original job policy.
 		a.CollectedAt, a.SecuredAt, a.CompletedAt = m.Collected, m.Secured, m.Attempt.CompletedAt
 		a.Ended, a.Reason = m.Attempt.Ended, m.Attempt.Reason
 		e.rememberManifest(m)
@@ -358,6 +383,9 @@ func (e *Engine) verifiedManifest(id string) (*Manifest, error) {
 		}
 		v := *m
 		v.Attempt = publicAttempt(m.Attempt)
+		if m.CollectionPolicy != nil {
+			v.Attempt.CollectionJob = m.Attempt.CollectionJob
+		}
 		result = &v
 		return nil
 	})

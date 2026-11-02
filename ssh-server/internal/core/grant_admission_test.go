@@ -86,7 +86,11 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 	if err := os.WriteFile(e.Config.CallbackKey, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0600); err != nil {
 		t.Fatal(err)
 	}
+	policy := executionPolicyFixtureRoute(t, e, pub, gateway)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if policy(w, r) {
+			return
+		}
 		proofRoute := r.URL.Path == "/api/agent/monitoring-evidence" && len(monitoring) == 1 && monitoring[0].Evidence != nil
 		resumeRoute := r.URL.Path == "/api/agent/monitoring-continue" && len(monitoring) == 1 && monitoring[0].Continue != nil
 		if (r.URL.Path != "/api/agent/grant-begin" && !proofRoute && !resumeRoute) || r.Method != "POST" {

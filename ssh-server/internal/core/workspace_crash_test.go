@@ -13,6 +13,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,6 +56,24 @@ func testSavedWorkspaceProcessDeath(t *testing.T, watchdogFirst bool) {
 				e.state.Registrations[healthy.Transport] = healthy.Username
 				return nil
 			}); err != nil {
+				t.Fatal(err)
+			}
+			// The actual child/repair CLI inherits this private TLS endpoint. Its
+			// new policy fetch must succeed before reaching each real crash hook.
+			callback, err := privateKey(e.Config.CallbackKey)
+			if err != nil {
+				t.Fatal(err)
+			}
+			policy := executionPolicyFixtureRoute(t, e, callback.Public().(ed25519.PublicKey), signingKey)
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if !policy(w, r) {
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			t.Cleanup(server.Close)
+			e.Config.CallbackURL = server.URL
+			e.Config.CallbackCA = filepath.Join(t.TempDir(), "policy-ca.crt")
+			if err := os.WriteFile(e.Config.CallbackCA, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw}), 0600); err != nil {
 				t.Fatal(err)
 			}
 			renewals := 0

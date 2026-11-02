@@ -249,7 +249,7 @@ func (e *Engine) local(c *net.UnixConn) {
 		if err != nil {
 			return err
 		}
-		cap, a, err := e.paneAdmission(r.Token, name, identity, account)
+		cap, a, err := e.paneAdmissionIdentity(r.Token, name, identity, account)
 		if err != nil {
 			return err
 		}
@@ -266,6 +266,23 @@ func (e *Engine) local(c *net.UnixConn) {
 	}
 	if r.Ordinary {
 		json.NewEncoder(c).Encode(result)
+		return
+	}
+	pending.executionPolicy, err = e.refreshExecutionPolicy(pending.authority.Exam)
+	if err == nil {
+		err = e.WithState(func() error {
+			cap, a, policyErr := e.paneAdmission(r.Token, name, pending.capability.Transport, account, pending.executionPolicy)
+			if policyErr != nil {
+				return policyErr
+			}
+			if !pending.unchanged(cap, a, account) {
+				return errExecutionPolicy
+			}
+			return nil
+		})
+	}
+	if err != nil {
+		json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 	// No child can run in this phase. Serialize only this UID's private setup,

@@ -41,7 +41,11 @@ func TestConcurrentDeadlinesSlowCleanupAndCallbackBacklog(t *testing.T) {
 	var releaseHTTP, firstHTTP sync.Once
 	var eventsMu sync.Mutex
 	var sequences []int64
+	policy := executionPolicyFixtureRoute(t, e, pub, key)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if policy(w, r) {
+			return
+		}
 		payload, readErr := io.ReadAll(r.Body)
 		sig, _ := base64.StdEncoding.DecodeString(r.Header.Get("X-Exam-Signature"))
 		var event CallbackEvent

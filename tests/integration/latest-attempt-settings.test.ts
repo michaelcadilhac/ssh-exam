@@ -133,7 +133,7 @@ async function fixture() {
   };
 }
 
-it("dashboard and instructor/root reviews copy the sole unused attempt instead of obsolete enrollment defaults", async () => {
+it("dashboard and instructor/root reviews copy saved personal settings and current exam-wide values", async () => {
   const f = await fixture();
   try {
     const enrolled = await f.post(`/api/admin/exams/${f.exam}/roster/add`, {
@@ -150,9 +150,6 @@ it("dashboard and instructor/root reviews copy the sole unused attempt instead o
       changes: {
         duration: 6300,
         webcam: false,
-        terminals: 2,
-        collection_file_mib: 32,
-        collection_total_mib: 128,
       },
       reason: "Saved accommodation on this unused attempt",
       request: randomUUID(),
@@ -167,9 +164,9 @@ it("dashboard and instructor/root reviews copy the sole unused attempt instead o
     expect(row.latestSettings).toMatchObject({
       duration: 6300,
       webcam: false,
-      terminals: 2,
-      collection_file_mib: 32,
-      collection_total_mib: 128,
+      terminals: 4,
+      collection_file_mib: 128,
+      collection_total_mib: 512,
     });
     expect(row.unusedAttempt).toMatchObject({
       id: initial.id,
@@ -186,9 +183,9 @@ it("dashboard and instructor/root reviews copy the sole unused attempt instead o
       expect(review.rows[0].settings).toMatchObject({
         duration: 6300,
         webcam: false,
-        terminals: 2,
-        collection_file_mib: 32,
-        collection_total_mib: 128,
+        terminals: 4,
+        collection_file_mib: 128,
+        collection_total_mib: 512,
       });
     const explicit = await f.preview({
       preserve_duration: undefined,

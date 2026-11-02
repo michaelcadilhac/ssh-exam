@@ -161,15 +161,24 @@ func (e *Engine) initializeRecovery(a *Attempt, r *RecoveryPreparation, manifest
 
 // Extraction is deliberately separate from grant consumption. Private pre-Begin
 // staging must verify/copy saved files without claiming an interval or allowance.
-func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string) error {
+func (e *Engine) restoreRecoveryFiles(a *Attempt, r *RecoveryPreparation, manifest *Manifest, dest string, targetBounds ...collectionBounds) error {
 	if a == nil || r == nil || manifest == nil || manifest.Attempt == nil {
 		return errors.New("verified saved-source and target snapshots required")
 	}
-	sourceLimits, err := limitsForSettings(manifest.Attempt.Settings)
+	sourceLimits, err := collectionBoundsForManifest(manifest)
 	if err != nil {
 		return err
 	}
 	targetLimits, err := limitsForSettings(a.Settings)
+	if len(targetBounds) > 1 {
+		return errors.New("one verified target collection policy required")
+	}
+	if len(targetBounds) == 1 {
+		targetLimits, err = targetBounds[0], nil
+		if targetLimits.File < mib || targetLimits.File > 4096*mib || targetLimits.Total < targetLimits.File || targetLimits.Total > 16384*mib {
+			return errors.New("verified target collection policy exceeds supported bounds")
+		}
+	}
 	if err != nil {
 		return err
 	}

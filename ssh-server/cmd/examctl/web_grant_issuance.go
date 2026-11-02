@@ -32,7 +32,7 @@ func webGrantIssuanceMain(args []string) int {
 	minutes := f.Int64("duration-minutes", 0, "explicit additional allowance minutes")
 	seconds := f.Int64("duration-seconds", 0, "explicit additional allowance seconds")
 	preserve := f.Bool("preserve-duration", false, "copy each student's latest saved attempt time limit")
-	webcam := f.String("webcam", "", "explicit required/optional override; omitted preserves effective value")
+	webcam := f.String("webcam", "", "explicit required/off override; optional is an alias for off; omitted preserves effective value")
 	workFlags := registerGrantWork(f)
 	savedSources := f.String("saved-sources", "", "CSV username,attempt,checksum selecting one protected source per student; additional-preview only")
 	usage := func(message string) int { fmt.Fprintln(os.Stderr, message+"; run examctl web grants help"); return 2 }
@@ -164,11 +164,11 @@ func webGrantIssuanceMain(args []string) int {
 				body["work"] = work
 			}
 			if present["webcam"] {
-				if *webcam != "required" && *webcam != "optional" {
-					return usage("webcam override must be required/optional; omit to preserve each student's effective requirement")
+				if !validWebcamSetting(*webcam) {
+					return usage("webcam override must be required/off; omit to preserve each student's effective requirement")
 				}
 				if w[2] == "sandbox" && *webcam == "required" {
-					return usage("sandbox practice is fixed to no webcam; omit webcam or choose optional")
+					return usage("sandbox practice is fixed to no webcam; omit webcam or choose off")
 				}
 				body["webcam"] = *webcam == "required"
 			}

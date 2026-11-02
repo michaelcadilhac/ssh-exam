@@ -6,6 +6,7 @@ import type { Attempt, Store } from "./db.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { isDeepStrictEqual } from "node:util";
 import { observeNativeMonitoring } from "./native-monitoring-state.js";
+import { ExamExecutionPolicies } from "./exam-execution-policy.js";
 export type RenewalCommandContext = Pick<
   Attempt,
   | "id"
@@ -141,6 +142,26 @@ export class Agent {
         const value = { ...body } as Record<string, unknown>;
         delete value.framed_input; // Local negotiation, not a native JSON setter.
         delete value.page_epoch;
+        delete value.execution_policy; // Only current gateway data may be signed.
+        if (
+          [
+            "issue-channel-admission",
+            "issue-owner-channel-admission",
+            "issue-framed-owner-channel-admission",
+            "finalize-attempt",
+          ].includes(op)
+        ) {
+          const policies = new ExamExecutionPolicies(
+            this.store,
+            this.config.id,
+          );
+          // Finish must still reach native revocation/freeze if metadata is
+          // unavailable. The isolated collector independently obtains its policy.
+          const policy = op === "finalize-attempt"
+            ? policies.status(attempt.exam).executionPolicy
+            : policies.current(attempt.exam);
+          if (policy) value.execution_policy = policy;
+        }
         if (typeof value.grant_begin_intent === "string") {
           const original = this.store.db
             .prepare(

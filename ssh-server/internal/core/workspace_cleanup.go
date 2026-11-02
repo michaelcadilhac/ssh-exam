@@ -217,7 +217,7 @@ func (e *Engine) workspaceCleanupControl(r workspaceInspectionRequest) (view Wor
 		if preview.Review != r.Review || !preview.SnapshotClear {
 			return view, errors.New("stale or blocked workspace review; inspect fresh dry-run and review its blockers before cleanup")
 		}
-		limits, err := limitsForSettings(a.Settings)
+		limits, err := e.protectedWorkspaceBounds(a)
 		if err != nil {
 			return view, err
 		}
@@ -306,7 +306,7 @@ func (e *Engine) workspaceCleanupControl(r workspaceInspectionRequest) (view Wor
 	if err != nil {
 		return view, err
 	}
-	limits, err := limitsForSettings(a.Settings)
+	limits, err := e.protectedWorkspaceBounds(a)
 	if err != nil {
 		return view, err
 	}

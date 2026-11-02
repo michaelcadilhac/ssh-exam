@@ -17,38 +17,40 @@ import (
 )
 
 type Request struct {
-	framedInput      bool
-	renewalReceipt   bool
-	RenewalNonce     string `json:"renewal_nonce,omitempty"`
-	ownerRequired    bool
-	PageEpoch        string                 `json:"page_epoch,omitempty"`
-	Grant            *GrantBinding          `json:"grant,omitempty"`
-	GrantBeginIntent string                 `json:"grant_begin_intent,omitempty"`
-	AllowanceEdit    *RecoveryAllowanceEdit `json:"allowance_edit,omitempty"`
-	ExpectedRecovery string                 `json:"expected_recovery,omitempty"`
-	PublicKey        string                 `json:"public_key"`
-	Handoff          string                 `json:"handoff"`
-	ExtendSeconds    int64                  `json:"extend_seconds,omitempty"`
-	ResetID          string                 `json:"reset_id,omitempty"`
-	Actor            string                 `json:"actor,omitempty"`
-	RequestedAt      int64                  `json:"requested_at,omitempty"`
-	RemainingSeconds int64                  `json:"remaining_seconds,omitempty"`
-	ClockRevision    int                    `json:"clock_revision,omitempty"`
-	Deadline         int64                  `json:"deadline,omitempty"`
-	BrowserSSH       bool                   `json:"browser_ssh,omitempty"`
-	Continuation     *Request               `json:"continuation,omitempty"`
-	ID               string                 `json:"id"`
-	Exam             string                 `json:"exam"`
-	Username         string                 `json:"username"`
-	UID              int                    `json:"uid"`
-	Settings         Settings               `json:"settings"`
-	Transport        string                 `json:"transport"`
-	Pane             string                 `json:"pane"`
-	Purpose          string                 `json:"purpose"`
-	Reason           string                 `json:"reason"`
-	Generation       int                    `json:"generation"`
-	Expires          int64                  `json:"expires"`
-	Usernames        []string               `json:"usernames"`
+	framedInput             bool
+	renewalReceipt          bool
+	RenewalNonce            string `json:"renewal_nonce,omitempty"`
+	ownerRequired           bool
+	PageEpoch               string                 `json:"page_epoch,omitempty"`
+	Grant                   *GrantBinding          `json:"grant,omitempty"`
+	GrantBeginIntent        string                 `json:"grant_begin_intent,omitempty"`
+	AllowanceEdit           *RecoveryAllowanceEdit `json:"allowance_edit,omitempty"`
+	ExecutionPolicy         *ExamExecutionPolicy   `json:"execution_policy,omitempty"`
+	executionPolicyVerified *verifiedExecutionPolicy
+	ExpectedRecovery        string   `json:"expected_recovery,omitempty"`
+	PublicKey               string   `json:"public_key"`
+	Handoff                 string   `json:"handoff"`
+	ExtendSeconds           int64    `json:"extend_seconds,omitempty"`
+	ResetID                 string   `json:"reset_id,omitempty"`
+	Actor                   string   `json:"actor,omitempty"`
+	RequestedAt             int64    `json:"requested_at,omitempty"`
+	RemainingSeconds        int64    `json:"remaining_seconds,omitempty"`
+	ClockRevision           int      `json:"clock_revision,omitempty"`
+	Deadline                int64    `json:"deadline,omitempty"`
+	BrowserSSH              bool     `json:"browser_ssh,omitempty"`
+	Continuation            *Request `json:"continuation,omitempty"`
+	ID                      string   `json:"id"`
+	Exam                    string   `json:"exam"`
+	Username                string   `json:"username"`
+	UID                     int      `json:"uid"`
+	Settings                Settings `json:"settings"`
+	Transport               string   `json:"transport"`
+	Pane                    string   `json:"pane"`
+	Purpose                 string   `json:"purpose"`
+	Reason                  string   `json:"reason"`
+	Generation              int      `json:"generation"`
+	Expires                 int64    `json:"expires"`
+	Usernames               []string `json:"usernames"`
 }
 
 func (e *Engine) productionReady() (bool, []string) {
@@ -144,6 +146,26 @@ func boot() string {
 	return strings.TrimSpace(string(b))
 }
 func (e *Engine) Call(op string, r Request) (any, error) {
+	if op == "issue-channel-admission" {
+		var exam string
+		if err := e.WithState(func() error {
+			a, err := e.Find(r.ID)
+			if err == nil {
+				exam = a.Exam
+			}
+			return err
+		}); err != nil {
+			return nil, err
+		}
+		verified, err := e.refreshExecutionPolicy(exam)
+		if err != nil {
+			return nil, err
+		}
+		if r.ExecutionPolicy != nil && (verified == nil || !validExecutionPolicy(*r.ExecutionPolicy, e.Config.AgentID, exam) || r.ExecutionPolicy.Instance != verified.policy.Instance || r.ExecutionPolicy.Revision > verified.policy.Revision) {
+			return nil, errExecutionPolicy
+		}
+		r.executionPolicyVerified = verified
+	}
 	if op == "health" {
 		// Preserve legacy state validation/initialization before observing, but
 		// never retain its lock through NSS/checker/filesystem readiness IO.
@@ -287,8 +309,12 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if paneRecorded(a, r.Pane) {
 				return errors.New("pane already admitted; close it before opening a replacement")
 			}
+			terminalLimit, limitErr := e.admissionTerminalLimitLocked(a, r.executionPolicyVerified)
+			if limitErr != nil {
+				return limitErr
+			}
 			if r.Purpose == "practice" && a.State == "PREPARING" {
-				if len(a.Units) >= a.Settings.Terminals {
+				if len(a.Units) >= terminalLimit {
 					return errors.New("practice terminal limit")
 				}
 				e.revokePaneAdmissions(a.ID, r.Pane)
@@ -298,7 +324,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if a.State != "ACTIVE" || expired(a) || !nativeLeaseMetadataAllowsAdmission(a) {
 				return errors.New("attempt not active")
 			}
-			if len(a.Units) >= a.Settings.Terminals {
+			if len(a.Units) >= terminalLimit {
 				return errors.New("terminal limit")
 			}
 			e.revokePaneAdmissions(a.ID, r.Pane)

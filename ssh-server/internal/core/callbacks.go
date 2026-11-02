@@ -42,6 +42,7 @@ func publicAttempt(a *Attempt) *Attempt {
 	v.Units = nil
 	v.DeniedSSHTransports = nil
 	v.CollectionJob = ""
+	v.CollectionPolicy = nil
 	return &v
 }
 
@@ -71,6 +72,9 @@ func (e *Engine) queueChanges() error {
 			if m, err := e.manifestReceipt(a); err == nil {
 				v := *m
 				v.Attempt = publicAttempt(m.Attempt)
+				if m.CollectionPolicy != nil {
+					v.Attempt.CollectionJob = m.Attempt.CollectionJob
+				}
 				manifest = &v
 			}
 		}

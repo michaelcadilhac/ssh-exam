@@ -34,6 +34,11 @@ import {
 } from "../../../packages/config/index.js";
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
+import {
+  ExamExecutionPolicies,
+  ExamExecutionPolicyError,
+  registerExamExecutionPolicy,
+} from "./exam-execution-policy.js";
 import { RecoverySources } from "./recovery-source.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
@@ -142,6 +147,7 @@ export async function createApp(
   });
   const store = new Store(config.data),
     agent = new Agent(config.agent, store),
+    executionPolicies = new ExamExecutionPolicies(store, config.agent.id),
     monitoring = new Monitoring(
       store,
       config.terminalRecordingLimitMiB,
@@ -752,6 +758,8 @@ export async function createApp(
         ws.close(1013, "Slow client");
         return;
       }
+      if (data.type === "state" && typeof data.attempt?.exam === "string")
+        data = { ...data, ...executionPolicies.status(data.attempt.exam) };
       ws.send(JSON.stringify({ v: 1, ...data }));
     }
   };
@@ -817,7 +825,8 @@ export async function createApp(
         : {}),
       error:
         status >= 500
-          ? error instanceof MonitoringMediaError
+          ? error instanceof MonitoringMediaError ||
+            error instanceof ExamExecutionPolicyError
             ? error.message
             : "The server could not confirm this action. Check its status before trying again, or ask your instructor or server administrator."
           : err.message,
@@ -843,6 +852,7 @@ export async function createApp(
     { parseAs: "buffer" },
     (_req, body, done) => done(null, body),
   );
+  registerExamExecutionPolicy(app, store, agent);
   app.post(
     "/api/agent/grant-begin",
     { config: { rateLimit: false } },
@@ -1372,6 +1382,7 @@ export async function createApp(
     return {
       exam: JSON.parse(exam.config),
       settings,
+      ...executionPolicies.status(s.exam!),
       enrollment: row,
       sshConnected: !!connections.get(`${s.exam}:${s.username}`)?.alive,
       attempt: repeat ? null : latest || null,
@@ -2163,6 +2174,7 @@ export async function createApp(
         | undefined;
       return {
         attempt: a,
+        ...executionPolicies.status(a.exam),
         serverNow: at,
         authenticationGap: authenticationGap(a.id),
         automaticTechnical:
@@ -3573,6 +3585,7 @@ export async function createApp(
       // another handler's identity, generation or error/revocation fence.
       let a: Attempt | undefined;
       let openingPane: string | undefined;
+      let paneAdmissionFailure = false;
       // Only these verified gateway checks may classify ownership loss. Never
       // infer a policy event from native/filesystem diagnostic wording.
       let pageOwnershipFailure = false;
@@ -3844,17 +3857,22 @@ export async function createApp(
           throw Error("Terminal interaction disabled");
         }
         if (m.type === "open") {
+          const policy = executionPolicies.current(a.exam);
           if (
-            conn.panes.size >= JSON.parse(a.settings).terminals ||
+            conn.panes.size >= policy.terminals ||
             conn.panes.has(m.pane)
           )
             throw Error("Terminal limit exceeded");
           const practice = a.state === "PREPARING";
+          // Native admission diagnostics are useful to operators, but are not
+          // student instructions or evidence of an ownership/policy violation.
+          paneAdmissionFailure = true;
           const c = await conn.open(
             a.id,
             m.pane,
             practice ? "practice" : "exam",
           );
+          paneAdmissionFailure = false;
           if (closingSessions) return;
           if (!conn.panes.has(m.pane)) {
             if (c.inputEpoch)
@@ -3981,7 +3999,9 @@ export async function createApp(
         send(ws, {
           type: "error",
           code: pageOwnershipFailure ? "page-ownership" : undefined,
-          error: (e as Error).message,
+          error: paneAdmissionFailure
+            ? "This terminal could not open. Try again. If it still fails, contact your instructor."
+            : (e as Error).message,
           pane: openingPane,
         });
       } finally {

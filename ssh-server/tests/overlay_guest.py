@@ -309,6 +309,63 @@ def qualify_loaded_role_cli(config):
     print('PASS: actual compiled health refuses both positively populated temporary-writer cgroups and recovers only after the exact newly owned guest processes exit', flush=True)
 
 
+def qualify_execution_policy_roles(config):
+    """Actual shipped source-worker unit, solely in this guarded overlay."""
+    marker = json.loads((INPUT / 'run.json').read_text())
+    assert marker['profile'] == 'execution-policy' and marker['username'] == 'examq'
+    assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn' and INPUT.is_mount() and OUTPUT.is_mount()
+    unit = 'exam-source-setup.service'
+    receipt = Path(config['state']) / 'source-worker-policy-role.json'
+    def health(expected):
+        reply = subprocess.run(['examctl', 'health'], capture_output=True, text=True, check=True, timeout=45)
+        support = json.loads(reply.stdout)['execution_policy_support']
+        assert set(support) == {'schema', 'capability', 'observation_only', 'supported', 'observed', 'roles', 'issues'}
+        assert support['schema'] == 1 and support['capability'] == 'live-exam-execution-policy-v1' and support['observation_only']
+        assert int(time.time()*1000)-120000 < support['observed'] <= int(time.time()*1000)+1000
+        assert support['supported'] == expected, support
+        assert (support['roles'] == ['agent','watchdog','source-worker'] and not support['issues']) if expected else (not support['roles'] and support['issues'])
+    def start():
+        subprocess.run(['systemctl', 'start', unit], check=True, timeout=20)
+        until = time.monotonic()+10
+        while not receipt.exists():
+            state = subprocess.run(['systemctl','is-active',unit],capture_output=True,text=True,timeout=5)
+            assert state.stdout.strip() in ('active','activating'), state
+            assert time.monotonic()<until, 'Loaded coordinator did not publish from actual hardened service context'
+            time.sleep(.05)
+        pid = int(subprocess.run(['systemctl','show',unit,'--property=MainPID','--value'],capture_output=True,text=True,check=True,timeout=5).stdout.strip())
+        assert json.loads(receipt.read_text())['pid'] == pid > 1
+        assert Path('/proc/'+str(pid)+'/cgroup').read_text() == '0::/system.slice/'+unit+'\n'
+    def stop():subprocess.run(['systemctl','stop',unit],check=True,timeout=20)
+    subprocess.run(['systemctl','daemon-reload'],check=True,timeout=10)
+    start()
+    try:
+        health(True)
+        original=receipt.read_bytes();receipt.unlink()
+        health(False) # A loaded older process has no policy ABI receipt.
+        descriptor=os.open(receipt,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(descriptor,'wb') as stream:stream.write(original);stream.flush();os.fsync(stream.fileno())
+        health(True)
+        stop();health(False)
+        private=Path(tempfile.mkdtemp(prefix='qualification-source-role-',dir='/run'))
+        copy=private/'examctl-copy';shutil.copyfile(INPUT/'examctl',copy);copy.chmod(0o700)
+        parent=Path('/etc/systemd/system')/(unit+'.d');parent.mkdir(mode=0o755,exist_ok=True)
+        override=parent/('99-private-policy-'+uuid.uuid4().hex+'.conf')
+        descriptor=os.open(override,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(descriptor,'w') as stream:
+            identity=os.fstat(stream.fileno())
+            stream.write('[Service]\nExecStart=\nExecStart='+str(copy)+' web grants source-worker --config /etc/exam-agent/agent.json\n')
+        try:
+            subprocess.run(['systemctl','daemon-reload'],check=True,timeout=10)
+            start();health(False) # Same bytes, different actual loaded inode.
+            stop()
+        finally:
+            current=override.lstat();assert (current.st_dev,current.st_ino)==(identity.st_dev,identity.st_ino)
+            override.unlink();subprocess.run(['systemctl','daemon-reload'],check=True,timeout=10)
+        start();health(True)
+        print('PASS: actual hardened saved-work worker publishes healthy loaded policy support; missing/stopped/different loaded inode refuses; exact guest repair restores support',flush=True)
+    finally:stop()
+
+
 def retained_role_override(role):
     assert role in ('Agent', 'Watchdog'), 'Unknown private test role'
     return ('[Service]\nExecStart=\nExecStart=' + str(INPUT / 'core-qualification.test') +
@@ -431,7 +488,10 @@ def main():
     if settings.get('driver') == 'browser':
         from browser_bridge import run_guest
         return run_guest(config, prepare_retained_roles, native_role_snapshot)
-    if settings.get('profile') == 'loaded-roles':
+    if settings.get('profile') == 'execution-policy':
+        qualify_execution_policy_roles(config)
+        profiles = (['--execution-policy'],)
+    elif settings.get('profile') == 'loaded-roles':
         qualify_loaded_role_cli(config)
         profiles = ()
     elif settings.get('profile') == 'monitoring-owner':

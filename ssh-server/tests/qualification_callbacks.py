@@ -63,6 +63,18 @@ def source_fixture_reply(data,expected,record,now):
          'status':'AVAILABLE' if body['state']=='RETAINED' else plan['status']}
 
 
+def execution_policy_reply(data,policy,now):
+ """Read only explicitly authored private guest policy; no general control."""
+ assert set(data)=={'agent','exam','nonce','at'} and set(policy)=={'schema','agent','exam','instance','revision','terminals','collection_file_mib','collection_total_mib'}
+ assert data['agent']==policy['agent'] and data['exam']==policy['exam']
+ assert re.fullmatch(r'[a-f0-9]{64}',data['nonce']) and type(data['at']) is int and abs(data['at']-now)<=30000
+ assert policy['schema']==1 and re.fullmatch(r'[a-f0-9]{32}',policy['instance'])
+ assert all(type(policy[k]) is int for k in ('revision','terminals','collection_file_mib','collection_total_mib'))
+ assert 1<=policy['revision']<=9007199254740991 and 1<=policy['terminals']<=4
+ assert 1<=policy['collection_file_mib']<=4096 and policy['collection_file_mib']<=policy['collection_total_mib']<=16384
+ return dict(type='exam-execution-policy',audience=data['agent'],nonce=data['nonce'],expires=now+30000,policy=policy)
+
+
 def fixture_reply(path,data,expected,approval,owners,now):
  """Finite synthetic capture, NOT real camera qualification or a control API."""
  def key(owner):return json.dumps(owner,sort_keys=True,separators=(',',':'))
@@ -148,7 +160,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     self.send_response(status);self.send_header('Content-Length',str(len(body)));self.end_headers();self.wfile.write(body)
     return
    result={'ok':True}
-   if self.path=='/api/agent/management':
+   if self.path=='/api/agent/exam-execution-policy':
+    policies=private_registry('/run/qualification-execution-policies.json')
+    reply=execution_policy_reply(data,policies[data['exam']],int(time.time()*1000))
+    payload=json.dumps(reply,separators=(',',':')).encode()
+    result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
+   elif self.path=='/api/agent/management':
     expected=private_registry('/run/qualification-saved-source-grant.json')
     with owner_lock:
      record=None

@@ -36,6 +36,7 @@ FILES = {
     'exam-collection.slice': ('/etc/systemd/system/exam-collection.slice', 0o644),
     'exam-template.slice': ('/etc/systemd/system/exam-template.slice', 0o644),
     'examterminal.slice': ('/etc/systemd/system/examterminal.slice', 0o644),
+    'exam-source-setup.service': ('/etc/systemd/system/exam-source-setup.service', 0o644),
     'linux_qualification.py': (None, 0o600),
     'overlay_guest.py': (None, 0o600),
     'browser_bridge.py': ('/root/browser_bridge.py', 0o600),
@@ -369,7 +370,7 @@ if __name__ == '__main__':
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--cleanup-peer', action='store_true', help='Private retained-policy fixture: current monitored Begin, framed input and a healthy peer during manual workspace cleanup')
-    parser.add_argument('--profile', choices=('loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
+    parser.add_argument('--profile', choices=('execution-policy', 'loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

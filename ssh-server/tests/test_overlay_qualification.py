@@ -19,6 +19,13 @@ guest_spec.loader.exec_module(guest)
 
 
 class OverlayTests(unittest.TestCase):
+    def test_execution_policy_probe_requires_exact_private_overlay_profile(self):
+        self.assertEqual(overlay.FILES['exam-source-setup.service'],('/etc/systemd/system/exam-source-setup.service',0o644))
+        with mock.patch.object(Path,'read_text',return_value=json.dumps({'profile':'enforcement','username':'examq'})), \
+             mock.patch.object(guest.subprocess,'run') as operation:
+            with self.assertRaises(AssertionError):guest.qualify_execution_policy_roles({})
+            operation.assert_not_called()
+
     def test_capacity_uses_only_owned_disk_binds_and_bounded_private_resources(self):
         command = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'),
                                              16, {'work': '/srv/exam-workspace/work', 'state': '/var/lib/exam-agent'})

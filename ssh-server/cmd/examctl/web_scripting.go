@@ -87,7 +87,8 @@ proof of prior CONFIRMED issuance before the original request may be replayed.
 --input FILE|- accepts CSV username,attempt,checksum with optional duration_seconds
 and require_webcam columns, or JSONL {username,settings:{duration,webcam},work}.
 Every selected student needs one explicit row. Duration uses seconds; webcam
-accepts true/false (CSV also required/optional). No source/settings are guessed.
+accepts true/false (CSV also required/off). The old value optional is an alias for
+off: webcam is not offered or captured. No source/settings are guessed.
 Beside agent.json, optional root-private examctl.json can set https_proxy/no_proxy
 for this CLI only. It cannot change TLS or signature verification. Existing proxy
 environment variables take precedence. See docs/examctl-scripting.md.
@@ -166,7 +167,7 @@ func webScriptingMain(args []string) int {
 	minutes := f.Int64("duration-minutes", 0, "whole minutes")
 	seconds := f.Int64("duration-seconds", 0, "exact seconds")
 	preserve := f.Bool("preserve-duration", false, "save each student's current effective time limit")
-	webcam := f.String("webcam", "", "required/optional override")
+	webcam := f.String("webcam", "", "required/off override (optional is a compatibility alias for off)")
 	reason := f.String("reason", "", "audited reason")
 	saved := f.String("saved-sources", "", "exact per-student CSV FILE|-")
 	workFlags := registerGrantWork(f)
@@ -461,8 +462,8 @@ func webScriptingMain(args []string) int {
 				body["duration"] = duration
 			}
 			if *webcam != "" {
-				if *webcam != "required" && *webcam != "optional" {
-					return bad("webcam must be required/optional")
+				if !validWebcamSetting(*webcam) {
+					return bad("webcam must be required/off")
 				}
 				body["webcam"] = *webcam == "required"
 			}

@@ -121,11 +121,11 @@ func scriptBatchInput(path string, users *[]string, body map[string]any) error {
 				case "true", "required":
 					v := true
 					row.Settings.Webcam = &v
-				case "false", "optional":
+				case "false", "off", "optional":
 					v := false
 					row.Settings.Webcam = &v
 				default:
-					return errors.New("require_webcam must be true/false or required/optional")
+					return errors.New("require_webcam must be true/false or required/off")
 				}
 			}
 			rows = append(rows, row)

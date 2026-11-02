@@ -24,7 +24,11 @@ func timingServer(t *testing.T, e *Engine, reply func(*Attempt, string) (timingR
 	b, _ := x509.MarshalPKCS8PrivateKey(key)
 	e.Config.CallbackKey = filepath.Join(t.TempDir(), "agent.key")
 	os.WriteFile(e.Config.CallbackKey, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: b}), 0600)
+	policy := executionPolicyFixtureRoute(t, e, pub, gateway)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if policy(w, r) {
+			return
+		}
 		if r.URL.Path != "/api/agent/timing" {
 			t.Error("unexpected request", r.URL.Path)
 			w.WriteHeader(404)
@@ -159,7 +163,7 @@ func TestTimingReplyCannotBeForgedReplayedOrMisScoped(t *testing.T) {
 		})
 	}
 }
-func TestVerifiedTimingSurvivesRestartAndLaterOutage(t *testing.T) {
+func TestVerifiedTimingSurvivesRestartWhileNewPolicyOutageDefersCollection(t *testing.T) {
 	e, _, _ := finalFixture(t, "LOCKED", Millis()-1000)
 	server := timingServer(t, e, func(a *Attempt, nonce string) (timingReply, int) { return timingDecision(a, nonce), 200 })
 	if err := e.RefreshExpiredTiming(); err != nil {
@@ -173,8 +177,27 @@ func TestVerifiedTimingSurvivesRestartAndLaterOutage(t *testing.T) {
 	if err := restarted.Tick(); err != nil {
 		t.Fatal(err)
 	}
+	a := inspectFinal(t, restarted)
+	if a.Protected || a.State != "COLLECTION_FAILED" || a.TimingVerifiedAt == 0 || a.Lease != 0 || a.Authorization != 0 {
+		t.Fatal("outage lost durable timing or allowed collection without current limits", a)
+	}
+	if err := restarted.WithState(func() error {
+		if restarted.Busy(a.UID) == nil {
+			t.Fatal("uncollected original work lost its account hold")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	timingServer(t, restarted, func(*Attempt, string) (timingReply, int) {
+		t.Error("durably verified timing was unnecessarily checked again")
+		return timingReply{}, 503
+	})
+	if _, err := restarted.Call("finalize-attempt", Request{ID: finalID, Reason: "explicit retry after current policy restored"}); err != nil {
+		t.Fatal(err)
+	}
 	if !inspectFinal(t, restarted).Protected {
-		t.Fatal("lost durable collection authorization")
+		t.Fatal("repair/retry failed despite durable timing and fresh limits")
 	}
 }
 

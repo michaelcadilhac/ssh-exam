@@ -14,7 +14,7 @@ import (
 
 func webStudentsHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl web students list EXAM [--limit 100] [--after USER]
-       sudo examctl web students add EXAM USER [--duration-minutes N|inherit] [--webcam required|optional|inherit] [DATES] [--definition-revision HASH]
+       sudo examctl web students add EXAM USER [--duration-minutes N|inherit] [--webcam required|off|inherit] [DATES] [--definition-revision HASH]
        sudo examctl web students settings EXAM USER... SETTINGS
        sudo examctl web students remove EXAM USER --confirm USER
        sudo examctl web students import-preview EXAM --file PATH|- [--mode csv|lines] [DATES]
@@ -33,7 +33,8 @@ history and access restrictions remain intact. Removal never finishes work or
 revokes a native recovery grant.
 
 Add defaults to inheritance; settings changes only named fields (1..1000 users).
-Duration is 1..360 whole MINUTES, or inherit; webcam is required/optional/inherit.
+Duration is 1..360 whole MINUTES, or inherit; webcam is required/off/inherit.
+Off never offers or captures webcam. The old value optional remains an alias for off.
 These student settings supply new-student accommodations and the legacy
 fallback when no saved grant or attempt exists. Later attempts copy the latest
 saved attempt settings; changing student settings does not override that copy,
@@ -95,7 +96,7 @@ List defaults to 100 rows, max 200; next is an exclusive username cursor. Other
 inspection/mutation results are confirmed JSON, not proof of native execution.
 
 Examples:
-  sudo examctl web students add midterm student01 --duration-minutes 120 --webcam optional
+  sudo examctl web students add midterm student01 --duration-minutes 120 --webcam off
   sudo examctl web students settings midterm student01 student02 --webcam inherit
   sudo examctl web students import-preview midterm --file roster.csv
   sudo examctl web students import-confirm midterm PREVIEW_UUID
@@ -118,7 +119,7 @@ func webStudentsMain(args []string) int {
 	limit := flags.Int("limit", 100, "page size")
 	after := flags.String("after", "", "username cursor")
 	duration := flags.String("duration-minutes", "", "whole minutes or inherit")
-	webcam := flags.String("webcam", "", "required/optional/inherit")
+	webcam := flags.String("webcam", "", "required/off/inherit (optional is a compatibility alias for off)")
 	earliest := flags.String("earliest", "", "first-attempt opening RFC3339 with timezone; requires --latest")
 	latest := flags.String("latest", "", "first-attempt closing RFC3339 with timezone; requires --earliest")
 	definitionRevision := flags.String("definition-revision", "", "reviewed exam definition hash (add only)")
@@ -168,10 +169,10 @@ func webStudentsMain(args []string) int {
 			b["webcam"] = nil
 		case "required":
 			b["webcam"] = true
-		case "optional":
+		case "off", "optional":
 			b["webcam"] = false
 		default:
-			return usage("webcam must be required/optional/inherit")
+			return usage("webcam must be required/off/inherit")
 		}
 	}
 	allowedFlags := map[string]bool{"config": true, "request": true}

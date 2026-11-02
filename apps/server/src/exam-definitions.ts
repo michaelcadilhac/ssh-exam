@@ -10,6 +10,7 @@ import {
 } from "../../../packages/protocol/sandbox.js";
 import { hash, now, type Store } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
+import { ExamExecutionPolicies } from "./exam-execution-policy.js";
 import {
   examNativeEvidence,
   examNativeReconcileRequest,
@@ -702,6 +703,12 @@ export class ExamDefinitions {
         return failure(
           "Exam definition changed; reload current settings with web exams show, review the differences, then submit a new intent with the current revision",
           409,
+        );
+      if (prior)
+        new ExamExecutionPolicies(this.store, this.agent).guardLiveChange(
+          exam.id,
+          JSON.parse(prior.config),
+          exam,
         );
       const config = JSON.stringify(exam);
       if (prior)

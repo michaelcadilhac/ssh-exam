@@ -32,6 +32,7 @@ import {
   AgentCommandStateError,
 } from "./agent.js";
 import { Monitoring } from "./monitoring.js";
+import { validateCollectionPolicy } from "./exam-execution-policy.js";
 import { Alerts, alertContext, type AlertKey } from "./alerts.js";
 
 export const PREFLIGHT_CONFIRMATION_GRACE_MS = 2 * 60 * 1000;
@@ -815,6 +816,7 @@ export class Lifecycle {
           manifest.checksum !== remote.checksum
         )
           throw Error("Protected manifest verification failed");
+        validateCollectionPolicy(manifest, this.agent.id, a.exam);
         if (a.checksum && a.checksum !== remote.checksum)
           throw Error("Secured submission cannot be replaced");
         const legacy = `${this.store.dir}/submissions/${id}.manifest.json`;

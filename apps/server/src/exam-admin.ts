@@ -124,6 +124,7 @@ export function registerExamAdmin(
             };
           }
           return {
+            hasNextAttempt: !!grants.current(req.params.exam, s.username),
             grant: grants.initialFor(req.params.exam, s.username),
             unusedGrants: grants.unusedSummary(req.params.exam, s.username),
             unusedAttempt: unused
@@ -136,6 +137,7 @@ export function registerExamAdmin(
           };
         } catch {
           return {
+            hasNextAttempt: true,
             grant: null,
             unusedAttempt: null,
             latestSettings: null,

@@ -12,6 +12,12 @@ import (
 	"time"
 )
 
+// Runtime callers: exam defaults, grant revision and ordinary/scripting issuance.
+// Keep the former spelling for identical historical requests; false means off.
+func validWebcamSetting(value string) bool {
+	return value == "required" || value == "off" || value == "optional"
+}
+
 func webArguments(args []string) ([]string, bool) {
 	for i := 0; i < len(args); i++ {
 		if takesValue(args[i]) {
@@ -85,7 +91,7 @@ Settings (no ad hoc database/JSON editing required):
                         show; must have an attestation for this agent/name/hash
                         'legacy' explicitly clears this FUTURE default; no fallback
 --duration-seconds N     60..21600; creation default 5400 (90 minutes)
---webcam required|optional  creation default required
+--webcam required|off     creation default required; off never offers/captures webcam
 --terminals N            1..4; creation default 4
 --collection-file-mib N   1..4096 MiB logical bytes/file; creation default 128
 --collection-total-mib N  1..16384 MiB logical bytes total; creation default 512
@@ -95,9 +101,18 @@ Settings (no ad hoc database/JSON editing required):
 --revision HASH          current 64-hex revision from show; required on update
 --reason TEXT            optional audited reason, 8..1000 characters
 
+The old webcam value optional remains a compatibility alias for off.
+
 Create never overwrites an existing ID. Update changes ONLY named settings and
 refuses a stale revision; reload/show, review differences, then use a new intent.
-Existing attempt settings, clocks, account restrictions and submissions remain
+Terminals and file limits are shared exam settings: one update applies to ALL
+unstarted, setup and running attempts. Lowering terminals blocks new panes only;
+existing panes stay open. New collection jobs use freshly verified current file
+limits; an outage preserves frozen work and account holds for explicit retry.
+Protected submissions keep their original verified limits and remain readable.
+Inspect current settings with web exams show EXAM; use the returned revision for
+web exams update. Duration, webcam and start dates are defaults for newly added
+attempts; existing saved attempt values, clocks and account restrictions remain
 unchanged. Template deployment is separate; definition creation does not install
 materials. Inspect templates verify/sync and web templates list/show first. A
 catalog entry is historical attestation, not current availability. Native exact
@@ -143,7 +158,7 @@ Examples:
   sudo examctl web exams list --after midterm
   sudo examctl web exams show midterm
   sudo examctl web exams create midterm --name 'Midterm' --template v1 --template-version HASH-FROM-CATALOG --earliest '2026-10-26T09:00:00-05:00' --latest '2026-10-26T09:30:00-05:00'
-  sudo examctl web exams update midterm --revision HASH-FROM-SHOW --duration-seconds 7200 --webcam optional
+  sudo examctl web exams update midterm --revision HASH-FROM-SHOW --duration-seconds 7200 --webcam off
   sudo examctl web exams show midterm --request UUID-FROM-PREVIOUS-REQUEST
 
 Exit status: 0 authenticated result, 1 refusal/operational failure, 2 syntax error.
@@ -220,7 +235,7 @@ func webMain(args []string) int {
 	template := flags.String("template", "", "installed template")
 	templateVersion := flags.String("template-version", "", "exact attested hash or explicit legacy default")
 	duration := flags.Int64("duration-seconds", 5400, "future attempt seconds")
-	webcam := flags.String("webcam", "required", "required or optional")
+	webcam := flags.String("webcam", "required", "required or off (optional is a compatibility alias for off)")
 	terminals := flags.Int("terminals", 4, "terminal count")
 	collectionFile := flags.Int64("collection-file-mib", 128, "per-file logical MiB")
 	collectionTotal := flags.Int64("collection-total-mib", 512, "total logical MiB")
@@ -371,7 +386,7 @@ func webMain(args []string) int {
 		if !create && !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(*revision) {
 			return usage("update requires --revision HASH from web exams show")
 		}
-		if *duration < 60 || *duration > 21600 || *terminals < 1 || *terminals > 4 || (*webcam != "required" && *webcam != "optional") || (visited["reason"] && (len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000)) {
+		if *duration < 60 || *duration > 21600 || *terminals < 1 || *terminals > 4 || !validWebcamSetting(*webcam) || (visited["reason"] && (len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000)) {
 			return usage("invalid duration/terminal/webcam/reason; see documented ranges")
 		}
 		if *collectionFile < 1 || *collectionFile > 4096 || *collectionTotal < 1 || *collectionTotal > 16384 || ((create || (visited["collection-file-mib"] && visited["collection-total-mib"])) && *collectionTotal < *collectionFile) {

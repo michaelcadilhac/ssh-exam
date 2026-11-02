@@ -12,6 +12,7 @@ import (
 // A ready reply is provisional, not execution authority. Only the final locked
 // transaction may consume the still-current capability and launch student code.
 type paneLaunchAdmission struct {
+	executionPolicy   *verifiedExecutionPolicy
 	capability        Capability
 	account           Account
 	authority         Attempt
@@ -89,7 +90,7 @@ func (e *Engine) closePaneLocked(a *Attempt, pane string) (any, error) {
 }
 
 // Called only inside WithState; no network IO or process launch occurs here.
-func (e *Engine) paneAdmission(token, name, identity string, account Account) (Capability, *Attempt, error) {
+func (e *Engine) paneAdmissionIdentity(token, name, identity string, account Account) (Capability, *Attempt, error) {
 	cap, ok := e.state.Caps[Hash([]byte(token))]
 	if !ok || cap.Expires <= Millis() || cap.Username != name || !attemptID.MatchString(cap.ID) || !attemptID.MatchString(cap.Pane) {
 		return cap, nil, errors.New("invalid, revoked or expired one-use admission; reopen this pane")
@@ -116,7 +117,26 @@ func (e *Engine) paneAdmission(token, name, identity string, account Account) (C
 	if paneRecorded(a, cap.Pane) {
 		return cap, nil, errors.New("pane already admitted; close it before opening a replacement")
 	}
-	if len(a.Units) >= a.Settings.Terminals {
+	return cap, a, nil
+}
+
+func (e *Engine) paneAdmission(token, name, identity string, account Account, policies ...*verifiedExecutionPolicy) (Capability, *Attempt, error) {
+	cap, a, err := e.paneAdmissionIdentity(token, name, identity, account)
+	if err != nil {
+		return cap, a, err
+	}
+	if len(policies) > 1 {
+		return cap, nil, errExecutionPolicy
+	}
+	var policy *verifiedExecutionPolicy
+	if len(policies) == 1 {
+		policy = policies[0]
+	}
+	limit, err := e.admissionTerminalLimitLocked(a, policy)
+	if err != nil {
+		return cap, nil, err
+	}
+	if len(a.Units) >= limit {
 		return cap, nil, errors.New("terminal limit; close an existing pane before opening another")
 	}
 	return cap, a, nil
@@ -174,7 +194,7 @@ func (e *Engine) acknowledgedPaneLocked(p *paneLaunchAdmission, token, name, uni
 	if err != nil {
 		return Capability{}, nil, err
 	}
-	cap, a, err := e.paneAdmission(token, name, identity, account)
+	cap, a, err := e.paneAdmission(token, name, identity, account, p.executionPolicy)
 	if err != nil {
 		return cap, a, err
 	}
@@ -263,7 +283,8 @@ func (e *Engine) releaseClosedPane(p *paneLaunchAdmission, name, unit string, pr
 		}
 		allowed := func() bool {
 			now, err := monitoringBootMillis()
-			return err == nil && now < proof.ClosedBootUntil && Millis() < proof.ClosedUntil && workloadAllowed(a, p.capability.Purpose) == nil && len(a.Units) <= a.Settings.Terminals && current() && (p.supervisor == nil || p.supervisor.current())
+			limit, limitErr := e.admissionTerminalLimitLocked(a, p.executionPolicy)
+			return err == nil && limitErr == nil && now < proof.ClosedBootUntil && Millis() < proof.ClosedUntil && workloadAllowed(a, p.capability.Purpose) == nil && len(a.Units) <= limit && current() && (p.supervisor == nil || p.supervisor.current())
 		}
 		if !allowed() {
 			return errPaneBootstrap

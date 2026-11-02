@@ -22,13 +22,14 @@ type FileEntry struct {
 	Hash string `json:"sha256"`
 }
 type Manifest struct {
-	Attempt      *Attempt    `json:"attempt"`
-	Files        []FileEntry `json:"files"`
-	Omissions    []string    `json:"omissions"`
-	Collected    int64       `json:"collected"`
-	Secured      int64       `json:"secured"`
-	Checksum     string      `json:"checksum,omitempty"`
-	metadataHash string
+	CollectionPolicy *CollectionExecutionPolicy `json:"collection_policy,omitempty"`
+	Attempt          *Attempt                   `json:"attempt"`
+	Files            []FileEntry                `json:"files"`
+	Omissions        []string                   `json:"omissions"`
+	Collected        int64                      `json:"collected"`
+	Secured          int64                      `json:"secured"`
+	Checksum         string                     `json:"checksum,omitempty"`
+	metadataHash     string
 }
 
 // Collect reads only through an os.Root and opens regular files O_NOFOLLOW. Its caller must
@@ -37,7 +38,7 @@ func Collect(source, dest string, a *Attempt) (string, error) {
 	if a == nil {
 		return "", errors.New("collection attempt snapshot required")
 	}
-	limits, err := limitsForSettings(a.Settings)
+	limits, err := collectionBoundsForAttempt(a)
 	if err != nil {
 		return "", err
 	}
@@ -76,7 +77,12 @@ func Collect(source, dest string, a *Attempt) (string, error) {
 	gz := gzip.NewWriter(f)
 	tw := tar.NewWriter(gz)
 	snapshot := *a
+	snapshot.CollectionPolicy = nil // The archive has one explicit, job-bound policy.
 	manifest := Manifest{Attempt: &snapshot, Files: []FileEntry{}, Omissions: []string{}}
+	if a.CollectionPolicy != nil {
+		copy := *a.CollectionPolicy
+		manifest.CollectionPolicy = &copy
+	}
 	var count int
 	var total int64
 	info, err = root.Stat(".")
@@ -269,10 +275,6 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	if a == nil {
 		return nil, errors.New("protected attempt snapshot required")
 	}
-	limits, err := limitsForSettings(a.Settings)
-	if err != nil {
-		return nil, err
-	}
 	info, err := os.Lstat(dest)
 	if err != nil {
 		return nil, err
@@ -315,6 +317,10 @@ func ReadProtected(dest string, a *Attempt) (*Manifest, error) {
 	m.metadataHash = Hash(b)
 	if !protectedIdentity(m.Attempt, a) {
 		return nil, errors.New("protected manifest identity mismatch")
+	}
+	limits, err := collectionBoundsForManifest(&m)
+	if err != nil {
+		return nil, err
 	}
 	var total int64
 	seen := map[string]bool{}
@@ -378,6 +384,7 @@ func (e *Engine) beginFinalization(a *Attempt, reason string) error {
 	previous := a.State
 	if a.CollectionJob == "" || previous == "COLLECTION_FAILED" {
 		a.CollectionJob = Token()
+		a.CollectionPolicy = nil
 	}
 	if a.Deadline > 0 && expired(a) {
 		reason = "expiration"

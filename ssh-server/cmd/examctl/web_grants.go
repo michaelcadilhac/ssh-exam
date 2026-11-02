@@ -24,7 +24,7 @@ func webGrantsHelp(out io.Writer) {
        sudo examctl web grants issue-list EXAM [--limit 20 --after REVIEW_UUID]
        sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
        sudo examctl web grants issue-cancel PREVIEW_UUID --revision REVIEW_HASH
-       sudo examctl web grants additional-preview EXAM USER... --duration-minutes N --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT [--webcam required|optional]
+       sudo examctl web grants additional-preview EXAM USER... --duration-minutes N --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT [--webcam required|off]
 
 Initial ordinary grants are issued atomically at NEW enrollment/CSV import, with
 an exact attested template version and finite explicit Begin window. Existing
@@ -111,16 +111,19 @@ Grant settings are saved at issuance. Later exam/roster default edits do NOT
 revise them. Revise/revoke require the current numeric revision and audited reason
 (8..1000 characters), and refuse unresolved preparation/Begin or consumption.
 Settings: --duration-minutes 1..360 OR --duration-seconds 60..21600,
---webcam required|optional, --terminals 1..4,
---earliest RFC3339, --latest RFC3339 (finite Begin window, not latest finish),
---template NAME, --template-version HASH (exact attested source, never legacy),
---collection-file-mib N, --collection-total-mib N (total >= file).
+--webcam required|off, --earliest RFC3339, --latest RFC3339 (finite start window,
+not latest finish), and the starting-file --work flags below. Off never offers
+or captures webcam; optional remains a compatibility alias for off.
+Terminals, file limits and exam materials are exam-wide settings: use
+examctl web exams update. Old per-attempt exam-setting flags remain parseable only
+for an identical recorded request retry; a new mutation is refused by the gateway.
 additional-preview --preserve-duration copies each student's latest saved attempt
 time limit at preview, including a cancelled unused attempt's last settings.
 Current unused settings take precedence; otherwise the most recently issued grant
 is used, then legacy attempt history. With neither, enrollment/exam settings apply.
-Terminals and collection limits are copied too; dates and starting files remain
-explicitly reviewed. A changed source configuration requires a new review.
+New attempts copy terminals, file limits and materials from current exam settings;
+dates and starting files remain explicitly reviewed. A changed source configuration
+requires a new review. Existing saved attempt settings remain intact.
 Do not combine --preserve-duration with a shared --duration-minutes/seconds.
 Generic --input JSONL accepts different saved/template/empty starting files per
 student in ONE atomic review. Use --preserve-duration to retain effective limits,
@@ -210,7 +213,7 @@ func webGrantsMain(args []string) int {
 	reason := flags.String("reason", "", "audited reason")
 	minutes := flags.Int64("duration-minutes", 0, "fixed allowance whole minutes")
 	seconds := flags.Int64("duration-seconds", 0, "fixed allowance exact seconds")
-	webcam := flags.String("webcam", "", "required or optional")
+	webcam := flags.String("webcam", "", "required or off (optional is a compatibility alias for off)")
 	terminals := flags.Int("terminals", 0, "terminal count")
 	earliest := flags.String("earliest", "", "earliest Begin RFC3339")
 	latest := flags.String("latest", "", "latest Begin RFC3339")
@@ -308,8 +311,8 @@ func webGrantsMain(args []string) int {
 			changes["duration"] = *seconds
 		}
 		if seen["webcam"] {
-			if *webcam != "required" && *webcam != "optional" {
-				return usage("webcam must be required or optional, not inheritance")
+			if !validWebcamSetting(*webcam) {
+				return usage("webcam must be required or off, not inheritance")
 			}
 			changes["webcam"] = *webcam == "required"
 		}

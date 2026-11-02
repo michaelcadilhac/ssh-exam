@@ -501,8 +501,12 @@ it.each(["e", "versioned"])(
       expect(technical).toMatchObject({
         type: "error",
         pane,
-        error: "Synthetic setup failure: Page cache owns a busy filename",
+        error:
+          "This terminal could not open. Try again. If it still fails, contact your instructor.",
       });
+      expect(JSON.stringify(technical)).not.toContain(
+        "Synthetic setup failure: Page cache owns a busy filename",
+      );
       expect(technical.code).toBeUndefined();
       expect(store.attempt(id).state).toBe("ACTIVE");
     } finally {

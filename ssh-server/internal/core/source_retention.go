@@ -128,7 +128,7 @@ func (e *Engine) verifySourceRetentionArchive(a *Attempt) (*Manifest, error) {
 		return nil, err
 	}
 	defer dir.Close()
-	limits, err := limitsForSettings(a.Settings)
+	limits, err := protectedCollectionBounds(fmt.Sprintf("/proc/self/fd/%d/.", dir.Fd()), a)
 	if err != nil {
 		return nil, err
 	}

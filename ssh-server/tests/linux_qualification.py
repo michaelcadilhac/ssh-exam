@@ -12,6 +12,7 @@ parser.add_argument('--handoff-only',action='store_true',help='Verify automatic 
 parser.add_argument('--setup-only',action='store_true',help='Focused temporary setup, lingering and offline-expiry recovery')
 parser.add_argument('--worker-isolation',action='store_true',help='Real collection-worker death alongside another live SSH PTY; private overlay only')
 parser.add_argument('--timed-owner',action='store_true',help='Real BrowserSSH timed owner, two shells, guest coordinator stop and current-policy pause; private overlay only')
+parser.add_argument('--execution-policy',action='store_true',help='Actual current exam-wide pane/collection policy with frozen attempt settings; private overlay only')
 parser.add_argument('--framed-owner',action='store_true',help='Actual C15 initial-grant Begin and scoped input/resize/replacement; private overlay only')
 parser.add_argument('--retained-policy',action='store_true',help='Guarded test roles: actual CLI pause/verified frozen panes/fresh approved Continue; private overlay only')
 parser.add_argument('--peer',help='Separate synthetic guest account for worker isolation')
@@ -19,7 +20,7 @@ parser.add_argument('--key',default='/root/qualification-client')
 parser.add_argument('--known-hosts',default='/root/qualification-known-hosts')
 parser.add_argument('--gateway-key',default='/etc/exam-agent/gateway.key')
 a=parser.parse_args()
-browser_mode=a.timed_owner or a.worker_isolation or a.framed_owner or a.retained_policy
+browser_mode=a.execution_policy or a.timed_owner or a.worker_isolation or a.framed_owner or a.retained_policy
 assert os.geteuid()==0, 'Run as root inside the disposable guest'
 config=json.loads(pathlib.Path('/etc/exam-agent/agent.json').read_text())
 guards=json.loads(pathlib.Path(config['guard_report']).read_text())
@@ -52,6 +53,22 @@ def agent_ready():
     try:s.connect(config['socket']);return True
     except OSError:return False
     finally:s.close()
+
+def set_execution_policy(exam,settings,revision=1,**changes):
+    """Author only the synthetic guest policy consumed by its signed callback."""
+    assert os.geteuid()==0 and pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn'
+    assert pathlib.Path('/run/ssh-exam-qualification-input').is_mount()
+    registry=pathlib.Path('/run/qualification-execution-policies.json')
+    policies=json.loads(registry.read_text()) if registry.exists() else {}
+    policy=dict(schema=1,agent=config['agent_id'],exam=exam,instance=hashlib.sha256(exam.encode()).hexdigest()[:32],revision=revision,
+                terminals=settings['terminals'],collection_file_mib=settings.get('collection_file_mib',128),collection_total_mib=settings.get('collection_total_mib',512))
+    policy.update(changes);policies[exam]=policy
+    descriptor,temporary_registry=tempfile.mkstemp(prefix='qualification-execution-policy-',dir='/run')
+    try:
+        with os.fdopen(descriptor,'w') as stream:json.dump(policies,stream);stream.flush();os.fsync(stream.fileno())
+        os.replace(temporary_registry,registry)
+    finally:pathlib.Path(temporary_registry).unlink(missing_ok=True)
+    return policy
 
 class Connection:
     def __init__(self,keyfile=None,certificate=None,username=None):
@@ -102,11 +119,13 @@ class Connection:
         elif initial_grant:self.exam='qualification-framed-'+uuid.uuid4().hex[:12]
         self.transport=self.command('register',{'exam':self.exam})['transport'];id=str(uuid.uuid4())
         body={'id':id,'exam':self.exam,'uid':account.pw_uid,'username':self.username,'transport':self.transport,'browser_ssh':browser_mode,'settings':{'duration':duration,'earliest':0,'latest':int(time.time()*1000)+600000,'template':'qualification','terminals':4}}
+        if a.execution_policy:
+            body['settings'].update(collection_file_mib=1,collection_total_mib=2)
         if issued:
             body['settings']=dict(issued['settings']);self.grant=dict(issued['grant']);body['grant']=self.grant
             self.page_epoch=hashlib.sha256(uuid.uuid4().bytes).hexdigest()
         elif initial_grant:
-            assert (a.framed_owner or a.retained_policy) and temporary and (self.username=='examq' or (a.worker_isolation and self.username==a.peer=='examqpeer'))
+            assert (a.execution_policy or a.framed_owner or a.retained_policy) and temporary and (self.username=='examq' or (a.worker_isolation and self.username==a.peer=='examqpeer'))
             body['settings']['earliest']=int(time.time()*1000)-1000
             # Author a new public synthetic package. The prepared legacy
             # template intentionally has private materials permissions; never
@@ -131,6 +150,7 @@ class Connection:
             self.grant={'id':str(uuid.uuid4()),'revision':1,'hash':hashlib.sha256(json.dumps(body['settings'],sort_keys=True).encode()).hexdigest(),'issuance_order':1}
             body['grant']=self.grant
             self.page_epoch=hashlib.sha256(uuid.uuid4().bytes).hexdigest()
+        set_execution_policy(self.exam,body['settings'],**({'terminals':1} if a.execution_policy else {}))
         self.command('prepare-additional-grant-attempt' if issued else 'prepare-grant-attempt' if initial_grant else 'prepare-attempt',body)
         if temporary:
             self.command('prepare-account-policy',{'id':id})
@@ -161,7 +181,7 @@ class Connection:
             activation={'id':id}
             if initial_grant:
                 activation.update(settings=staged['settings'],grant=self.grant,grant_begin_intent=str(uuid.uuid4()),page_epoch=self.page_epoch)
-                expected={'type':'grant-begin/v3' if a.retained_policy else 'grant-begin/v2','agent':config['agent_id'],'attempt':id,'exam':self.exam,'username':self.username,'uid':account.pw_uid,'grant':self.grant,'intent':activation['grant_begin_intent'],'transport':self.transport,'boot':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),'settings':staged['settings'],'page_epoch':self.page_epoch}
+                expected={'type':'grant-begin/v3' if a.retained_policy or a.execution_policy else 'grant-begin/v2','agent':config['agent_id'],'attempt':id,'exam':self.exam,'username':self.username,'uid':account.pw_uid,'grant':self.grant,'intent':activation['grant_begin_intent'],'transport':self.transport,'boot':pathlib.Path('/proc/sys/kernel/random/boot_id').read_text().strip(),'settings':staged['settings'],'page_epoch':self.page_epoch}
                 if issued:
                     descriptor,temporary_registry=tempfile.mkstemp(prefix='qualification-additional-begin-',dir='/run')
                     try:
@@ -194,7 +214,7 @@ class Connection:
                 repaired=native_role_snapshot(config)
                 assert repaired['agent']['hash']==repaired['watchdog']['hash'] and repaired['agent']['exe']==repaired['watchdog']['exe']
                 ok('actual signed Begin refuses a positively observed mixed loaded watchdog before clock/grant/work publication; exact source and intent remain retryable after private repair')
-            self.command('activate-monitored-additional-grant-attempt' if issued and a.retained_policy else 'activate-monitored-grant-attempt' if a.retained_policy else 'activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
+            self.command('activate-monitored-additional-grant-attempt' if issued and a.retained_policy else 'activate-monitored-grant-attempt' if a.retained_policy or a.execution_policy else 'activate-grant-attempt' if initial_grant else 'activate-attempt',activation)
             begun=info(id)
             assert begun['deadline']-begun['start']==duration*1000 and begun['original_deadline']==begun['deadline']
             assert (base/'work').stat().st_ino==staged_inode, 'Begin did not publish the exact staged directory'
@@ -1166,6 +1186,64 @@ if (a.framed_owner or a.retained_policy) and not a.worker_isolation:
         normal_access('SSH-exit collection preserves its original restriction until the deadline and restores ordinary access without override')
         qualify_saved_source_grant(info(id))
     print(json.dumps({'passed':passed,'count':len(passed),'framed_owner':True,'retained_lockout':a.retained_policy,'synthetic_capture':a.retained_policy}),flush=True)
+    raise SystemExit(0)
+
+if a.execution_policy:
+    marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())
+    assert a.username=='examq' and marker['username']=='examq' and marker['profile']=='execution-policy'
+    assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn' and temporary
+    connection=Connection();panes=[]
+    try:
+        id=connection.start(duration=60,initial_grant=True);original=info(id)
+        assert original['settings']['terminals']==4 and original['settings']['collection_file_mib']==1
+        assert original['monitoring_mode']=='v1' and original['registered_owner']['page_epoch']==connection.page_epoch and original['grant']==connection.grant
+        first=connection.pane(id,framed=True);panes.append(first)
+        connection.input(first,"buffer=policy-preserved; printf 'POLICY-%s\\n' SHELL-ONE\n")
+        read_until(first,b'POLICY-SHELL-ONE')
+        try:connection.pane(id,framed=True);raise AssertionError('second pane ignored current limit of one')
+        except RuntimeError as error:assert 'terminal limit' in str(error),error
+        set_execution_policy(connection.exam,original['settings'],revision=2,terminals=2)
+        second=connection.pane(id,framed=True);panes.append(second)
+        connection.input(second,"printf 'POLICY-%s\\n' SHELL-TWO\n");read_until(second,b'POLICY-SHELL-TWO')
+        owner_before=json.loads(root('examctl','panes','supervisor',id))
+        set_execution_policy(connection.exam,original['settings'],revision=3,terminals=1)
+        try:connection.pane(id,framed=True);raise AssertionError('new pane ignored lowered live exam limit')
+        except RuntimeError as error:assert 'terminal limit' in str(error),error
+        connection.input(first,"printf 'POLICY-%s:%s\\n' STILL-LIVE \"$buffer\"\n");read_until(first,b'POLICY-STILL-LIVE:policy-preserved')
+        connection.input(second,"printf 'POLICY-%s\\n' SECOND-LIVE\n");read_until(second,b'POLICY-SECOND-LIVE')
+        owner_after=json.loads(root('examctl','panes','supervisor',id))
+        assert owner_before['pid']==owner_after['pid'] and owner_before['attached_units']==owner_after['attached_units'] and owner_after['attached_panes']==2
+        assert all(info(id)[k]==original[k] for k in ('settings','start','deadline','original_deadline'))
+        ok('actual SSH new-pane admissions follow raised/lowered exam limits; two existing shells, unsaved buffer, supervisor and immutable interval/settings survive')
+        connection.input(first,"python3 -c 'open(\"large.c\",\"wb\").truncate(1048577)'; printf 'POLICY-%s\\n' SAVED-LARGE\n");read_until(first,b'POLICY-SAVED-LARGE')
+        refused=run(['examctl','stop',id,'--reason','Private live exam policy collection cap refusal'])
+        assert refused.returncode!=0 and 'per-file logical size exceeded' in refused.stderr,(refused.stdout,refused.stderr)
+        failed=info(id)
+        assert failed['state']=='COLLECTION_FAILED' and not failed['protected'] and failed['access_state']=='HELD'
+        assert all(failed[k]==original[k] for k in ('settings','start','deadline','original_deadline'))
+        assert pathlib.Path(config['work'],id,'work','large.c').stat().st_size==1048577
+        assert not pathlib.Path(config['state'],'submissions',id).exists()
+        ok('actual resource-isolated collection refuses current cap without partial archive, clock changes, discarded frozen work or released account hold')
+        set_execution_policy(connection.exam,original['settings'],revision=4,terminals=1,collection_file_mib=2,collection_total_mib=4)
+        root('examctl','retry',id,'--reason','Private explicit retry after shared exam limits raised')
+        wait_for(lambda:info(id)['state']=='COMPLETED' and info(id)['protected'],timeout=45)
+        final,archive,checksum=secure(id)
+        manifest=json.loads(root('examctl','manifest',id))
+        pathlib.Path('/run/ssh-exam-qualification-output/public-policy-manifest.json').write_text(json.dumps(manifest))
+        assert manifest['collection_policy']['policy']['revision']==4 and manifest['collection_policy']['job']==manifest['attempt']['collection_job']
+        assert final['settings']==original['settings'] and final['deadline']==original['deadline'] and final['access_state']=='HELD'
+        assert next(row for row in manifest['files'] if row['path']=='large.c')['size']==1048577
+        set_execution_policy(connection.exam,original['settings'],revision=5,terminals=1,collection_file_mib=1,collection_total_mib=2)
+        assert json.loads(root('examctl','manifest',id))['collection_policy']==manifest['collection_policy']
+        assert hashlib.sha256(archive.read_bytes()).hexdigest()==checksum
+        ok('actual CLI retry fetches raised bounds and pins archive job; later lower settings cannot invalidate or rewrite that archive')
+    finally:
+        for pane in panes:
+            if pane.poll() is None:pane.kill();pane.wait(timeout=5)
+        connection.close()
+    wait_for(lambda:info(id)['access_state']=='RELEASED' and info(id)['policy_state']=='NORMAL',timeout=max(0,original['deadline']/1000-time.time())+30)
+    normal_access('unchanged original deadline restores synthetic account after protected live-policy collection')
+    print(json.dumps({'passed':passed,'count':len(passed),'execution_policy':True}),flush=True)
     raise SystemExit(0)
 
 if a.timed_owner:

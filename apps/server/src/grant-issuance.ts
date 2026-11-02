@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
+import { examConfiguration } from "../../../packages/protocol/index.js";
 import {
   grantIssuePreview,
   grantIssueIntent,
@@ -16,6 +17,12 @@ import { ExamStudents } from "./exam-students.js";
 const refuse = (message: string, statusCode = 409): never => {
   throw Object.assign(Error(message), { statusCode });
 };
+const sharedSettings = examConfiguration.omit({
+  duration: true,
+  webcam: true,
+  earliest: true,
+  latest: true,
+});
 // Runtime callers: shared root/web review, inspect, cancel and confirm routes.
 // Preview is metadata, never an account reservation or native admission proof.
 export class GrantIssuance {
@@ -175,14 +182,6 @@ export class GrantIssuance {
           const value = this.grants.snapshot(
             {
               ...definition.exam,
-              ...(inherited
-                ? {
-                    terminals: inherited.settings.terminals,
-                    collection_file_mib: inherited.settings.collection_file_mib,
-                    collection_total_mib:
-                      inherited.settings.collection_total_mib,
-                  }
-                : {}),
               earliest: b.earliest,
               latest: b.latest,
               duration: additional
@@ -365,10 +364,8 @@ export class GrantIssuance {
           return refuse(
             "This request uses an older attempt policy. Edit and review again before confirming; update examctl if using the CLI. No allowed attempt changed.",
           );
-        if (
-          this.definitions.requireActive(saved.exam).revision !==
-          saved.definition_revision
-        )
+        const definition = this.definitions.requireActive(saved.exam);
+        if (definition.revision !== saved.definition_revision)
           return refuse(
             "The exam settings changed after this review. Create a new review. This request allowed no attempts.",
           );
@@ -410,11 +407,19 @@ export class GrantIssuance {
             return refuse(
               "The reviewed start window has closed. Choose new opening and closing times and create a new review. This request allowed no attempts.",
             );
-          if (
-            this.grants.snapshot(r.settings, r.work, r.username).hash !== r.hash
-          )
+          const value = this.grants.snapshot(r.settings, r.work, r.username);
+          if (value.hash !== r.hash)
             return refuse(
               "Reviewed source/settings hash differs at confirmation; no partial batch issued",
+            );
+          if (
+            !isDeepStrictEqual(
+              sharedSettings.parse(value.settings),
+              sharedSettings.parse(definition.exam),
+            )
+          )
+            return refuse(
+              "This review uses older per-attempt exam settings. Create a new review to use the current exam settings. No attempt was allowed or replaced.",
             );
         }
         // All rows and immutable settings/replacement snapshots were checked

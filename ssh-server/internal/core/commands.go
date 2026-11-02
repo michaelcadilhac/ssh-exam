@@ -202,6 +202,27 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		discovered = &a
 	}
 	// Read-only OS verification is deliberately outside the shared attempt lock.
+	if cmd.Op == "issue-channel-admission" || cmd.Op == "issue-owner-channel-admission" {
+		var exam string
+		if err := e.WithState(func() error {
+			a, err := e.Find(cmd.Body.ID)
+			if err != nil || a.Username != username || cmd.Transport != transport || a.Transport != transport || e.state.Registrations[transport] != username {
+				return errors.New("attempt SSH transport mismatch")
+			}
+			exam = a.Exam
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		verified, err := e.refreshExecutionPolicy(exam)
+		if err != nil {
+			return nil, err
+		}
+		if supplied := cmd.Body.ExecutionPolicy; supplied != nil && (verified == nil || !validExecutionPolicy(*supplied, e.Config.AgentID, exam) || supplied.Instance != verified.policy.Instance || supplied.Revision > verified.policy.Revision) {
+			return nil, errExecutionPolicy
+		}
+		cmd.Body.executionPolicyVerified = verified
+	}
 	if cmd.Op == "activate-attempt" {
 		var target *Attempt
 		if err := e.WithState(func() error {

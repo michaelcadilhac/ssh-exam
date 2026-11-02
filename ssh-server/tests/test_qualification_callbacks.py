@@ -19,13 +19,25 @@ source = Path(__file__).with_name('qualification_callbacks.py')
 tree = ast.parse(source.read_text())
 namespace = {'hashlib': hashlib, 'json': json, 'Path': Path, 're': re}
 exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef)
-                             and n.name in ('fixture_reply','source_fixture_reply','monitoring_fixture_path')], type_ignores=[]),
+                             and n.name in ('fixture_reply','source_fixture_reply','monitoring_fixture_path','execution_policy_reply')], type_ignores=[]),
              str(source), 'exec'), namespace)
 reply = namespace['fixture_reply']
 source_reply = namespace['source_fixture_reply']
 
 
 class CallbackTests(unittest.TestCase):
+    def test_execution_policy_uses_exact_current_authored_scope_and_finite_nonce_reply(self):
+        policy=dict(schema=1,agent='private-agent',exam='synthetic',instance='a'*32,revision=2,terminals=1,collection_file_mib=2,collection_total_mib=4)
+        request=dict(agent='private-agent',exam='synthetic',nonce='b'*64,at=1000000)
+        actual=namespace['execution_policy_reply'](request,policy,1000000)
+        self.assertEqual(actual,dict(type='exam-execution-policy',audience='private-agent',nonce='b'*64,expires=1030000,policy=policy))
+        for change in ({'exam':'other'},{'agent':'other'},{'nonce':'bad'},{'at':900000},{'extra':True}):
+            with self.subTest(change=change),self.assertRaises(AssertionError):
+                namespace['execution_policy_reply']({**request,**change},policy,1000000)
+        for change in ({'terminals':5},{'terminals':True},{'collection_file_mib':1.5},{'collection_total_mib':1},{'instance':'bad'},{'schema':2},{'extra':True}):
+            with self.subTest(change=change),self.assertRaises(AssertionError):
+                namespace['execution_policy_reply'](request,{**policy,**change},1000000)
+
     def test_concurrent_monitored_attempts_keep_separate_fixture_authority(self):
         select_registry=namespace['monitoring_fixture_path']
         first='11111111-1234-4234-8234-123456789abc'

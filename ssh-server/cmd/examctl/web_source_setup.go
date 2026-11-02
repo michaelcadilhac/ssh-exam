@@ -227,6 +227,14 @@ func webSourceSetupMain(args []string) int {
 		return 1
 	}
 	defer lock.Close()
+	if !*once {
+		stopRole, roleErr := core.PublishSourceWorkerPolicyRole(c)
+		if roleErr != nil {
+			fmt.Fprintln(os.Stderr, "source-worker loaded-policy support publication failed:", roleErr)
+			return 1
+		}
+		defer stopRole()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	for ctx.Err() == nil {

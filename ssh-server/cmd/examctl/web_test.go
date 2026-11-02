@@ -47,7 +47,7 @@ func TestWebCLIHelpAndSyntaxBeforeRootOrConfig(t *testing.T) {
 
 func TestWebCollectionLimitsHelpAndSyntax(t *testing.T) {
 	output, code := cliProcess(t, "web", "exams", "update", "--help")
-	for _, required := range []string{"--collection-file-mib", "--collection-total-mib", "128", "512", "logical", "Existing attempt settings"} {
+	for _, required := range []string{"--collection-file-mib", "--collection-total-mib", "128", "512", "logical", "ALL", "unstarted, setup and running attempts", "freshly verified current file", "Protected submissions keep"} {
 		if code != 0 || !strings.Contains(output, required) {
 			t.Fatalf("missing limits guidance %q: %d %s", required, code, output)
 		}
