@@ -5,7 +5,12 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-November1 storage follow-up IMPLEMENTED/TESTED LOCALLY, runtime not deployed:
+November1 storage follow-up DEPLOYED AND ONLINE: runtime5163b20/schema37,
+matchedCLI and maintenance responses. Admissions reopened19:26:40 Chicago;
+background conversion is processing. No clock/hold/history/retention exception
+or native-service restart. Actual rollout/recovery and corrected deployment
+process failures: docs/recording-storage-deployment.md.
+The approved specification follows:
 the instructor authorizes smaller activity-level screen/webcam images, efficient
 recording encodings, shared incremental backups, short UI cutovers and a readable
 maintenance response. The new producer profile is1280/.50 screen and320/.50 camera,

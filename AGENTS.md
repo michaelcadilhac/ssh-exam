@@ -101,6 +101,10 @@
   already-implemented capabilities before adding work. Keep production-only gates
   separate from local completion. Do not inflate completed counts or retain an
   unrelated future requirement as a reason to reimplement a working workflow.
+- Call a release ready only after its matched migration/recovery controller is
+  rehearsed with realistic signed-poll expiry and nginx reload timing. Measure
+  media/index preparation before fencing and reuse a proven recovery baseline.
+  A two-minute target never weakens preservation, readiness or drain guards.
 - Work on one bounded end-to-end milestone at a time. Name its actual CLI/web/
   student entry point, intended outcome, required tests and stopping boundary
   before editing. Tests must exercise that entry point, not only private helpers.

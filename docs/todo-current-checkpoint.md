@@ -1,62 +1,36 @@
-# Current checkpoint — storage efficiency complete locally
+# Current checkpoint — recording storage DEPLOYED AND ONLINE
 
-November 1, 2026. The instructor APPROVED verified short video segments for
-completed recordings, removing individual JPEGs only after verification. No open
-design decision or local implementation blocker remains. Three coherent local
-milestones cover backups, UI deployment/maintenance, and recording storage/CLI.
-No push or runtime deployment is authorized in this phase; production remains
-b70a080/schema36, online. Only duplicate-backup cleanup ran in production.
+November1 evening Chicago. User authorized Push/deploy, then required reasonable
+<2minute routine deployment. Runtime5163b2045c78309d32453ea06e60d5ff2811baa0/schema37
+and matchedCLI a6aaa2fe… are pushed/deployed. Admissions reopened19:26:40 Chicago,
+conversion released19:27:52. Sitehealthy; actualpublicfocus4, maintenance2,
+signedexisting-syntheticmonitoring.show andactualhostisolatedcodecPASS.
+Firstconversion563images/48segments:42,961,555sourcebytes→3,971,250video bytes;
+backgroundbacklogisnotfinished. No activeexaminterrupted/native servicerestart.
+All41authoritytables/110web/175native histories andoldloadedworker preserved.
 
-Production cleanup COMPLETE: four older full archives compacted; newest full
-archive and every older unique database/configuration/image/file byte retained.
-Reclaimed54,138,255,360bytes; backups15.84GB, filesystem70.25GB free. Independent
-replacement hashes and actual3001 readiness pass. Live data/services/configuration
-unchanged. Receipt: storage-release-efficiency.vu8pc_7d/cleanup-completion.json.
+Current rollout/recovery: docs/recording-storage-deployment.md.
+Evidence: var/collection-tests/recording-storage-rollout.en39vh5c/completion.json.
+Webstate /data/ssh-exam-recording-update-20261101-en39vh5c is ONLINE; ownedpause
+RELEASED. Historical last_error remains inprivate status, resolved by later proof.
+Snapshot is RECOVERY_PAIR: fresh53,436,416byteDB/smallfiles,0media copied; mandatory
+fullarchive /data/ssh-exam-backup-admin-editor-20261101-gj4gw2sy/web-data-config-before.tar
+SHA16f222… retained. All153627members/rows/exactPAXnanosecondtimes proved unchanged.
+Never remove this dependency or restore historicalDB over newer authority.
+Recovery requiresCURRENTdata+qualifiedvideo-capablereader, no b70 rollback.
 
-Implemented/tested locally:1280px screen/320px camera five-second JPEG capture;
-additive schema37; isolated VP9 encoder, durable mapping and child-process disk
-barrier before original removal; bounded review/export and provenance; matched
-CLI request/retry/pause; retention/purge/restore; shared immutable-media backups;
-guarded prepare/apply/resume/cancel/rollback UI-only installer; nginx maintenance.
-Deadlines, holds, protected submissions, monitoring and history stay authoritative.
-The12–16MiB synthetic90-minute video benchmark is an estimate, not a whole-attempt
-quota. Full image/codec limitations remain in the feature documents.
+Deploymentoverrun was a processfailure: unfinishedfullmigrationdriver, avoidable
+40mincoldcopystart andtwofalsechecks (nonce expiry/hotreload transient503).
+OnlyownedwarmPID4149168 interrupted;cleanupverified.32972unreferencedduplicates /
+2,920,210,374bytes pruned, live/referenceddatauntouched. Private proof corrections
+were qualified and used without anotherwebrestart; permanentoperatorfixes now
+pass10nonce +27workflow checks. Runtimeimage/CLI unchanged; no broadapp repeat
+required. Operatorupdates+docs are currentGitHEAD afterfinalcommit/push/install.
+Actualcoldsetup/cutover was NOT under2min:560.739sfenceinterval includingrepairs.
+AGENT/retrospective nowrequireproduction-shapedrehearsal andpreparedrecovery
+beforemaintenance; no relaxedguards/time-based studentviolations.
 
-Validation: full app740PASS/1stale schema oracle/3existing opt-in skips; test-only
-oracle/this corrections followed by17PASS and global typecheck. No runtime source
-correction or entirely-green full-repeat claim.46 browserPASS with actual public
-browserSSH:true and documented synthetic media/API cases. BuildPASS. Actual
-compiled root-mapped CLI→signed Node/TLS conversion/export/deletion and affected
-CLI races/build/vetPASS. Codec/sync13, queue/purge13, consumer32, backupCLI14,
-compactor7, fast-installer22 and realnginx/TLS24Chromium renders PASS. Cohorts
-overlap: do not sum them. Fast-installer privileged transport is mocked;0.104s is
-not production timing. Final69,120-file/50MiB-DB snapshots6.609/9.311s,0media copied.
-All owned test PIDs/resources gone;10 original dirty screenshots unchanged/unstaged.
-
-Exact image Config3e3ba8059ebbed6a90695655f09330a4e9d053d07fd84ebdff4b728ef828f0db,
-source contextcd96735a7ebb…: schema11/24/35/36→37,37restart, archived VP9 RGB24/
-provenance/no-JPEG/deletion-fence and old36-helper compatibility PASS. One parallel
-helper naming collision was corrected without image/oracle/runtime changes;
-owned fixture cleanup verified. No new production MFA/media/kernel signoff.
-All689 app/Go/TS source hashes match final qualification. Including15 separately
-qualified Python/operation inputs, final704-file source manifest SHA256 is
-03cad99c2ca4ab460a227a55a5b32f809ed691f825cb63d276894aaf2e1785b3.
-Backup commitd5ee346; maintenance commit6c13bb9; runtime commit is current Git HEAD
-after final local commit. No push/deploy.
-
-NEXT, only after a new explicit release instruction: use the full matched-release
-procedure for schema37/CLI/explicit monitoring.optimize authorization, admission
-fence/positive web+native drain/private shared recovery set and owned background
-pause. Verify current authority/history/readiness/assets before reopening. After
-JPEG removal, recovery needs a video-capable image and CURRENT database; no b70a080
-fallback or historical-DB restore. Later UI-only changes use the fast installer.
-Native services need no restart; temporary-agent consolidation is already deployed
-and must be preserved, not repeated. Proposed plan: storage-and-release-efficiency.md.
-
-Evidence under var/collection-tests/: storage-release-efficiency.vu8pc_7d,
-recording-storage-evaluation._w2yxnuj, monitoring-video-export.Z025gQ,
-monitoring-compaction-cli._fbt3403, nginx-maintenance.h6ahgg2n and
-monitoring-video-release.k9whg_g9. Current runbooks: storage-and-release-efficiency.md,
-recording-storage-evaluation.md, monitoring-cli.md, fast-web-ui-deployment.md and
-nginx-maintenance.md. Prior production rollout: admin-editor-deployment.md.
-Original38-item TODO count is unchanged.
+Only remainingaction: finish commit/push of tested operatorfixes/docs andfast-forward
+cleanmarcocheckout (norestart), verifyactualhealth, reportcompletion. No morefeature
+work or broadtests. Preserve10 originaldirtyscreenshots. No newdesignquestions.
+Original38-itemTODOcount andearlierdeployednative consolidationunchanged.

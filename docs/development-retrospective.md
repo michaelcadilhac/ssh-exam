@@ -550,6 +550,29 @@ and invalid lifetimes. No application/data change was needed. Before reusing a
 rollout guard, inspect all writers and expiry/append semantics introduced since
 its previous release. This prevents an avoidable post-start false refusal.
 
+The November1 schema37 rollout exposed the missing case: a nonce live at the
+proof snapshot can expire normally during post-start verification. The permanent
+check now requires every removed nonce to expire strictly before a new, fully
+audited empty source-next poll's recorded request.created cutoff. A later audit
+timestamp or current wall clock alone is insufficient. Live nonce loss, missing
+poll evidence and every authority/history change still refuse. Ten actual-schema37
+regressions cover this boundary. A second false refusal came from probing public
+assets immediately after asynchronous nginx reload. The bounded retry accepts
+only the old fence's503/Retry-After60 while the exact normal site remains installed;
+other status, identity or digest errors remain definitive. The tracked deployment
+workflow's27 cases pass; its host/service transport and timing remain mocked.
+
+We declared the storage/release work locally complete before qualifying its full
+matched migration/recovery controller. We also started duplicating13GB into a cold
+store without measuring its cost: about64 files/second projected roughly40minutes.
+The actual full release instead reused a verified retained baseline covering
+153,627 paths, with exact PAX ctime/mtime and frame-row checks, paired with a fresh
+database/configuration snapshot and zero media copied. It did not restore an old
+database. Release readiness must include the actual migration/recovery driver,
+realistic signed-poll TTL and hot-reload rehearsal. Measure preparation/index work
+outside cutover and avoid recopying a proven baseline. A two-minute target must
+never become permission to relax guards.
+
 
 ## October 31 clarity pass: follow the rendered data boundary
 

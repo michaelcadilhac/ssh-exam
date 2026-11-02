@@ -1,8 +1,13 @@
 # Recording storage and deployment efficiency
 
-November 1, 2026. Implemented and tested locally; production cleanup completed.
-Production authorization covers redundant backup cleanup. Recording and deployment
-changes are developed locally until an explicit deployment instruction.
+November1,2026. Runtime5163b20/schema37, matchedCLI and maintenance responses
+are now deployed and online. Admissions reopened19:26:40 Chicago; conversion
+released19:27:52 and processes historical recordings in the background. Native
+services, authority/history and original policy are preserved. The full matched
+rollout used an explicit fresh recovery pair plus verified existing media archive,
+copying0media bytes. It exceeded the two-minute target; measured causes/fixes,
+acceptance and compatible recovery: [deployment record](recording-storage-deployment.md).
+The local benchmarks and original staged plan below retain their qualification context.
 
 ## Completed production cleanup
 
@@ -84,8 +89,8 @@ JPEG, WebP, AVIF, H264, VP9 and bounded AV1 results and limitations are in
 1280px VP9 screen plus320px camera videos measured12–16MiB for1080 samples over
 90minutes, before thumbnails. Keeping every existing thumbnail adds about16MiB;
 the implemented video reader therefore derives thumbnails on demand. The instructor
-approved this lossy representation explicitly. No production recording has been
-transcoded, discarded or relabeled.
+approved this lossy representation explicitly. Production conversion now runs under that approved policy; the original
+pre-deployment measurements did not transcode any real student recording.
 
 ## Completed-recording conversion and review
 
@@ -189,7 +194,7 @@ parallel fixture runs were repeated, with original failure retained. No image,
 application or preservation oracle changed. Exact source/image/fixture/cleanup
 receipts are under `var/collection-tests/monitoring-video-release.k9whg_g9/`.
 
-## Deployment, migration and rollback proposal — not executed
+## Deployment and recovery policy — executed rollout recorded separately
 
 This runtime change needs the full matched-release procedure, not the new UI-only
 fast path: qualify the exact FFmpeg-enabled web image, schema36→37 migration,

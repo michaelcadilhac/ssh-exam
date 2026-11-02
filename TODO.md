@@ -1,6 +1,6 @@
 # Deferred work
 
-November1 RECORDING STORAGE / RELEASE EFFICIENCY — TESTED LOCALLY; BACKUP CLEANUP DONE:
+November1 RECORDING STORAGE / RELEASE EFFICIENCY — DEPLOYED AND ONLINE:
 The instructor authorized immediate redundant-backup cleanup, smaller recordings,
 incremental backups, short UI deployments and a maintenance page. The newest full
 backup is retained; four older archives were compacted after digest and
@@ -19,7 +19,15 @@ isolation cohort (three existing opt-in skips);46 browser checks, type/build,
 CLI races and exact-image37 restart/36/35/24/11→37 upgrades pass. The one stale
 migration oracle and a disposable-container naming collision were corrected in
 tests only; original failures remain recorded. No open design question remains.
-None of these new runtime/deployment changes is pushed or deployed. Plan and evidence:
+Runtime5163b20/schema37 and matchedCLI are pushed/deployed. Admissions reopened
+at19:26:40 Chicago; background conversion released19:27:52. All41 authoritytables,
+110web/175native histories and native servicePIDs preserved; no exam interrupted.
+Public/TLS/focus, signed synthetic CLI and actualhost codec checks pass.
+Stopped recovery pair copied0media bytes and retains the verified full archive.
+Historical conversion is processing, not claimed finished. Deployment exceeded
+the two-minute target; cold-copy planning and two false guard checks were corrected
+and documented. Current rollout/recovery: docs/recording-storage-deployment.md.
+Earlier local-only statements are qualification history. Plan and evidence:
 docs/storage-and-release-efficiency.md and current checkpoint.
 
 November1 ATTEMPT EDITOR SIMPLIFICATION — DEPLOYED AND ONLINE:

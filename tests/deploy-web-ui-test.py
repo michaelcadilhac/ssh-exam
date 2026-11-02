@@ -201,6 +201,87 @@ class FastUI(unittest.TestCase):
 
     def stopped_calls(self): return [args for args in self.calls if args[:3] == ['/usr/bin/systemctl', 'stop', 'ssh-exam.service']]
 
+    def public_failure(self, code=503, retry='60'):
+        headers=Message()
+        if retry is not None:headers['Retry-After']=retry
+        error=urllib.error.HTTPError(json.loads(self.config.read_text())['origin']+'/',code,'synthetic reopen response',headers,None)
+        error.close()
+        return error
+
+    def normal_public_root(self,url):
+        return (url==json.loads(self.config.read_text())['origin']+'/'
+                and self.site.read_bytes()==(self.state/'normal.conf').read_bytes())
+
+    def test_reopen_retries_old_fence_once_then_checks_every_public_asset(self):
+        self.cli('prepare');original=self.urlopen;opened=[];assets=[]
+        def responding(url,timeout=5):
+            if self.normal_public_root(url):
+                opened.append(url)
+                if len(opened)==1:raise self.public_failure()
+            if url.startswith(json.loads(self.config.read_text())['origin']+'/'):assets.append(url)
+            return original(url,timeout)
+        with patch.object(self,'urlopen',responding):result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(len(opened),2)
+        origin=json.loads(self.config.read_text())['origin']
+        for name in self.asset_bodies[self.new['config_id']]:
+            suffix='/' if name=='dist/web/index.html' else '/'+name.removeprefix('dist/web/')
+            self.assertIn(origin+suffix,assets)
+        self.assertEqual(len(self.stopped_calls()),1);self.assertTrue(self.running)
+
+    def test_reopen_persistent_old_fence_is_bounded_and_preserves_running_candidate(self):
+        self.cli('prepare');original=self.urlopen;calls=[]
+        class Clock:
+            at=0
+            def monotonic(clock):return clock.at
+            def sleep(clock,delay):clock.at+=delay
+        clock=Clock();failure=self.public_failure()
+        def responding(url,timeout=5):
+            if self.normal_public_root(url):calls.append(url);raise failure
+            return original(url,timeout)
+        with patch.object(self,'urlopen',responding),patch.object(deploy.public_reopen_readiness,'time',clock):
+            result,error=self.cli('apply',expect=1)
+        self.assertGreater(len(calls),1);self.assertLessEqual(clock.at,5)
+        self.assertIn('503',error);self.assertEqual(result['phase'],'VERIFIED_GATED')
+        self.assertIn('ssh_exam_rollout_refuse',self.site.read_text())
+        self.assertEqual(self.current,self.new['config_id']);self.assertEqual(len(self.stopped_calls()),1);self.assertTrue(self.running)
+
+    def test_reopen_definitive_http_status_or_wrong_retry_header_is_not_retried(self):
+        self.cli('prepare');original=self.urlopen;calls=[]
+        def responding(url,timeout=5):
+            if self.normal_public_root(url):calls.append(url);raise self.public_failure(502)
+            return original(url,timeout)
+        with patch.object(self,'urlopen',responding):self.cli('apply',expect=1)
+        self.assertEqual(len(calls),1);self.assertIn('ssh_exam_rollout_refuse',self.site.read_text())
+        for retry in ('1',None):
+            attempted=[];failure=self.public_failure(retry=retry)
+            def check():attempted.append(1);raise failure
+            with self.assertRaises(urllib.error.HTTPError) as raised:
+                deploy.public_reopen_readiness.run(check,True,lambda:True)
+            self.assertIs(raised.exception,failure);self.assertEqual(attempted,[1])
+
+    def test_reopen_site_identity_change_prevents_retry(self):
+        self.cli('prepare');original=self.urlopen;calls=[]
+        def responding(url,timeout=5):
+            if self.normal_public_root(url):
+                calls.append(url);self.site.write_bytes((self.state/'nginx-before.conf').read_bytes())
+                raise self.public_failure()
+            return original(url,timeout)
+        with patch.object(self,'urlopen',responding):self.cli('apply',expect=1)
+        self.assertEqual(len(calls),1);self.assertIn('ssh_exam_rollout_refuse',self.site.read_text())
+        self.assertEqual(len(self.stopped_calls()),1);self.assertTrue(self.running)
+
+    def test_reopen_asset_digest_failure_after_old_fence_remains_definitive(self):
+        self.cli('prepare');original=self.urlopen;calls=[]
+        def responding(url,timeout=5):
+            if self.normal_public_root(url):
+                calls.append(url)
+                if len(calls)==1:raise self.public_failure()
+                return Response(b'wrong current index digest')
+            return original(url,timeout)
+        with patch.object(self,'urlopen',responding):_,error=self.cli('apply',expect=1)
+        self.assertEqual(len(calls),2);self.assertIn('Public asset differs',error)
+        self.assertIn('ssh_exam_rollout_refuse',self.site.read_text());self.assertTrue(self.running)
+
     def test_timed_actual_prepare_warmed_backup_apply_and_online_under_three_minutes(self):
         before = self.history(); prepared, _ = self.cli('prepare')
         self.assertEqual(prepared['coverage']['new_media_bytes_required'], 0)

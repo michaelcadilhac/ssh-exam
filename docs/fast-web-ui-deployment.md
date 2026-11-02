@@ -1,7 +1,11 @@
 # Fast, guarded UI-only web updates
 
-Implemented and qualified locally with synthetic data. This workflow has not been
-run against production. It is for a separately authorized application-host update
+This UI-only entry point is qualified locally with synthetic data. The first
+schema37 production release used a separately qualified private full migration/
+recovery controller, not this stock UI-only command. That release was online at
+01:26:40UTC November2 (19:26 November1 Chicago); background conversion was released
+at01:27:52UTC. It does not establish production timing for this UI-only workflow.
+This command is for a separately authorized application-host update
 whose schema, backend/protocol/native contracts and installed CLI remain unchanged.
 It never restarts a class-server service or changes exam records to pass a guard.
 
@@ -13,6 +17,14 @@ owners, stops only the web service, takes a consistent incremental snapshot and
 starts the matched image. Unchanged monitoring files are hard-linked from the
 private recovery store, never from live data. There is no full monitoring tar
 copy, repeated large-archive scan or Docker image export during cutover.
+
+Measure cold-store preparation before promising a cutover time. In the first full
+release, an unmeasured13GB duplicate copy ran at about64 files/second, projecting
+roughly40minutes. A separately verified retained baseline instead covered153,627
+monitoring paths through exact PAX ctime/mtime and frame-row checks, paired with a
+fresh database/configuration snapshot and zero media copied. This was the private
+full controller's reviewed preparation path, not automatic baseline adoption by
+the stock UI command. Never substitute an old database for the fresh snapshot.
 
 ## Prepare the release plan
 
@@ -122,11 +134,23 @@ and retry the appropriate phase; never fake a stopped-gateway attestation.
 
 After startup, strict verification compares all durable authority, schema/indexes,
 attempt/grant rowids, prior audit and requests with the consistent snapshot. Only
-the previously qualified expired-nonce/fully audited empty-poll exceptions apply.
+the qualified nonce/fully audited empty-poll exceptions apply. A removed nonce
+must expire strictly before a new empty source-next poll's recorded request.created
+cutoff, supported by its exact operation fingerprint and matching confirmed audit.
+It must also be expired at observation. Being live at startup does not forbid
+later legitimate expiry; current wall time alone never authorizes deletion. Prior
+audit/requests, every currently live nonce and all41 authority tables remain exact.
 Fresh post-start signed native roles, production readiness/notifications, unchanged
 native cohort and exact public assets are required. Only `EXAM_IMAGE` changes.
 The normal nginx candidate reopens admissions and retains the useful503 response
 for future unexpected gateway downtime.
+
+Nginx reload is asynchronous. After installing the exact normal site, public
+checks retry only503 with Retry-After60 within a five-second retry budget, retaining
+each request's existing timeout. Each retry checks site identity and reruns the
+complete asset verification. Persistent503, other statuses/headers, changed site
+identity or wrong asset digests still refuse and retain the running candidate
+behind the fence; they do not trigger another service stop.
 
 ## Failed or interrupted work
 
@@ -196,10 +220,12 @@ reinventory before any stop. No timeout is a student violation or a stop permit.
 
 ## Timing and qualification limits
 
-The local public-dispatch regression covers22 cases, including actual renderer,
+The local public-dispatch regression covers27 cases (8.197seconds), including actual renderer,
 warm/snapshot subprocesses, full schema36/37 SQLite data, all37/41 authority-table
 preservation, no-stop refusals, interrupted snapshots, owned pause/cancellation
-recovery and current-data rollback.
+recovery, bounded nginx-reload503 checks and current-data rollback. Ten separate
+actual-schema37 preservation tests cover nonce expiry during verification and
+refusal of live nonce loss, missing audit/poll evidence and authority/history edits.
 Its128-file/8MiB synthetic cutover was about0.1seconds, below the180-second target.
 Docker/systemd/native/root-ownership/worker-drain/public-host transport are explicitly mocked in
 that orchestration harness. It is not a measured production deployment time.
@@ -208,15 +234,16 @@ desktop/mobile rendering; student/instructor browser cases verify actionable503
 sign-in errors without creating an exam.
 
 Root's separate69,120-file backup benchmark measures warmed stopped snapshots
-around6seconds with zero new objects/media bytes copied. That is local storage
+at6.609/9.311seconds with zero new objects/media bytes copied. That is local storage
 evidence, not a production or compression-ratio claim. Actual readiness, disk,
-SSH and connection-drain time remain part of any real cutover. A three-minute
+SSH and connection-drain time remain part of any real cutover. A two-minute
 target never weakens a guard or interrupts a running exam.
 
 Run the focused checks with:
 
 ```sh
 python3 tests/deploy-web-ui-test.py -v
+python3 tests/deployment-preservation-test.py -v
 python3 tests/nginx-maintenance-smoke.py --browser --output /new/test-output
 ```
 

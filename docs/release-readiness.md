@@ -1,5 +1,14 @@
 # Main-bug release readiness
 
+CURRENT November1 evening Chicago: runtime5163b20/schema37 and matchedCLI are
+pushed, deployed and online. Public admission reopened19:26:40; conversion enabled
+19:27:52. Strict preservation of41authoritytables/110web/175native histories,
+public TLS/assets/focus, signed synthetic CLI and actualhost codec checks pass.
+No native service restart or interrupted exam. Historical conversion is ongoing.
+The release missed the two-minute target; exact causes, fixes, private recovery
+pair and video-compatible forward repair: [deployment record](recording-storage-deployment.md).
+Earlier dated local-only/current-version statements below are superseded.
+
 November1 storage extension: the instructor approved verified video segments for
 completed recordings. The local candidate adds schema37, isolated conversion and
 durability, derived review/export and matched CLI, incremental media backups,

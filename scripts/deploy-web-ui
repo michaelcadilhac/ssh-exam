@@ -36,6 +36,7 @@ import uuid
 
 from shared_backup import atomic_json, digest, monitoring_copy_scratch, private_directory, signature, sync_directory
 import deployment_pause
+import public_reopen_readiness
 
 SCRIPTS = Path(__file__).resolve().parent
 OPS = SCRIPTS/'web-ui-ops'
@@ -325,7 +326,7 @@ class Rollout:
             command(arguments+(['--fence'] if fenced else []))
         sync_directory(self.state)
         inputs = [self.state/name for name in ('release.json', 'image-assets.json', 'previous-image-assets.json', 'previous-image.tar', 'normal.conf', 'fenced.conf', 'configuration.json')]
-        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py')]
+        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'public_reopen_readiness.py')]
         inputs += [OPS/name for name in ('inventory-web.py', 'preservation.py', 'qualify-old-workers.py')]
         inputs += [SCRIPTS.parent/'deploy/nginx'/name for name in ('maintenance-maps.conf', 'maintenance-response.conf')]
         inputs.append(template)
@@ -512,6 +513,13 @@ class Rollout:
         return self.verified(image)
 
     def public(self, opened, previous=False):
+        return public_reopen_readiness.run(
+            lambda: self.public_once(opened, previous),
+            opened,
+            lambda: self.site.read_bytes() == (self.state/'normal.conf').read_bytes(),
+        )
+
+    def public_once(self, opened, previous=False):
         origin = json.loads((self.project/'deploy/config/config.json').read_text())['origin']
         assets = json.loads((self.state/'previous-image-assets.json').read_text()) if previous else self.assets
         for name, expected in assets['assets'].items():
