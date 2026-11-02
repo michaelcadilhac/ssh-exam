@@ -1,6 +1,21 @@
-# Current checkpoint — recording storage DEPLOYED AND ONLINE
+# Current checkpoint — favicon DEPLOYED AND ONLINE
 
-LATEST: separately authorized online recording-cache preparation is COMPLETE.
+LATEST: November1 at23:15:46 Chicago (November2 05:15:46UTC), the separately
+authorized favicon release is ONLINE. Source2e5c7c3 overlays only packaged index
+HTML and SVG/ICO files on the exact prior runtime5163 image; unchanged11base layers,
+backend/WASM/native/CLI/schema37. Candidate Config552589537504f87471b3db7b052dbee26a06a8bf7c97ad63a1e1fa049d7acdda.
+Exact-image startup/video/history and public browser/TLS/icon MIME+hash/focus pass.
+All41authority tables/110web/175native histories preserved; no exam interrupted or
+native-service restart. Fresh stopped backup copied83,124,224byteDB+291,492small-file
+bytes, reused970,286,469recording bytes, and created0new media objects. Cutover
+59.639seconds; approval-to-completion receipt267seconds including preparation,
+qualification, transfer, sign-out and acceptance, within the approved10minutes.
+Owned conversion pause RELEASED. Rollback is prior schema37 image with CURRENT
+data, through the supported guarded workflow. No remaining favicon action.
+Receipt: `var/collection-tests/favicon-rollout.wkzp9yb_/completion.json`.
+Production snapshot/state: `/data/ssh-exam-ui-favicon-20261101-wkzp9yb_`.
+
+Earlier separately authorized online recording-cache preparation is COMPLETE.
 On marco, supported `scripts/backup --warm-media` copied 6,785 files /970,286,469
 bytes in63.7seconds to `/data/.ssh-exam-media-objects`. Independent9.501second
 audit hashed every live file and cached object, verified source/object identities
@@ -11,12 +26,11 @@ record change. This is verified media preparation, NOT a complete database snaps
 Keep warmed objects; pruning unlinked objects would discard this preparation.
 Evidence: `var/collection-tests/recording-backup-prep.l_bn3tpa/audit.stdout`.
 
-Favicon source2e5c7c3 is committed/pushed, frontendbuild and built-asset/ICO checks
-pass; favicon remains UNDEPLOYED. Runtime5163/schema37 remains online. Next release
-preparation must qualify the same-schema favicon image and confirm current warmed
-coverage before another bounded deployment. A real stopped backup still takes a
-fresh database/small-file snapshot with `--require-warmed`; new recordings can make
-this cache stale and need an online refresh. No deployment performed in this task.
+Favicon preparation/deployment is now complete as recorded above. Future releases
+must have their image qualified before the deployment instruction and confirm
+current warmed coverage. A real stopped backup takes a fresh database/small-file
+snapshot with `--require-warmed`; new recordings can make the cache stale and need
+an online refresh. The following recording rollout is historical.
 
 
 November1 evening Chicago. User authorized Push/deploy, then required reasonable
