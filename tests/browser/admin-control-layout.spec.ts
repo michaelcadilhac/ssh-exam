@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { publishedSource } from "./prof-workflow-fixture.js";
 import { templateCatalogPageResult } from "../../packages/protocol/template-catalog.js";
 
-async function fixture(page: Page) {
+async function fixture(page: Page, hasNext = true) {
   page.setDefaultTimeout(7000);
   const now = Date.now(),
     exam = "control-layout",
@@ -26,7 +26,7 @@ async function fixture(page: Page) {
       exam,
       username,
       revision: 1,
-      status: "AVAILABLE",
+      status: hasNext ? "AVAILABLE" : "REVOKED",
       actor: "layout_instructor",
       claims: [],
       issuance: "ADDITIONAL_TEMPLATE",
@@ -100,7 +100,8 @@ async function fixture(page: Page) {
               username,
               enrollment: { duration: null, webcam: null },
               latestSettings: settings,
-              unusedAttempt: grant,
+              hasNextAttempt: hasNext,
+              unusedAttempt: hasNext ? grant : null,
               attempts: [],
             },
           ],
@@ -154,25 +155,16 @@ async function fixture(page: Page) {
   const personal = async () => {
     await page
       .getByRole("button", {
-        name: `Actions for student ${username}`,
-        exact: true,
-      })
-      .click({ timeout: 3000 });
-    await page
-      .getByRole("menuitem", {
-        name: "Attempt settings and history…",
+        name: `Change starting files for ${username}`,
         exact: true,
       })
       .click({ timeout: 3000 });
     const dialog = page.getByRole("dialog", {
-      name: `Attempt settings for ${username}`,
+      name: `Starting files for ${username}`,
       exact: true,
     });
-    await dialog
-      .getByRole("button", { name: "Edit settings", exact: true })
-      .click({ timeout: 3000 });
     await expect(
-      dialog.getByRole("combobox", { name: "Webcam", exact: true }),
+      dialog.getByRole("combobox", { name: "Starting files", exact: true }),
     ).toBeVisible();
     return dialog;
   };
@@ -230,12 +222,21 @@ for (const width of [320, 375, 430])
     page,
   }, info) => {
     await page.setViewportSize({ width, height: 900 });
-    const f = await fixture(page),
-      dialog = await f.personal();
-    await expect(dialog.getByLabel("Opens", { exact: true })).toBeVisible();
-    await dialog
-      .getByText("More settings", { exact: true })
-      .click({ timeout: 3000 });
+    const f = await fixture(page);
+    await page
+      .getByRole("button", {
+        name: `Change start dates for ${f.username}`,
+        exact: true,
+      })
+      .click();
+    const dates = page.getByRole("region", {
+      name: `Start dates for ${f.username}`,
+      exact: true,
+    });
+    await expect(dates.getByLabel("Opens", { exact: true })).toBeVisible();
+    await contained(dates);
+    await dates.getByRole("button", { name: "Cancel", exact: true }).click();
+    const dialog = await f.personal();
     await dialog
       .getByRole("combobox", { name: "Starting files", exact: true })
       .selectOption("saved");
@@ -276,7 +277,7 @@ test("narrow additional-attempt form controls fit without changing permissions",
   page,
 }) => {
   await page.setViewportSize({ width: 320, height: 900 });
-  const f = await fixture(page);
+  const f = await fixture(page, false);
   await page
     .getByRole("checkbox", {
       name: `Select student ${f.username}`,
@@ -287,7 +288,7 @@ test("narrow additional-attempt form controls fit without changing permissions",
     .getByRole("button", { name: "Selected students", exact: true })
     .click({ timeout: 3000 });
   await page
-    .getByRole("menuitem", { name: "Allow attempt", exact: true })
+    .getByRole("menuitem", { name: "Add next attempts", exact: true })
     .click({ timeout: 3000 });
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Opens", { exact: true })).toBeVisible();

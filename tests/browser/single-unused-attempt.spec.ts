@@ -269,7 +269,7 @@ async function saveUnknownConfirmation(page: Page, body: any) {
 async function reopenReview(page: Page) {
   await page.reload();
   await page.getByLabel("Selected exam").selectOption("single-unused");
-  return selectedAction(page, ["synthetic"], "Allow attempt");
+  return selectedAction(page, ["synthetic"], "Add next attempts");
 }
 
 for (const width of [1280, 430]) {
@@ -307,7 +307,7 @@ for (const width of [1280, 430]) {
     await page.setViewportSize({ width, height: 1000 });
     const f = await instructorPortal(page);
     const dialog = await additionalDraft(page, ["synthetic"]);
-    await expect(dialog).toContainText(
+    await expect(dialog).not.toContainText(
       "A new attempt replaces any unused attempt for this exam.",
     );
     const { review } = await previewAdditional(page, dialog);
@@ -322,7 +322,7 @@ for (const width of [1280, 430]) {
       path: info.outputPath(`replacement-review-${width}.png`),
     });
     await dialog
-      .getByRole("button", { name: "Allow attempt", exact: true })
+      .getByRole("button", { name: "Add next attempt", exact: true })
       .click();
     await expect(
       dialog.getByText("Replaced 1 unused attempt.", { exact: true }),
@@ -359,7 +359,7 @@ test("stale assigned settings refresh without a selected ID and keep exact prepa
   await expect(
     page.getByText("Starting files: Saved work", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator("main")).toContainText("75 min · Webcam: Optional");
+  await expect(page.locator("main")).toContainText("75 min · Webcam: Off");
   await expect(setup).toBeEnabled();
   expect(f.reads).toEqual(["/api/student/exam", "/api/student/exam"]);
   expect(f.preparations).toEqual([{ grant: oldID }]);
@@ -398,7 +398,7 @@ test("a pending saved-file attempt shows its real settings and cannot open setup
   await expect(
     page.getByText("Starting files: Saved work", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator("main")).toContainText("90 min · Webcam: Optional");
+  await expect(page.locator("main")).toContainText("90 min · Webcam: Off");
   await expect(page.locator("main")).not.toContainText(
     "No attempt is available",
   );
@@ -456,7 +456,7 @@ test("a review without an authoritative replacement snapshot cannot be confirmed
   const dialog = await additionalDraft(page, ["synthetic"]);
   await previewAdditional(page, dialog);
   await expect(
-    dialog.getByRole("button", { name: "Allow attempt", exact: true }),
+    dialog.getByRole("button", { name: "Add next attempt", exact: true }),
   ).toBeDisabled();
   await expect(dialog).toContainText(/review again/i);
   expect(f.confirmations).toHaveLength(0);

@@ -1348,3 +1348,354 @@
     max-width: 16rem;
   }
 }
+
+/* One next attempt: values edit in their own cells, files in a small dialog. */
+.admin-roster .cell-edit-layout {
+  width: 100%;
+  table-layout: fixed;
+}
+.admin-roster .cell-edit-layout :is(th, td) {
+  min-inline-size: 0;
+  padding-inline: 8px;
+  overflow-wrap: anywhere;
+}
+.admin-roster .cell-edit-layout th {
+  width: auto;
+}
+.cell-edit-layout .column-select {
+  width: 34px;
+}
+.cell-edit-layout .column-identity {
+  width: 12%;
+}
+.cell-edit-layout .column-status {
+  width: 10%;
+}
+.cell-edit-layout .column-webcam {
+  width: 120px;
+}
+.cell-edit-layout .column-time {
+  width: 110px;
+}
+.cell-edit-layout .column-window {
+  width: 23%;
+}
+.cell-edit-layout .column-files {
+  width: auto;
+}
+.cell-edit-layout .column-actions {
+  width: 116px;
+}
+.admin-roster .cell-edit-layout .attempt-identity {
+  padding-inline-start: 12px;
+}
+.admin-roster .cell-edit-layout .cell-value {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 44px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  color: #d5e4f4;
+  font: inherit;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.admin-roster .cell-edit-layout .cell-value:not(:disabled):hover {
+  border-color: #496a8d;
+  background: #1b2c41;
+}
+.admin-roster .cell-edit-layout :is(.cell-value, .icon-button):focus-visible {
+  outline: 2px solid #92c8ff;
+  outline-offset: 2px;
+}
+.admin-roster .cell-edit-layout .cell-value > :is(span, small) {
+  display: block;
+}
+.admin-roster .cell-edit-layout button.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  max-inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+.admin-roster .cell-edit-layout .icon-button + .icon-button {
+  margin-inline-start: 4px;
+}
+.webcam-icon {
+  display: inline-grid;
+  position: relative;
+  place-items: center;
+  inline-size: 1.7rem;
+  block-size: 1.7rem;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.webcam-icon.webcam-off::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
+  inline-size: 1.9rem;
+  block-size: 2px;
+  border-radius: 2px;
+  background: #e4edf6;
+  box-shadow: 0 0 0 1px #142135;
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+.cell-edit-layout .grant-cell-editor {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  padding: 7px;
+  border: 1px solid #3b5878;
+  border-radius: 6px;
+  background: #111e2e;
+  overflow: visible !important;
+}
+.grant-cell-editor :is(form, fieldset, label, section) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+}
+.grant-cell-editor .grant-dialog-content {
+  overflow: visible;
+}
+.grant-cell-editor fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.grant-cell-editor label {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.grant-cell-editor :is(input, select) {
+  display: block;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  margin-block-start: 4px;
+  padding: 7px 5px;
+  font-size: 13px;
+}
+.grant-cell-editor .grant-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding-block-start: 6px;
+  border: 0;
+}
+.grant-cell-editor .grant-dialog-actions button {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  min-block-size: 36px;
+  margin: 0;
+  padding: 6px;
+  font-size: 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.grant-cell-editor .clock-batch-row {
+  margin: 0;
+  padding: 6px 0;
+  font-size: 12px;
+}
+.grant-cell-editor .grant-review h3 {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.grant-cell-editor .grant-review ul {
+  margin: 6px 0;
+  padding-inline-start: 16px;
+}
+.dialog-backdrop > .card:is(.grant-files-dialog, .grant-cancel-dialog) {
+  flex-basis: 520px;
+  inline-size: min(520px, 100%);
+  max-inline-size: 100%;
+}
+.grant-files-dialog :is(fieldset, label, section),
+.grant-cancel-dialog :is(p, details) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+.grant-files-dialog fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.grant-files-dialog .selected-starter-source {
+  display: block;
+  margin-block-start: 7px;
+  padding: 8px 0;
+  color: #d5e4f4;
+  overflow-wrap: anywhere;
+}
+.grant-files-dialog .grant-dialog-actions,
+.grant-cancel-dialog .modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 1050px) {
+  .admin-roster .cell-edit-layout,
+  .admin-roster .cell-edit-layout tbody {
+    display: block;
+    width: 100%;
+  }
+  .admin-roster .cell-edit-layout :is(thead, colgroup) {
+    display: none;
+  }
+  .admin-roster .cell-edit-layout tbody {
+    border-block-start: 1px solid #3a506b;
+  }
+  .admin-roster .cell-edit-layout td {
+    display: block;
+    min-inline-size: 0;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  .admin-roster .cell-edit-layout .student-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .admin-roster .cell-edit-layout .student-row .student-identity {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .admin-roster .cell-edit-layout .student-row .row-actions {
+    display: flex;
+    grid-column: 3;
+    grid-row: 1;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .admin-roster .cell-edit-layout .student-row .selection-cell {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .admin-roster .cell-edit-layout .next-attempt-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) 44px;
+    gap: 8px;
+    padding: 10px 12px 14px;
+  }
+  .admin-roster .cell-edit-layout .next-attempt-row > .selection-cell {
+    display: none;
+  }
+  .admin-roster .cell-edit-layout .next-attempt-row .attempt-identity {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+  .admin-roster .cell-edit-layout .next-status {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+  .admin-roster table.cell-edit-layout.selecting td.next-webcam {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .admin-roster table.cell-edit-layout.selecting td.next-time {
+    grid-column: 3 / -1;
+    grid-row: 3;
+    text-align: start;
+  }
+  .admin-roster .cell-edit-layout .next-window {
+    grid-column: 2 / -1;
+    grid-row: 4;
+  }
+  .admin-roster .cell-edit-layout .next-files {
+    grid-column: 2 / -1;
+    grid-row: 5;
+  }
+  .admin-roster .cell-edit-layout .next-attempt-row > .row-actions {
+    grid-column: 4;
+    grid-row: 1 / 3;
+    align-self: start;
+  }
+  .admin-roster .cell-edit-layout td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-block-end: 3px;
+    color: #a3b8ce;
+    font-size: 11px;
+  }
+  .admin-roster .cell-edit-layout .historical-attempt-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 12px;
+    border-block-start: 1px solid #25364a;
+  }
+  .admin-roster .cell-edit-layout .historical-attempt-row > .selection-cell,
+  .admin-roster .cell-edit-layout .history-window {
+    display: none;
+  }
+  .admin-roster .cell-edit-layout .historical-attempt-row .attempt-identity {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+  .admin-roster
+    .cell-edit-layout
+    .historical-attempt-row
+    > td:has(> .attempt-status) {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+  .admin-roster table.cell-edit-layout.selecting td.history-webcam {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .admin-roster
+    table.cell-edit-layout.selecting
+    .historical-attempt-row
+    td.attempt-clock {
+    grid-column: 3;
+    grid-row: 3;
+    text-align: start;
+  }
+  .admin-roster .cell-edit-layout .history-files {
+    grid-column: 2 / -1;
+    grid-row: 4;
+  }
+  .admin-roster .cell-edit-layout .historical-attempt-row > .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 2 / -1;
+    grid-row: 5;
+    justify-content: flex-end;
+    gap: 8px;
+    white-space: normal;
+  }
+  .admin-roster .cell-edit-layout :is(.interruption-row, .next-attempt-editor) {
+    display: block;
+    padding: 10px 12px;
+  }
+  .admin-roster
+    .cell-edit-layout
+    :is(.interruption-row, .next-attempt-editor)
+    > td {
+    width: 100%;
+  }
+}

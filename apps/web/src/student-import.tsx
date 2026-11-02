@@ -202,10 +202,10 @@ export function StudentImport({
               onChange={(e) => setWebcam(e.target.value)}
             >
               <option value="inherit">
-                Exam default ({defaults.webcam ? "required" : "optional"})
+                Exam default ({defaults.webcam ? "required" : "off"})
               </option>
               <option value="true">Required</option>
-              <option value="false">Optional</option>
+              <option value="false">Off</option>
             </select>
           </label>
           <label>
@@ -315,11 +315,11 @@ export function StudentImport({
                       ? "unchanged"
                       : r.webcam == null
                         ? typeof preview.defaults?.webcam === "boolean"
-                          ? `${preview.defaults.webcam ? "required" : "optional"} (exam default)`
+                          ? `${preview.defaults.webcam ? "required" : "off"} (exam default)`
                           : "exam default"
                         : r.webcam
                           ? "required"
-                          : "optional"}
+                          : "off"}
                   </p>
                 ))}
               </div>

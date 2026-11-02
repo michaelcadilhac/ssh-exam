@@ -31,7 +31,7 @@ export async function additionalDraft(
   minutes = "90",
   work = "empty",
 ) {
-  const dialog = await selectedAction(page, names, "Allow attempt");
+  const dialog = await selectedAction(page, names, "Add next attempts");
   if (minutes)
     await dialog
       .getByLabel("Time limit (minutes)", { exact: true })
@@ -59,41 +59,42 @@ export async function previewAdditional(page: Page, dialog: Locator) {
   expect(reply.status()).toBe(200);
   return { reply, review: await reply.json() };
 }
-export async function manageStudent(page: Page, username: string) {
+export async function editNextField(
+  page: Page,
+  username: string,
+  field: "time limit" | "webcam" | "start dates" | "starting files",
+) {
   await page
     .getByRole("button", {
-      name: `Actions for student ${username}`,
+      name: `Change ${field} for ${username}`,
       exact: true,
     })
     .click();
-  await page
-    .getByRole("menuitem", {
-      name: "Attempt settings and history…",
-      exact: true,
-    })
-    .click();
-  return page.getByRole("dialog", {
-    name: `Attempt settings for ${username}`,
-    exact: true,
-  });
+  const name = `${field[0].toUpperCase()}${field.slice(1)} for ${username}`;
+  return field === "starting files"
+    ? page.getByRole("dialog", { name, exact: true })
+    : page.getByRole("region", { name, exact: true });
 }
-export async function cancelUnused(dialog: Locator, target?: Locator) {
-  const cancel = (target ?? dialog).getByRole("button", {
-    name: "Cancel attempt",
+
+export async function cancelNext(page: Page, username: string) {
+  await page
+    .getByRole("button", {
+      name: `Cancel next attempt for ${username}`,
+      exact: true,
+    })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: `Cancel next attempt for ${username}?`,
     exact: true,
   });
-  // An ambiguous set of rows is a fixture error, never permission to pick one.
-  await expect(cancel).toHaveCount(1);
-  await cancel.click();
-  await expect(
-    dialog.getByRole("region", { name: "Review unused changes", exact: true }),
-  ).toBeVisible();
+  await expect(dialog).toContainText(
+    "Previous attempts and saved files are kept.",
+  );
   await dialog
     .getByRole("button", { name: "Cancel attempt", exact: true })
     .click();
-  await expect(dialog.getByText("Cancelled", { exact: true })).toBeVisible();
+  await expect(dialog).toHaveCount(0);
 }
-
 export function publishedSource(name = "sample-exam", hash = "a".repeat(64)) {
   return {
     schema: 1,
@@ -149,6 +150,9 @@ const instructorAddresses = {
   prof_initial: 211,
   prof_practice: 212,
   prof_enrollment: 213,
+  prof_additional_review: 214,
+  prof_additional_saved: 215,
+  prof_additional_bulk: 216,
 } as const;
 // Each independent workflow has its own ordinary synthetic instructor. Reuse
 // still-valid sessions; logout invalidates them normally. Never reset/bypass

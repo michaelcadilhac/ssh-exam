@@ -985,6 +985,9 @@ for (const [index, username] of [
   "prof_initial",
   "prof_practice",
   "prof_enrollment",
+  "prof_additional_review",
+  "prof_additional_saved",
+  "prof_additional_bulk",
 ].entries())
   store.db
     .prepare("INSERT INTO admins VALUES(?,?,?)")

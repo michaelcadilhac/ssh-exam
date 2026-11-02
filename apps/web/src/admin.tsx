@@ -6,7 +6,10 @@ import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
 import { ExamRetirement, type RetirementAction } from "./exam-retirement.js";
 import { StudentImport } from "./student-import.js";
-import { AttemptGrantsDialog } from "./attempt-grants.js";
+import {
+  AttemptGrantsDialog,
+  pendingAttemptChanges,
+} from "./attempt-grants.js";
 import {
   AttemptProvenance,
   type SourceAttemptLink,
@@ -14,6 +17,7 @@ import {
 import {
   GrantIssuanceDialog,
   clearGrantReviewCache,
+  pendingGrantRequests,
 } from "./grant-issuance.js";
 import { StudentActions, type StudentAction } from "./student-actions.js";
 import { AdminMenu } from "./admin-menu.js";
@@ -23,7 +27,12 @@ import { AdminReview } from "./admin-review.js";
 import { AlertDelivery } from "./alert-delivery.js";
 import { TemplateCatalogView } from "./template-catalog.js";
 import { grantStatus } from "./grant-options.js";
-import { timeLimit, windowLabel } from "./local-date-time.js";
+import {
+  deviceTimeZone,
+  shortDateTime,
+  timeLimit,
+  windowLabel,
+} from "./local-date-time.js";
 import {
   attemptStatus,
   attemptElapsed,
@@ -45,7 +54,7 @@ const filterLabels: [DashboardView, string][] = [
   ["COLLECTION_FAILED", "File collection needs attention"],
   ["CANCELLED_BEFORE_START", "Setup cancelled"],
   ["camera", "Webcam required"],
-  ["no-camera", "Webcam optional"],
+  ["no-camera", "Webcam off"],
 ];
 const startFormat = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Chicago",
@@ -57,6 +66,27 @@ const startFormat = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 const attemptStarted = (n: number) => startFormat.format(n);
+type NextField = "duration" | "webcam" | "window" | "files";
+const nextPermissionExists = (student: any) =>
+  typeof student.hasNextAttempt === "boolean"
+    ? student.hasNextAttempt
+    : !!student.unusedAttempt ||
+      student.attempts.some((attempt: any) =>
+        ["PREPARING", "ACTIVATING"].includes(attempt.state),
+      );
+const fieldTrigger = (id: string, field: NextField) =>
+  `next-attempt-${id}-${field}`;
+function CameraIcon({ required }: { required: boolean | null }) {
+  if (required === null) return <span aria-hidden="true">—</span>;
+  return (
+    <span
+      aria-hidden="true"
+      className={`webcam-icon${required ? "" : " webcam-off"}`}
+    >
+      📷
+    </span>
+  );
+}
 export function Admin({
   actor,
   onError,
@@ -107,6 +137,7 @@ export function Admin({
   const [inlineAttempt, setInlineAttempt] = useState<{
     username: string;
     id: string;
+    field: NextField;
   } | null>(null);
   const [grantAction, setGrantAction] = useState<
     "edit" | "cancel" | undefined
@@ -114,6 +145,9 @@ export function Admin({
   const [grantFocus, setGrantFocus] = useState<string | null>(null);
   const [issuingGrants, setIssuingGrants] = useState<{
     students: any[];
+    excludedStudents?: string[];
+    additional?: boolean;
+    resumeOnly?: boolean;
   } | null>(null);
   const [permission, setPermission] = useState(
     typeof Notification === "undefined"
@@ -334,6 +368,44 @@ export function Admin({
   const candidates = visible;
   const keyOf = (a: any) => a.username;
   const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
+  const canAdd = chosen.filter((s: any) => !nextPermissionExists(s));
+  const alreadyAllowed = chosen
+    .filter(nextPermissionExists)
+    .map((s: any) => s.username);
+  const unfinishedChanges = pendingAttemptChanges(actor, exam);
+  const unfinishedRequests = pendingGrantRequests(actor, exam);
+  const closeInline = () => {
+    const previous = inlineAttempt;
+    setInlineAttempt(null);
+    if (previous)
+      requestAnimationFrame(() =>
+        document
+          .getElementById(fieldTrigger(previous.id, previous.field))
+          ?.focus(),
+      );
+  };
+  const editCell = (student: any, field: NextField) =>
+    setInlineAttempt({
+      username: student.username,
+      id: student.unusedAttempt.id,
+      field,
+    });
+  const inlineEditor = (student: any, field: NextField) =>
+    inlineAttempt?.id === student.unusedAttempt?.id &&
+    inlineAttempt?.field === field ? (
+      <AttemptGrantsDialog
+        key={`${exam}:${inlineAttempt.id}:${field}`}
+        exam={exam}
+        actor={actor}
+        username={student.username}
+        initialGrantId={inlineAttempt.id}
+        editField={field}
+        embedded
+        autoEdit
+        onClose={closeInline}
+        onChanged={refresh}
+      />
+    ) : null;
   const selectedClocks = chosen.flatMap((s: any) =>
     s.attempts.filter((a: any) => clockEditable(a, clock)),
   );
@@ -505,7 +577,7 @@ export function Admin({
               <h2>{current?.name || exam}</h2>
               <p>
                 {current
-                  ? `${timeLimit(current.duration)} · Webcam ${current.webcam ? "required" : "optional"} by default`
+                  ? `${timeLimit(current.duration)} · Webcam ${current.webcam ? "required" : "off"} by default`
                   : "Loading exam settings…"}
               </p>
             </div>
@@ -514,7 +586,7 @@ export function Admin({
                 onClick={() => setEditingExam(current)}
                 disabled={!current || current.lifecycle === "archived"}
               >
-                Exam defaults
+                Exam settings
               </button>
               <button
                 className="primary"
@@ -655,6 +727,53 @@ export function Admin({
                 Select all students ({candidates.length})
               </label>
             </div>
+            <p className="roster-timezone">
+              Start dates in {deviceTimeZone()}.
+            </p>
+            {!!(unfinishedChanges.length || unfinishedRequests.length) && (
+              <div
+                className="pending-attempt-changes"
+                role="region"
+                aria-label="Unfinished changes"
+              >
+                {unfinishedRequests.map((entry) => (
+                  <button
+                    key={`request:${entry.additional}:${JSON.stringify(entry.students)}`}
+                    className="quiet-button"
+                    onClick={() =>
+                      setIssuingGrants({
+                        students: entry.students.map(
+                          (username) =>
+                            students.find(
+                              (student: any) => student.username === username,
+                            ) ?? { username },
+                        ),
+                        additional: entry.additional,
+                        resumeOnly: true,
+                      })
+                    }
+                  >
+                    Resume saved request ({entry.students.length})
+                  </button>
+                ))}
+                {unfinishedChanges.map((entry) => (
+                  <button
+                    key={JSON.stringify(entry.students)}
+                    className="quiet-button"
+                    onClick={() => {
+                      setInlineAttempt(null);
+                      setGrantsFor(null);
+                      setUnusedStudents({
+                        students: entry.students,
+                        action: "edit",
+                      });
+                    }}
+                  >
+                    Resume saved changes ({entry.students.length})
+                  </button>
+                ))}
+              </div>
+            )}
             {!!chosen.length && (
               <div
                 className="admin-selection-bar"
@@ -671,18 +790,22 @@ export function Admin({
                   label="Selected students"
                   actions={[
                     {
-                      label: "Allow attempt",
+                      label: "Add next attempts",
                       disabled:
                         stale ||
-                        chosen.length > 200 ||
+                        !!inlineAttempt ||
+                        !canAdd.length ||
+                        canAdd.length > 200 ||
+                        chosen.some((s: any) => s.grantError) ||
                         current?.lifecycle === "archived",
                       onSelect: () =>
                         setIssuingGrants({
-                          students: chosen.map((s: any) => ({ ...s })),
+                          students: canAdd.map((s: any) => ({ ...s })),
+                          excludedStudents: alreadyAllowed,
                         }),
                     },
                     {
-                      label: "Add time",
+                      label: "Add time to current attempts",
                       disabled:
                         stale ||
                         !selectedClocks.length ||
@@ -723,7 +846,10 @@ export function Admin({
                     },
                     {
                       label: "Edit next attempts",
-                      disabled: stale,
+                      disabled:
+                        stale ||
+                        !!inlineAttempt ||
+                        !chosen.some((s: any) => s.unusedAttempt),
                       onSelect: () =>
                         setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
@@ -732,7 +858,10 @@ export function Admin({
                     },
                     {
                       label: "Cancel next attempts",
-                      disabled: stale,
+                      disabled:
+                        stale ||
+                        !!inlineAttempt ||
+                        !chosen.some((s: any) => s.unusedAttempt),
                       onSelect: () =>
                         setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
@@ -792,10 +921,20 @@ export function Admin({
                   ) : (
                     <div className="admin-roster-scroll">
                       <table
-                        className="selecting"
+                        className="selecting cell-edit-layout"
                         aria-label="Students and attempts"
                         role="table"
                       >
+                        <colgroup>
+                          <col className="column-select" />
+                          <col className="column-identity" />
+                          <col className="column-status" />
+                          <col className="column-webcam" />
+                          <col className="column-time" />
+                          <col className="column-window" />
+                          <col className="column-files" />
+                          <col className="column-actions" />
+                        </colgroup>
                         <thead>
                           <tr role="row">
                             <th className="selection-cell">
@@ -803,8 +942,13 @@ export function Admin({
                             </th>
                             <th>Student / attempt</th>
                             <th>Status</th>
-                            <th>Webcam</th>
+                            <th>
+                              <span aria-hidden="true">📷</span>
+                              <span className="visually-hidden">Webcam</span>
+                            </th>
                             <th>Time</th>
+                            <th>Start dates</th>
+                            <th>Starting files</th>
                             <th>
                               <span className="visually-hidden">Actions</span>
                             </th>
@@ -829,7 +973,7 @@ export function Admin({
                               <td
                                 className="student-identity"
                                 role="cell"
-                                colSpan={4}
+                                colSpan={6}
                               >
                                 <strong title={s.username}>{s.username}</strong>
                                 <small>
@@ -842,47 +986,44 @@ export function Admin({
                                     Attempt settings need review
                                   </small>
                                 )}
-                                {!s.unusedAttempt && !s.grantError && (
-                                  <small>No next attempt</small>
-                                )}
                               </td>
-                              <td role="cell" className="row-actions">
-                                <AdminMenu
-                                  label={`Actions for student ${s.username}`}
-                                  actions={[
-                                    {
-                                      label: s.unusedAttempt
-                                        ? "Replace attempt…"
-                                        : "Allow attempt…",
-                                      disabled:
-                                        stale ||
-                                        current?.lifecycle === "archived" ||
-                                        !!s.grantError,
-                                      onSelect: () =>
-                                        setIssuingGrants({
-                                          students: [{ ...s }],
-                                        }),
-                                    },
-                                    {
-                                      label: "Attempt settings and history…",
-                                      disabled: stale,
-                                      onSelect: () => openGrants(s.username),
-                                    },
-                                    ...(s.removable === true
-                                      ? [
-                                          {
-                                            label: "Remove from exam…",
-                                            danger: true,
-                                            disabled: stale,
-                                            onSelect: () => {
-                                              setRemovingError("");
-                                              setRemoving(s.username);
-                                            },
-                                          },
-                                        ]
-                                      : []),
-                                  ]}
-                                />
+                              <td
+                                role="cell"
+                                className="row-actions student-row-actions"
+                              >
+                                {!nextPermissionExists(s) && !s.grantError && (
+                                  <button
+                                    type="button"
+                                    className="icon-button"
+                                    aria-label={`Add next attempt for ${s.username}`}
+                                    title="Add next attempt"
+                                    disabled={
+                                      stale ||
+                                      !!inlineAttempt ||
+                                      current?.lifecycle === "archived"
+                                    }
+                                    onClick={() =>
+                                      setIssuingGrants({ students: [{ ...s }] })
+                                    }
+                                  >
+                                    <span aria-hidden="true">＋</span>
+                                  </button>
+                                )}
+                                {s.removable === true && (
+                                  <button
+                                    type="button"
+                                    className="icon-button danger"
+                                    aria-label={`Delete student ${s.username}`}
+                                    title="Delete student from this exam"
+                                    disabled={stale || !!inlineAttempt}
+                                    onClick={() => {
+                                      setRemovingError("");
+                                      setRemoving(s.username);
+                                    }}
+                                  >
+                                    <span aria-hidden="true">🗑️</span>
+                                  </button>
+                                )}
                               </td>
                             </tr>
                             {s.unusedAttempt && (
@@ -893,23 +1034,8 @@ export function Admin({
                                 <td className="selection-cell" />
                                 <td className="attempt-identity">
                                   <strong>Next attempt</strong>
-                                  <small className="next-attempt-dates">
-                                    {windowLabel(
-                                      s.unusedAttempt.settings.earliest,
-                                      s.unusedAttempt.settings.latest,
-                                    )}
-                                  </small>
-                                  <small>
-                                    {s.unusedAttempt.work.kind === "template"
-                                      ? `Starter files: ${s.unusedAttempt.work.name}`
-                                      : s.unusedAttempt.work.kind === "empty"
-                                        ? "Empty folder"
-                                        : s.unusedAttempt.sourceAttempt
-                                          ? `Saved files: ${s.unusedAttempt.sourceAttempt.exam_name} · ${s.unusedAttempt.sourceAttempt.exam} · Attempt ${s.unusedAttempt.sourceAttempt.attempt_number} · ${attemptStarted(s.unusedAttempt.sourceAttempt.start)}`
-                                          : "Saved files · Source details unavailable"}
-                                  </small>
                                 </td>
-                                <td>
+                                <td className="next-status">
                                   {grantStatus(s.unusedAttempt, clock) ===
                                     "Ready" &&
                                   (s.hasCurrentAttempt ??
@@ -925,33 +1051,148 @@ export function Admin({
                                     ? "Waiting for current attempt"
                                     : grantStatus(s.unusedAttempt, clock)}
                                 </td>
-                                <td data-label="Webcam">
-                                  {s.unusedAttempt.settings.webcam
-                                    ? "Required"
-                                    : "Optional"}
+                                <td className="next-webcam" data-label="Webcam">
+                                  {inlineEditor(s, "webcam") ?? (
+                                    <button
+                                      type="button"
+                                      className="cell-value icon-button"
+                                      id={fieldTrigger(
+                                        s.unusedAttempt.id,
+                                        "webcam",
+                                      )}
+                                      aria-label={`Change webcam for ${s.username}`}
+                                      aria-description={
+                                        s.unusedAttempt.settings.webcam
+                                          ? "Required"
+                                          : "Off"
+                                      }
+                                      title={`Webcam: ${s.unusedAttempt.settings.webcam ? "Required" : "Off"}`}
+                                      disabled={
+                                        stale ||
+                                        !!inlineAttempt ||
+                                        exam === "sandbox"
+                                      }
+                                      onClick={() => editCell(s, "webcam")}
+                                    >
+                                      <CameraIcon
+                                        required={
+                                          s.unusedAttempt.settings.webcam
+                                        }
+                                      />
+                                    </button>
+                                  )}
                                 </td>
-                                <td data-label="Time limit">
-                                  {timeLimit(s.unusedAttempt.settings.duration)}
+                                <td
+                                  className="next-time"
+                                  data-label="Time limit"
+                                >
+                                  {inlineEditor(s, "duration") ?? (
+                                    <button
+                                      type="button"
+                                      className="cell-value"
+                                      id={fieldTrigger(
+                                        s.unusedAttempt.id,
+                                        "duration",
+                                      )}
+                                      aria-label={`Change time limit for ${s.username}`}
+                                      disabled={
+                                        stale ||
+                                        !!inlineAttempt ||
+                                        exam === "sandbox"
+                                      }
+                                      onClick={() => editCell(s, "duration")}
+                                    >
+                                      {timeLimit(
+                                        s.unusedAttempt.settings.duration,
+                                      )}
+                                    </button>
+                                  )}
+                                </td>
+                                <td
+                                  className="next-window"
+                                  data-label="Start dates"
+                                >
+                                  {inlineEditor(s, "window") ?? (
+                                    <button
+                                      type="button"
+                                      className="cell-value next-attempt-dates"
+                                      id={fieldTrigger(
+                                        s.unusedAttempt.id,
+                                        "window",
+                                      )}
+                                      aria-label={`Change start dates for ${s.username}`}
+                                      title={windowLabel(
+                                        s.unusedAttempt.settings.earliest,
+                                        s.unusedAttempt.settings.latest,
+                                      )}
+                                      disabled={stale || !!inlineAttempt}
+                                      onClick={() => editCell(s, "window")}
+                                    >
+                                      <span>
+                                        Opens{" "}
+                                        {shortDateTime(
+                                          s.unusedAttempt.settings.earliest,
+                                        )}
+                                      </span>
+                                      <span>
+                                        Closes{" "}
+                                        {shortDateTime(
+                                          s.unusedAttempt.settings.latest,
+                                        )}
+                                      </span>
+                                    </button>
+                                  )}
+                                </td>
+                                <td
+                                  className="next-files"
+                                  data-label="Starting files"
+                                >
+                                  <button
+                                    type="button"
+                                    className="cell-value"
+                                    id={fieldTrigger(
+                                      s.unusedAttempt.id,
+                                      "files",
+                                    )}
+                                    aria-label={`Change starting files for ${s.username}`}
+                                    disabled={stale || !!inlineAttempt}
+                                    onClick={() => editCell(s, "files")}
+                                  >
+                                    {s.unusedAttempt.work.kind ===
+                                    "template" ? (
+                                      `Starter files: ${s.unusedAttempt.work.name}`
+                                    ) : s.unusedAttempt.work.kind ===
+                                      "empty" ? (
+                                      "Empty folder"
+                                    ) : s.unusedAttempt.sourceAttempt ? (
+                                      <>
+                                        <span>
+                                          From{" "}
+                                          {s.unusedAttempt.sourceAttempt.exam}
+                                        </span>
+                                        <small>
+                                          Attempt{" "}
+                                          {
+                                            s.unusedAttempt.sourceAttempt
+                                              .attempt_number
+                                          }
+                                          {s.unusedAttempt.sourceAttempt.start
+                                            ? ` · ${shortDateTime(s.unusedAttempt.sourceAttempt.start)}`
+                                            : ""}
+                                        </small>
+                                      </>
+                                    ) : (
+                                      "Saved files"
+                                    )}
+                                  </button>
                                 </td>
                                 <td className="row-actions">
                                   <button
-                                    disabled={
-                                      stale ||
-                                      inlineAttempt?.id === s.unusedAttempt.id
-                                    }
-                                    onClick={() =>
-                                      setInlineAttempt({
-                                        username: s.username,
-                                        id: s.unusedAttempt.id,
-                                      })
-                                    }
-                                  >
-                                    {inlineAttempt?.id === s.unusedAttempt.id
-                                      ? "Editing settings"
-                                      : "Edit settings"}
-                                  </button>
-                                  <button
-                                    disabled={stale}
+                                    type="button"
+                                    className="icon-button danger"
+                                    aria-label={`Cancel next attempt for ${s.username}`}
+                                    title="Cancel next attempt"
+                                    disabled={stale || !!inlineAttempt}
                                     onClick={() =>
                                       openGrants(
                                         s.username,
@@ -960,24 +1201,27 @@ export function Admin({
                                       )
                                     }
                                   >
-                                    Cancel attempt
+                                    <span aria-hidden="true">🗑️</span>
                                   </button>
                                 </td>
                               </tr>
                             )}
                             {inlineAttempt &&
-                              inlineAttempt.username === s.username && (
+                              inlineAttempt.username === s.username &&
+                              inlineAttempt.field !== "files" &&
+                              !s.unusedAttempt && (
                                 <tr className="next-attempt-editor">
-                                  <td colSpan={6}>
+                                  <td colSpan={8}>
                                     <AttemptGrantsDialog
-                                      key={`${exam}:${inlineAttempt.id}`}
+                                      key={`${exam}:${inlineAttempt.id}:${inlineAttempt.field}`}
                                       exam={exam}
                                       actor={actor}
                                       username={s.username}
                                       initialGrantId={inlineAttempt.id}
+                                      editField={inlineAttempt.field}
                                       embedded
                                       autoEdit
-                                      onClose={() => setInlineAttempt(null)}
+                                      onClose={closeInline}
                                       onChanged={refresh}
                                     />
                                   </td>
@@ -989,7 +1233,10 @@ export function Admin({
                                 webcam = webcamRequired(a);
                               return (
                                 <React.Fragment key={a.id}>
-                                  <tr className="attempt-row" role="row">
+                                  <tr
+                                    className="attempt-row historical-attempt-row"
+                                    role="row"
+                                  >
                                     <td
                                       className="selection-cell"
                                       role="cell"
@@ -999,14 +1246,7 @@ export function Admin({
                                       role="cell"
                                     >
                                       <span>Attempt {a.attempt_number}</span>
-                                      <AttemptProvenance
-                                        attempt={a}
-                                        compact
-                                        onGrant={(id) =>
-                                          openGrants(a.username, id)
-                                        }
-                                        onSource={openSource}
-                                      />
+
                                       {!!a.preflight_started_at && !a.start && (
                                         <time
                                           dateTime={new Date(
@@ -1097,12 +1337,18 @@ export function Admin({
                                         </small>
                                       )}
                                     </td>
-                                    <td role="cell" data-label="Webcam">
-                                      {webcam === null
-                                        ? "Unknown"
-                                        : webcam
-                                          ? "Required"
-                                          : "Optional"}
+                                    <td
+                                      role="cell"
+                                      data-label="Webcam"
+                                      className="history-webcam"
+                                    >
+                                      <span
+                                        role="img"
+                                        aria-label={`Webcam ${webcam === null ? "unknown" : webcam ? "required" : "off"}`}
+                                        title={`Webcam: ${webcam === null ? "Unknown" : webcam ? "Required" : "Off"}`}
+                                      >
+                                        <CameraIcon required={webcam} />
+                                      </span>
                                     </td>
                                     <td
                                       role="cell"
@@ -1148,6 +1394,27 @@ export function Admin({
                                         </small>
                                       )}
                                     </td>
+                                    <td
+                                      role="cell"
+                                      className="history-window"
+                                      aria-label="Start dates"
+                                    >
+                                      —
+                                    </td>
+                                    <td
+                                      role="cell"
+                                      className="history-files"
+                                      data-label="Starting files"
+                                    >
+                                      <AttemptProvenance
+                                        attempt={a}
+                                        compact
+                                        onGrant={(id) =>
+                                          openGrants(a.username, id)
+                                        }
+                                        onSource={openSource}
+                                      />
+                                    </td>
                                     <td role="cell" className="row-actions">
                                       <button
                                         className={
@@ -1185,7 +1452,7 @@ export function Admin({
                                   </tr>
                                   {interruptionRows.has(a.id) && (
                                     <tr className="interruption-row">
-                                      <td colSpan={6}>
+                                      <td colSpan={8}>
                                         <section
                                           id={`interruptions-${a.id}`}
                                           aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
@@ -1246,22 +1513,41 @@ export function Admin({
           key={JSON.stringify([
             exam,
             issuingGrants.students.map((s) => s.username).sort(),
+            issuingGrants.additional,
+            issuingGrants.resumeOnly,
           ])}
           initial={current}
           actor={actor}
           students={issuingGrants.students}
+          excludedStudents={issuingGrants.excludedStudents}
+          resumeOnly={issuingGrants.resumeOnly}
           onAdoptStudents={(names) => {
             setSelection(new Set(names));
-            setIssuingGrants({
+            setIssuingGrants((previous) => ({
+              additional: previous?.additional,
+              resumeOnly: previous?.resumeOnly,
               students: names.map((username) => ({
                 ...(students.find((s: any) => s.username === username) ?? {
                   username,
                 }),
               })),
-            });
+            }));
           }}
-          additional
+          additional={issuingGrants.additional ?? true}
           onClose={() => setIssuingGrants(null)}
+          onChanged={refresh}
+        />
+      )}
+      {inlineAttempt?.field === "files" && (
+        <AttemptGrantsDialog
+          key={`${exam}:${inlineAttempt.id}:files`}
+          exam={exam}
+          actor={actor}
+          username={inlineAttempt.username}
+          initialGrantId={inlineAttempt.id}
+          editField="files"
+          autoEdit
+          onClose={closeInline}
           onChanged={refresh}
         />
       )}
@@ -1361,14 +1647,14 @@ export function Admin({
       )}
       {removing && (
         <Modal
-          title={`Remove ${removing} from this exam?`}
+          title={`Delete ${removing} from this exam?`}
           onClose={() => {
             if (!removingBusy) setRemoving(null);
           }}
         >
           <p>
-            Remove this student from the exam list. This is available only
-            before any attempt has been allowed or started.
+            This removes the student from this exam's list. You will need to add
+            them again to allow an attempt.
           </p>
           {removingError && (
             <p role="alert" className="warn">
@@ -1400,7 +1686,7 @@ export function Admin({
                 }
               }}
             >
-              {removingBusy ? "Removing…" : "Remove student"}
+              {removingBusy ? "Deleting…" : "Delete student"}
             </button>
           </div>
         </Modal>

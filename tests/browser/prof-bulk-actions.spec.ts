@@ -214,7 +214,7 @@ async function fixture(
   return { calls, queries, grants, current };
 }
 
-async function openCancellation(page: Page) {
+async function openCancellation(page: Page, retry = false) {
   await page
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
@@ -222,12 +222,15 @@ async function openCancellation(page: Page) {
     .getByRole("menuitem", { name: "Cancel next attempts", exact: true })
     .click();
   const dialog = page.getByRole("dialog", {
-    name: "Change next attempts",
+    name: "Cancel next attempts?",
     exact: true,
   });
   await expect(
-    dialog.getByRole("region", { name: "Review unused changes", exact: true }),
-  ).toBeVisible();
+    dialog.getByRole("button", {
+      name: retry ? "Retry cancellation" : "Cancel selected attempts",
+      exact: true,
+    }),
+  ).toBeEnabled();
   return dialog;
 }
 
@@ -251,23 +254,39 @@ test("cancel next attempts in one dialog with named omissions, protected history
   await expect(dialog).toContainText("No next attempt for: carol.");
   await expect(dialog.getByRole("checkbox")).toHaveCount(0);
   expect(s.queries).toEqual(["next_only"]);
-  await expect(dialog).toContainText("3 attempts");
+  await expect(
+    dialog.getByText("Selected students (4)", { exact: true }),
+  ).toBeVisible();
   await dialog
     .getByRole("button", { name: "Cancel selected attempts", exact: true })
     .click();
-  await expect(
-    dialog.getByText("Change unconfirmed", { exact: true }),
-  ).toBeVisible();
-  await expect(dialog.getByText("Not changed", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toBeVisible();
+  await expect(dialog).toContainText("The attempt has unresolved setup");
   await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(1);
+  await expect(dialog.getByText("Not cancelled", { exact: true })).toHaveCount(
+    1,
+  );
+  await expect(
+    dialog.getByRole("button", { name: "Close", exact: true }),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Keep attempt", exact: true }),
+  ).toHaveCount(0);
+  expect(s.grants[3].status).toBe("REVOKED");
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await page.screenshot({
     path: info.outputPath("cancel-next-partial-mobile.png"),
   });
   await dialog
-    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
+    .getByRole("button", { name: "Retry cancellation", exact: true })
     .click();
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(0);
   await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(2);
+  await expect(dialog.getByText("Not cancelled", { exact: true })).toHaveCount(
+    1,
+  );
+  expect(s.grants[0].status).toBe("REVOKED");
+  expect(s.grants[3].status).toBe("REVOKED");
   expect(s.calls).toHaveLength(2);
   expect(s.calls[0].body.rows).toHaveLength(3);
   expect(s.calls[1].body.rows).toEqual([s.calls[0].body.rows[0]]);
@@ -290,18 +309,22 @@ test("closing and reopening keeps an unknown cancellation intent without another
   await dialog
     .getByRole("button", { name: "Cancel selected attempts", exact: true })
     .click();
-  await expect(
-    dialog.getByText("Change unconfirmed", { exact: true }),
-  ).toHaveCount(3);
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(3);
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  dialog = await openCancellation(page);
-  await expect(
-    dialog.getByText("Change unconfirmed", { exact: true }),
-  ).toHaveCount(3);
+  dialog = await openCancellation(page, true);
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(3);
   await dialog
-    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
+    .getByRole("button", { name: "Retry cancellation", exact: true })
     .click();
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(1);
   await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(2);
+  await expect(dialog.getByText("Not cancelled", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(dialog).toContainText("Current status: Setup in progress");
+  expect(s.grants[1].claims).toEqual([{ state: "PREPARING" }]);
+  expect(s.grants[0].status).toBe("REVOKED");
+  expect(s.grants[3].status).toBe("REVOKED");
   expect(s.calls).toHaveLength(2);
   expect(s.calls[0].body).toEqual(s.calls[1].body);
 });
@@ -319,7 +342,12 @@ test("add time has one dialog and names selected students whose clocks will not 
   await page
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
-  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  await page
+    .getByRole("menuitem", {
+      name: "Add time to current attempts",
+      exact: true,
+    })
+    .click();
   const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(dialog).toContainText(
@@ -345,24 +373,18 @@ test("an uncertain cancellation that starts while closed stays visible and canno
   await dialog
     .getByRole("button", { name: "Cancel selected attempts", exact: true })
     .click();
-  await expect(
-    dialog.getByText("Change unconfirmed", { exact: true }),
-  ).toHaveCount(3);
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(3);
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   s.grants[0].status = "CONSUMED";
   s.grants[0].claims = [{ state: "CONSUMED" }];
-  dialog = await openCancellation(page);
-  await expect(
-    dialog.getByText("Change unconfirmed", { exact: true }),
-  ).toHaveCount(3);
+  dialog = await openCancellation(page, true);
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(3);
   await expect(dialog).not.toContainText("No next attempt for: amy");
   await dialog
-    .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
+    .getByRole("button", { name: "Retry cancellation", exact: true })
     .click();
-  await expect(dialog.getByText("Cancelled", { exact: true })).toHaveCount(1);
-  await expect(
-    dialog.getByText("Change unconfirmed", { exact: true }),
-  ).toHaveCount(2);
+  await expect.poll(() => s.grants[3].status).toBe("REVOKED");
+  await expect(dialog.getByText(/^Cancellation unconfirmed\./)).toHaveCount(2);
   await expect(dialog).toContainText("Current status: Started");
   expect(s.grants[0].status).toBe("CONSUMED");
   expect(s.calls[0].body).toEqual(s.calls[1].body);

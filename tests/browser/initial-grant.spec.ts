@@ -44,7 +44,7 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   await expect(
     page.getByRole("heading", { name: "Initial browser grant", exact: true }),
   ).toBeVisible();
-  await expect(page.locator("main")).toContainText("90 min · Webcam: Optional");
+  await expect(page.locator("main")).toContainText("90 min · Webcam: Off");
   const portal = await (await page.request.get("/api/student/exam")).json();
   expect(portal.exam).toMatchObject({ duration: 3600, webcam: true });
   expect(portal.settings).toMatchObject({

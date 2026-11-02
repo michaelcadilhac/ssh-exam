@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
-import { fixture } from "./transition-fixture.js";
+import { fixture, ready } from "./transition-fixture.js";
 
 test("student sharing encodes smaller independent JPEGs from actual screen and camera frames", async ({
   page,
@@ -127,4 +127,81 @@ test("student sharing encodes smaller independent JPEGs from actual screen and c
       contentType: "image/jpeg",
     });
   }
+});
+
+test("webcam off never offers or acquires a camera through setup, start and resume", async ({
+  page,
+}) => {
+  const runtime = await page.request.get("/api/login-test");
+  expect(runtime.ok()).toBe(true);
+  expect((await runtime.json()).browserSSH).toBe(true);
+  const f = await fixture(page);
+  expect(f.reservation().settings.webcam).toBe(false);
+  await page.addInitScript(() => {
+    (window as any).__cameraRequests = 0;
+    Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+      configurable: true,
+      value: async () => {
+        (window as any).__cameraRequests++;
+        throw Error("A webcam-off exam must never request camera access");
+      },
+    });
+  });
+  const mediaRequests: { path: string; source: string }[] = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (
+      request.method() === "POST" &&
+      /\/(capture-challenges|frames(?:\/challenged)?)$/.test(path)
+    )
+      mediaRequests.push({ path, source: request.postDataJSON().source });
+  });
+  f.model.bind.release();
+  await page.goto("/");
+  await expect(page.getByText(/Webcam:\s*Off/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Check setup and practice", exact: true })
+    .click({ timeout: 10000 });
+  await expect(
+    page.getByRole("button", { name: "Practice terminal", exact: true }),
+  ).toBeEnabled({ timeout: 10000 });
+  await expect(page.getByRole("button", { name: /webcam/i })).toHaveCount(0);
+  await expect(page.locator("#camera-preview")).toHaveCount(0);
+  await ready(page);
+  await page.getByRole("button", { name: "Start exam", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Start exam", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Finish exam", exact: true }),
+  ).toBeEnabled({ timeout: 10000 });
+  await expect
+    .poll(
+      () =>
+        mediaRequests.filter((r) => r.path.endsWith("frames/challenged"))
+          .length,
+    )
+    .toBeGreaterThanOrEqual(2);
+
+  f.model.state = "LOCKED";
+  f.model.attempt.state = "LOCKED";
+  f.model.attempt.generation++;
+  f.send();
+  await expect(
+    page.getByRole("heading", { name: "Work paused", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Restore webcam", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Resume exam", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Work paused", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /webcam/i })).toHaveCount(0);
+  await expect(page.locator("#camera-preview")).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).__cameraRequests)).toBe(0);
+  expect(new Set(mediaRequests.map((request) => request.source))).toEqual(
+    new Set(["screen"]),
+  );
 });

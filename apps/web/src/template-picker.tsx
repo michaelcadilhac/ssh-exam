@@ -9,12 +9,14 @@ export function TemplatePicker({
   onChange,
   label = "Starter files",
   disabled = false,
+  compact = false,
 }: {
   name: string;
   hash: string;
   onChange: (name: string, hash: string) => void;
   label?: string;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const [sources, setSources] = useState<any[] | null>(null),
     [error, setError] = useState(""),
@@ -38,42 +40,51 @@ export function TemplatePicker({
     };
   }, [reload]);
   const current = name && hash ? `${name}@${hash}` : "";
+  const soleCurrent =
+    compact &&
+    sources?.length === 1 &&
+    sources[0].name === name &&
+    sources[0].hash === hash;
   return (
     <>
       <label>
         {label}
-        <select
-          required
-          value={current}
-          disabled={disabled}
-          onChange={(e) => {
-            const source = sources?.find(
-              (s) => `${s.name}@${s.hash}` === e.target.value,
-            );
-            if (source) onChange(source.name, source.hash);
-          }}
-        >
-          <option value="">
-            {sources
-              ? sources.length
-                ? "Choose published files"
-                : "No published starter files"
-              : "Loading starter files…"}
-          </option>
-          {current &&
-            !sources?.some((s) => `${s.name}@${s.hash}` === current) && (
-              <option value={current}>Current files: {name}</option>
-            )}
-          {sources?.map((source) => (
-            <option
-              key={`${source.name}@${source.hash}`}
-              value={`${source.name}@${source.hash}`}
-            >
-              {source.name} · {shortDateTime(source.first_acknowledged_at)} ·{" "}
-              {source.files} files
+        {soleCurrent ? (
+          <span className="selected-starter-source">{name}</span>
+        ) : (
+          <select
+            required
+            value={current}
+            disabled={disabled}
+            onChange={(e) => {
+              const source = sources?.find(
+                (s) => `${s.name}@${s.hash}` === e.target.value,
+              );
+              if (source) onChange(source.name, source.hash);
+            }}
+          >
+            <option value="">
+              {sources
+                ? sources.length
+                  ? "Choose published files"
+                  : "No published starter files"
+                : "Loading starter files…"}
             </option>
-          ))}
-        </select>
+            {current &&
+              !sources?.some((s) => `${s.name}@${s.hash}` === current) && (
+                <option value={current}>Current files: {name}</option>
+              )}
+            {sources?.map((source) => (
+              <option
+                key={`${source.name}@${source.hash}`}
+                value={`${source.name}@${source.hash}`}
+              >
+                {source.name} · {shortDateTime(source.first_acknowledged_at)} ·{" "}
+                {source.files} files
+              </option>
+            ))}
+          </select>
+        )}
       </label>
       {error && (
         <div role="alert">
@@ -92,7 +103,7 @@ export function TemplatePicker({
       {sources?.length === 0 && (
         <p>Ask the server administrator to publish starter files.</p>
       )}
-      {current && (
+      {current && !compact && (
         <details>
           <summary>Technical details</summary>
           <p style={{ overflowWrap: "anywhere" }}>

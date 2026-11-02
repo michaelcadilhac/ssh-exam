@@ -26,6 +26,10 @@ import {
 } from "./continuation-status.js";
 import { examBrowserIssue } from "./browser-support.js";
 import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
+import {
+  examExecutionPolicy,
+  type ExamExecutionPolicy,
+} from "../../../packages/protocol/exam-execution-policy.js";
 import "@xterm/xterm/css/xterm.css";
 import "winbox/dist/css/winbox.min.css";
 type Pane = {
@@ -84,6 +88,35 @@ export function Workspace({
     controlReady = useRef(browserSSH.controlConnected),
     networkLossAt = useRef<number | null>(null);
   const serverClock = useRef({ now: Date.now(), at: performance.now() });
+  const executionPolicyRef = useRef<ExamExecutionPolicy | null>(null);
+  const [executionPolicy, setExecutionPolicy] =
+    useState<ExamExecutionPolicy | null>(() => {
+      const parsed = examExecutionPolicy.safeParse(reservation.executionPolicy);
+      if (!parsed.success || parsed.data.exam !== reservation.settings.id)
+        return null;
+      executionPolicyRef.current = parsed.data;
+      return parsed.data;
+    });
+  // This affects displayed pane availability only. The web/native authorities
+  // independently authenticate the current policy at actual pane admission.
+  // Do not mutate frozen settings, monitoring facts, input authority or panes.
+  const acceptExecutionPolicy = (value: unknown) => {
+    const parsed = examExecutionPolicy.safeParse(value);
+    if (!parsed.success || parsed.data.exam !== reservation.settings.id) return;
+    const next = parsed.data,
+      previous = executionPolicyRef.current;
+    if (previous) {
+      if (
+        previous.agent !== next.agent ||
+        previous.instance !== next.instance ||
+        next.revision < previous.revision
+      )
+        return;
+      if (next.revision === previous.revision) return;
+    }
+    executionPolicyRef.current = next;
+    setExecutionPolicy(next);
+  };
   const focusLostAt = useRef<number | null>(null);
   const warnings = useRef(new Set<number>());
   const [attempt, setAttempt] = useState(attemptRef.current),
@@ -191,6 +224,7 @@ export function Workspace({
     (finishing && attempt.state !== "COLLECTION_FAILED");
   const approval = continuation.current.view(attempt, clock);
   const settings = reservation.settings;
+  const terminalLimit = executionPolicy?.terminals ?? settings.terminals;
   const sandbox = isSandbox(settings.id);
   const id = reservation.id;
   const page = reservation.page;
@@ -610,7 +644,13 @@ export function Workspace({
     setCount(panes.current.size);
   };
   const open = () => {
-    if (coveredRef.current || !interaction()) return;
+    if (
+      coveredRef.current ||
+      !interaction() ||
+      panes.current.size >=
+        (executionPolicyRef.current?.terminals ?? settings.terminals)
+    )
+      return;
     const pane = crypto.randomUUID();
     send({ type: "open", pane });
     addPane(pane);
@@ -851,6 +891,7 @@ export function Workspace({
         if (m.type === "state") {
           if (m.attempt?.id !== id) return;
           const fresh = confirmation.confirm(m.confirmation ?? m.binding);
+          if (fresh || bound.current) acceptExecutionPolicy(m.executionPolicy);
           const accepted = acceptSnapshot(m.attempt, m.serverNow);
           if (
             !bound.current &&
@@ -1148,9 +1189,12 @@ export function Workspace({
         .then((result) => {
           if (
             !mounted ||
-            !acceptSnapshot(result.attempt, result.serverNow, epoch)
+            epoch !== snapshotEpoch.current ||
+            result.attempt?.id !== id
           )
             return;
+          acceptExecutionPolicy(result.executionPolicy);
+          if (!acceptSnapshot(result.attempt, result.serverNow, epoch)) return;
           updateAuthenticationGap(!!result.authenticationGap);
           continuation.current.accept(
             result.continuation,
@@ -1577,7 +1621,7 @@ export function Workspace({
             locked ||
             authenticationGap ||
             !connected ||
-            count >= settings.terminals ||
+            count >= terminalLimit ||
             ended ||
             attempt.state === "FINALIZING"
           }
@@ -1653,7 +1697,9 @@ export function Workspace({
       {focusSeconds !== null && attempt.state === "ACTIVE" && !locked && (
         <div className="focus-warning" role="alert" aria-live="polite">
           <span aria-hidden="true">⚠</span>
-          <strong>Return to the exam · {focusSeconds}s before work pauses</strong>
+          <strong>
+            Return to the exam · {focusSeconds}s before work pauses
+          </strong>
         </div>
       )}
       {attempt.state === "PREPARING" && (

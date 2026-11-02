@@ -591,7 +591,7 @@ for (const width of [1280, 430])
       exact: true,
     });
     const currentGrant = grants.locator("article.clock-batch-row").filter({
-      hasText: "75 min · Webcam optional",
+      hasText: "75 min · Webcam off",
     });
     await expect(currentGrant).toHaveCount(1);
     await expect(currentGrant).toBeInViewport();
@@ -617,34 +617,12 @@ for (const width of [1280, 430])
       path: info.outputPath(`allowed-attempts-useful-${width}.png`),
       fullPage: true,
     });
-    await currentGrant
-      .getByRole("button", { name: "Edit settings", exact: true })
-      .click();
-    const editingHelp = grants.getByRole("heading", {
-      name: "Edit next attempt",
-      exact: true,
-    });
-    await expect(editingHelp).toBeVisible();
-    await expect(currentGrant).toHaveCount(0);
-    const timeInput = grants.getByRole("spinbutton", {
-      name: "Time limit (minutes)",
-      exact: true,
-    });
-    await expect(timeInput).toHaveValue("75");
-    const purposeBox = await editingHelp.boundingBox(),
-      editBox = await timeInput.boundingBox();
-    expect(purposeBox).not.toBeNull();
-    expect(editBox).not.toBeNull();
-    expect(purposeBox!.y).toBeLessThan(editBox!.y);
-    await page.screenshot({
-      path: info.outputPath(`allowed-attempt-editor-${width}.png`),
-      fullPage: true,
-    });
-    await grants
-      .getByRole("button", { name: "Cancel editing", exact: true })
-      .click();
-    await expect(currentGrant).toBeVisible();
-    await expect(currentGrant).toContainText("Revision 2");
+    await expect(
+      grants.getByRole("button", { name: "Edit settings", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      grants.getByRole("button", { name: "Cancel attempt", exact: true }),
+    ).toHaveCount(0);
     await grants
       .getByRole("button", { name: "Close", exact: true })
       .click({ timeout: 5000 });
@@ -664,9 +642,7 @@ for (const width of [1280, 430])
       "This attempt keeps its saved settings despite later changes",
     );
     await expect(provenance.getByText("90 min", { exact: true })).toBeVisible();
-    await expect(
-      provenance.getByText("Optional", { exact: true }),
-    ).toBeVisible();
+    await expect(provenance.getByText("Off", { exact: true })).toBeVisible();
     await expect(
       provenance.getByText(
         "Explicit recovery from the selected protected source",
@@ -778,7 +754,7 @@ test("ordinary timing and date controls keep technical references out of the use
 }) => {
   const state = await fixture(page, false, true);
   await page
-    .getByRole("button", { name: "Exam defaults", exact: true })
+    .getByRole("button", { name: "Exam settings", exact: true })
     .click();
   const settings = page.getByRole("dialog");
   await expect(settings.getByLabel("Opens", { exact: true })).toHaveAttribute(
@@ -917,7 +893,12 @@ test("student selection names excluded students and changes only eligible curren
   await page
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
-  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  await page
+    .getByRole("menuitem", {
+      name: "Add time to current attempts",
+      exact: true,
+    })
+    .click();
   const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(dialog.getByRole("list")).toContainText("amy");
@@ -942,99 +923,54 @@ test("student selection names excluded students and changes only eligible curren
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
   await expect(
-    page.getByRole("menuitem", { name: "Add time", exact: true }),
+    page.getByRole("menuitem", {
+      name: "Add time to current attempts",
+      exact: true,
+    }),
   ).toBeDisabled();
   await expect(
     page.getByRole("rowgroup", { name: "amy", exact: true }),
   ).toContainText("Clock change pending");
 });
-test("row menus support keyboard navigation and limit removal to students without attempts", async ({
+test("student plus and delete controls work from the keyboard without a row menu", async ({
   page,
 }) => {
   await fixture(page);
-  const trigger = page.getByRole("button", {
-    name: "Actions for student amy",
+  const plus = page.getByRole("button", {
+    name: "Add next attempt for amy",
     exact: true,
   });
-  await trigger.focus();
-  await trigger.press("ArrowDown");
+  await plus.focus();
+  await plus.press("Enter");
   await expect(
-    page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("ArrowDown");
+    page.getByRole("dialog", { name: "Add next attempt", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(plus).toBeFocused();
   await expect(
-    page.getByRole("menuitem", {
-      name: "Attempt settings and history…",
-      exact: true,
-    }),
-  ).toBeFocused();
-  await expect(
-    page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
+    page.getByRole("button", { name: "Delete student amy", exact: true }),
   ).toHaveCount(0);
-  await page.keyboard.press("ArrowDown");
   await expect(
-    page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(trigger).toBeFocused();
-  await expect(page.getByRole("menu")).toHaveCount(0);
-  await trigger.press("ArrowDown");
-  await page.keyboard.press("Tab");
-  await expect(page.getByRole("menu")).toHaveCount(0);
-  await expect(
-    page
-      .getByRole("rowgroup", { name: "amy", exact: true })
-      .getByRole("button", { name: "Review", exact: true })
-      .first(),
-  ).toBeFocused();
-
-  const unusedStudent = page.getByRole("button", {
-    name: "Actions for student eve",
+    page.getByRole("button", { name: /^Actions for student / }),
+  ).toHaveCount(0);
+  const remove = page.getByRole("button", {
+    name: "Delete student eve",
     exact: true,
   });
-  await unusedStudent.focus();
-  await unusedStudent.press("ArrowDown");
-  await page.keyboard.press("End");
-  const remove = page.getByRole("menuitem", {
-    name: "Remove from exam…",
-    exact: true,
-  });
-  await expect(remove).toBeFocused();
-  await remove.click();
+  await remove.focus();
+  await remove.press("Enter");
   const confirmation = page.getByRole("dialog", {
-    name: "Remove eve from this exam?",
+    name: "Delete eve from this exam?",
     exact: true,
   });
-  await expect(confirmation).toBeVisible();
   await expect(confirmation).toContainText(
-    "This is available only before any attempt has been allowed or started.",
+    "This removes the student from this exam's list.",
   );
-  await expect(confirmation).not.toContainText("Removing enrollment");
-  await page.keyboard.press("Escape");
-  await expect(unusedStudent).toBeFocused();
-});
-test("row menus ignore queued scroll at the same anchor but dismiss after actual movement", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await fixture(page, true);
-  await page
-    .getByRole("button", { name: "Actions for student amy", exact: true })
-    .click({ timeout: 5000 });
-  const menu = page.getByRole("menu", {
-    name: "Actions for student amy",
-    exact: true,
-  });
-  await expect(menu).toBeVisible();
-  await page.evaluate(() => dispatchEvent(new Event("scroll")));
-  await expect(menu).toBeVisible();
   await expect(
-    menu.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
-  ).toBeFocused();
-  const previous = await page.evaluate(() => scrollY);
-  await page.evaluate(() => scrollBy(0, 100));
-  await expect.poll(() => page.evaluate(() => scrollY)).not.toBe(previous);
-  await expect(menu).toHaveCount(0);
+    confirmation.getByRole("button", { name: "Delete student", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(remove).toBeFocused();
 });
 
 test("retained instructor authorization preserves the original page and SSH rather than requesting replacement authentication", async ({
@@ -1335,7 +1271,12 @@ test("partial clock failures stay reviewable and retries reuse the same request 
   await page
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
-  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  await page
+    .getByRole("menuitem", {
+      name: "Add time to current attempts",
+      exact: true,
+    })
+    .click();
   const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
   await dialog.getByRole("button", { name: "Add time", exact: true }).click();
   await expect(dialog).toContainText("bob: Needs attention");
@@ -1569,13 +1510,13 @@ test("editing an exam focuses an editable field and fits a narrow dialog", async
   await page.setViewportSize({ width: 430, height: 900 });
   await fixture(page);
   const settings = page.getByRole("button", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await expect(settings).toBeInViewport();
   await settings.click();
   const dialog = page.getByRole("dialog", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await expect(dialog.getByLabel("Exam ID", { exact: true })).toBeDisabled();
@@ -1882,8 +1823,16 @@ for (const width of [1280, 430])
     });
     const priorAttempts = JSON.stringify(s.rows[0].attempts);
     await expect(next).toContainText("75 min");
-    await expect(next).toContainText("Optional");
-    await expect(next).toContainText(
+    await expect(
+      next.getByRole("button", { name: "Change webcam for amy", exact: true }),
+    ).toHaveAttribute("title", "Webcam: Off");
+    await expect(
+      next.getByRole("button", {
+        name: "Change start dates for amy",
+        exact: true,
+      }),
+    ).toHaveAttribute(
+      "title",
       windowLabel(s.nextGrant.settings.earliest, s.nextGrant.settings.latest),
     );
     await expect(next).toContainText("Empty folder");
@@ -1929,48 +1878,62 @@ for (const width of [1280, 430])
       new Date(s.rows[0].attempts[0].start).toISOString(),
     );
     await expect(started).toContainText("Started");
-    await next
-      .getByRole("button", { name: "Edit settings", exact: true })
-      .click();
+    const timeTrigger = next.getByRole("button", {
+      name: "Change time limit for amy",
+      exact: true,
+    });
+    await timeTrigger.click();
     let editor = page.getByRole("region", {
-      name: "Edit next attempt for amy",
+      name: "Time limit for amy",
       exact: true,
     });
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
       editor.getByLabel("Time limit (minutes)", { exact: true }),
     ).toHaveValue("75");
+    await expect(editor.getByLabel("Closes", { exact: true })).toHaveCount(0);
+    await editor
+      .getByLabel("Time limit (minutes)", { exact: true })
+      .fill("120");
+    await editor.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    expect(s.calls).toHaveLength(0);
+    await timeTrigger.click();
+    await expect(
+      editor.getByLabel("Time limit (minutes)", { exact: true }),
+    ).toHaveValue("75");
+    await editor
+      .getByLabel("Time limit (minutes)", { exact: true })
+      .fill("120");
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    await expect(next).toContainText("120 min");
+    await next
+      .getByRole("button", { name: "Change webcam for amy", exact: true })
+      .click();
+    editor = page.getByRole("region", { name: "Webcam for amy", exact: true });
+    await editor
+      .getByRole("combobox", { name: "Webcam", exact: true })
+      .selectOption("true");
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    await expect(
+      next.getByRole("button", { name: "Change webcam for amy", exact: true }),
+    ).toHaveAttribute("title", "Webcam: Required");
+    await next
+      .getByRole("button", { name: "Change start dates for amy", exact: true })
+      .click();
+    editor = page.getByRole("region", {
+      name: "Start dates for amy",
+      exact: true,
+    });
     await expect(editor.getByLabel("Opens", { exact: true })).toHaveValue(
       localDateTime(s.nextGrant.settings.earliest),
     );
     await expect(editor.getByLabel("Closes", { exact: true })).toHaveValue(
       localDateTime(s.nextGrant.settings.latest),
     );
-    await editor
-      .getByLabel("Time limit (minutes)", { exact: true })
-      .fill("120");
-    await editor
-      .getByRole("button", { name: "Cancel editing", exact: true })
-      .click();
-    await expect(editor).toHaveCount(0);
-    expect(s.calls).toHaveLength(0);
-    await next
-      .getByRole("button", { name: "Edit settings", exact: true })
-      .click();
-    editor = page.getByRole("region", {
-      name: "Edit next attempt for amy",
-      exact: true,
-    });
-    await expect(
-      editor.getByLabel("Time limit (minutes)", { exact: true }),
-    ).toHaveValue("75");
     const closes = localDateTime(Date.now() + 7200000);
-    await editor
-      .getByLabel("Time limit (minutes)", { exact: true })
-      .fill("120");
-    await editor
-      .getByRole("combobox", { name: "Webcam", exact: true })
-      .selectOption("true");
     await editor.getByLabel("Closes", { exact: true }).fill(closes);
     expect(
       await editor.evaluate((root) => root.scrollWidth <= root.clientWidth + 1),
@@ -1979,37 +1942,18 @@ for (const width of [1280, 430])
       path: info.outputPath(`next-attempt-inline-${width}.png`),
       fullPage: true,
     });
-    await editor
-      .getByRole("button", { name: "Review changes", exact: true })
-      .click();
-    const review = page.getByRole("dialog", {
-      name: "Attempt settings for amy",
-      exact: true,
-    });
-    await expect(review).toContainText("Review changes");
-    expect(
-      s.calls.filter((call) => call.path.endsWith("/grants/change")),
-    ).toHaveLength(0);
-    await review
-      .getByRole("button", { name: "Apply changes", exact: true })
-      .click();
-    await expect(review).toContainText("Settings saved");
-    await review.getByRole("button", { name: "Done", exact: true }).click();
-    await expect(next).toContainText("120 min");
-    await expect(next).toContainText("Required");
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor).toHaveCount(0);
     expect(s.nextGrant.settings.latest).toBe(new Date(closes).getTime());
     const changes = s.calls.filter((call) =>
       call.path.endsWith("/grants/change"),
     );
-    expect(changes).toHaveLength(1);
-    expect(changes[0].body.rows[0].body).toMatchObject({
-      revision: 2,
-      changes: {
-        duration: 7200,
-        webcam: true,
-        latest: new Date(closes).getTime(),
-      },
-    });
+    expect(changes).toHaveLength(3);
+    expect(changes.map((call) => call.body.rows[0].body.changes)).toEqual([
+      { duration: 7200 },
+      { webcam: true },
+      { latest: new Date(closes).getTime() },
+    ]);
     expect(s.calls.some((call) => call.path.endsWith("/roster/settings"))).toBe(
       false,
     );
@@ -2052,33 +1996,24 @@ test("inline next-attempt failures preserve the exact reviewed request for retry
     exact: true,
   });
   await next
-    .getByRole("button", { name: "Edit settings", exact: true })
+    .getByRole("button", { name: "Change time limit for amy", exact: true })
     .click();
   const editor = page.getByRole("region", {
-    name: "Edit next attempt for amy",
+    name: "Time limit for amy",
     exact: true,
   });
   await editor.getByLabel("Time limit (minutes)", { exact: true }).fill("125");
-  await editor
-    .getByRole("button", { name: "Review changes", exact: true })
-    .click();
-  const review = page.getByRole("dialog", {
-    name: "Attempt settings for amy",
-    exact: true,
-  });
   s.failSettings = true;
-  await review
-    .getByRole("button", { name: "Apply changes", exact: true })
-    .click();
-  await expect(review).toContainText("Change unconfirmed");
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(editor).toContainText("Change unconfirmed");
   const first = s.calls.filter((call) =>
     call.path.endsWith("/grants/change"),
   )[0].body;
   s.failSettings = false;
-  await review
+  await editor
     .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
     .click();
-  await expect(review).toContainText("Settings saved");
+  await expect(editor).toHaveCount(0);
   const calls = s.calls.filter((call) => call.path.endsWith("/grants/change"));
   expect(calls).toHaveLength(2);
   expect(calls[1].body).toEqual(first);

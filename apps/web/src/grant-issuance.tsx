@@ -64,6 +64,47 @@ function readCache(key: string, exam: string, names: string[]) {
     return null;
   }
 }
+
+export function pendingGrantRequests(actor: string, exam: string) {
+  const requests: { students: string[]; additional: boolean }[] = [];
+  try {
+    for (const key of Object.keys(sessionStorage)) {
+      if (!key.startsWith(cachePrefix)) continue;
+      let owner;
+      try {
+        owner = JSON.parse(key.slice(cachePrefix.length));
+      } catch {
+        continue;
+      }
+      if (
+        !Array.isArray(owner) ||
+        owner.length !== 4 ||
+        owner[0] !== actor ||
+        owner[1] !== exam ||
+        !(exam === "sandbox"
+          ? owner[2] === "NEW_SANDBOX_PRACTICE_GRANTS"
+          : [
+              "NEW_ADDITIONAL_TEMPLATE_GRANTS",
+              "NEW_LEGACY_INITIAL_GRANTS",
+            ].includes(owner[2])) ||
+        !Array.isArray(owner[3]) ||
+        !owner[3].length ||
+        !owner[3].every((name: unknown) => typeof name === "string") ||
+        new Set(owner[3]).size !== owner[3].length ||
+        scopeNames(owner[3]) !== JSON.stringify(owner[3])
+      )
+        continue;
+      if (readCache(key, exam, owner[3])?.pending)
+        requests.push({
+          students: owner[3],
+          additional: owner[2] !== "NEW_LEGACY_INITIAL_GRANTS",
+        });
+    }
+  } catch {
+    // A missing or invalid saved request never becomes a new permission.
+  }
+  return requests;
+}
 function minutes(value: string) {
   const n = Number(value);
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(n) || n < 1 || n > 360)
@@ -76,6 +117,8 @@ export function GrantIssuanceDialog({
   students,
   actor,
   additional = false,
+  excludedStudents = [],
+  resumeOnly = false,
   onClose,
   onChanged,
   onAdoptStudents,
@@ -84,6 +127,8 @@ export function GrantIssuanceDialog({
   students: any[];
   actor: string;
   additional?: boolean;
+  excludedStudents?: string[];
+  resumeOnly?: boolean;
   onClose: () => void;
   onChanged: () => Promise<void>;
   onAdoptStudents: (names: string[]) => void;
@@ -579,8 +624,23 @@ export function GrantIssuanceDialog({
       ? `Saved work: ${savedWorkLabel(source, [...attempts, ...Object.values(sourceDetails)])}`
       : "Saved work · Source details unavailable";
   };
+  if (resumeOnly && !review && !pending && !recovering)
+    return (
+      <Modal title="Saved request" onClose={close}>
+        <p>
+          This request is no longer available for retry. Close and refresh the
+          exam.
+        </p>
+        <button onClick={close}>Close</button>
+      </Modal>
+    );
   return (
-    <Modal title="Allow attempt" onClose={close} wide className="grant-dialog">
+    <Modal
+      title={`Add next ${(review ? review.rows.length : names.length) === 1 ? "attempt" : "attempts"}`}
+      onClose={close}
+      wide
+      className="grant-dialog"
+    >
       <div className="grant-dialog-content">
         <p>
           {initial.name} · {review ? review.rows.length : names.length}{" "}
@@ -588,6 +648,11 @@ export function GrantIssuanceDialog({
             ? "student"
             : "students"}
         </p>
+        {!review && !!excludedStudents.length && (
+          <p className="muted">
+            Already has a next attempt: {excludedStudents.join(", ")}.
+          </p>
+        )}
         {error && (
           <div role="alert" className="warn">
             <p>
@@ -649,7 +714,6 @@ export function GrantIssuanceDialog({
               void perform("preview");
             }}
           >
-            <p>A new attempt replaces any unused attempt for this exam.</p>
             <fieldset disabled={busy || !!pending}>
               <details>
                 <summary>Selected students ({names.length})</summary>
@@ -658,7 +722,7 @@ export function GrantIssuanceDialog({
               {additional ? (
                 <>
                   {practice ? (
-                    <p>Five minutes · Webcam optional · Four terminals</p>
+                    <p>Five minutes · Webcam off · Four terminals</p>
                   ) : (
                     <>
                       {singleSettings && (
@@ -691,7 +755,7 @@ export function GrantIssuanceDialog({
                         >
                           <option value="effective">
                             {singleSettings
-                              ? `${singleSettings.webcam ? "Required" : "Optional"} (latest setting)`
+                              ? `${singleSettings.webcam ? "Required" : "Off"} (latest setting)`
                               : names.length === 1
                                 ? "Keep latest setting"
                                 : "Keep each student's setting"}
@@ -702,9 +766,7 @@ export function GrantIssuanceDialog({
                               : "Required for everyone"}
                           </option>
                           <option value="optional">
-                            {names.length === 1
-                              ? "Optional"
-                              : "Optional for everyone"}
+                            {names.length === 1 ? "Off" : "Off for everyone"}
                           </option>
                         </select>
                       </label>
@@ -902,7 +964,7 @@ export function GrantIssuanceDialog({
                             >
                               <option value="shared">Use setting above</option>
                               <option value="required">Required</option>
-                              <option value="optional">Optional</option>
+                              <option value="optional">Off</option>
                             </select>
                           </label>
                         </fieldset>
@@ -913,7 +975,7 @@ export function GrantIssuanceDialog({
             </fieldset>
             {!initial.template_version && (
               <p className="warn">
-                Choose published starter files in Exam defaults before
+                Choose published starter files in Exam settings before
                 reviewing.
               </p>
             )}
@@ -980,7 +1042,7 @@ export function GrantIssuanceDialog({
                 <h4>{row.username}</h4>
                 <p>
                   {timeLimit(row.settings.duration)} · Webcam{" "}
-                  {row.settings.webcam ? "required" : "optional"}
+                  {row.settings.webcam ? "required" : "off"}
                 </p>
                 {!sharedWindow && (
                   <p>
@@ -1097,7 +1159,7 @@ export function GrantIssuanceDialog({
               disabled={busy || !replacementSnapshotReady}
               onClick={() => void perform("confirm")}
             >
-              Allow {review.rows.length === 1 ? "attempt" : "attempts"}
+              Add next {review.rows.length === 1 ? "attempt" : "attempts"}
             </button>
             <button disabled={busy} onClick={() => void perform("cancel")}>
               Cancel request
@@ -1107,7 +1169,8 @@ export function GrantIssuanceDialog({
         {(["CANCELLED", "EXPIRED"].includes(review?.status) ||
           (review?.status === "REVIEW" &&
             (!replacementSnapshotReady || legacyConfirmation))) &&
-          (!pending || legacyConfirmation) && (
+          (!pending || legacyConfirmation) &&
+          !resumeOnly && (
             <button disabled={busy} onClick={startAgain}>
               Edit and review again
             </button>
@@ -1131,7 +1194,7 @@ export function GrantIssuanceDialog({
             >
               Retry same request
             </button>
-            {pending.operation === "preview" && !review && (
+            {pending.operation === "preview" && !review && !resumeOnly && (
               <button disabled={busy} onClick={startAgain}>
                 Edit draft
               </button>

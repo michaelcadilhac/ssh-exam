@@ -593,7 +593,7 @@ export function AdminReview({
                 ? "Unknown"
                 : webcamRequired(a)
                   ? "Required"
-                  : "Optional"}
+                  : "Off"}
             </dd>
           </div>
           <div>

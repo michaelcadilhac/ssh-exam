@@ -88,6 +88,7 @@ async function fixture(
                 webcam: i !== 0,
                 ...options.latestSettings?.[username],
               },
+              hasNextAttempt: false,
               unusedAttempt: null,
               attempts: attempts.filter((a) => a.username === username),
             }))
@@ -232,10 +233,10 @@ async function fixture(
       .getByRole("button", { name: "Selected students", exact: true })
       .click();
     await page
-      .getByRole("menuitem", { name: "Allow attempt", exact: true })
+      .getByRole("menuitem", { name: "Add next attempts", exact: true })
       .click();
     return page.getByRole("dialog", {
-      name: "Allow attempt",
+      name: count === 1 ? "Add next attempt" : "Add next attempts",
       exact: true,
     });
   };
@@ -262,7 +263,7 @@ for (const width of [1280, 430])
       dialog
         .getByRole("combobox", { name: "Webcam", exact: true })
         .locator("option:checked"),
-    ).toHaveText("Optional (latest setting)");
+    ).toHaveText("Off (latest setting)");
     await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
     await expect(
       dialog.getByText("Individual time and webcam settings", { exact: true }),
@@ -312,7 +313,7 @@ for (const width of [1280, 430])
       kind: "saved",
       attempt: f.state.attempts[0].id,
     });
-    await expect(dialog).toContainText("1 min 35 sec · Webcam optional");
+    await expect(dialog).toContainText("1 min 35 sec · Webcam off");
   });
 
 test("source exams show their recognizable code even when the display name is generic", async ({
@@ -376,7 +377,7 @@ test("another attempt uses two screens with fetched mixed sources and exact per-
   expect(f.state.previews[0].work_sources.map((s: any) => s.work.kind)).toEqual(
     ["saved", "template", "template"],
   );
-  await expect(dialog).toContainText("1 min 35 sec · Webcam optional");
+  await expect(dialog).toContainText("1 min 35 sec · Webcam off");
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(
     dialog.getByRole("button", { name: "Close", exact: true }),
@@ -386,7 +387,7 @@ test("another attempt uses two screens with fetched mixed sources and exact per-
     fullPage: true,
   });
   await dialog
-    .getByRole("button", { name: "Allow attempts", exact: true })
+    .getByRole("button", { name: "Add next attempts", exact: true })
     .click();
   await expect(dialog).toContainText("Preparing saved work");
   await expect(dialog).not.toContainText("sudo examctl");
@@ -427,7 +428,7 @@ test("a lost preview displays its saved intent after reload and a lost confirmat
   expect(f.state.previews[1]).toEqual(original);
   f.state.dropConfirm = true;
   await dialog
-    .getByRole("button", { name: "Allow attempts", exact: true })
+    .getByRole("button", { name: "Add next attempts", exact: true })
     .click();
   await expect(
     dialog.getByRole("button", { name: "Retry same request", exact: true }),
@@ -490,7 +491,7 @@ test("a review polls one cohort, rather than every student, and invalid latest f
   ).toHaveCount(1);
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   await dialog
-    .getByRole("button", { name: "Allow attempts", exact: true })
+    .getByRole("button", { name: "Add next attempts", exact: true })
     .click();
   await expect(
     dialog.getByText("Preparing saved work", { exact: true }),
@@ -512,7 +513,7 @@ test("a disabled review explains missing published exam files", async ({
     dialog.getByRole("button", { name: "Review", exact: true }),
   ).toBeDisabled();
   await expect(dialog).toContainText(
-    "Choose published starter files in Exam defaults before reviewing.",
+    "Choose published starter files in Exam settings before reviewing.",
   );
   expect(f.state.previews).toHaveLength(0);
 });
@@ -556,7 +557,7 @@ for (const outsidePage of [false, true])
         },
       ],
     };
-    const dialog = await selectedAction(page, ["student01"], "Allow attempt"),
+    const dialog = await selectedAction(page, ["student01"], "Add next attempts"),
       oldOpens = localDateTime(Date.now() + 4 * 86400000);
     await expect(
       dialog.getByText("Latest time limit: 1 min 35 sec", { exact: true }),
@@ -600,7 +601,7 @@ for (const outsidePage of [false, true])
         dialog
           .getByRole("combobox", { name: "Webcam", exact: true })
           .locator("option:checked"),
-      ).toHaveText("Optional (latest setting)");
+      ).toHaveText("Off (latest setting)");
     }
     expect(f.state.previews).toHaveLength(0);
     expect(f.state.confirmations).toHaveLength(0);

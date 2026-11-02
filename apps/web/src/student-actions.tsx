@@ -179,10 +179,10 @@ export function StudentActions({
               onChange={(e) => setWebcam(e.target.value)}
             >
               <option value="inherit">
-                Exam default ({exam.webcam ? "required" : "optional"})
+                Exam default ({exam.webcam ? "required" : "off"})
               </option>
               <option value="true">Required</option>
-              <option value="false">Optional</option>
+              <option value="false">Off</option>
             </select>
           </label>
         )}

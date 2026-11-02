@@ -1,10 +1,6 @@
 import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
-import {
-  additionalDraft,
-  manageStudent,
-  cancelUnused,
-} from "./prof-workflow-fixture.js";
+import { additionalDraft, cancelNext } from "./prof-workflow-fixture.js";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
 test("saved practice grants support cancellation, explicit revocation/new review and separate full repeat attempts through WASM SSH", async ({
@@ -86,10 +82,10 @@ test("saved practice grants support cancellation, explicit revocation/new review
     page.getByRole("heading", { name: "Sign in to your exam", exact: true }),
   ).toBeVisible();
   await admin();
-  let dialog = await manageStudent(page, "practice01");
-  await expect(dialog).toContainText("5 min");
-  await cancelUnused(dialog);
-  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(
+    page.getByRole("row", { name: "Next attempt for practice01", exact: true }),
+  ).toContainText("5 min");
+  await cancelNext(page, "practice01");
   await adminOut();
   await student();
   await expect(page.locator("main")).toContainText(
@@ -107,15 +103,15 @@ test("saved practice grants support cancellation, explicit revocation/new review
   });
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await admin();
-  dialog = await additionalDraft(page, ["practice01"], "", "materials");
+  const dialog = await additionalDraft(page, ["practice01"], "", "materials");
   await expect(dialog).toContainText(
-    "Five minutes · Webcam optional · Four terminals",
+    "Five minutes · Webcam off · Four terminals",
   );
   await expect(
     dialog.getByLabel("Time limit (minutes)", { exact: true }),
   ).toHaveCount(0);
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
-  await expect(dialog).toContainText("5 min · Webcam optional");
+  await expect(dialog).toContainText("5 min · Webcam off");
   expect(
     await dialog.evaluate(
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
@@ -126,7 +122,7 @@ test("saved practice grants support cancellation, explicit revocation/new review
     fullPage: true,
   });
   await dialog
-    .getByRole("button", { name: "Allow attempt", exact: true })
+    .getByRole("button", { name: "Add next attempt", exact: true })
     .click();
   await expect(dialog).toContainText("Attempt allowed");
   await dialog.getByRole("button", { name: "Done", exact: true }).click();

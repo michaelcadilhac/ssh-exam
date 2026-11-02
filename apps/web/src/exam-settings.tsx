@@ -69,7 +69,7 @@ export function ExamSettings({
   const intent = useRef({ fingerprint: "", requestID: "" });
   return (
     <Modal
-      title={initial.id ? "Exam defaults" : "New exam"}
+      title={initial.id ? "Exam settings" : "New exam"}
       onClose={() => {
         if (!busy) onClose();
       }}
@@ -143,69 +143,17 @@ export function ExamSettings({
             />
           </label>
         </div>
-        <TemplatePicker
-          label="Exam files"
-          name={form.template}
-          hash={form.template_version ?? ""}
-          disabled={busy}
-          onChange={(template, template_version) =>
-            setForm({ ...form, template, template_version })
-          }
-        />
         <fieldset className="admin-form-group">
-          <legend>{initial.id ? "Default start dates" : "Start window"}</legend>
-          <div className="admin-form-grid">
-            <LocalDateTimeInput
-              label="Opens"
-              precision="exact"
-              value={earliestDraft}
-              onChange={setEarliestDraft}
-              occurrence={earliestOccurrence}
-              onOccurrence={setEarliestOccurrence}
-              disabled={busy}
-            />
-            <LocalDateTimeInput
-              label="Closes"
-              precision="exact"
-              value={latestDraft}
-              onChange={setLatestDraft}
-              occurrence={latestOccurrence}
-              onOccurrence={setLatestOccurrence}
-              disabled={busy}
-            />
-          </div>
-          <small>
-            Times in {deviceTimeZone()}. Students may start between these times.
-          </small>
-        </fieldset>
-        {isSandbox(form.id) && (
-          <p>Practice: 5 minutes, no webcam, 4 terminals.</p>
-        )}
-        <div className="admin-form-grid">
-          <label>
-            Time limit (minutes)
-            <input
-              required={!initial.id || Number.isInteger(initial.duration / 60)}
-              type="number"
-              min={1}
-              max={360}
-              disabled={busy || isSandbox(form.id)}
-              value={isSandbox(form.id) ? 5 : durationDraft}
-              placeholder={
-                initial.id ? `Keep ${timeLimit(initial.duration)}` : "90"
-              }
-              onChange={(e) => {
-                setDurationDraft(e.target.value);
-                setForm({
-                  ...form,
-                  duration:
-                    e.target.value === "" && initial.id
-                      ? initial.duration
-                      : Number(e.target.value) * 60,
-                });
-              }}
-            />
-          </label>
+          <legend>Exam settings</legend>
+          <TemplatePicker
+            label="Exam files"
+            name={form.template}
+            hash={form.template_version ?? ""}
+            disabled={busy}
+            onChange={(template, template_version) =>
+              setForm({ ...form, template, template_version })
+            }
+          />
           <label>
             Terminal limit
             <input
@@ -220,64 +168,136 @@ export function ExamSettings({
               }
             />
           </label>
-        </div>
-        <label>
-          <input
-            type="checkbox"
-            disabled={busy || isSandbox(form.id)}
-            checked={isSandbox(form.id) ? false : form.webcam}
-            onChange={(e) => setForm({ ...form, webcam: e.target.checked })}
-          />{" "}
-          Default webcam requirement
-        </label>
-        <details>
-          <summary>File limits</summary>
+          <details>
+            <summary>File limits</summary>
+            <fieldset className="admin-form-group">
+              <legend>File limits</legend>
+              <div className="admin-form-grid">
+                <label>
+                  Maximum file size (MiB)
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    max={MAX_COLLECTION_FILE_MIB}
+                    disabled={busy}
+                    value={form.collection_file_mib}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        collection_file_mib: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Maximum total size (MiB)
+                  <input
+                    required
+                    type="number"
+                    min={form.collection_file_mib}
+                    max={MAX_COLLECTION_TOTAL_MIB}
+                    disabled={busy}
+                    value={form.collection_total_mib}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        collection_total_mib: Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </fieldset>
+          </details>
+          {initial.id && (
+            <p>
+              Terminal and file limits apply to all attempts. Open terminals
+              stay open.
+            </p>
+          )}
+        </fieldset>
+        <fieldset className="admin-form-group">
+          <legend>Defaults for new attempts</legend>
           <fieldset className="admin-form-group">
-            <legend>File limits</legend>
+            <legend>
+              {initial.id ? "Default start dates" : "Start window"}
+            </legend>
             <div className="admin-form-grid">
-              <label>
-                Maximum file size (MiB)
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  max={MAX_COLLECTION_FILE_MIB}
-                  disabled={busy}
-                  value={form.collection_file_mib}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      collection_file_mib: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
-              <label>
-                Maximum total size (MiB)
-                <input
-                  required
-                  type="number"
-                  min={form.collection_file_mib}
-                  max={MAX_COLLECTION_TOTAL_MIB}
-                  disabled={busy}
-                  value={form.collection_total_mib}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      collection_total_mib: Number(e.target.value),
-                    })
-                  }
-                />
-              </label>
+              <LocalDateTimeInput
+                label="Opens"
+                precision="exact"
+                value={earliestDraft}
+                onChange={setEarliestDraft}
+                occurrence={earliestOccurrence}
+                onOccurrence={setEarliestOccurrence}
+                disabled={busy}
+              />
+              <LocalDateTimeInput
+                label="Closes"
+                precision="exact"
+                value={latestDraft}
+                onChange={setLatestDraft}
+                occurrence={latestOccurrence}
+                onOccurrence={setLatestOccurrence}
+                disabled={busy}
+              />
             </div>
+            <small>
+              Times in {deviceTimeZone()}. Students may start between these
+              times.
+            </small>
           </fieldset>
-        </details>
-        {initial.id && (
-          <p>
-            Used for new attempts unless you choose different settings. Existing
-            allowed attempts keep their saved settings.
-          </p>
-        )}
+          {isSandbox(form.id) && (
+            <p>Practice: 5 minutes, no webcam, 4 terminals.</p>
+          )}
+          <div className="admin-form-grid">
+            <label>
+              Time limit (minutes)
+              <input
+                required={
+                  !initial.id || Number.isInteger(initial.duration / 60)
+                }
+                type="number"
+                min={1}
+                max={360}
+                disabled={busy || isSandbox(form.id)}
+                value={isSandbox(form.id) ? 5 : durationDraft}
+                placeholder={
+                  initial.id ? `Keep ${timeLimit(initial.duration)}` : "90"
+                }
+                onChange={(e) => {
+                  setDurationDraft(e.target.value);
+                  setForm({
+                    ...form,
+                    duration:
+                      e.target.value === "" && initial.id
+                        ? initial.duration
+                        : Number(e.target.value) * 60,
+                  });
+                }}
+              />
+            </label>
+          </div>
+          <label>
+            Default webcam
+            <select
+              disabled={busy || isSandbox(form.id)}
+              value={isSandbox(form.id) ? "false" : String(form.webcam)}
+              onChange={(e) =>
+                setForm({ ...form, webcam: e.target.value === "true" })
+              }
+            >
+              <option value="true">Required</option>
+              <option value="false">Off</option>
+            </select>
+          </label>
+          {initial.id && (
+            <p>
+              Existing time limits, webcam rules and start dates stay unchanged.
+            </p>
+          )}
+        </fieldset>
         {error && (
           <p role="alert" className="warn">
             {error}
@@ -288,7 +308,7 @@ export function ExamSettings({
             Cancel
           </button>
           <button disabled={busy} className="primary">
-            {busy ? "Saving…" : initial.id ? "Save defaults" : "Save exam"}
+            {busy ? "Saving…" : initial.id ? "Save settings" : "Save exam"}
           </button>
         </div>
       </form>

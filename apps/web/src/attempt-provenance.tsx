@@ -97,7 +97,7 @@ export function AttemptProvenance({
         </div>
         <div>
           <dt>Webcam</dt>
-          <dd>{g.settings.webcam ? "Required" : "Optional"}</dd>
+          <dd>{g.settings.webcam ? "Required" : "Off"}</dd>
         </div>
         <div>
           <dt>Start window</dt>

@@ -1,6 +1,6 @@
 import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
-import { manageStudent, cancelUnused } from "./prof-workflow-fixture.js";
+import { editNextField, cancelNext } from "./prof-workflow-fixture.js";
 import { readFile } from "node:fs/promises";
 
 test("Add student contains single entry and CSV upload with a downloadable example, safe replacement and Escape", async ({
@@ -101,7 +101,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .click();
   await expect(confirm).toBeEnabled();
   await expect(dialog.locator(".preview")).toContainText(
-    "student02 · time limit 120 min · webcam optional",
+    "student02 · time limit 120 min · webcam off",
   );
   // Invalid replacement must not leave a previous valid import confirmable.
   await upload.setInputFiles({
@@ -132,10 +132,14 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await expect(dialog).toHaveCount(0);
   const row = page
     .getByRole("table", { name: "Students and attempts" })
-    .getByRole("row")
-    .filter({ hasText: "student02" });
+    .getByRole("rowgroup", { name: "student02", exact: true });
   await expect(row).toContainText("120 min");
-  await expect(row).toContainText("Optional");
+  await expect(
+    row.getByRole("button", {
+      name: "Change webcam for student02",
+      exact: true,
+    }),
+  ).toHaveAttribute("title", "Webcam: Off");
   await add.click();
   await expect(
     dialog.getByRole("textbox", { name: "Username", exact: true }),
@@ -152,8 +156,10 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await expect(add).toBeFocused();
   // Enrollment-time issuance remains the real gateway transaction.
   await page.setViewportSize({ width: 430, height: 1000 });
-  let grants = await manageStudent(page, "student02");
-  await expect(grants).toContainText("120 min");
+  const grants = await editNextField(page, "student02", "time limit");
+  await expect(
+    grants.getByLabel("Time limit (minutes)", { exact: true }),
+  ).toHaveValue("120");
   const issued = (
     await (
       await page.request.get(
@@ -175,9 +181,6 @@ test("Add student contains single entry and CSV upload with a downloadable examp
       (el) => el.getBoundingClientRect().right <= innerWidth + 1,
     ),
   ).toBe(true);
-  await grants
-    .getByRole("button", { name: "Edit settings", exact: true })
-    .click();
   await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("90");
   let lost = false;
   const requests: any[] = [];
@@ -194,12 +197,7 @@ test("Add student contains single entry and CSV upload with a downloadable examp
       await route.fulfill({ response: reply });
     },
   );
-  await grants
-    .getByRole("button", { name: "Review changes", exact: true })
-    .click();
-  await grants
-    .getByRole("button", { name: "Apply changes", exact: true })
-    .click();
+  await grants.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     grants.getByText("Change unconfirmed", { exact: true }),
   ).toBeVisible();
@@ -209,23 +207,31 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   await grants
     .getByRole("button", { name: "Retry unconfirmed changes", exact: true })
     .click();
-  await expect(
-    grants.getByText("Settings saved", { exact: true }),
-  ).toBeVisible();
+  await expect(grants).toHaveCount(0);
   expect(requests).toHaveLength(2);
   expect(requests[1]).toEqual(requests[0]);
-  await grants.getByRole("button", { name: "Done", exact: true }).click();
-  grants = await manageStudent(page, "student02");
-  await expect(grants).toContainText("90 min");
-  await grants.getByText("Details and history", { exact: true }).click();
-  await expect(grants).toContainText("Revision 2");
-  await expect(grants).toContainText("120 min");
-  await cancelUnused(grants);
+  await expect(row).toContainText("90 min");
+  const revised = await (
+    await page.request.get(`/api/admin/grants/${issued.id}`)
+  ).json();
+  expect(revised.revision).toBe(2);
+  expect(
+    revised.history.some(
+      (revision: any) => revision.settings.duration === 7200,
+    ),
+  ).toBe(true);
+  await cancelNext(page, "student02");
   expect(
     (await (await page.request.get(`/api/admin/grants/${issued.id}`)).json())
       .status,
   ).toBe("REVOKED");
-  await grants.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(row).toContainText("120 min");
-  await expect(row).toContainText("First attempt: 90 min · Cancelled");
+  await expect(
+    page.getByRole("row", { name: "Next attempt for student02", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "Add next attempt for student02",
+      exact: true,
+    }),
+  ).toBeVisible();
 });

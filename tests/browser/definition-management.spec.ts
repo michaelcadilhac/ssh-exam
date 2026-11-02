@@ -125,7 +125,7 @@ async function fixture(
   await page.goto("/");
   await page.getByLabel("Selected exam", { exact: true }).selectOption(examID);
   await page
-    .getByRole("button", { name: "Exam defaults", exact: true })
+    .getByRole("button", { name: "Exam settings", exact: true })
     .click();
   if (!version)
     await page
@@ -140,23 +140,26 @@ test("sandbox exposes an explicit finite window without inventing legacy default
 }) => {
   const s = await fixture(page, false, "sandbox", true);
   const dialog = page.getByRole("dialog", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await expect(dialog.getByLabel("Opens")).toHaveValue("");
   await expect(dialog.getByLabel("Closes")).toHaveValue("");
   await expect(
-    dialog.getByLabel("Default webcam requirement"),
-  ).not.toBeChecked();
-  await expect(dialog.getByLabel("Default webcam requirement")).toBeDisabled();
+    dialog.getByRole("combobox", { name: "Default webcam", exact: true }),
+  ).toHaveValue("false");
+  await expect(
+    dialog.getByRole("option", { name: "Off", exact: true }),
+  ).toHaveCount(1);
+  await expect(dialog.getByLabel("Default webcam")).toBeDisabled();
   await dialog.getByLabel("Opens").fill("2026-10-22T09:00");
   await dialog.getByLabel("Closes").fill("2026-10-22T17:00");
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   expect(s.writes[0].earliest).toBeGreaterThan(0);
@@ -169,19 +172,19 @@ test("exact source survives a lost save and name edits never silently clear the 
 }) => {
   const s = await fixture(page),
     hash = "c".repeat(64);
-  let dialog = page.getByRole("dialog", { name: "Exam defaults", exact: true });
+  let dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
   await dialog
     .getByRole("combobox", { name: "Exam files", exact: true })
     .selectOption(`v1@${hash}`);
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(
     dialog.getByRole("combobox", { name: "Exam files", exact: true }),
   ).toHaveValue(`v1@${hash}`);
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   expect(s.paths).toEqual([
@@ -190,9 +193,9 @@ test("exact source survives a lost save and name edits never silently clear the 
   ]);
   expect(s.writes[1]).toEqual(s.writes[0]);
   await page
-    .getByRole("button", { name: "Exam defaults", exact: true })
+    .getByRole("button", { name: "Exam settings", exact: true })
     .click();
-  dialog = page.getByRole("dialog", { name: "Exam defaults", exact: true });
+  dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
   await expect(
     dialog.getByRole("combobox", { name: "Exam files", exact: true }),
   ).toHaveValue(`v1@${hash}`);
@@ -200,7 +203,7 @@ test("exact source survives a lost save and name edits never silently clear the 
     .getByRole("combobox", { name: "Exam files", exact: true })
     .selectOption(`different-name@${"e".repeat(64)}`);
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText("exact name/hash");
   await expect(
@@ -215,18 +218,18 @@ test("selecting a different published version changes only the future source and
 }) => {
   const s = await fixture(page, false, "midterm", false, "c".repeat(64));
   const dialog = page.getByRole("dialog", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await dialog
     .getByRole("combobox", { name: "Exam files", exact: true })
     .selectOption(`v1@${"d".repeat(64)}`);
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   expect(s.writes[0].template_version).toBe("d".repeat(64));
@@ -267,7 +270,7 @@ test("lost definition reply preserves form and reuses the same revision/request 
 }) => {
   const s = await fixture(page);
   const dialog = page.getByRole("dialog", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await dialog.getByLabel("Name", { exact: true }).fill("Edited midterm");
@@ -279,14 +282,14 @@ test("lost definition reply preserves form and reuses the same revision/request 
   await dialog.getByLabel("Maximum file size (MiB)").fill("256");
   await dialog.getByLabel("Maximum total size (MiB)").fill("1024");
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   await expect(dialog.getByLabel("Name", { exact: true })).toHaveValue(
     "Edited midterm",
   );
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog).toHaveCount(0);
   expect(s.writes).toHaveLength(2);
@@ -307,12 +310,12 @@ test("stale revision leaves edits visible and changed input gets a new intent wi
 }) => {
   const s = await fixture(page, true);
   const dialog = page.getByRole("dialog", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await dialog.getByLabel("Name", { exact: true }).fill("Unsaved edit");
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect(dialog.getByRole("alert")).toContainText(
     "reload current settings",
@@ -322,7 +325,7 @@ test("stale revision leaves edits visible and changed input gets a new intent wi
   );
   await dialog.getByLabel("Name", { exact: true }).fill("Reviewed edit");
   await dialog
-    .getByRole("button", { name: "Save defaults", exact: true })
+    .getByRole("button", { name: "Save settings", exact: true })
     .click();
   await expect.poll(() => s.writes.length).toBe(2);
   expect(s.writes[1].requestID).not.toBe(s.writes[0].requestID);
@@ -333,7 +336,7 @@ test("stale revision leaves edits visible and changed input gets a new intent wi
     .getByLabel("Selected exam", { exact: true })
     .selectOption("midterm");
   await page
-    .getByRole("button", { name: "Exam defaults", exact: true })
+    .getByRole("button", { name: "Exam settings", exact: true })
     .click();
   await expect(
     page.getByRole("dialog").getByLabel("Name", { exact: true }),

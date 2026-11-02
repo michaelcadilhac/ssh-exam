@@ -4,14 +4,16 @@ import { simulatedMedia } from "./transition-fixture.js";
 import {
   additionalDraft,
   previewAdditional,
-  manageStudent,
-  cancelUnused,
-  selectedAction,
+  editNextField,
+  cancelNext,
   chooseSavedSource,
 } from "./prof-workflow-fixture.js";
 
-async function admin(page: import("@playwright/test").Page) {
-  await instructorSignIn(page, "prof_additional");
+async function admin(
+  page: import("@playwright/test").Page,
+  actor: Parameters<typeof instructorSignIn>[1] = "prof_additional",
+) {
+  await instructorSignIn(page, actor);
   await page.getByLabel("Selected exam").selectOption("additional-template");
 }
 test("individual additional settings are reviewed per student without changing shared defaults or issuing on preview", async ({
@@ -19,11 +21,16 @@ test("individual additional settings are reviewed per student without changing s
 }, info) => {
   page.setDefaultTimeout(8000);
   await page.setViewportSize({ width: 430, height: 1000 });
-  await admin(page);
+  await admin(page, "prof_additional_review");
   const dialog = await additionalDraft(page, ["extra01", "extra02"]);
   await dialog
     .getByText("Individual time and webcam settings", { exact: true })
     .click();
+  await expect(
+    dialog
+      .getByRole("combobox", { name: "Webcam for extra02", exact: true })
+      .getByRole("option", { name: "Off", exact: true }),
+  ).toHaveCount(1);
   for (const [username, minutes, webcam] of [
     ["extra01", "100", "required"],
     ["extra02", "120", "optional"],
@@ -41,6 +48,11 @@ test("individual additional settings are reviewed per student without changing s
     { username: "extra02", duration: 7200, webcam: false },
   ]);
   expect(review.issued).toHaveLength(0);
+  await expect(
+    dialog.getByRole("article").filter({
+      has: page.getByRole("heading", { name: "extra02", exact: true }),
+    }),
+  ).toContainText("Webcam off");
   for (const [username, time] of [
     ["extra01", "100 min"],
     ["extra02", "120 min"],
@@ -62,7 +74,7 @@ test("individual additional settings are reviewed per student without changing s
   ).toBeVisible();
 });
 
-test("an additional attempt replaces unused permission and starts automatically with its exact reviewed settings", async ({
+test("a next attempt can be cancelled, recreated and edited before starting with its exact settings", async ({
   page,
 }, testInfo) => {
   test.setTimeout(90000);
@@ -131,14 +143,17 @@ test("an additional attempt replaces unused permission and starts automatically 
     },
   );
   await dialog
-    .getByRole("button", { name: "Allow attempt", exact: true })
+    .getByRole("button", { name: "Add next attempt", exact: true })
     .click();
   await expect(
     dialog.getByRole("button", { name: "Retry same request", exact: true }),
   ).toBeEnabled();
   await page.reload();
   await page.getByLabel("Selected exam").selectOption("additional-template");
-  dialog = await selectedAction(page, ["extra01"], "Allow attempt");
+  await page
+    .getByRole("button", { name: "Resume saved request (1)", exact: true })
+    .click();
+  dialog = page.getByRole("dialog");
   await expect(
     dialog.getByRole("heading", { name: "Attempt allowed", exact: true }),
   ).toBeVisible();
@@ -150,13 +165,14 @@ test("an additional attempt replaces unused permission and starts automatically 
   const prior = await (
     await page.request.get(`/api/admin/grants/${ninety}`)
   ).json();
+  expect(prior.settings.duration).toBe(5400);
   await dialog.getByRole("button", { name: "Done", exact: true }).click();
   await page.unroute(`**/api/admin/grant-issuance/${reviewID}/confirm`);
+  await cancelNext(page, "extra01");
   dialog = await additionalDraft(page, ["extra01"], "75");
   const { review: replacementReview } = await previewAdditional(page, dialog);
-  const replaced = [{ id: ninety, revision: prior.revision, hash: prior.hash }];
-  expect(replacementReview.rows[0].replaces).toEqual(replaced);
-  await expect(dialog).toContainText("Replaces 1 unused attempt.");
+  expect(replacementReview.rows[0].replaces).toEqual([]);
+  await expect(dialog).not.toContainText("Replaces 1 unused attempt.");
   const replacementReply = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname ===
@@ -164,7 +180,7 @@ test("an additional attempt replaces unused permission and starts automatically 
       response.request().method() === "POST",
   );
   await dialog
-    .getByRole("button", { name: "Allow attempt", exact: true })
+    .getByRole("button", { name: "Add next attempt", exact: true })
     .click();
   await expect(
     dialog.getByRole("heading", { name: "Attempt allowed", exact: true }),
@@ -175,8 +191,8 @@ test("an additional attempt replaces unused permission and starts automatically 
     "single-unused-v1",
   );
   const replacementReceipt = await replacementResponse.json();
-  expect(replacementReceipt.issued[0].replaced).toEqual(replaced);
-  await expect(dialog).toContainText("Replaced 1 unused attempt.");
+  expect(replacementReceipt.issued[0].replaced).toEqual([]);
+  await expect(dialog).not.toContainText("Replaced 1 unused attempt.");
   await dialog.getByRole("button", { name: "Done", exact: true }).click();
   const records = (
     await (
@@ -197,13 +213,14 @@ test("an additional attempt replaces unused permission and starts automatically 
       .filter((g: any) => ["AVAILABLE", "PENDING_NATIVE"].includes(g.status))
       .map((g: any) => g.id),
   ).toEqual([other.id]);
-  const grants = await manageStudent(page, "extra01");
   expect(other.work.kind).toBe("empty");
-  const otherRow = grants.getByRole("article").filter({ hasText: other.id });
-  await otherRow
-    .getByRole("button", { name: "Edit settings", exact: true })
-    .click();
-  await grants.getByLabel("Time limit (minutes)", { exact: true }).fill("60");
+  const timeEditor = await editNextField(page, "extra01", "time limit");
+  await timeEditor
+    .getByLabel("Time limit (minutes)", { exact: true })
+    .fill("60");
+  await timeEditor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(timeEditor).toHaveCount(0);
+  const grants = await editNextField(page, "extra01", "starting files");
   await grants
     .getByRole("combobox", { name: "Starting files", exact: true })
     .selectOption("template");
@@ -231,7 +248,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   expect(
     (await (await page.request.get(`/api/admin/grants/${other.id}`)).json())
       .settings.duration,
-  ).toBe(4500);
+  ).toBe(3600);
   await page.unroute("**/api/admin/exams/additional-template/grants/change");
   await grants
     .getByRole("button", { name: "Back to editing", exact: true })
@@ -242,9 +259,7 @@ test("an additional attempt replaces unused permission and starts automatically 
   await grants
     .getByRole("button", { name: "Apply changes", exact: true })
     .click();
-  await expect(
-    grants.getByText("Settings saved", { exact: true }),
-  ).toBeVisible();
+  await expect(grants).toHaveCount(0);
   const revised = await (
     await page.request.get(`/api/admin/grants/${other.id}`)
   ).json();
@@ -252,16 +267,16 @@ test("an additional attempt replaces unused permission and starts automatically 
     settings: { duration: 3600 },
     work: { kind: "template", name: "sample-exam", hash: "a".repeat(64) },
   });
-  expect(
-    await grants.evaluate(
-      (el) => el.getBoundingClientRect().right <= innerWidth + 1,
-    ),
-  ).toBe(true);
+  await expect(
+    page.getByRole("button", {
+      name: "Change time limit for extra01",
+      exact: true,
+    }),
+  ).toHaveText("60 min");
   await page.screenshot({
     path: testInfo.outputPath("additional-grants-management-430.png"),
     fullPage: true,
   });
-  await grants.getByRole("button", { name: "Done", exact: true }).click();
   await page
     .getByRole("button", { name: "Administration", exact: true })
     .click();
@@ -407,7 +422,7 @@ test("saved-work review stays pending without native confirmation and can be can
 }) => {
   test.setTimeout(45000);
   page.setDefaultTimeout(8000);
-  await admin(page);
+  await admin(page, "prof_additional_saved");
   const source = "aaaaaaaa-1234-4234-8234-123456789abc";
   const history = async () =>
     (
@@ -428,7 +443,7 @@ test("saved-work review stays pending without native confirmation and can be can
     checksum: "b".repeat(64),
   });
   await dialog
-    .getByRole("button", { name: "Allow attempt", exact: true })
+    .getByRole("button", { name: "Add next attempt", exact: true })
     .click();
   await expect(dialog).toContainText("Preparing saved work");
   await expect(dialog).not.toContainText("sudo examctl");
@@ -444,12 +459,10 @@ test("saved-work review stays pending without native confirmation and can be can
   );
   expect(saved).toBeTruthy();
   expect(saved.claims).toHaveLength(0);
-  const management = await manageStudent(page, "extra01");
-  await expect(management).toContainText("Preparing saved work");
-  await cancelUnused(
-    management,
-    management.getByRole("article").filter({ hasText: saved.id }),
-  );
+  await expect(
+    page.getByRole("table", { name: "Students and attempts" }),
+  ).toContainText("Preparing saved work");
+  await cancelNext(page, "extra01");
   expect(
     (await (await page.request.get(`/api/admin/grants/${saved.id}`)).json())
       .status,
@@ -463,7 +476,7 @@ test("bulk saved work requires each student's own source and preserves the exact
   test.setTimeout(60000);
   page.setDefaultTimeout(8000);
   await page.setViewportSize({ width: 430, height: 1000 });
-  await admin(page);
+  await admin(page, "prof_additional_bulk");
   const sources = [
     {
       username: "extra01",
@@ -546,7 +559,7 @@ test("bulk saved work requires each student's own source and preserves the exact
     },
   );
   await dialog
-    .getByRole("button", { name: "Allow attempts", exact: true })
+    .getByRole("button", { name: "Add next attempts", exact: true })
     .click();
   await expect(
     dialog.getByRole("button", { name: "Retry same request", exact: true }),
@@ -581,20 +594,11 @@ test("bulk saved work requires each student's own source and preserves the exact
     });
   }
   await dialog.getByRole("button", { name: "Done", exact: true }).click();
-  const management = await manageStudent(page, "extra02"),
-    secondID = receipt.issued.find((g: any) => g.username === "extra02").grant;
-  await cancelUnused(
-    management,
-    management.getByRole("article").filter({ hasText: secondID }),
+  await cancelNext(page, "extra02");
+  const retained = await page.request.get(
+    `/api/admin/grants/${receipt.issued.find((g: any) => g.username === "extra01").grant}`,
   );
-  expect(
-    (
-      await (
-        await page.request.get(
-          `/api/admin/grants/${receipt.issued.find((g: any) => g.username === "extra01").grant}`,
-        )
-      ).json()
-    ).status,
-  ).toBe("PENDING_NATIVE");
+  expect(retained.status(), await retained.text()).toBe(200);
+  expect((await retained.json()).status).toBe("PENDING_NATIVE");
   expect(await histories()).toEqual(original);
 });

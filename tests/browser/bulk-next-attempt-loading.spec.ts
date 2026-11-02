@@ -382,25 +382,25 @@ test("all 70 students are selectable and four historical students without next a
     page.getByRole("checkbox", { name: /^Select student learner/ }),
   ).toHaveCount(70);
   await expect(page.getByText("Not enrolled", { exact: true })).toHaveCount(0);
-  const historyStudent = f.state.names[66],
-    historyActions = page.getByRole("button", {
-      name: `Actions for student ${historyStudent}`,
-      exact: true,
-    });
-  await historyActions.click();
+  const historyStudent = f.state.names[66];
   await expect(
-    page.getByRole("menuitem", { name: "Allow attempt…", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", {
-      name: "Attempt settings and history…",
+    page.getByRole("button", {
+      name: `Add next attempt for ${historyStudent}`,
       exact: true,
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("menuitem", { name: "Remove from exam…", exact: true }),
+    page.getByRole("button", {
+      name: `Delete student ${historyStudent}`,
+      exact: true,
+    }),
   ).toHaveCount(0);
-  await historyActions.click();
+  await expect(
+    page.getByRole("button", {
+      name: `Actions for student ${historyStudent}`,
+      exact: true,
+    }),
+  ).toHaveCount(0);
   await select.check();
   const selection = page.getByRole("region", {
     name: "Bulk selection",

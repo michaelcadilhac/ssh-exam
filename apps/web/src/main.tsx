@@ -552,7 +552,7 @@ function App() {
                             ? info.exam.webcam
                             : info.enrollment.webcam))
                             ? "Required"
-                            : "Optional"}
+                            : "Off"}
                         </p>
                       </>
                     )}
