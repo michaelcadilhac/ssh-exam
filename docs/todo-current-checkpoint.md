@@ -1,5 +1,15 @@
 # Current checkpoint — recording storage DEPLOYED AND ONLINE
 
+LATEST favicon request: shell-promptSVG +16/32pxICO and explicit icon links are
+implemented locally; frontendbuild and built-asset/ICO validation pass. Push is
+authorized. Deployment preflight is NOTREADY: actualmarco shared recovery cache
+absent, despite85completed conversion jobs. Existing UI path would cold-warm media
+and exceed120second totalbudget. Stopped BEFORE maintenance; no runtime/config/
+student changes or new controller. Existing runtime5163/schema37 remains online.
+Needed separate preparation: establish current recovery coverage and qualify the
+same-schema favicon image before another bounded deployment attempt.
+
+
 November1 evening Chicago. User authorized Push/deploy, then required reasonable
 <2minute routine deployment. Runtime5163b2045c78309d32453ea06e60d5ff2811baa0/schema37
 and matchedCLI a6aaa2fe… are pushed/deployed. Admissions reopened19:26:40 Chicago,
