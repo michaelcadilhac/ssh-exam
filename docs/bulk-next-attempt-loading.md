@@ -1,6 +1,7 @@
 # Fast bulk editing with complete selection accounting
 
-November 2, 2026. Implemented and tested locally; no push or deployment authorized.
+November 2, 2026. Implemented and tested locally at `bc20abd`; no push or deployment
+authorized. The exact image/CLI source manifests match all484 committed inputs.
 
 The midterm page contains70 visible students, including4 historical students who
 are not enrolled. The final read-only enrollment check confirms66 enrolled and

@@ -13,6 +13,12 @@ pass. Reviewed operator scope passes34 workflows. No production mutation, push o
 deployment authorized. Evidence/rollout plan: docs/bulk-next-attempt-loading.md.
 Candidate: `var/collection-tests/bulk-next-attempt-image.qcrhb83s`; image Config
 `06556283b063a648ead751a635b608d036d71c20cfc4221c9df5e597fe0a9234`.
+Validated implementation: `bc20abd86edcf87c2417a456788251f95d3c62ca`; all484 image/
+CLI source paths match committed bytes. CLI SHA256:
+`f44a0b6400958b80bb9b40885f5bad757fbd72186117e595061c8bb4f4fbccc3`.
+Candidate completion/source-binding receipts and local release/location plans are
+prepared. Fresh production inventory/idle proof is required after a new deployment
+instruction; no production directories were staged or created for this fix.
 The production revision below remains online and unchanged.
 
 November 2 at 00:02:48 Chicago (06:02:48UTC): source2694afd and matched CLI587f2b2b…
