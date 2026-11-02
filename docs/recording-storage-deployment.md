@@ -35,6 +35,30 @@ Normal site SHA256 c02c148fdc0d811dcf5ddb690968ac8d45f6716873f99dcb6ca0bc3d8ce09
 
 ## Recovery set without another full recording copy
 
+### Online cache preparation completed after conversion
+
+Separately authorized November1 at23:09 Chicago (November2 05:09UTC): all85
+conversion jobs are complete. The supported online command
+`scripts/backup --warm-media var/production --shared-store /data/.ssh-exam-media-objects`
+on marco populated6,785 objects /970,286,469bytes in63.7seconds. A separate read-only
+audit took9.501seconds and SHA256-checked every cached object AND live source,
+their recorded identities/sizes, and complete schema37 recording coverage:
+6,442video segments representing76,642frames, plus281terminal recordings.
+The filesystem inventory and recording database projections were unchanged across
+verification; public readiness passed. Cache manifest SHA256:
+`8d6ec1813a88d49ace784f46295647c941d46407e0eecdf49396fc1068622504`.
+Local private receipt/source: `var/collection-tests/recording-backup-prep.l_bn3tpa`.
+
+This is `MEDIA_WARMED`, not a completed current database snapshot or a deployment.
+The site stayed online; no restart, configuration/student-record change or favicon
+deployment occurred. Future stopped snapshots must take a fresh database and small
+files using `--require-warmed`; changed/new media require another online refresh.
+Do not prune the warmed objects: until a snapshot links them, they are unreferenced
+by snapshots but intentionally retained for the next cutover. Retain the existing
+full archive and recovery-pair dependencies described below.
+
+### Historical migration recovery pair
+
 The first online shared-store warm was a poor preparation choice: about64objects/s
 implied roughly40minutes to recopy recordings already backed up. Only that exact
 owned process4149168 was interrupted via PIDFD SIGINT; its child and temporary

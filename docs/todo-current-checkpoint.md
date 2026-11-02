@@ -1,13 +1,22 @@
 # Current checkpoint — recording storage DEPLOYED AND ONLINE
 
-LATEST favicon request: shell-promptSVG +16/32pxICO and explicit icon links are
-implemented locally; frontendbuild and built-asset/ICO validation pass. Push is
-authorized. Deployment preflight is NOTREADY: actualmarco shared recovery cache
-absent, despite85completed conversion jobs. Existing UI path would cold-warm media
-and exceed120second totalbudget. Stopped BEFORE maintenance; no runtime/config/
-student changes or new controller. Existing runtime5163/schema37 remains online.
-Needed separate preparation: establish current recovery coverage and qualify the
-same-schema favicon image before another bounded deployment attempt.
+LATEST: separately authorized online recording-cache preparation is COMPLETE.
+On marco, supported `scripts/backup --warm-media` copied 6,785 files /970,286,469
+bytes in63.7seconds to `/data/.ssh-exam-media-objects`. Independent9.501second
+audit hashed every live file and cached object, verified source/object identities
+and schema37 coverage of6,442segments /76,642frames /281terminal recordings, and
+confirmed unchanged inventory/database projections. All85conversion jobs complete;
+public readiness healthy. No service restart, maintenance, configuration or student
+record change. This is verified media preparation, NOT a complete database snapshot.
+Keep warmed objects; pruning unlinked objects would discard this preparation.
+Evidence: `var/collection-tests/recording-backup-prep.l_bn3tpa/audit.stdout`.
+
+Favicon source2e5c7c3 is committed/pushed, frontendbuild and built-asset/ICO checks
+pass; favicon remains UNDEPLOYED. Runtime5163/schema37 remains online. Next release
+preparation must qualify the same-schema favicon image and confirm current warmed
+coverage before another bounded deployment. A real stopped backup still takes a
+fresh database/small-file snapshot with `--require-warmed`; new recordings can make
+this cache stale and need an online refresh. No deployment performed in this task.
 
 
 November1 evening Chicago. User authorized Push/deploy, then required reasonable
