@@ -15,7 +15,7 @@ import (
 )
 
 func webGrantsHelp(out io.Writer) {
-	fmt.Fprintln(out, `Usage: sudo examctl web grants list EXAM [--username USER] [--limit 100] [--after UUID]
+	fmt.Fprintln(out, `Usage: sudo examctl web grants list EXAM [--next] [--username USER] [--limit 100] [--after UUID]
        sudo examctl web grants show GRANT_UUID [--before REVISION]
        sudo examctl web grants revise GRANT_UUID --revision N --reason TEXT SETTINGS
        sudo examctl web grants revoke GRANT_UUID --revision N --reason TEXT
@@ -132,8 +132,14 @@ Current clocks/holds/protected submissions never change.
 First verified preparation binds the Unix UID in retained claim history. A UID
 change, even after cancellation, needs reviewed NEW authorization, not rebinding.
 
-list is paginated (1..200); show includes newest 50 immutable revisions and
-history_next for --before. Claims distinguish PREPARING, BEGIN_PENDING, CANCELLED
+list is paginated (1..200).
+--next lists AVAILABLE/PENDING_NATIVE permissions without cancelled/started
+history. It includes closed dates and claimed setups so you can inspect them;
+this filter does not prove editability or authorize starting. Omit --next for
+full history. The flag requires a matching updated web server and never falls
+back to a historical listing when refused.
+show includes newest 50 immutable revisions and history_next for --before.
+Claims distinguish PREPARING, BEGIN_PENDING, CANCELLED
 and CONSUMED; unknown Begin never means no start. Inspect native info ATTEMPT
 --read-only. Positively cancel an unstarted preparation before revision/revoke;
 never delete rows/markers, infer a refund or reopen completed attempts.
@@ -153,6 +159,7 @@ otherwise inspect/cancel the old review and make a fresh review.
 
 Examples:
   sudo examctl web grants list midterm --username student01
+  sudo examctl web grants list midterm --next --all --format table --fields username,status
   sudo examctl web grants show GRANT_UUID
   sudo examctl web grants revise GRANT_UUID --revision 1 --duration-minutes 90 --reason 'Explicit unused allowance revision'
   sudo examctl web grants revoke GRANT_UUID --revision 2 --reason 'Withdraw unused authorization'
@@ -196,6 +203,7 @@ func webGrantsMain(args []string) int {
 	request := flags.String("request", "", "durable intent UUID")
 	username := flags.String("username", "", "enrolled username filter")
 	limit := flags.Int("limit", 100, "page size")
+	nextOnly := flags.Bool("next", false, "list next permissions without cancelled/started grant history")
 	after := flags.String("after", "", "exclusive grant cursor")
 	before := flags.Int64("before", 0, "history before revision")
 	revision := flags.Int64("revision", 0, "current numeric grant revision")
@@ -237,8 +245,11 @@ func webGrantsMain(args []string) int {
 		if !regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`).MatchString(w[2]) || *limit < 1 || *limit > 200 || (*after != "" && !id.MatchString(*after)) {
 			return usage("invalid exam/page/cursor")
 		}
-		allowed["username"], allowed["limit"], allowed["after"] = true, true, true
+		allowed["username"], allowed["limit"], allowed["after"], allowed["next"] = true, true, true, true
 		b["exam"], b["limit"] = w[2], *limit
+		if *nextOnly {
+			b["next_only"] = true
+		}
 		if *username != "" {
 			if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,31}$`).MatchString(*username) {
 				return usage("invalid username")
@@ -416,6 +427,7 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 		Exam     string `json:"exam"`
 		Username string `json:"username"`
 		Limit    int    `json:"limit"`
+		NextOnly bool   `json:"next_only"`
 	}
 	if json.Unmarshal(b, &scope) != nil {
 		return fail
@@ -449,6 +461,9 @@ func validateGrantResult(op string, body any, raw json.RawMessage, agent string)
 		rows = []grantResult{row}
 	}
 	for _, g := range rows {
+		if scope.NextOnly && g.Status != "AVAILABLE" && g.Status != "PENDING_NATIVE" {
+			return fail
+		}
 		if (g.Issuance != "ENROLLMENT" && g.Issuance != "REVIEWED_NEW" && g.Issuance != "ADDITIONAL_TEMPLATE" && g.Issuance != "PRACTICE") || g.IssuanceOrder < 1 || ((g.Exam == "sandbox") != (g.Issuance == "PRACTICE")) {
 			return fail
 		}

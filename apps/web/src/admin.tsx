@@ -103,6 +103,7 @@ export function Admin({
   const [unusedStudents, setUnusedStudents] = useState<{
     students: string[];
     action: "edit" | "cancel";
+    notEnrolled: string[];
   } | null>(null);
   const [inlineAttempt, setInlineAttempt] = useState<{
     username: string;
@@ -334,6 +335,10 @@ export function Admin({
   const candidates = visible.filter((s: any) => s.enrollment);
   const keyOf = (a: any) => a.username;
   const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
+  const notEnrolled =
+    chosen.length === candidates.length
+      ? visible.filter((s: any) => !s.enrollment).map((s: any) => s.username)
+      : [];
   const selectedClocks = chosen.flatMap((s: any) =>
     s.attempts.filter((a: any) => clockEditable(a, clock)),
   );
@@ -636,7 +641,7 @@ export function Admin({
               <label className="admin-select-page">
                 <input
                   type="checkbox"
-                  aria-label="Select all students on this page"
+                  aria-label="Select enrolled students on this page"
                   checked={
                     !!candidates.length && chosen.length === candidates.length
                   }
@@ -652,7 +657,7 @@ export function Admin({
                     )
                   }
                 />
-                Select page
+                Select enrolled students ({candidates.length})
               </label>
             </div>
             {!!chosen.length && (
@@ -666,6 +671,11 @@ export function Admin({
                     {chosen.length}{" "}
                     {chosen.length === 1 ? "student" : "students"} selected
                   </strong>
+                  {!!notEnrolled.length && (
+                    <small>
+                      {notEnrolled.length} not enrolled; not selected.
+                    </small>
+                  )}
                 </span>
                 <AdminMenu
                   label="Selected students"
@@ -728,6 +738,7 @@ export function Admin({
                         setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
                           action: "edit",
+                          notEnrolled,
                         }),
                     },
                     {
@@ -737,6 +748,7 @@ export function Admin({
                         setUnusedStudents({
                           students: chosen.map((s: any) => s.username),
                           action: "cancel",
+                          notEnrolled,
                         }),
                     },
                   ]}
@@ -1273,6 +1285,7 @@ export function Admin({
           actor={actor}
           username={grantsFor ?? undefined}
           students={unusedStudents?.students}
+          notEnrolled={unusedStudents?.notEnrolled}
           initialAction={unusedStudents?.action ?? grantAction}
           initialGrantId={grantFocus ?? undefined}
           onClose={() => {

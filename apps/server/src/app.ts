@@ -2698,6 +2698,11 @@ export async function createApp(
       ...req.query,
       exam: req.params.exam,
       ...(req.query.limit ? { limit: Number(req.query.limit) } : {}),
+      ...(req.query.next_only === "true"
+        ? { next_only: true }
+        : req.query.next_only === "false"
+          ? { next_only: false }
+          : {}),
     });
   });
   app.get("/api/admin/grants/:id", async (req: any) => {

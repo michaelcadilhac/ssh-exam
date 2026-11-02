@@ -201,11 +201,11 @@ class FastUI(unittest.TestCase):
 
     def stopped_calls(self): return [args for args in self.calls if args[:3] == ['/usr/bin/systemctl', 'stop', 'ssh-exam.service']]
 
-    def reviewed_web_cli(self):
+    def reviewed_web_cli(self, scope='latest-student-settings-and-cli-help-v1', compatible=False):
         self.video_schema()
         self.release.update(revision='1'*40,old_cli_sha256='9'*64)
-        self.release['fast_ui'].update(mode='reviewed-web-cli',reviewed_scope='latest-student-settings-and-cli-help-v1',
-            qualified_source='1'*40,previous_reader_policy_compatible=False,unchanged_backend_protocol_native=False)
+        self.release['fast_ui'].update(mode='reviewed-web-cli',reviewed_scope=scope,
+            qualified_source='1'*40,previous_reader_policy_compatible=compatible,unchanged_backend_protocol_native=False)
         (self.bundle/'release.json').write_text(json.dumps(self.release))
         assets=json.loads((self.bundle/'image-assets.json').read_text());assets['source']='1'*40
         (self.bundle/'image-assets.json').write_text(json.dumps(assets))
@@ -249,6 +249,39 @@ class FastUI(unittest.TestCase):
         self.release['fast_ui'].pop('mode');self.release['fast_ui']['unchanged_backend_protocol_native']=True
         (self.bundle/'release.json').write_text(json.dumps(self.release))
         _,error=self.cli('prepare',expect=1);self.assertIn('CLI change requires',error)
+
+    def test_bulk_next_read_scope_public_apply_preserves_all_current_authority(self):
+        self.reviewed_web_cli(scope='bulk-next-attempt-read-v1',compatible=True)
+        before=self.history();self.cli('prepare');result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(self.history(),before);self.assertEqual(self.current,self.new['config_id'])
+        self.assertTrue(self.running);self.assertEqual(result['video_pause']['status'],'RELEASED')
+        self.assertEqual((self.data/'submissions/protected.tar').read_bytes(),b'protected historical submission')
+
+    def test_bulk_next_read_scope_compatible_rollback_reopens_current_data_and_resumes_online(self):
+        self.reviewed_web_cli(scope='bulk-next-attempt-read-v1',compatible=True)
+        before=self.history();self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)
+        result,_=self.cli('rollback')
+        self.assertEqual(result['phase'],'ROLLED_BACK_GATED');self.assertTrue(result['current_database_preserved'])
+        self.assertEqual(self.current,self.old['config_id']);self.assertEqual(self.history(),before)
+        result,_=self.cli('reopen')
+        self.assertEqual(result['phase'],'ONLINE_ROLLED_BACK');self.assertEqual(result['video_pause']['status'],'RELEASED')
+        self.assertNotIn('ssh_exam_rollout_refuse',self.site.read_text())
+        stops=len(self.stopped_calls());result,_=self.cli('resume')
+        self.assertEqual(result['phase'],'ONLINE_ROLLED_BACK');self.assertEqual(len(self.stopped_calls()),stops)
+        self.assertEqual(self.history(),before);self.assertTrue(self.running)
+
+    def test_bulk_next_read_scope_still_requires_new_installed_cli_before_apply(self):
+        self.reviewed_web_cli(scope='bulk-next-attempt-read-v1',compatible=True);self.cli('prepare')
+        command=self.command
+        def old_cli(arguments,timeout=30):
+            raw=command(arguments,timeout)
+            if str(arguments[0])=='/synthetic/read-only-native-guard':
+                value=json.loads(raw);value['installed_cli_sha256']=self.release['old_cli_sha256'];return json.dumps(value)
+            return raw
+        with patch.object(self,'command',old_cli):_,error=self.cli('apply',expect=1)
+        self.assertIn('Native history/configuration/cohort changed',error)
+        self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
 
     def public_failure(self, code=503, retry='60'):
         headers=Message()

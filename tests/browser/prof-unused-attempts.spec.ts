@@ -154,8 +154,10 @@ async function fixture(
     if (path.endsWith("/grants"))
       return route.fulfill({
         json: {
-          grants: grants.filter(
-            (g) => g.username === url.searchParams.get("username"),
+          grants: grants.filter((g) =>
+            url.searchParams.get("next_only") === "true"
+              ? ["AVAILABLE", "PENDING_NATIVE"].includes(g.status)
+              : g.username === url.searchParams.get("username"),
           ),
           next: null,
         },
@@ -290,7 +292,7 @@ async function fixture(
     await page.getByLabel("Selected exam").selectOption(exam);
     await page
       .getByRole("checkbox", {
-        name: "Select all students on this page",
+        name: "Select enrolled students on this page",
         exact: true,
       })
       .check();
@@ -630,9 +632,8 @@ test("bulk changes use each selected student's sole unused attempt without a sec
   await expect(
     dialog.getByRole("button", { name: "Select unused attempts", exact: true }),
   ).toHaveCount(0);
-  await expect(dialog).toContainText(
-    "Changing the next attempt for 2 selected students.",
-  );
+  await expect(dialog).toContainText("3 students selected");
+  await expect(dialog).toContainText("2 next attempts can be changed");
   await expect(dialog).toContainText("No next attempt for: carol.");
   expect(f.state.writes).toHaveLength(0);
   expect(f.state.grants).toEqual(f.original);
@@ -667,7 +668,7 @@ test("started historical attempts show their status without a selection checkbox
   page,
 }) => {
   const f = await fixture(page),
-    dialog = await f.open(),
+    dialog = await f.openPersonal("carol", false),
     history = dialog.getByRole("region", {
       name: "Attempts for carol",
       exact: true,
@@ -797,7 +798,7 @@ test("bulk cancellation directly reviews every selected next attempt regardless 
   await page.getByLabel("Selected exam").selectOption(f.settings.id);
   await page
     .getByRole("checkbox", {
-      name: "Select all students on this page",
+      name: "Select enrolled students on this page",
       exact: true,
     })
     .check();
@@ -1074,6 +1075,7 @@ test("an older saved-work attempt retries setup in its own screen and only nativ
   await page.setViewportSize({ width: 430, height: 1000 });
   const f = await fixture(page, "setup"),
     dialog = await f.open();
+  await dialog.getByText("Attempt settings (2)", { exact: true }).click();
   const row = dialog
     .getByRole("region", { name: "Attempts for amy", exact: true })
     .getByRole("article");

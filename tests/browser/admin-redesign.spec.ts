@@ -869,7 +869,7 @@ for (const width of [1280, 430])
     await page.screenshot({ path: info.outputPath(`admin-${width}.png`) });
     await expect(
       page.getByRole("checkbox", {
-        name: "Select all students on this page",
+        name: "Select enrolled students on this page",
         exact: true,
       }),
     ).toBeVisible();
@@ -906,7 +906,7 @@ test("student selection names excluded students and changes only eligible curren
   ).toHaveCount(0);
   await page
     .getByRole("checkbox", {
-      name: "Select all students on this page",
+      name: "Select enrolled students on this page",
       exact: true,
     })
     .check();
@@ -1315,7 +1315,7 @@ test("partial clock failures stay reviewable and retries reuse the same request 
   s.failedClock = s.rows[1].attempts[0].id;
   await page
     .getByRole("checkbox", {
-      name: "Select all students on this page",
+      name: "Select enrolled students on this page",
       exact: true,
     })
     .check();

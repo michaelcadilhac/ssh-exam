@@ -111,6 +111,17 @@ async function fixture(
         },
       });
     if (path.endsWith("/grants")) {
+      if (url.searchParams.get("next_only") === "true") {
+        queries.push("next_only");
+        return route.fulfill({
+          json: {
+            grants: grants.filter((g) =>
+              ["AVAILABLE", "PENDING_NATIVE"].includes(g.status),
+            ),
+            next: null,
+          },
+        });
+      }
       const username = url.searchParams.get("username")!;
       queries.push(username);
       // A complete export follows even an empty first page.
@@ -223,7 +234,7 @@ async function openCancellation(page: Page) {
 async function selectPage(page: Page) {
   await page
     .getByRole("checkbox", {
-      name: "Select all students on this page",
+      name: "Select enrolled students on this page",
       exact: true,
     })
     .check();
@@ -239,7 +250,7 @@ test("cancel next attempts in one dialog with named omissions, protected history
   await expect(page.getByRole("dialog")).toHaveCount(1);
   await expect(dialog).toContainText("No next attempt for: carol.");
   await expect(dialog.getByRole("checkbox")).toHaveCount(0);
-  expect(s.queries).toEqual(["amy", "amy", "bob", "carol", "dave"]);
+  expect(s.queries).toEqual(["next_only"]);
   await expect(dialog).toContainText("3 attempts");
   await dialog
     .getByRole("button", { name: "Cancel selected attempts", exact: true })
@@ -301,7 +312,7 @@ test("add time has one dialog and names selected students whose clocks will not 
   const s = await fixture(page, "empty");
   await page
     .getByRole("checkbox", {
-      name: "Select all students on this page",
+      name: "Select enrolled students on this page",
       exact: true,
     })
     .check();

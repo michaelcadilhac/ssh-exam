@@ -21,6 +21,16 @@ CURRENT data; reopening or online-resume of that old policy is refused. Use
 compatible forward repair. Omitted mode retains all existing UI-only restrictions;
 this narrow reviewed scope is not a general backend-change override.
 
+The second exact scope `bulk-next-attempt-read-v1` covers the read-only current-
+attempt list filter, matching `examctl web grants list EXAM --next` flag and bulk-editor
+loading/count display. It retains schema37 and the existing management operation,
+authorization, native worker and durable authority. Set previous-reader
+compatibility true only for the prior latest-settings reader, whose policy and
+CURRENT data remain compatible; its guarded rollback may then reopen. A new CLI
+against an older server must refuse the unsupported read flag actionably. The
+matched CLI must still be installed and independently guarded before apply.
+Unknown scope names remain refused; this does not authorize other backend changes.
+
 The entry point is `scripts/deploy-web-ui`. Preparation does expensive work while
 the current gateway remains online: verify/load the qualified image, retain the
 previous image, render maintenance responses, copy small configuration and warm

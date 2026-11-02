@@ -627,7 +627,7 @@ export class AttemptGrants {
     const b = grantList.parse(input);
     const rows = this.store.db
       .prepare(
-        `SELECT id FROM attempt_grants WHERE agent=? AND exam=? ${b.username ? "AND username=?" : ""} AND id>? ORDER BY id LIMIT ?`,
+        `SELECT id FROM attempt_grants WHERE agent=? AND exam=? ${b.username ? "AND username=?" : ""} ${b.next_only ? "AND status IN ('AVAILABLE','PENDING_NATIVE')" : ""} AND id>? ORDER BY id LIMIT ?`,
       )
       .all(
         this.agent,

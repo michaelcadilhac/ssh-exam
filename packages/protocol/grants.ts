@@ -43,6 +43,7 @@ export const grantList = z
     username: username.optional(),
     after: z.string().uuid().optional(),
     limit: z.number().int().min(1).max(200).default(100),
+    next_only: z.boolean().default(false),
   })
   .strict();
 export const grantShow = z

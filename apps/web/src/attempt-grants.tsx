@@ -137,6 +137,7 @@ export function AttemptGrantsDialog({
   exam,
   username,
   students,
+  notEnrolled = [],
   actor,
   initialGrantId,
   embedded = false,
@@ -148,6 +149,7 @@ export function AttemptGrantsDialog({
   exam: string;
   username?: string;
   students?: string[];
+  notEnrolled?: string[];
   actor: string;
   initialGrantId?: string;
   embedded?: boolean;
@@ -166,6 +168,7 @@ export function AttemptGrantsDialog({
     [editingSnapshot, setEditingSnapshot] = useState<any>(null),
     [loaded, setLoaded] = useState(false),
     [catalogReady, setCatalogReady] = useState(false),
+    [bulkDetails, setBulkDetails] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [review, setReview] = useState<ChangeRow[] | null>(() =>
@@ -197,75 +200,83 @@ export function AttemptGrantsDialog({
     [statusRefresh, setStatusRefresh] = useState(0),
     [histories, setHistories] = useState<Record<string, any>>({});
   const load = async (signal?: AbortSignal) => {
-    const values = await allGrants(exam, names, signal);
-    if (initialGrantId && !values.some((g) => g.id === initialGrantId)) {
-      const g = await api(
-        `/admin/grants/${initialGrantId}`,
-        undefined,
-        undefined,
-        signal,
-      );
-      if (g.exam !== exam || !names.includes(g.username))
-        throw Error("The selected settings belong to another student or exam.");
-      values.push(g);
-    }
-    if (signal?.aborted) return;
-    if (
-      names.some(
-        (name) =>
-          values.filter(
-            (g) =>
-              g.username === name &&
-              ["AVAILABLE", "PENDING_NATIVE"].includes(g.status),
-          ).length > 1,
-      )
-    )
-      throw Error(
-        "More than one next attempt was returned for a student. Refresh before making changes.",
-      );
-    setCatalog(values);
-    setCatalogReady(true);
-    setLoaded(true);
-    const labels = values
-      .filter(
-        (g) =>
-          g.work.kind === "saved" &&
-          (grantUnused(g) || g.id === initialGrantId),
-      )
-      .slice(0, 200);
-    if (labels.length) {
-      const snapshots = await readStatus(
-        labels.map((g) => ({ id: g.id, revision: g.revision })),
-        signal,
-      );
-      if (!signal?.aborted) setSnapshots((old) => ({ ...old, ...snapshots }));
-    }
-    setSelected((old) => {
-      const eligible = values.filter(grantUnused),
-        current = new Set(
-          [...old].filter((id) => eligible.some((g) => g.id === id)),
+    setLoaded(false);
+    setCatalogReady(false);
+    try {
+      const values = await allGrants(exam, names, signal, !username);
+      if (initialGrantId && !values.some((g) => g.id === initialGrantId)) {
+        const g = await api(
+          `/admin/grants/${initialGrantId}`,
+          undefined,
+          undefined,
+          signal,
         );
-      if (!username) return new Set(eligible.map((g) => g.id));
+        if (g.exam !== exam || !names.includes(g.username))
+          throw Error(
+            "The selected settings belong to another student or exam.",
+          );
+        values.push(g);
+      }
+      if (signal?.aborted) return;
       if (
-        !loaded &&
-        !review &&
-        !old.size &&
-        initialGrantId &&
-        eligible.some((g) => g.id === initialGrantId)
+        names.some(
+          (name) =>
+            values.filter(
+              (g) =>
+                g.username === name &&
+                ["AVAILABLE", "PENDING_NATIVE"].includes(g.status),
+            ).length > 1,
+        )
       )
-        current.add(initialGrantId);
-      else if (
-        !loaded &&
-        !review &&
-        !initialGrantId &&
-        !old.size &&
-        names.length === 1 &&
-        eligible.length === 1
-      )
-        current.add(eligible[0].id);
-      return current;
-    });
-    return values;
+        throw Error(
+          "More than one next attempt was returned for a student. Refresh before making changes.",
+        );
+      setCatalog(values);
+      setCatalogReady(true);
+      setLoaded(true);
+      setSelected((old) => {
+        const eligible = values.filter(grantUnused),
+          current = new Set(
+            [...old].filter((id) => eligible.some((g) => g.id === id)),
+          );
+        if (!username) return new Set(eligible.map((g) => g.id));
+        if (
+          !loaded &&
+          !review &&
+          !old.size &&
+          initialGrantId &&
+          eligible.some((g) => g.id === initialGrantId)
+        )
+          current.add(initialGrantId);
+        else if (
+          !loaded &&
+          !review &&
+          !initialGrantId &&
+          !old.size &&
+          names.length === 1 &&
+          eligible.length === 1
+        )
+          current.add(eligible[0].id);
+        return current;
+      });
+      const labels = values
+        .filter(
+          (g) =>
+            g.work.kind === "saved" &&
+            (grantUnused(g) || g.id === initialGrantId),
+        )
+        .slice(0, 200);
+      if (username && labels.length) {
+        const snapshots = await readStatus(
+          labels.map((g) => ({ id: g.id, revision: g.revision })),
+          signal,
+        );
+        if (!signal?.aborted) setSnapshots((old) => ({ ...old, ...snapshots }));
+      }
+      return values;
+    } finally {
+      if (!signal?.aborted) setLoaded(true);
+    }
   };
   const loadExams = async (signal?: AbortSignal) => {
     try {
@@ -521,6 +532,10 @@ export function AttemptGrantsDialog({
     targets = username && editingGrant ? [editingGrant] : selectedGrants,
   ) => {
     if (busy) return;
+    if (!catalogReady) {
+      setError("Wait for attempt settings to load before reviewing.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -1017,38 +1032,68 @@ export function AttemptGrantsDialog({
       </ul>
     );
   };
-  const noUnused = loaded
+  const reviewedNames = new Set(review?.map((row) => row.grant.username));
+  const noUnused = catalogReady
     ? names.filter(
-        (name) => !catalog.some((g) => g.username === name && grantUnused(g)),
+        (name) =>
+          !reviewedNames.has(name) &&
+          !catalog.some(
+            (g) =>
+              g.username === name &&
+              ["AVAILABLE", "PENDING_NATIVE"].includes(g.status),
+          ),
       )
     : [];
-  const attemptGroups = names.map((name) => (
-    <section key={name} aria-label={`Attempts for ${name}`}>
-      <h3>{name}</h3>
-      {catalog
-        .filter(
-          (g) =>
-            g.username === name && (grantUnused(g) || g.id === initialGrantId),
+  const inProgress = catalogReady
+    ? names.filter(
+        (name) =>
+          !reviewedNames.has(name) &&
+          catalog.some(
+            (g) =>
+              g.username === name &&
+              ["AVAILABLE", "PENDING_NATIVE"].includes(g.status) &&
+              !grantUnused(g),
+          ),
+      )
+    : [];
+  const notIncluded =
+    review && catalogReady
+      ? names.filter(
+          (name) =>
+            !reviewedNames.has(name) &&
+            !noUnused.includes(name) &&
+            !inProgress.includes(name),
         )
-        .map(grantRow)}
-      {catalog.some(
-        (g) =>
-          g.username === name && !grantUnused(g) && g.id !== initialGrantId,
-      ) && (
-        <details>
-          <summary>Unavailable attempts and history</summary>
-          {catalog
-            .filter(
-              (g) =>
-                g.username === name &&
-                !grantUnused(g) &&
-                g.id !== initialGrantId,
-            )
-            .map(grantRow)}
-        </details>
-      )}
-    </section>
-  ));
+      : [];
+  const attemptGroups = () =>
+    names.map((name) => (
+      <section key={name} aria-label={`Attempts for ${name}`}>
+        <h3>{name}</h3>
+        {catalog
+          .filter(
+            (g) =>
+              g.username === name &&
+              (grantUnused(g) || g.id === initialGrantId),
+          )
+          .map(grantRow)}
+        {catalog.some(
+          (g) =>
+            g.username === name && !grantUnused(g) && g.id !== initialGrantId,
+        ) && (
+          <details>
+            <summary>Unavailable attempts and history</summary>
+            {catalog
+              .filter(
+                (g) =>
+                  g.username === name &&
+                  !grantUnused(g) &&
+                  g.id !== initialGrantId,
+              )
+              .map(grantRow)}
+          </details>
+        )}
+      </section>
+    ));
   const currentStatus = (row: ChangeRow) =>
     snapshots[row.grant.id]?.grant ? (
       <p>
@@ -1076,8 +1121,9 @@ export function AttemptGrantsDialog({
     if (!catalogReady || initializedAction.current) return;
     initializedAction.current = true;
     if (review || (!autoEdit && !initialAction)) return;
-    if (!username && initialAction === "cancel") {
-      void makeReview("revoke", catalog.filter(grantUnused));
+    if (!username) {
+      if (initialAction === "cancel")
+        void makeReview("revoke", catalog.filter(grantUnused));
       return;
     }
     if (!username || !initialGrantId) {
@@ -1110,8 +1156,28 @@ export function AttemptGrantsDialog({
             {error}
           </p>
         )}
+        {!username && (
+          <p>
+            <strong>
+              {names.length}{" "}
+              {names.length === 1 ? "student selected" : "students selected"}.
+            </strong>
+          </p>
+        )}
+        {!!notEnrolled.length && (
+          <p>
+            {notEnrolled.length} not selected (not enrolled):{" "}
+            {notEnrolled.join(", ")}.
+          </p>
+        )}
         {!!noUnused.length && (
           <p>No next attempt for: {noUnused.join(", ")}.</p>
+        )}
+        {!!inProgress.length && (
+          <p>Attempt already in progress for: {inProgress.join(", ")}.</p>
+        )}
+        {!!notIncluded.length && (
+          <p>Not included in these changes: {notIncluded.join(", ")}.</p>
         )}
         {!review && (
           <form
@@ -1144,19 +1210,21 @@ export function AttemptGrantsDialog({
             )}
             {!username && (
               <>
-                <p>
-                  Changing the next attempt for {selectedNames.length}{" "}
-                  {selectedNames.length === 1
-                    ? "selected student"
-                    : "selected students"}
-                  .
-                </p>
+                {catalogReady && (
+                  <p>
+                    {selectedGrants.length}{" "}
+                    {selectedGrants.length === 1
+                      ? "next attempt can"
+                      : "next attempts can"}{" "}
+                    be changed.
+                  </p>
+                )}
                 {selectedGrants.length > 200 && (
                   <p role="alert">Choose up to 200 unused attempts.</p>
                 )}
               </>
             )}
-            {username && !editingGrant && attemptGroups}
+            {username && !editingGrant && attemptGroups()}
             {(!username || editingGrant) && (
               <>
                 {editingGrant && (
@@ -1164,7 +1232,7 @@ export function AttemptGrantsDialog({
                 )}
                 <fieldset
                   key={editingGrant?.id ?? "bulk-editor"}
-                  disabled={busy || !selectedGrants.length}
+                  disabled={busy || (catalogReady && !selectedGrants.length)}
                 >
                   {exam === "sandbox" && (
                     <p>
@@ -1546,7 +1614,15 @@ export function AttemptGrantsDialog({
                 </fieldset>
               </>
             )}
-            {!username && attemptGroups}
+            {!username && catalogReady && !!catalog.length && (
+              <details
+                open={bulkDetails}
+                onToggle={(e) => setBulkDetails(e.currentTarget.open)}
+              >
+                <summary>Attempt settings ({selectedGrants.length})</summary>
+                {bulkDetails && attemptGroups()}
+              </details>
+            )}
           </form>
         )}
         {review && (
@@ -1637,6 +1713,7 @@ export function AttemptGrantsDialog({
               className="primary"
               disabled={
                 busy ||
+                !catalogReady ||
                 (!!username && !editingGrant) ||
                 !selectedGrants.length ||
                 selectedGrants.length > 200 ||
@@ -1650,7 +1727,10 @@ export function AttemptGrantsDialog({
             {!username && (
               <button
                 disabled={
-                  busy || !selectedGrants.length || selectedGrants.length > 200
+                  busy ||
+                  !catalogReady ||
+                  !selectedGrants.length ||
+                  selectedGrants.length > 200
                 }
                 onClick={() => void makeReview("revoke")}
               >
@@ -1698,7 +1778,11 @@ export function AttemptGrantsDialog({
             disabled={busy || !loaded}
             onClick={() => {
               setError("");
-              void load().catch((e) => setError(e.message));
+              void load()
+                .then(() => {
+                  if (!username) setStatusRefresh((n) => n + 1);
+                })
+                .catch((e) => setError(e.message));
             }}
           />
         )}

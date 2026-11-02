@@ -152,6 +152,7 @@ func webScriptingMain(args []string) int {
 	var exams scriptStrings
 	f.Var(&exams, "exam", "attempt exam filter; repeat for multiple exams")
 	limit := f.Int("limit", 100, "page size 1..200")
+	nextOnly := f.Bool("next", false, "list next permissions without cancelled/started history; grants list only")
 	after := f.String("after", "", "exclusive cursor")
 	username := f.String("username", "", "exact username")
 	query := f.String("q", "", "username substring")
@@ -294,6 +295,12 @@ func webScriptingMain(args []string) int {
 			body["exam"] = exams[0]
 			if w[0] == "grants" && *username != "" {
 				body["username"] = *username
+			}
+			if w[0] == "grants" {
+				allowed["next"] = true
+				if *nextOnly {
+					body["next_only"] = true
+				}
 			}
 			if w[0] == "attempts" {
 				allowed["view"], allowed["q"] = true, true

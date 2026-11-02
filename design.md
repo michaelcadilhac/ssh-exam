@@ -5,6 +5,15 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November2 LOCAL bulk-next fix: use indexed current-only grant pages rather than
+per-student historical reads. The bulk draft is interactive while loading; fresh
+metadata is required before Review. Distinguish selected, editable and omitted
+students, including explicit enrolled-only page selection when historical students
+remain visible. examctl grants list --next uses the same read filter. No automatic
+enrollment/issuance, mutation policy, schema or native execution change. Local
+verification/release artifacts are complete; not pushed or deployed. Exact scope,
+read-only production diagnosis and evidence: docs/bulk-next-attempt-loading.md.
+
 November2 admin revision, DEPLOYED AND ONLINE: one **Next attempt** row shows saved dates,
 time, webcam and starting files and opens an inline editor. One **Allow attempt**
 workflow replaces first/extra distinctions; selected students' sole unused

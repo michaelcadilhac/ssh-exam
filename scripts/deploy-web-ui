@@ -107,16 +107,16 @@ class Rollout:
             raise ValueError('Unknown deployment mode; use ui or the explicitly reviewed web/CLI scope')
         if mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') != 'latest-student-settings-and-cli-help-v1'
+                    or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or type(self.settings.get('previous_reader_policy_compatible')) is not bool):
-                raise ValueError('Reviewed web/CLI mode requires schema37, the exact latest-settings/help-only scope, qualified source and explicit previous-reader compatibility')
+                raise ValueError('Reviewed web/CLI mode requires schema37, an exact registered reviewed scope, qualified source and explicit previous-reader compatibility')
             if self.settings.get('unchanged_backend_protocol_native') is True:
                 raise ValueError('Reviewed backend semantics changed; do not attest unchanged UI-only contracts')
             if (any(not re.fullmatch('[a-f0-9]{64}', self.release[key]) for key in ('old_cli_sha256', 'cli_sha256'))
                     or self.release['old_cli_sha256'] == self.release['cli_sha256']):
-                raise ValueError('Reviewed help-only CLI transition requires distinct qualified old/new binary digests')
+                raise ValueError('Reviewed CLI transition requires distinct qualified old/new binary digests')
         else:
             if self.settings.get('unchanged_backend_protocol_native') is not True:
                 raise ValueError('Review and attest unchanged backend/protocol/native contracts before this UI-only workflow')

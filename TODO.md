@@ -1,5 +1,15 @@
 # Deferred work
 
+November2 BULK NEXT-ATTEMPT LOADING — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
+Replace serial student-history requests with the existing grants list's indexed
+current-only filter and matching examctl --next workflow. Shared drafts open
+immediately; selected and editable counts remain distinct, and no-permission/claim
+omissions are named. Midterm's70visible rows include4 unenrolled historical students;
+the66 selected students are enrolled. The page/dialog now make this scope explicit.
+No enrollment, grant, clock, history or claim policy changed. Focused/affected
+browser/HTTP/actualCLI/image and scoped deployment qualification pass; current
+production is unchanged. Evidence and proposed rollout: docs/bulk-next-attempt-loading.md.
+
 November2 ADMIN NEXT ATTEMPT — DEPLOYED AND ONLINE:
 The instructor requested one visible/editable Next attempt, one creation workflow,
 and latest saved configuration instead of independent student defaults. Main-page

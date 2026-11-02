@@ -23,42 +23,57 @@ export const grantUnused = (grant: any) =>
   Array.isArray(grant.claims) &&
   grant.claims.every((claim: any) => claim.state === "CANCELLED");
 
-// The selection dialogs need a complete result, not only the first metadata page.
+// Bulk reads use current permissions for the whole exam, never one history
+// request per selected student. Personal inspection retains complete history.
 export async function allGrants(
   exam: string,
   usernames: string[],
   signal?: AbortSignal,
+  nextOnly = false,
 ) {
   const rows: any[] = [],
     seen = new Set<string>(),
+    wanted = new Set(usernames),
     cursors = new Set<string>();
-  for (const username of [...new Set(usernames)]) {
+  for (const username of nextOnly ? [null] : [...wanted]) {
     let after: string | null = null;
     cursors.clear();
     do {
+      const query = new URLSearchParams({ limit: "200" });
+      if (username) query.set("username", username);
+      if (nextOnly) query.set("next_only", "true");
+      if (after) query.set("after", after);
       const page = await api(
-        `/admin/exams/${encodeURIComponent(exam)}/grants?username=${encodeURIComponent(username)}&limit=200${after ? `&after=${encodeURIComponent(after)}` : ""}`,
+        `/admin/exams/${encodeURIComponent(exam)}/grants?${query}`,
         undefined,
         undefined,
         signal,
       );
-      if (!Array.isArray(page.grants) || !("next" in page))
-        throw Error("Could not load allowed attempts. Refresh and try again.");
+      if (!page || !Array.isArray(page.grants) || !("next" in page))
+        throw Error("Could not load attempt settings. Refresh and try again.");
       for (const row of page.grants) {
         if (
+          !row ||
           row.exam !== exam ||
-          row.username !== username ||
+          typeof row.username !== "string" ||
+          (!nextOnly && row.username !== username) ||
           typeof row.id !== "string" ||
-          seen.has(row.id)
+          seen.has(row.id) ||
+          (nextOnly &&
+            (!["AVAILABLE", "PENDING_NATIVE"].includes(row.status) ||
+              !Array.isArray(row.claims) ||
+              row.claims.some((c: any) => !c || typeof c.state !== "string") ||
+              !row.settings ||
+              !row.work))
         )
           throw Error(
-            "The attempt list changed. Refresh before making changes.",
+            "Attempt settings changed or are incomplete. Refresh before making changes.",
           );
         seen.add(row.id);
-        rows.push(row);
+        if (!nextOnly || wanted.has(row.username)) rows.push(row);
       }
       if (
-        rows.length > 10000 ||
+        seen.size > 10000 ||
         (page.next != null &&
           (typeof page.next !== "string" ||
             !page.next ||
@@ -71,5 +86,7 @@ export async function allGrants(
       if (after) cursors.add(after);
     } while (after);
   }
-  return rows;
+  return nextOnly
+    ? rows.sort((a, b) => a.username.localeCompare(b.username))
+    : rows;
 }

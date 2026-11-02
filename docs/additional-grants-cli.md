@@ -1,5 +1,14 @@
 # Additional attempts and workspace sources
 
+Next-attempt listing (local development, not deployed):
+`examctl web grants list EXAM --next --all --format table --fields username,status`
+uses the existing authenticated paginated listing with `next_only: true`. It reads
+only AVAILABLE/PENDING_NATIVE permissions, so bulk inspection does not retrieve
+cancelled or started grant history. Claimed setups and closed dates remain visible;
+the filter is metadata inspection, not proof that an attempt can be changed or
+started. Omit `--next` for full history. The matching web server must support the
+typed filter; unsupported or unconfirmed results refuse without a history fallback.
+
 November1 dashboard simplification (local development, not deployed): a new review
 copies time, webcam, terminal count and collection limits from the student's saved
 attempt configuration. Current unused settings take precedence; otherwise the

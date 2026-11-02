@@ -1,4 +1,19 @@
-# Current checkpoint — admin next-attempt revision DEPLOYED AND ONLINE
+# Current checkpoint — bulk next-attempt loading fix, LOCAL COMPLETE
+
+Current request: speed up Select-page→Edit next attempts and explain70visible/66.
+Final read-only checks show66 enrolled students and4 unenrolled history-only rows;
+the original page control quietly selected only the66. Labels now explicitly state
+enrolled-only selection and name excluded historical accounts. The independent
+70-enrolled/66-editable case also has complete counts and named permission/claim
+omissions. Bulk loading uses one current-only exam query per200-item page, immediate
+drafting and lazy cards; fresh Review/Apply guards and exact retries remain intact.
+Local qualification COMPLETE:6 focused/34 editor-bulk/7 parent browser cases,
+50 affected app tests, actual CLI races/TLS, types/frontend and schema37 image smoke
+pass. Reviewed operator scope passes34 workflows. No production mutation, push or
+deployment authorized. Evidence/rollout plan: docs/bulk-next-attempt-loading.md.
+Candidate: `var/collection-tests/bulk-next-attempt-image.qcrhb83s`; image Config
+`06556283b063a648ead751a635b608d036d71c20cfc4221c9df5e597fe0a9234`.
+The production revision below remains online and unchanged.
 
 November 2 at 00:02:48 Chicago (06:02:48UTC): source2694afd and matched CLI587f2b2b…
 are pushed/deployed under the explicit instruction and approved ten-minute budget.
