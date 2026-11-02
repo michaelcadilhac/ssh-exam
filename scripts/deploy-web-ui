@@ -22,6 +22,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sqlite3
 import stat
@@ -101,10 +102,26 @@ class Rollout:
     def validate(self):
         if self.release['schema'] != self.release['old_schema'] or self.release['schema'] < 36:
             raise ValueError('UI-only deployment requires the same qualified schema, at least36')
-        if self.settings.get('unchanged_backend_protocol_native') is not True:
-            raise ValueError('Review and attest unchanged backend/protocol/native contracts before this UI-only workflow')
-        if self.release['old_cli_sha256'] != self.release['cli_sha256']:
-            raise ValueError('A CLI change requires the broader matched-release workflow')
+        mode = self.settings.get('mode', 'ui')
+        if mode not in ('ui', 'reviewed-web-cli'):
+            raise ValueError('Unknown deployment mode; use ui or the explicitly reviewed web/CLI scope')
+        if mode == 'reviewed-web-cli':
+            if (self.release['schema'] != 37
+                    or self.settings.get('reviewed_scope') != 'latest-student-settings-and-cli-help-v1'
+                    or self.settings.get('qualified_source') != self.release['revision']
+                    or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
+                    or type(self.settings.get('previous_reader_policy_compatible')) is not bool):
+                raise ValueError('Reviewed web/CLI mode requires schema37, the exact latest-settings/help-only scope, qualified source and explicit previous-reader compatibility')
+            if self.settings.get('unchanged_backend_protocol_native') is True:
+                raise ValueError('Reviewed backend semantics changed; do not attest unchanged UI-only contracts')
+            if (any(not re.fullmatch('[a-f0-9]{64}', self.release[key]) for key in ('old_cli_sha256', 'cli_sha256'))
+                    or self.release['old_cli_sha256'] == self.release['cli_sha256']):
+                raise ValueError('Reviewed help-only CLI transition requires distinct qualified old/new binary digests')
+        else:
+            if self.settings.get('unchanged_backend_protocol_native') is not True:
+                raise ValueError('Review and attest unchanged backend/protocol/native contracts before this UI-only workflow')
+            if self.release['old_cli_sha256'] != self.release['cli_sha256']:
+                raise ValueError('A CLI change requires the broader matched-release workflow')
         for field in ('project', 'data', 'environment', 'nginx_site', 'nginx_main', 'shared_store', 'previous_image_archive', 'previous_image_assets'):
             if not Path(self.settings[field]).is_absolute():
                 raise ValueError('Use absolute protected paths: '+field)
@@ -651,6 +668,9 @@ class Rollout:
         self.inputs_unchanged()
         if self.record['phase'] != 'ROLLED_BACK_GATED':
             raise ValueError('reopen requires a verified ROLLED_BACK_GATED state')
+        if (self.settings.get('mode') == 'reviewed-web-cli'
+                and self.settings['previous_reader_policy_compatible'] is not True):
+            raise ValueError('Previous image lacks the reviewed latest-settings policy; keep admissions fenced and CURRENT data, and use compatible forward repair')
         self.native(); self.verified(self.release['old_image_config_id']); self.public(False, previous=True)
         self.save('ROLLED_BACK_GATED', opening_image=self.release['old_image_config_id'], opening_previous=True,
                   opening_site='normal.conf', opening_phase='ONLINE_ROLLED_BACK')
@@ -692,6 +712,11 @@ class Rollout:
     def resume_online(self):
         if self.record['phase'] not in ('VERIFIED_GATED', 'ROLLED_BACK_GATED', 'ONLINE', 'ONLINE_ROLLED_BACK', 'CANCELLED'):
             raise ValueError('No verified opening receipt; reinventory without stopping work')
+        if (self.settings.get('mode') == 'reviewed-web-cli'
+                and self.settings['previous_reader_policy_compatible'] is not True
+                and self.record['opening_image'] == self.release['old_image_config_id']
+                and self.record['opening_phase'] != 'CANCELLED'):
+            raise ValueError('Previous image cannot reopen under the reviewed latest-settings policy; preserve CURRENT data and use compatible forward repair')
         self.online_identity(self.record['opening_image'])
         self.public(True, previous=self.record['opening_previous'])
         self.save(self.record['opening_phase'], recovered_online_read_only=True)

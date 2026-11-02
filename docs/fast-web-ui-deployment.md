@@ -9,6 +9,18 @@ This command is for a separately authorized application-host update
 whose schema, backend/protocol/native contracts and installed CLI remain unchanged.
 It never restarts a class-server service or changes exam records to pass a guard.
 
+An explicit `fast_ui.mode: "reviewed-web-cli"` additionally supports the separately
+reviewed schema37 latest-student-settings change and a help-only CLI transition.
+It requires `reviewed_scope: "latest-student-settings-and-cli-help-v1"`, a full
+`qualified_source` matching the release/image source, distinct pinned old/new CLI
+digests, and explicit `previous_reader_policy_compatible`. Do not set the unchanged
+backend attestation for this mode. Install and independently guard the matched CLI
+before apply; native services remain unchanged. When previous-reader compatibility
+is false, rollback may select that image only behind the admission fence with
+CURRENT data; reopening or online-resume of that old policy is refused. Use
+compatible forward repair. Omitted mode retains all existing UI-only restrictions;
+this narrow reviewed scope is not a general backend-change override.
+
 The entry point is `scripts/deploy-web-ui`. Preparation does expensive work while
 the current gateway remains online: verify/load the qualified image, retain the
 previous image, render maintenance responses, copy small configuration and warm

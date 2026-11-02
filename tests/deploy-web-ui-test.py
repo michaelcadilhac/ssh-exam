@@ -201,6 +201,55 @@ class FastUI(unittest.TestCase):
 
     def stopped_calls(self): return [args for args in self.calls if args[:3] == ['/usr/bin/systemctl', 'stop', 'ssh-exam.service']]
 
+    def reviewed_web_cli(self):
+        self.video_schema()
+        self.release.update(revision='1'*40,old_cli_sha256='9'*64)
+        self.release['fast_ui'].update(mode='reviewed-web-cli',reviewed_scope='latest-student-settings-and-cli-help-v1',
+            qualified_source='1'*40,previous_reader_policy_compatible=False,unchanged_backend_protocol_native=False)
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+        assets=json.loads((self.bundle/'image-assets.json').read_text());assets['source']='1'*40
+        (self.bundle/'image-assets.json').write_text(json.dumps(assets))
+
+    def test_reviewed_web_cli_public_prepare_apply_preserves_schema37_and_current_authority(self):
+        self.reviewed_web_cli();before=self.history();self.cli('prepare')
+        result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(self.history(),before);self.assertEqual(self.current,self.new['config_id'])
+        self.assertTrue(self.running);self.assertEqual(result['video_pause']['status'],'RELEASED')
+        self.assertFalse(any(args[:3]==['/usr/bin/systemctl','restart','ssh-exam.service'] for args in self.calls))
+
+    def test_reviewed_web_cli_old_reader_rollback_is_gated_and_reopening_refuses(self):
+        self.reviewed_web_cli();before=self.history();self.cli('prepare');self.fail_start=True
+        self.cli('apply',expect=1);result,_=self.cli('rollback')
+        self.assertEqual(result['phase'],'ROLLED_BACK_GATED');self.assertTrue(result['current_database_preserved'])
+        self.assertEqual(self.current,self.old['config_id']);self.assertEqual(self.history(),before)
+        _,error=self.cli('reopen',expect=1)
+        self.assertIn('latest-settings policy',error);self.assertIn('ssh_exam_rollout_refuse',self.site.read_text())
+        self.assertTrue(self.running);self.assertTrue((self.data/deploy.deployment_pause.NAME).exists())
+
+    def test_reviewed_web_cli_old_opening_receipt_cannot_resume_as_compatible_policy(self):
+        self.reviewed_web_cli();self.cli('prepare');self.fail_start=True
+        self.cli('apply',expect=1);self.cli('rollback')
+        record=json.loads((self.state/'status.json').read_text())
+        record.update(opening_image=self.old['config_id'],opening_previous=True,opening_site='normal.conf',opening_phase='ONLINE_ROLLED_BACK')
+        deploy.atomic_json(self.state/'status.json',record)
+        self.site.write_bytes((self.state/'normal.conf').read_bytes())
+        stops=len(self.stopped_calls());_,error=self.cli('resume',expect=1)
+        self.assertIn('latest-settings policy',error);self.assertEqual(len(self.stopped_calls()),stops)
+        self.assertEqual(self.current,self.old['config_id']);self.assertTrue((self.data/deploy.deployment_pause.NAME).exists())
+
+    def test_reviewed_web_cli_manifest_scope_is_explicit_and_default_ui_does_not_expand(self):
+        self.reviewed_web_cli();original=json.loads(json.dumps(self.release))
+        for number,(key,value) in enumerate((('mode','unknown'),('reviewed_scope','anything'),('qualified_source','2'*40),('unchanged_backend_protocol_native',True))):
+            self.state=self.root/('invalid-mode-'+str(number));self.release=json.loads(json.dumps(original))
+            self.release['fast_ui'][key]=value;(self.bundle/'release.json').write_text(json.dumps(self.release))
+            self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+            self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+        self.state=self.root/'default-ui';self.release=json.loads(json.dumps(original))
+        self.release['fast_ui'].pop('mode');self.release['fast_ui']['unchanged_backend_protocol_native']=True
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+        _,error=self.cli('prepare',expect=1);self.assertIn('CLI change requires',error)
+
     def public_failure(self, code=503, retry='60'):
         headers=Message()
         if retry is not None:headers['Retry-After']=retry
