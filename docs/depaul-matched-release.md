@@ -109,3 +109,42 @@ The next separate milestone must qualify a compatible forward repair against
 synthetic existing tombstones/purge jobs, all startup/retention writers and this
 held CURRENT-data state. Do not reset production rows, replace the preservation
 baseline, or exempt changed authority to obtain a pass.
+
+## Forward repair qualification
+
+The subsequent explicit “Go on” authorizes the forward repair and completion.
+Only the operator verifier and its physical-root argument change; the frozen
+application image and native cohort stay unchanged. The verifier keeps all
+tombstones and other authority exact. It permits only one completed, due recheck
+of an existing verified-absent job, with the actual capped counter increment,
+clean terminal fields, consistent hourly scheduling and deployment-bounded time.
+It independently proves the corresponding live directory absent through two
+no-follow descriptor walks, checking root identity, privacy and database owner.
+Pending/retry/running jobs, new/deleted jobs, changed tombstones, retained paths,
+permission errors, symlinks and replacement races refuse. This changes no deletion,
+retention, deadline or student policy.
+
+The real startup fixture now seeds a due purge recheck, closed interruptions,
+historical mail, a nonexpired preview and paused video bookkeeping, and inventories
+all startup writers. It must reproduce the original verifier refusal, preserve
+the original snapshot and resume CURRENT data without another start. Its mutation
+controls first prove a valid baseline, then change one authority at a time.
+The first extended run refused its synthetic inherited02700 root; a read-only
+production check confirms10001:10001/0700, and only the synthetic fixture was
+corrected to match. Worker/root permissions and production data remain unchanged.
+
+Local focused30, prior deployment37, matched deployment11 and native-proof bridge9
+pass. The actual populated-image test passes with63.246seconds of real startup,
+13 signed exchanges, original-verifier refusal,11 mutation refusals with positive
+baselines, real10001/0700 physical proof and zero additional starts at resume.
+Original snapshot/current ledger/protected bytes are unchanged; exact owned
+container and synthetic keys/data cleanup pass. Evidence:
+`var/collection-tests/matched-purge-startup-final.20261102a/stdout.log`.
+The earlier negative helper also exposed a fixture SQLite URI-open flag error;
+its clone/ATTACH and all11 mutation statements were preflighted before the final
+run. No production predicate was relaxed to correct either fixture.
+The new private code stage is
+`/data/ssh-exam-depaul-20261102-f6eb051343/forward-code-fd137a697dc9`.
+The original staged operators, prepared-input manifest, snapshot, proof start,
+release/nonce and image/native hashes remain untouched. This is a separately
+frozen operator revision, not a replacement preservation baseline.

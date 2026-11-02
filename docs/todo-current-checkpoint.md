@@ -1,4 +1,27 @@
-# Current checkpoint — matched deployment BLOCKED, SITE IN MAINTENANCE
+# Current checkpoint — forward repair IN PROGRESS, SITE IN MAINTENANCE
+
+User instructed “Go on” after the held cutover. Bounded milestones:
+1. Read-only comparison: only66 pre-existing purge-job rechecks differ, besides
+   already permitted native snapshots/events and paired empty polls/audit. No
+   tombstone or other authority/monitoring metadata difference was observed.
+2. Qualify a narrow preservation correction: identical deletion authority,
+   completed due rechecks only, independent proof of absent recording directories;
+   refuse unrelated changes. Exercise the actual frozen image with populated
+   tombstone/purge rows and forward resume from its already-running state.
+3. Freeze and stage new operators separately; keep original prepared inputs,
+   snapshot, release/image/native pins and CURRENT data intact. Refresh native
+   proof; resume once through all original guards; verify public reopening.
+No runtime image/native rebuild or installation is planned. Final reopening,
+public asset/native/CLI checks and the minimal deployed checkpoint are required.
+Frozen correction: preservationfc97b185… and controllerb52a161e…; focused30,
+prior operator37, matched11 and bridge9 pass. Actual63.246s startup/recovery passes, including original-verifier refusal,
+11 independent negatives with positive baselines and zero extra web starts.
+Owned fixture cleanup verified. All qualification is complete; execute the new
+operator resume against the unchanged held state after a fresh native after-proof.
+The live READ-ONLY precheck passes all41 preserved-table contracts,66 physical
+absence proofs, original prepared inputs/configuration/native receipt and media
+coverage6785files/970286469bytes with zero new bytes required. New operators are
+separately staged at forward-code-fd137a697dc9 under the existing marco stage.
 
 November2 at20:32:48UTC: web resume refused `Existing authority changed:
 monitoring_purges`. Current phase NATIVE_UPDATED; candidate web is running behind

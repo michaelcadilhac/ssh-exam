@@ -1,7 +1,8 @@
 """Actual schema37 SQLite preservation checks; synthetic rows, no host access."""
 from pathlib import Path
 from importlib.util import spec_from_file_location, module_from_spec
-import hashlib,json,sqlite3,tempfile,unittest
+import hashlib,json,os,sqlite3,tempfile,unittest
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 SPEC=spec_from_file_location('recording_nonce_preservation',ROOT/'scripts/web-ui-ops/preservation.py')
@@ -27,7 +28,9 @@ class NoncePreservation(unittest.TestCase):
         for n,expiry in enumerate(EXPIRES):self.db.execute('INSERT INTO agent_management_nonces VALUES(?,?,?)',('class','expired-'+str(n),expiry))
         self.db.execute('INSERT INTO agent_management_nonces VALUES(?,?,?)',('class','live',OBSERVED+5000))
         self.db.commit()
-        with sqlite3.connect(self.path/'previous.sqlite') as previous:self.db.backup(previous)
+        previous=sqlite3.connect(self.path/'previous.sqlite')
+        try:self.db.backup(previous)
+        finally:previous.close()
         self.db.execute('ATTACH DATABASE ? AS previous',(str(self.path/'previous.sqlite'),))
 
     def tearDown(self):self.db.close();self.temp.cleanup()
@@ -85,5 +88,90 @@ class NoncePreservation(unittest.TestCase):
             self.db.execute('ROLLBACK TO change');self.db.execute('RELEASE change')
 
     def test_unchanged_database_needs_no_poll(self):self.assertEqual(self.verify()['audited_empty_queue_polls'],0)
+
+
+class PurgePreservation(NoncePreservation):
+    def setUp(self):
+        super().setUp()
+        self.monitoring=self.path/'monitoring';self.monitoring.mkdir(mode=0o700)
+        old=STARTED-4000000
+        for schema in ('main','previous'):
+            self.db.execute('INSERT INTO '+schema+'.tombstones VALUES(?,?)',('history',old))
+            self.db.execute('INSERT INTO '+schema+'.monitoring_purges VALUES(?,?,?,?,?,?,?,?)',('history','verified-absent',None,10,old+3600000,old,old,None))
+        new=STARTED+1000
+        self.db.execute("UPDATE main.monitoring_purges SET tries=11,updated=?,verified=?,next=?",(new,new,new+3600000))
+    def verify(self):return MODULE.verify(self.db,STARTED,OBSERVED,'class',self.monitoring)
+    def test_completed_recheck_preserves_authority_and_proves_actual_absence(self):
+        proof=self.verify()
+        self.assertEqual(proof['physical_purge_rechecks'],1)
+        self.assertEqual(len(proof['preserved_tables']),41)
+        self.assertEqual(self.db.execute('SELECT * FROM main.tombstones').fetchall(),self.db.execute('SELECT * FROM previous.tombstones').fetchall())
+    def test_changed_ledger_requires_explicit_root_but_unchanged_call_stays_compatible(self):
+        with self.assertRaisesRegex(AssertionError,'independent physical'):MODULE.verify(self.db,STARTED,OBSERVED,'class')
+        self.db.execute('UPDATE main.monitoring_purges SET (status,owner,tries,next,updated,verified,error)=(SELECT status,owner,tries,next,updated,verified,error FROM previous.monitoring_purges)')
+        self.assertEqual(MODULE.verify(self.db,STARTED,OBSERVED,'class')['physical_purge_rechecks'],0)
+    def test_incomplete_failed_forged_or_undue_rechecks_refuse(self):
+        changes=["status='running'","status='retry'","status='pending'","owner='foreign'","error='worker-exit'","tries=10","tries=12","updated=verified+1","next=verified+3599999",f'verified={STARTED-1},updated={STARTED-1},next={STARTED-1+3600000}',f'verified={OBSERVED+1},updated={OBSERVED+1},next={OBSERVED+1+3600000}']
+        for change in changes:
+            self.db.execute('SAVEPOINT change');self.db.execute('UPDATE main.monitoring_purges SET '+change)
+            with self.subTest(change=change),self.assertRaises(AssertionError):self.verify()
+            self.db.execute('ROLLBACK TO change');self.db.execute('RELEASE change')
+        self.db.execute('UPDATE previous.monitoring_purges SET next=?,updated=?,verified=?',(OBSERVED+3600000,OBSERVED,OBSERVED))
+        with self.assertRaisesRegex(AssertionError,'not due'):self.verify()
+    def test_new_or_removed_jobs_tombstones_and_history_refuse(self):
+        changes=["DELETE FROM main.monitoring_purges","INSERT INTO main.monitoring_purges SELECT 'other',status,owner,tries,next,updated,verified,error FROM main.monitoring_purges","DELETE FROM main.tombstones","UPDATE main.tombstones SET deleted=deleted+1","INSERT INTO main.tombstones VALUES('new',1)","UPDATE main.attempts SET deadline=deadline+1"]
+        for change in changes:
+            self.db.execute('SAVEPOINT change')
+            try:
+                self.db.execute(change)
+                with self.subTest(change=change),self.assertRaises(AssertionError):self.verify()
+            finally:self.db.execute('ROLLBACK TO change');self.db.execute('RELEASE change')
+    def test_absence_requires_real_private_root_and_canonical_target(self):
+        for mode in (0,0o755):
+            self.monitoring.chmod(mode)
+            with self.subTest(mode=mode),self.assertRaises((AssertionError,OSError)):self.verify()
+        self.monitoring.chmod(0o700)
+        self.db.execute("UPDATE main.monitoring_purges SET attempt='../escape'");self.db.execute("UPDATE previous.monitoring_purges SET attempt='../escape'")
+        with self.assertRaisesRegex(AssertionError,'Unsafe physical'):self.verify()
+    def test_existing_or_linked_target_refuses_and_real_removal_retries_safely(self):
+        target=self.monitoring/'history';target.mkdir()
+        with self.assertRaisesRegex(AssertionError,'still exists'):self.verify()
+        target.rmdir();target.symlink_to(self.path/'missing')
+        with self.assertRaisesRegex(AssertionError,'still exists'):self.verify()
+        target.unlink();self.assertEqual(self.verify()['physical_purge_rechecks'],1)
+    def test_symlink_root_or_ancestor_is_not_absence_proof(self):
+        self.monitoring.rename(self.path/'original');self.monitoring.symlink_to(self.path/'original',target_is_directory=True)
+        with self.assertRaises(OSError):self.verify()
+        self.monitoring.unlink();(self.path/'original').rename(self.monitoring)
+        linked=self.path/'linked';linked.symlink_to(self.path,target_is_directory=True)
+        with self.assertRaises((AssertionError,OSError)):MODULE._physical_absence(self.db,linked/'monitoring',['history'])
+    def test_inaccessible_target_is_not_absence(self):
+        original=os.stat
+        def denied(path,*args,**kwargs):
+            if path=='history' and 'dir_fd' in kwargs:raise PermissionError('synthetic inaccessible target')
+            return original(path,*args,**kwargs)
+        with patch.object(MODULE.os,'stat',side_effect=denied),self.assertRaises(PermissionError):self.verify()
+    def test_target_created_between_probes_refuses(self):
+        original=os.stat;created=False
+        def race(path,*args,**kwargs):
+            nonlocal created
+            try:return original(path,*args,**kwargs)
+            except FileNotFoundError:
+                if path=='history' and 'dir_fd' in kwargs and not created:
+                    created=True;(self.monitoring/'history').mkdir()
+                raise
+        with patch.object(MODULE.os,'stat',side_effect=race),self.assertRaisesRegex(AssertionError,'still exists'):self.verify()
+        self.assertTrue(created)
+    def test_root_replaced_between_probes_refuses(self):
+        original=os.stat;replaced=False
+        def race(path,*args,**kwargs):
+            nonlocal replaced
+            try:return original(path,*args,**kwargs)
+            except FileNotFoundError:
+                if path=='history' and 'dir_fd' in kwargs and not replaced:
+                    replaced=True;self.monitoring.rename(self.path/'original');self.monitoring.mkdir(mode=0o700)
+                raise
+        with patch.object(MODULE.os,'stat',side_effect=race),self.assertRaisesRegex(AssertionError,'root changed'):self.verify()
+        self.assertTrue(replaced)
 
 if __name__=='__main__':unittest.main()

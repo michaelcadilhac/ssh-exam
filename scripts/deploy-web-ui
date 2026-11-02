@@ -566,7 +566,7 @@ class Rollout:
                 raise ValueError('Database integrity/referral check refused')
             if db.execute('SELECT max(version) FROM schema_version').fetchone()[0] != self.release['schema']:
                 raise ValueError('Schema changed; UI-only rollback cannot discard that authority')
-            return preservation.verify(db, self.record['proof_started_ms'], observed, json.loads((self.project/'deploy/config/config.json').read_text())['agent']['id'])
+            return preservation.verify(db, self.record['proof_started_ms'], observed, json.loads((self.project/'deploy/config/config.json').read_text())['agent']['id'], self.data/'monitoring')
         finally:
             db.close()
 

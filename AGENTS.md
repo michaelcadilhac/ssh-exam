@@ -36,6 +36,11 @@
   freeze its artifacts and qualify the exact installation, migration, preservation,
   recovery and reopening workflow. Exercise signed-poll expiry during startup and
   actual proxy reload timing; fast mocks do not establish production timing.
+  Inventory every startup/background database writer. Seed existing tombstones
+  and due physical-purge rechecks as well as recording jobs in the real startup
+  fixture; empty tables do not qualify preservation against those writers. Prove
+  recovery from an already-running candidate without replacing its snapshot or
+  clearing durable changes.
 - Treat "push and deploy" as execution of that prepared release, not another
   development milestone. Missing controllers, unqualified guards, unresolved
   recovery or unqualified cold preparation mean NOT READY. Report the specific
