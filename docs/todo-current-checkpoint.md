@@ -1,3 +1,38 @@
+# Current checkpoint — direct next-attempt editing COMPLETE LOCALLY, NOT DEPLOYED
+
+Validated source: backend/native/CLI `51b311c`; interface/browser `e950b6a`.
+Click time/webcam/start dates to edit in place; Starting files opens a small picker.
+Camera is Required/Off. Student rows have relevant plus/bin actions. Bulk Add names
+existing/claimed exclusions; bulk Edit offers only time/webcam/dates/files. Exact
+unknown-request recovery survives hidden or consumed rows. History stays permanent.
+
+Approved intentional policy change: terminal/file limits apply exam-wide to all
+unopened, setup AND running attempts on one Save, without a student confirmation
+list. Fresh authenticated current policy is separate from frozen personal settings,
+grants and deadlines. Existing panes/buffers survive a lower terminal limit. Each
+collection job/archive retains its own verified bounds; failures preserve frozen
+work and account holds. Unavailable current bounds delay new collection, never
+execution revocation at the original deadline. Existing archives verify offline.
+
+Verification: application cohort166 passes/one existing opt-in skip; policyHTTP22
+and student-safe realSSH/WS3 pass. Final rebuilt-WASM browser72/72 passes, plus
+focused16 and unused-editor22; full fixture types and production build pass. Prof
+accepted 320/430/1280px images. Native whole-core and affected projection/CLI races,
+builds/vet/31Python checks pass. Guarded disposable csc-sys qualification passes
+actual loaded service support, monitored SSH/panes, collection retry, archive
+integrity and original deadline; exact guest cleanup/host preservation verified.
+Actual native CLI/callback projections pass the production TypeScript validator.
+The real stripped-job receipt defect is fixed; failed evidence and fixture/oracle
+corrections remain recorded. Details: docs/inline-next-attempt-controls.md.
+
+All original ten dirty documentation screenshots are preserved. No production
+installation/configuration/student-record change, push or deployment. No open
+implementation decision or local feature blocker remains. The prior e5e10f3
+prepared image does NOT contain these changes. Future deployment needs a newly
+qualified matched web + all four native executables and loaded agent/watchdog/
+source-worker cohort, a full drain and compatible CURRENT-data recovery. Existing
+relay/consolidated service arrangement stays unchanged. Do not reopen older writers.
+
 # Current checkpoint — one exam student list COMPLETE LOCALLY, NOT DEPLOYED
 
 Implemented/validated source: `e5e10f305dd02619d0e936b198b459b07e68e669`.

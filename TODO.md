@@ -1,5 +1,21 @@
 # Current follow-up
 
+November2 DIRECT NEXT-ATTEMPT CONTROLS — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
+Inline time/webcam/dates and a starting-files cell/picker; compact accessible
+plus/bin/camera controls and aligned bulk actions. Shared exam parameters move out
+of per-attempt editing. The instructor requires live shared terminal/file limits for unopened, setup and
+running attempts, with no student confirmation list; immutable timing/source
+snapshots and archive-pinned collection bounds remain protected. Preserve snapshot/deadline/history/retry/source enforcement.
+Final72 affected real-WASM browser cases, application/HTTP/WS tests, native/CLI
+races/builds and guarded disposable SSH/systemd/collection qualification pass.
+The real archive receipt projection bug is fixed and cross-language validated.
+Protected history, original deadlines, open buffers, frozen work and account holds
+remain intact. No production change, push or deployment. Matched installation and
+recovery qualification remain a separate release gate. Evidence and operator plan:
+docs/inline-next-attempt-controls.md.
+
+# Current follow-up
+
 November2 ONE EXAM STUDENT LIST — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
 Unify dashboard, management/CLI lists, CSV and bulk selection, including historical
 and permission-only students. Remove enrollment labels. User approved keeping every

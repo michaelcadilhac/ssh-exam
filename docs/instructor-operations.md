@@ -1,5 +1,45 @@
 # Instructor operations
 
+## Current local follow-up: direct editing
+
+These changes are implemented and tested locally; they are not yet installed.
+
+Click the time, camera or start dates on a student's **Next attempt** row to edit
+that value. **Save** applies it; **Cancel** discards the draft. Click **Starting
+files** to choose starter files, an empty workspace or a specific earlier attempt.
+Earlier attempts show their exam, attempt number and date; the selection does not
+silently substitute a different attempt later.
+
+The camera icon means **Required**; its crossed state means **Off**, with no webcam
+capture offered to the student. The row's bin cancels its next attempt after a
+warning. The student's **+** adds a next attempt and is absent while one already
+exists, including during setup. Deleting a student is offered only before any
+attempt or permission history exists; history remains permanent.
+
+For several students, select their rows and use **Selected students**. **Add next
+attempts** names students skipped because they already have one. **Edit next
+attempts** changes only time, webcam, dates or starting files. Running clock changes
+remain separate under **Add time to current attempts**. Reuse a saved unconfirmed
+change to resolve a missing reply; do not recreate its request.
+
+**Exam settings** owns terminal and file-size limits. Saving these applies to all
+unopened, setup and running attempts, without a student confirmation list. Lowering
+the terminal count preserves open terminals and blocks additional panes above the
+new limit. A collection job uses the limits verified when that job starts; a
+published archive keeps those limits permanently. A failed collection preserves
+work and account restrictions: raise the limits if appropriate, then explicitly
+retry. Neither Save nor retry refunds time, reopens completed work or truncates
+files. Older loaded class-server components cause an actionable refusal before any
+setting changes; a matched, fully drained upgrade is required first.
+
+The matching CLI workflow is `examctl web exams show EXAM`, followed by
+`examctl web exams update EXAM` with the reviewed revision and the desired
+`--terminals`, `--collection-file-mib` or `--collection-total-mib` flags.
+`examctl web exams help` documents revision/request retry rules and these live
+settings. Per-attempt time, webcam, dates and files stay under `web grants help`.
+
+The following dated interface sections describe earlier releases.
+
 ## October 31 deployed interface
 
 The UI reviewed with Prof is deployed; see [release record](prof-ui-deployment.md).

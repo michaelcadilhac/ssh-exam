@@ -5,6 +5,23 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November 2 direct-edit follow-up, IMPLEMENTED/TESTED LOCALLY: each student's sole
+Next attempt exposes clickable time, webcam and start dates, plus a starting-files
+column with a small picker. No attempt-level Edit settings or student Actions menu.
+Camera is Required or Off. Bulk controls offer the same four settings; Add skips
+students who already have a next attempt, including one claimed for setup.
+
+Intentional policy change: terminal and collection limits are exam-wide and apply
+to unopened, setup and running attempts on one Save, without a per-student review.
+A separate authenticated exam instance/revision controls new pane admission and
+pins each collection job's bounds; immutable grant settings, deadlines, webcam
+rules and source identity remain authoritative for their respective purposes.
+Lower terminal limits preserve existing panes and editor buffers. Published
+archives retain their own verified bounds; legacy archives keep their original
+interpretation. A matching live agent/watchdog/source-worker capability is required
+before changing limits for current permissions or unfinished attempts. This is not
+a web-only release and is not deployed. Plan: docs/inline-next-attempt-controls.md.
+
 November2 LOCAL bulk-next fix: use indexed current-only grant pages rather than
 per-student historical reads. The bulk draft is interactive while loading; fresh
 metadata is required before Review. Distinguish selected, editable and omitted
