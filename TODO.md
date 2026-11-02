@@ -1,22 +1,24 @@
-# Current follow-up — bulk settings status COMPLETE LOCALLY
+# Current follow-up — bulk settings status DEPLOYED
 
 November2: revised saved-work attempts show Updating attempt, with matching retry
 and error text; initial saved-work issuance retains Preparing saved work. Student
 waiting copy covers both. Camera edits preserve their source and time settings;
 fresh exact-revision native confirmation still gates availability. No pin reuse,
 policy/protocol/schema/native/CLI change. Status/signed HTTP, all62 affected browser
-cases, full types/build and preserved-image checks pass. Local only, not pushed or
-deployed; replay fix896a15c is also still local. Details and evidence:
+cases, full types/build and preserved-image checks pass. Pushed/deployed November2
+at17:34:57 Chicago, with replay896a15c. Exact-image/preservation/public acceptance
+pass; no migration or native restart. Details and evidence:
 docs/automatic-saved-work-setup.md and docs/todo-current-checkpoint.md.
 
-# Previous local follow-up — replay loading continuity COMPLETE LOCALLY
+# Current follow-up — replay loading continuity DEPLOYED
 
 November2: keep the previously decoded frame visible until the next JPEG/video
 sample is ready, with its actual timestamp and stable preview dimensions. Loading
 and errors overlay it; genuine gaps and hide/close/deletion clear private pixels.
 Resolution changes no longer resize the preview. Final focused3, affected31 and
 final10 playback browser checks, types/build and visual inspection pass. No backend,
-native, CLI, policy or production changes; not pushed/deployed. Evidence and scope:
+native, CLI or policy change. Pushed/deployed with status89bb35b at17:34:57 Chicago,
+November2. Exact-image preservation/public checks pass. Evidence and scope:
 docs/review-on-demand.md and docs/todo-current-checkpoint.md.
 
 # Previous follow-up — synchronized video review DEPLOYED

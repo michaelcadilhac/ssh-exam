@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-November2 status-copy follow-up, IMPLEMENTED/TESTED LOCALLY (not deployed): saved-
+November2 status-copy follow-up, DEPLOYED at17:34:57 Chicago: saved-
 work revisions show Updating attempt with matching retry/error labels; first
 issuance retains Preparing saved work. Student waiting copy describes preparation
 of the next attempt generally. Source, allowance, revision and native-confirmation
@@ -13,7 +13,7 @@ authority are unchanged: no earlier receipt or worker exit can make new settings
 available. No protocol/schema/native/CLI or admission-policy change. Verification:
 docs/automatic-saved-work-setup.md and current checkpoint.
 
-November2 replay-loading follow-up, IMPLEMENTED/TESTED LOCALLY (not deployed):
+November2 replay-loading follow-up, DEPLOYED at17:34:57 Chicago:
 retain the last decoded frame with its own capture timestamp while a replacement
 downloads/seeks; swap only when ready. Preview geometry stays fixed across loading,
 errors, retries and resolution changes. Genuine gaps remain explicit and private

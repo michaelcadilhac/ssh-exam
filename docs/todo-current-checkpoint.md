@@ -1,4 +1,25 @@
-# Current milestone — bulk settings wording COMPLETE LOCALLY, NOT DEPLOYED
+# Current checkpoint — replay/status fixes DEPLOYED AND ONLINE
+
+November2 at17:34:57 Chicago (23:34:57UTC): source89bb35b is pushed/deployed,
+including replay896a15c and status89bb35b. Exact image Confige60c3972/schema37.
+Fresh zero-session/exam guards, all41 preservation contracts and six public TLS/
+focus/mobile views pass; all8 shipped assets match and anonymous video reads401.
+No schema/native/CLI/admission change or native restart. Owned video pause released.
+Recovery reuses970286469 recording bytes, copies no new media, and retains current
+90.4MB database plus291492 small-file bytes. Ten original dirty images preserved.
+
+Exact-image schema/video smoke and real64-second signed-startup/purge/CURRENT-data
+resume qualification pass. Installer/proxy recovery evidence is reused for unchanged
+hashes; all236 final browser inputs match. Preparation8.89seconds, apply60.12seconds,
+cutover57.56seconds; total elapsed includes packaging/qualification and is recorded
+in the completion receipt. No operation or deployment blocker remains.
+
+Evidence: var/collection-tests/ui-fixes-release.20261102a/. Private marco code:
+/var/tmp/ssh-exam-recording-ui-fixes-20261102-89bb35b2751f-web/code; state/snapshot:
+/data/ssh-exam-ui-fixes-20261102-89bb35b2751f-state. Preserve CURRENT data for all
+recovery; no stale database restore. Details: docs/ui-fixes-deployment.md.
+
+# Previous local milestone — bulk settings wording COMPLETE LOCALLY
 
 Entry: instructor Selected students → Edit next attempts → webcam change. Every
 saved-work revision genuinely requires fresh revision-bound native confirmation;

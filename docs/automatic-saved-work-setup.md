@@ -1,13 +1,14 @@
 # Automatic saved-work setup
 
-November2 local wording follow-up (NOT DEPLOYED): revised saved-work permissions
+November2 wording follow-up (DEPLOYED at17:34:57 Chicago): revised saved-work permissions
 show **Updating attempt**, with **Retry update** and matching failure/status text.
 Initial saved-work issuance still shows **Preparing saved work**. Later starting-
 file changes also count as attempt updates. The student waiting message now says
 their next attempt is getting ready, without claiming that unchanged files are
 being rebuilt. Three status units, two signed source/admission HTTP cases, focused
 bulk/retry checks and all62 affected browser workflows pass. Full build and full
-fixture types pass. No production access, push or deployment.
+fixture types pass. Deployed source89bb35b/schema37; exact-image, preservation and
+public checks pass with no native restart. See docs/ui-fixes-deployment.md.
 
 Each revision still needs fresh authenticated class-server confirmation. Its
 native retention identity covers the exact saved settings as well as source,

@@ -1,6 +1,6 @@
 # Synchronized recording review
 
-November2 loading-continuity follow-up: IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED.
+November2 loading-continuity follow-up: DEPLOYED at17:34:57 Chicago, source89bb35b.
 Keep the last successfully decoded sample visible until its replacement is ready,
 with the displayed sample's actual timestamp. Loading/errors overlay the preview;
 its geometry stays stable through retries and changes in capture resolution. This
@@ -22,9 +22,10 @@ assertion confused Retry's deliberate scrolling with a resize: pending-load chec
 still assert the full rectangle, while post-click checks assert content dimensions.
 Failure receipts remain. Evidence: var/collection-tests/replay-loading-continuity.20261102a/.
 This changes only browser rendering; backend/native/CLI/enforcement are unchanged,
-so no redundant native races or server suites were run. No production action.
-Future deployment uses the unchanged-contract UI scope and qualified image/normal
-guards and CURRENT-data recovery; a fresh deployment instruction is required.
+so no redundant native races or server suites were run for this fix. It shipped
+with the status-copy change using the unchanged-contract UI scope, exact-image
+qualification, normal guards and CURRENT-data recovery. Preservation/public checks
+pass; no native restart. Deployment record: docs/ui-fixes-deployment.md.
 
 November2,2026. Pushed and deployed at16:23:58 Chicago in source04fa394/schema37.
 This supersedes the independent screenshot sliders. Exact-image preservation and
