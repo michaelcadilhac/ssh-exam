@@ -166,7 +166,7 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                             assert request(path, method=method)[0] == 200
                             assert request(path, method=method, tls=False)[0] == 308
                         assert request(path, source_address='127.0.0.1', method=method)[0] == 200
-                for path in ('/api/agent/status', '/api/student/attempts/synthetic/status', '/api/student/attempts/synthetic/finish', '/health/live'):
+                for path in ('/api/agent/status', '/api/agent/exam-execution-policy', '/api/student/attempts/synthetic/status', '/api/student/attempts/synthetic/finish', '/health/live'):
                     assert request(path)[0] == 200, path
                 refusal_status, refusal_headers, refusal_body = request('/ordinary-refusal')
                 assert refusal_status == 401 and refusal_body == b'ordinary refusal' and refusal_headers['X-Synthetic-Upstream'] == '1'

@@ -34,6 +34,18 @@ try {
           name: "Try again",
           exact: true,
         });
+        assert.deepEqual(
+          await retry.evaluate((element) => ({
+            foreground: getComputedStyle(element).color,
+            background: getComputedStyle(element).backgroundColor,
+            page: getComputedStyle(document.body).backgroundColor,
+          })),
+          {
+            foreground: "rgb(255, 255, 255)",
+            background: "rgb(0, 61, 165)",
+            page: "rgb(229, 236, 246)",
+          },
+        );
         await retry.focus({ timeout: 3000 });
         assert(
           await retry.evaluate((element) => element === document.activeElement),
