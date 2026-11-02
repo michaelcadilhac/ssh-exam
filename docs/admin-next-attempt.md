@@ -1,7 +1,7 @@
 # One next attempt on the instructor dashboard
 
-November 1, 2026. Implemented and validated locally at `2694afd`; no push or
-deployment authorized. The candidate image and CLI source manifests are bound to
+Implemented and validated November1 at `2694afd`, then pushed and deployed under
+explicit authorization November2 at00:02:48 Chicago. The image and CLI manifests bind
 that implementation commit, separately from later documentation-only commits.
 
 The instructor requested an interface that matches the existing single-unused-
@@ -82,13 +82,24 @@ Verification evidence:
   tested build; pinned production WASM remains unchanged. Original dirty screenshots
   are preserved.
 
-Deployment remains separately authorized work. There is no schema migration or
+The separately authorized deployment is complete and online. There is no schema migration or
 native-service consolidation/restart in this revision. Backend default selection
 and dashboard projections changed, and CLI help changes its binary digest:
 **do not attest unchanged backend/CLI for the stock UI-only deployment command**.
-Before a production cutover, qualify the matched same-schema web/CLI procedure,
-fresh idle/native guards, current media-cache coverage and fresh database/small-file
-backup. Keep the site online during preparation. An older issuer lacks the new
+The matched same-schema procedure was qualified through31 workflow cases, then
+executed with fresh idle/native guards, current media-cache coverage and a fresh
+database/small-file backup. Preparation stayed online; cutover lasted67.873seconds.
+All41authority tables/110web/175native histories and native PIDs/configuration remain
+unchanged; all8public assets,4browser focus checks and a signed installedCLI read
+of existing synthetic history pass. Root-private state/snapshot on marco:
+`/data/ssh-exam-admin-next-20261101-yat3hkyl`; CLI/state/config backup on csc-sys:
+`/var/backups/ssh-exam/recording-storage-cli-firco8k1`. Exact receipt and preserved
+qualification/acceptance failure: `var/collection-tests/admin-next-rollout.yat3hkyl`.
+The installed Config is `e65741425bc5b2d2dd36dc0eb9077d9d7c1d3d117b534447066cc4253244a49a`;
+CLI SHA256 is `587f2b2b6d508c623b4c6ec0f30c9fbeca672a6456fb241ff779f999c4122c3d`.
+Use the exact staged operator63ea197 for recovery; its inputs are hash-bound.
+An older issuer lacks the new
 latest-settings semantics/source validation; prefer compatible forward repair and
-review any code rollback against CURRENT data. Never restore an old database,
+review any code rollback against CURRENT data. The reviewed mode keeps an older
+reader rollback behind maintenance and refuses reopening it. Never restore an old database,
 revive permission, drop source pins or reset a deadline to roll back presentation.

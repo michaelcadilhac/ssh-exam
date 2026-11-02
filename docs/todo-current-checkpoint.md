@@ -1,4 +1,22 @@
-# Current checkpoint — admin next-attempt revision, LOCAL COMPLETE
+# Current checkpoint — admin next-attempt revision DEPLOYED AND ONLINE
+
+November 2 at 00:02:48 Chicago (06:02:48UTC): source2694afd and matched CLI587f2b2b…
+are pushed/deployed under the explicit instruction and approved ten-minute budget.
+The reviewed same-schema web/CLI mode (operator63ea197) passes31 workflows; no
+unchanged-backend/CLI attestation was used. Fresh guards found zero live sessions
+or exams. Cutover67.873seconds; all41authority tables/110web/175native histories,
+configuration and native service PIDs preserved. Public8asset hashes and4desktop/
+mobile focus views pass; signed installedCLI read of existing synthetic history
+confirmed. No new student exam, permission or clock. Owned conversion pause RELEASED.
+Fresh backup83,386,368byteDB+291,492small bytes reused970,286,469media bytes with
+zero new media objects. State/snapshot:
+`/data/ssh-exam-admin-next-20261101-yat3hkyl` on marco. CLI backup on csc-sys:
+`/var/backups/ssh-exam/recording-storage-cli-firco8k1`.
+Receipt: `var/collection-tests/admin-next-rollout.yat3hkyl/completion.json`.
+Recovery uses its exact staged `code/scripts/deploy-web-ui` (prepared inputs are
+hash-bound); older-reader rollback stays fenced, with CURRENT data. Reopening the
+older issuer is prohibited; use compatible forward repair. No remaining action.
+The following local qualification records are retained as history.
 
 Current authorized work: simplify the admin dashboard to one Next attempt, inline
 editing, one Allow attempt workflow and latest saved configuration instead of
@@ -9,7 +27,7 @@ run's 737 passes / 8 obsolete fixture failures / 3 existing opt-in skips are ret
 all 8 corrected Begin cases pass on rerun. Prof accepted actual 1280/430px renders,
 including the clipped-action and waiting-status fixes. Full types, frontend build
 and exact-schema37 production-image/history/video checks pass.
-No push or deployment authorized; production remains the favicon release below.
+The subsequent authorized matched deployment is recorded above.
 Scope, honest verification limits, evidence and rollout plan: docs/admin-next-attempt.md.
 Final candidate: `var/collection-tests/admin-next-attempt-image.gyl41pn1`, input
 manifest 21d205b46b1c…; Config e65741425bc5b2d2dd36dc0eb9077d9d7c1d3d117b534447066cc4253244a49a.
@@ -18,11 +36,10 @@ All 179 image inputs and 304 CLI source files match it. Static CLI SHA256
 `587f2b2b6d508c623b4c6ec0f30c9fbeca672a6456fb241ff779f999c4122c3d`;
 actual help passes. Exact source/artifact mapping: candidate `completion.json`
 and `source-commit-binding.json`. Only the original ten dirty screenshots remain.
-Before separately authorized production installation: qualify matched same-schema
-web/CLI deployment. Backend semantics/CLI changed; stock UI-only unchanged-contract
-attestation does NOT apply. No new controller was added to this bounded milestone.
+Backend semantics/CLI changed; unchanged-contract UI-only attestation does not
+apply. The subsequent separately qualified reviewed mode was used as recorded above.
 
-LATEST: November1 at23:15:46 Chicago (November2 05:15:46UTC), the separately
+Previous: November1 at23:15:46 Chicago (November2 05:15:46UTC), the separately
 authorized favicon release is ONLINE. Source2e5c7c3 overlays only packaged index
 HTML and SVG/ICO files on the exact prior runtime5163 image; unchanged11base layers,
 backend/WASM/native/CLI/schema37. Candidate Config552589537504f87471b3db7b052dbee26a06a8bf7c97ad63a1e1fa049d7acdda.

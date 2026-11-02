@@ -1,6 +1,6 @@
 # Deferred work
 
-November1 ADMIN NEXT ATTEMPT — IMPLEMENTED/TESTED LOCALLY, NOT DEPLOYED:
+November2 ADMIN NEXT ATTEMPT — DEPLOYED AND ONLINE:
 The instructor requested one visible/editable Next attempt, one creation workflow,
 and latest saved configuration instead of independent student defaults. Main-page
 dates/time/webcam/files, inline editing and selected-student bulk edit/cancel now
@@ -9,8 +9,10 @@ selection are removed. New reviews inherit saved time/webcam/terminal/collection
 settings and bind their source; dates/files remain explicitly selected. Existing
 attempts/history/deadlines/holds are unchanged. Prof accepted final desktop/mobile
 renders; focused and broad application/browser/CLI/image evidence is recorded in
-docs/admin-next-attempt.md. The initial full test failures are retained and their
-obsolete fixtures corrected with focused passing reruns. No production action.
+docs/admin-next-attempt.md. Initial test failures remain recorded with corrected
+passing reruns. Authorized same-schema web/CLI deployment reopened00:02:48 Chicago;
+all41authority tables/110web/175native histories and native service PIDs preserved.
+Public/browser/signedCLI checks pass; no exam interrupted or native service restart.
 This supersedes earlier UI/default descriptions below without changing their
 historical implementation records or the original main-TODO count.
 

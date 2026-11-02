@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-November1 admin revision, LOCAL ONLY: one **Next attempt** row shows saved dates,
+November2 admin revision, DEPLOYED AND ONLINE: one **Next attempt** row shows saved dates,
 time, webcam and starting files and opens an inline editor. One **Allow attempt**
 workflow replaces first/extra distinctions; selected students' sole unused
 attempts are edited/cancelled without another selection. Independent future-default
@@ -14,7 +14,9 @@ saved configuration (including a newer cancelled configuration), with legacy
 enrollment/exam fallback only where no saved attempt exists. Dates and starting
 files remain explicitly reviewed; source changes invalidate confirmation. Started
 attempts, protected history, deadlines, account holds, monitoring and explicit
-clock-reset policy remain unchanged. No deployment or schema migration performed.
+clock-reset policy remain unchanged. Matched schema37 web/CLI deployment reopened
+00:02:48 Chicago, preserving all41authority tables/110web/175native histories and
+native service PIDs. No schema migration or native-service restart.
 Scope, Prof review, evidence and matched-release boundaries: docs/admin-next-attempt.md.
 
 November1 storage follow-up DEPLOYED AND ONLINE: runtime5163b20/schema37,
