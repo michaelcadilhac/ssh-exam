@@ -45,6 +45,21 @@ FILES = {
     'thread-leader-probe': (None, 0o755),
 }
 SERVICE = 'ssh-exam-overlay-qualification.service'
+NATIVE_BINARIES = ('exam-agent', 'examctl', 'exam-login', 'exam-info')
+NATIVE_BOOTSTRAP = 'ssh-exam-native-qualification-bootstrap.service'
+NATIVE_SERVICES = ('exam-agent.service', 'exam-deadline-watchdog.service', 'exam-source-setup.service')
+NATIVE_BOOTSTRAP_UNIT = '''[Unit]
+Description=Private disposable qualification binary staging
+Before=exam-agent.service exam-deadline-watchdog.service exam-source-setup.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /run/ssh-exam-qualification-input/overlay_guest.py --native-bootstrap
+RemainAfterExit=yes
+TimeoutStartSec=45
+StandardOutput=append:/run/ssh-exam-qualification-output/guest.log
+StandardError=inherit
+'''
+NATIVE_BOOTSTRAP_DEPENDENCY = '[Unit]\nRequires=' + NATIVE_BOOTSTRAP + '\nAfter=' + NATIVE_BOOTSTRAP + '\n'
 UNIT = '''[Unit]
 Description=Disposable overlay candidate qualification (not production)
 After=ssh.service exam-agent.service qualification-callbacks.service
@@ -115,7 +130,14 @@ def ensure_guest_idle(guest):
             raise RuntimeError('Guest base has active mounts; qualification refused')
 
 
-def candidate_command(unit, guest, inputs, output, students=1, storage=None):
+def profile_files(profile):
+    files = dict(FILES)
+    if profile == 'native-install':
+        files['deploy-native-cohort'] = (None, 0o700)
+    return files
+
+
+def candidate_command(unit, guest, inputs, output, students=1, storage=None, profile='enforcement'):
     assert students in (1, 16)
     command = [
         'systemd-run', '--quiet', '--wait', '--pipe', '--collect',
@@ -141,9 +163,14 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None):
             assert Path(target).is_absolute() and '..' not in Path(target).parts
             assert (name == 'work' and str(target).startswith('/srv/exam-workspace/')) or (name == 'state' and str(target) == '/var/lib/exam-agent')
             command.append('--bind=' + str(output / name) + ':' + str(target))
-    for name, (target, _) in FILES.items():
-        if target:
+    for name, (target, _) in profile_files(profile).items():
+        if target and not (profile == 'native-install' and name in NATIVE_BINARIES):
             command.append('--bind-ro=' + str(inputs / name) + ':' + target)
+    if profile == 'native-install':
+        assert students == 1 and storage is None
+        command.append('--bind-ro=' + str(inputs / 'native-bootstrap.service') + ':/etc/systemd/system/' + NATIVE_BOOTSTRAP)
+        for service in NATIVE_SERVICES:
+            command.append('--bind-ro=' + str(inputs / 'native-bootstrap.conf') + ':/etc/systemd/system/' + service + '.d/00-private-qualification-bootstrap.conf')
     command.append('--bind-ro=' + str(inputs / 'test.service') + ':/etc/systemd/system/' + SERVICE)
     return command
 
@@ -209,10 +236,14 @@ def run_locked(args):
     assert not guest_config.get('functional_test_account')
     assert guest_config.get('temporary_account_policy')
     ensure_guest_idle(guest)
+    files = profile_files(args.profile)
+    if args.profile == 'native-install':
+        assert args.username == 'examq' and getattr(args, 'browser_students', 1) == 1
+        assert not getattr(args, 'browser_gateway_public_key', None) and not getattr(args, 'cleanup_peer', False)
     manifest = bounded_json(bundle / 'SHA256.json', 16384)
-    assert set(manifest) == set(FILES), 'Exact candidate manifest required'
+    assert set(manifest) == set(files), 'Exact candidate manifest required'
     source_bytes = {}
-    for name in FILES:
+    for name in files:
         fd = os.open(bundle / name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, 'rb') as stream:
             info = os.fstat(stream.fileno())
@@ -228,7 +259,7 @@ def run_locked(args):
     guest_paths = [guest / relative for relative in (
         'etc/exam-agent/agent.json', 'var/lib/exam-agent/state.json',
         'etc/passwd', 'etc/group', 'etc/shadow', 'etc/ssh/sshd_config',
-        *(target.lstrip('/') for target, _ in FILES.values() if target))]
+        *(target.lstrip('/') for target, _ in files.values() if target))]
     preserved = digest(host_paths + guest_paths)
     stage = Path(tempfile.mkdtemp(prefix='ssh-exam-overlay-', dir='/var/tmp'))
     unit = 'ssh-exam-qualification-' + uuid.uuid4().hex + '.service'
@@ -237,7 +268,7 @@ def run_locked(args):
         inputs, output = stage / 'input', stage / 'output'
         inputs.mkdir(mode=0o700)
         output.mkdir(mode=0o700)
-        for name, (_, mode) in FILES.items():
+        for name, (_, mode) in files.items():
             target = inputs / name
             target.write_bytes(source_bytes[name])
             target.chmod(mode)
@@ -289,10 +320,15 @@ def run_locked(args):
                     assert stat.S_ISSOCK(info.st_mode), 'Unexpected synthetic state entry'
         marker['browser_students'] = students
         marker['browser_large'] = large
+        if args.profile == 'native-install':
+            marker['native_nonce'] = str(uuid.uuid4())
+            marker['native_sha256'] = {name: manifest[name] for name in NATIVE_BINARIES}
+            (inputs / 'native-bootstrap.service').write_text(NATIVE_BOOTSTRAP_UNIT)
+            (inputs / 'native-bootstrap.conf').write_text(NATIVE_BOOTSTRAP_DEPENDENCY)
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
         (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=840') if students == 16 else UNIT)
-        command = candidate_command(unit, guest, inputs, output, students, storage)
+        command = candidate_command(unit, guest, inputs, output, students, storage, args.profile)
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
@@ -370,7 +406,7 @@ if __name__ == '__main__':
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--cleanup-peer', action='store_true', help='Private retained-policy fixture: current monitored Begin, framed input and a healthy peer during manual workspace cleanup')
-    parser.add_argument('--profile', choices=('execution-policy', 'loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
+    parser.add_argument('--profile', choices=('native-install', 'execution-policy', 'loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()
     assert re.fullmatch(r'[a-zA-Z][a-zA-Z0-9_-]{0,31}', arguments.username)
     def interrupted(_signal, _frame):

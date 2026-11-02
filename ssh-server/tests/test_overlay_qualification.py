@@ -1,5 +1,6 @@
 """Runner safety contracts; real guest results are recorded separately."""
 import importlib.util
+import ast
 import copy
 import json
 from pathlib import Path
@@ -19,6 +20,60 @@ guest_spec.loader.exec_module(guest)
 
 
 class OverlayTests(unittest.TestCase):
+    def test_shared_policy_probe_contract_accepts_both_exact_profiles_and_verified_installation(self):
+        guest.require_execution_policy_profile({'profile':'execution-policy','username':'examq'}, 'examq')
+        nonce = '11111111-1111-4111-8111-111111111111'
+        hashes = {name:'a'*64 for name in guest.NATIVE_PATHS}
+        marker = {'profile':'native-install','username':'examq','native_nonce':nonce,'native_sha256':hashes}
+        proof = {'results':{
+            'verify':{'phase':'NATIVE_MATCHED_VERIFIED','nonce':nonce,'binary_sha256':hashes},
+            'guard-after':{'phase':'after-native','nonce':nonce,'binary_sha256':hashes,'policy_supported':True,
+                           'host':'private-native-install-qualification','fixture':True,'production_writes':False}}}
+        guest.require_execution_policy_profile(marker, 'examq', proof)
+        for wrong in ('enforcement','framed-owner','retained-policy','loaded-roles'):
+            with self.subTest(profile=wrong), self.assertRaises(AssertionError):
+                guest.require_execution_policy_profile(dict(marker,profile=wrong), 'examq', proof)
+        with self.assertRaises(AssertionError): guest.require_execution_policy_profile(marker,'another',proof)
+        with self.assertRaises(AssertionError): guest.require_execution_policy_profile(marker,'examq')
+        for key,value in (('nonce','22222222-2222-4222-8222-222222222222'),('binary_sha256',{}),
+                          ('phase','before-native'),('policy_supported',False),('host','csc-sys'),('production_writes',True)):
+            changed=copy.deepcopy(proof);changed['results']['guard-after'][key]=value
+            with self.subTest(field=key), self.assertRaises(AssertionError):
+                guest.require_execution_policy_profile(marker,'examq',changed)
+
+    def test_native_install_profile_has_replaceable_overlay_binaries_and_exact_extra_input(self):
+        self.assertEqual(overlay.profile_files('enforcement'), overlay.FILES)
+        selected = overlay.profile_files('native-install')
+        self.assertEqual(set(selected) - set(overlay.FILES), {'deploy-native-cohort'})
+        command = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), profile='native-install')
+        for name in overlay.NATIVE_BINARIES:
+            target, _ = overlay.FILES[name]
+            self.assertNotIn('--bind-ro=/input/' + name + ':' + target, command)
+        self.assertIn('--bind-ro=/input/exam-source-setup.service:/etc/systemd/system/exam-source-setup.service', command)
+        self.assertIn('--bind-ro=/input/account-policy:/usr/local/sbin/exam-account-policy', command)
+        for service in overlay.NATIVE_SERVICES:
+            self.assertIn('--bind-ro=/input/native-bootstrap.conf:/etc/systemd/system/' + service + '.d/00-private-qualification-bootstrap.conf', command)
+        self.assertIn('Before=exam-agent.service exam-deadline-watchdog.service exam-source-setup.service', overlay.NATIVE_BOOTSTRAP_UNIT)
+        self.assertIn('Requires=' + overlay.NATIVE_BOOTSTRAP, overlay.NATIVE_BOOTSTRAP_DEPENDENCY)
+        ast.parse(guest.NATIVE_FIXTURE_GUARD)
+
+    def test_native_bootstrap_wrong_profile_refuses_before_file_or_service_operation(self):
+        def contents(path, *_args, **_kwargs):
+            return 'systemd-nspawn' if str(path) == '/run/systemd/container' else json.dumps({'profile':'enforcement','username':'examq'})
+        with mock.patch.object(guest.os, 'getuid', return_value=0), mock.patch.object(guest.os, 'geteuid', return_value=0), \
+             mock.patch.object(Path, 'read_text', contents), mock.patch.object(Path, 'is_mount', return_value=True), \
+             mock.patch.object(guest.os, 'open') as mutation, mock.patch.object(guest.subprocess, 'run') as service:
+            with self.assertRaises(AssertionError): guest.bootstrap_native_install()
+            mutation.assert_not_called(); service.assert_not_called()
+
+    def test_native_bootstrap_refuses_loaded_role_before_replacing_any_binary(self):
+        (self.root / 'state.json').write_text(json.dumps({'attempts': {}}))
+        with mock.patch.object(guest, 'native_install_context', return_value=({}, {'state':str(self.root)})), \
+             mock.patch.object(guest.subprocess, 'run', return_value=types.SimpleNamespace(stdout='123\n')), \
+             mock.patch.object(guest.os, 'open') as mutation:
+            with self.assertRaisesRegex(AssertionError, 'already loaded'): guest.bootstrap_native_install()
+            mutation.assert_not_called()
+
     def test_execution_policy_probe_requires_exact_private_overlay_profile(self):
         self.assertEqual(overlay.FILES['exam-source-setup.service'],('/etc/systemd/system/exam-source-setup.service',0o644))
         with mock.patch.object(Path,'read_text',return_value=json.dumps({'profile':'enforcement','username':'examq'})), \

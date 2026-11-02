@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""Guarded same-schema UI-only web update, run on the application host.
+"""Guarded same-schema web update, run on the application host.
 
 Prepare loads a qualified image, warms monitoring recovery objects and renders
 maintenance responses while the current gateway remains online. Apply requires a
 positive idle/native drain, then takes a stopped incremental snapshot. Failures
 retain the admission fence. Rollback selects the retained previous image with
-CURRENT data; it never restores a database or touches native services.
+CURRENT data; it never restores a database or directly touches native services.
+The exact reviewed-web-native/live-exam-execution-policy-v1 scope returns
+WAITING_NATIVE after its durable stopped snapshot. Run the separately qualified
+native controller, bridge its nonce-bound transition and fresh after-guard, then
+resume this command. It admits only the matched candidate and forward recovery;
+older native/web writers cannot be restored or reopened in that scope.
 
 Root-private release.json/image-assets.json are required. release.fast_ui supplies
 absolute project, data, environment, nginx_site, nginx_main, shared_store,
@@ -103,9 +108,37 @@ class Rollout:
         if self.release['schema'] != self.release['old_schema'] or self.release['schema'] < 36:
             raise ValueError('UI-only deployment requires the same qualified schema, at least36')
         mode = self.settings.get('mode', 'ui')
-        if mode not in ('ui', 'reviewed-web-cli'):
-            raise ValueError('Unknown deployment mode; use ui or the explicitly reviewed web/CLI scope')
-        if mode == 'reviewed-web-cli':
+        if mode not in ('ui', 'reviewed-web-cli', 'reviewed-web-native'):
+            raise ValueError('Unknown deployment mode; use ui or an explicitly registered reviewed scope')
+        if mode == 'reviewed-web-native':
+            update = self.release.get('native_update', {})
+            names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
+            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') != 'live-exam-execution-policy-v1'
+                    or self.settings.get('qualified_source') != self.release['revision']
+                    or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
+                    or self.settings.get('previous_reader_policy_compatible') is not False
+                    or self.settings.get('unchanged_backend_protocol_native') is not False
+                    or self.settings.get('state') != str(self.state)):
+                raise ValueError('Matched native mode requires the exact qualified live-policy scope and incompatible-previous-writer declaration')
+            if not isinstance(update.get('nonce'), str) or str(uuid.UUID(update['nonce'])) != update['nonce']:
+                raise ValueError('A canonical native transition nonce is required')
+            for cohort in ('before', 'after'):
+                values = update.get(cohort, {})
+                if (set(values.get('binary_sha256', {})) != names
+                        or any(not isinstance(value, str) or not re.fullmatch('[a-f0-9]{64}', value) for value in values['binary_sha256'].values())
+                        or not re.fullmatch('[a-f0-9]{64}', values.get('worker_cli_sha256', ''))):
+                    raise ValueError('Pin every executable and loaded source-worker for both native cohorts')
+            if (update['before']['binary_sha256']['examctl'] != self.release['old_cli_sha256']
+                    or update['after']['binary_sha256']['examctl'] != self.release['cli_sha256']
+                    or update['after']['worker_cli_sha256'] != self.release['cli_sha256']
+                    or update['after']['binary_sha256']['exam-agent'] != self.release['agent_sha256']
+                    or update['before'].get('service_pids') != self.release['service_pids']
+                    or not Path(update.get('transition_receipt', '')).is_absolute()):
+                raise ValueError('Native before/after pins disagree with the qualified release')
+            command_after = self.settings.get('native_after_guard')
+            if not isinstance(command_after, list) or not command_after or not all(isinstance(part, str) for part in command_after) or not Path(command_after[0]).is_absolute():
+                raise ValueError('A separate absolute fresh native-after guard is required')
+        elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
                     or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1', 'unified-exam-student-list-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
@@ -198,17 +231,67 @@ class Rollout:
             raise ValueError('Gateway was not positively inactive; preserve current work and reinventory')
         return result
 
-    def native(self):
-        result = json.loads(command(self.settings['native_guard'], timeout=60))
+    def matched_native(self):
+        return self.settings.get('mode') == 'reviewed-web-native'
+
+    def transition(self):
+        path = Path(self.release['native_update']['transition_receipt'])
+        private_directory(path.parent)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, 'rb') as source:
+            info = os.fstat(source.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077 or info.st_nlink != 1 or info.st_size > 65536:
+                raise ValueError('Unsafe native transition receipt')
+            raw = source.read(65537)
+            if len(raw) != info.st_size:
+                raise ValueError('Native transition receipt changed while reading')
+        receipt = json.loads(raw); checksum = hashlib.sha256(raw).hexdigest()
+        update = self.release['native_update']
+        if (receipt.get('nonce') != update['nonce'] or receipt.get('phase') != 'NATIVE_MATCHED_VERIFIED'
+                or receipt.get('binary_sha256') != update['after']['binary_sha256']
+                or any(receipt.get(key) != self.release[target] for key, target in (
+                    ('history_sha256', 'native_history_sha256'), ('config_sha256', 'native_config_sha256'), ('cli_config_sha256', 'cli_config_sha256')))
+                or set(receipt.get('service_pids', {})) != set(self.release['service_pids'])
+                or any(type(pid) is not int or pid <= 0 for pid in receipt['service_pids'].values())
+                or receipt['service_pids']['exam-ssh-relay.service'] != self.release['service_pids']['exam-ssh-relay.service']
+                or (self.record.get('native_transition_sha256') and checksum != self.record['native_transition_sha256'])):
+            raise ValueError('Native transition does not prove this candidate and preserved CURRENT authority')
+        return receipt, checksum
+
+    def native(self, after=False):
+        if self.matched_native():
+            after = after or bool(self.record.get('native_transition_sha256'))
+            cohort = self.release['native_update']['after' if after else 'before']
+            result = json.loads(command(self.settings['native_after_guard' if after else 'native_guard'], timeout=60))
+            observed = datetime.datetime.fromisoformat(result['at'])
+            if observed.tzinfo is None:
+                raise ValueError('Native guard observation has no timezone')
+            age = (datetime.datetime.now(datetime.timezone.utc)-observed).total_seconds()
+            expected_pids = self.release['service_pids']
+            if (result.get('host') != 'csc-sys' or result.get('production_writes') is not False
+                    or not -1 <= age <= 90 or result.get('nonce') != self.release['native_update']['nonce']
+                    or result.get('phase') != ('after-native' if after else 'before-native')
+                    or result.get('binary_sha256') != cohort['binary_sha256']
+                    or result.get('relay_sha256') != self.release['relay_sha256']):
+                raise ValueError('Fresh independently observed matched native cohort is unavailable')
+            if after:
+                receipt, checksum = self.transition()
+                expected_pids = receipt['service_pids']
+                if result.get('transition_receipt_sha256') != checksum or result.get('policy_supported') is not True:
+                    raise ValueError('Native after-guard is not bound to the verified transition/live policy')
+            expected_cli = cohort['binary_sha256']['examctl']; expected_worker = cohort['worker_cli_sha256']
+        else:
+            result = json.loads(command(self.settings['native_guard'], timeout=60))
+            expected_pids = self.release['service_pids']; expected_cli = self.release['cli_sha256']; expected_worker = self.release['worker_cli_sha256']
         if (result['guard'] != 'PASS' or result['history_sha256'] != self.release['native_history_sha256']
                 or result['config_sha256'] != self.release['native_config_sha256']
                 or result['cli_config_sha256'] != self.release['cli_config_sha256']
-                or result['installed_cli_sha256'] != self.release['cli_sha256']
-                or result['worker_cli_sha256'] != self.release['worker_cli_sha256']):
+                or result['installed_cli_sha256'] != expected_cli
+                or result['worker_cli_sha256'] != expected_worker):
             raise ValueError('Native history/configuration/cohort changed; do not stop the gateway')
         pids = {row['unit']: row['pid'] for row in result['native_roles']}
         pids['exam-ssh-relay.service'] = result['relay_pid']
-        if pids != self.release['service_pids']:
+        if pids != expected_pids:
             raise ValueError('Native service restarted; reinventory the release before proceeding')
         return result
 
@@ -347,6 +430,8 @@ class Rollout:
         sync_directory(self.state)
         inputs = [self.state/name for name in ('release.json', 'image-assets.json', 'previous-image-assets.json', 'previous-image.tar', 'normal.conf', 'fenced.conf', 'configuration.json')]
         inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'public_reopen_readiness.py')]
+        if self.matched_native():
+            inputs.append(SCRIPTS/'fresh_native_cohort_guard.py')
         inputs += [OPS/name for name in ('inventory-web.py', 'preservation.py', 'qualify-old-workers.py')]
         inputs += [SCRIPTS.parent/'deploy/nginx'/name for name in ('maintenance-maps.conf', 'maintenance-response.conf')]
         inputs.append(template)
@@ -495,6 +580,8 @@ class Rollout:
         roles = self.roles()
         if not roles['complete'] or not roles['retained_enabled'] or roles['observed'] < self.record['latest_start_ms']-1000:
             raise ValueError('Fresh post-start signed native readiness not observed')
+        if not self.execution_policy_ready():
+            raise ValueError('Fresh signed matching live-policy support is unavailable; preserve CURRENT data and fence')
         with urllib.request.urlopen('http://127.0.0.1:3001/health/ready', timeout=5) as response:
             ready = json.load(response)
         if not (ready['ready'] and ready['productionReady'] and ready['notifications'] and not ready['maintenance'] and not ready['functionalTest']):
@@ -510,6 +597,24 @@ class Rollout:
             database.close()
         return roles
 
+    def execution_policy_ready(self):
+        if not self.matched_native():
+            return True
+        database = sqlite3.connect((self.data/'metadata.sqlite').as_uri()+'?mode=ro', uri=True)
+        try:
+            agent = json.loads((self.project/'deploy/config/config.json').read_text())['agent']['id']
+            health = json.loads(database.execute('SELECT payload FROM agent_snapshot WHERE agent=?', (agent,)).fetchone()[0])['health']
+        finally:
+            database.close()
+        support = health.get('execution_policy_support', {})
+        observed = support.get('observed')
+        return (support.get('schema') == 1 and support.get('supported') is True and support.get('observation_only') is True
+                and support.get('capability') == 'live-exam-execution-policy-v1' and not support.get('issues')
+                and sorted(support.get('roles', [])) == ['agent', 'source-worker', 'watchdog']
+                and type(observed) is int and -1000 <= int(time.time()*1000)-observed < 120000
+                and observed >= self.record['latest_start_ms']-1000
+                and 'live-exam-execution-policy-v1' in health.get('capabilities', []))
+
     def start(self, image, tag):
         before = (self.state/'environment-before').read_bytes()
         replace_file(self.env, selected_env(before, tag))
@@ -522,7 +627,7 @@ class Rollout:
                 roles = self.roles()
                 if (container['State']['Running'] and container['State']['Health']['Status'] == 'healthy'
                         and container['Image'] == image and roles['complete'] and roles['retained_enabled']
-                        and roles['observed'] >= self.record['latest_start_ms']-1000):
+                        and roles['observed'] >= self.record['latest_start_ms']-1000 and self.execution_policy_ready()):
                     break
             except (OSError, RuntimeError, KeyError, TypeError):
                 pass
@@ -580,8 +685,36 @@ class Rollout:
     def finish_apply(self):
         backup = self.snapshot('snapshot')
         self.save('SNAPSHOT_DURABLE', backup=backup, proof_started_ms=int(time.time()*1000))
+        if self.matched_native():
+            self.save('WAITING_NATIVE', current_database_preserved=True)
+            return
+        self.finish_web()
+
+    def handoff(self):
+        if not self.matched_native() or self.record['phase'] != 'WAITING_NATIVE':
+            raise ValueError('Native handoff requires the exact matched WAITING_NATIVE boundary')
+        self.inputs_unchanged(); self.configuration_unchanged()
+        if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+            raise ValueError('Native handoff requires the owned admission fence')
+        guard = self.inventory(stopped=True)
+        if (guard['image'] != self.release['old_image_config_id']
+                or guard['history_sha256'] != self.record['guard']['history_sha256']
+                or guard['attempts'] != self.record['guard']['attempts']):
+            raise ValueError('Native handoff requires unchanged stopped web authority')
+        self.preserved()
+        return {'nonce':self.release['native_update']['nonce'], 'phase':'WAITING_NATIVE',
+                'at':datetime.datetime.now(datetime.timezone.utc).isoformat(), 'web_state':str(self.state),
+                'revision':self.release['revision'], 'image_config_id':self.image['config_id'],
+                'native_binary_sha256':self.release['native_update']['after']['binary_sha256'],
+                'web_status_sha256':digest(self.state/'status.json'), 'web_image_config_id':guard['image'],
+                'web_stopped':True, 'web_fenced':True, 'guard':guard}
+
+    def finish_web(self):
         proof = self.start(self.image['config_id'], self.image['tag'])
         self.save('RUNNING_GATED', proof=proof)
+        self.finish_web_running()
+
+    def finish_web_running(self):
         self.native(); self.public(False)
         proof = self.verified(self.image['config_id'])
         self.save('VERIFIED_GATED', proof=proof)
@@ -597,6 +730,37 @@ class Rollout:
         self.release_background()
 
     def resume(self):
+        if self.matched_native():
+            if self.record.get('opening_previous') and self.record.get('opening_phase') != 'CANCELLED':
+                raise ValueError('An older writer cannot reopen after this native transition; use compatible forward repair')
+            if self.record.get('opening_image') and self.site.read_bytes() == (self.state/self.record['opening_site']).read_bytes():
+                return self.resume_online()
+            if self.record['phase'] == 'SNAPSHOT_DURABLE' and not self.record.get('native_transition_sha256'):
+                self.inputs_unchanged(); self.native()
+                if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+                    raise ValueError('Snapshot recovery requires the owned admission fence')
+                self.inventory(stopped=True); self.preserved()
+                self.save('WAITING_NATIVE', current_database_preserved=True)
+                return
+            if self.record['phase'] in ('SNAPSHOT_DURABLE', 'WAITING_NATIVE', 'NATIVE_UPDATED', 'RUNNING_GATED', 'VERIFIED_GATED'):
+                self.inputs_unchanged(); self.configuration_unchanged(); self.coverage(); self.capacity()
+                if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+                    raise ValueError('Matched transition requires the exact admission fence')
+                self.native(after=True)
+                receipt, checksum = self.transition()
+                container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+                guard = self.inventory(stopped=not container['State']['Running'])
+                if guard['history_sha256'] != self.record['guard']['history_sha256'] or guard['attempts'] != self.record['guard']['attempts']:
+                    raise ValueError('CURRENT web history changed during the native transition')
+                self.preserved()
+                self.save('NATIVE_UPDATED', native_transition_sha256=checksum, native_service_pids=receipt['service_pids'])
+                if container['State']['Running']:
+                    if container['Image'] != self.image['config_id'] or 'latest_start_ms' not in self.record:
+                        raise ValueError('Unknown running gateway during native transition; do not interrupt it')
+                    self.finish_web_running()
+                else:
+                    self.finish_web()
+                return
         if self.record.get('opening_phase') == 'CANCELLED' and self.record['phase'] in ('PREPARING', 'PREPARED', 'FENCING', 'FENCED'):
             return self.cancel()
         if self.record.get('opening_image') and self.site.read_bytes() == (self.state/self.record['opening_site']).read_bytes():
@@ -637,6 +801,8 @@ class Rollout:
         self.finish_apply()
 
     def rollback(self):
+        if self.matched_native():
+            raise ValueError('Older native/web writers cannot be restored; preserve CURRENT data and use the same qualified candidate for forward recovery')
         self.inputs_unchanged()
         if ('backup' not in self.record and self.record['phase'] == 'STOPPED'
                 and (self.state/'snapshot/snapshot.json').is_file()):
@@ -668,6 +834,8 @@ class Rollout:
         # Keep the fence: opening is a separately reviewable step after repair.
 
     def reopen(self):
+        if self.matched_native():
+            raise ValueError('Older writers cannot reopen after a live-policy transition; use compatible forward recovery')
         self.inputs_unchanged()
         if self.record['phase'] != 'ROLLED_BACK_GATED':
             raise ValueError('reopen requires a verified ROLLED_BACK_GATED state')
@@ -709,6 +877,8 @@ class Rollout:
         roles = self.roles(); age = int(time.time()*1000)-roles['observed']
         if not roles['complete'] or not roles['retained_enabled'] or not -1000 <= age < 120000:
             raise ValueError('Fresh signed online native readiness unavailable; preserve the pause')
+        if self.record.get('native_transition_sha256') and not self.execution_policy_ready():
+            raise ValueError('Signed live-policy support is unavailable; preserve the pause without interrupting online work')
         with urllib.request.urlopen('http://127.0.0.1:3001/health/ready', timeout=5) as response:
             ready = json.load(response)
         if not (ready['ready'] and ready['productionReady'] and ready['notifications'] and not ready['maintenance'] and not ready['functionalTest']):
@@ -750,7 +920,8 @@ class Rollout:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['prepare', 'apply', 'resume', 'rollback', 'reopen', 'cancel', 'status'])
+    parser.add_argument('action', choices=['prepare', 'apply', 'handoff', 'resume', 'rollback', 'reopen', 'cancel', 'status'],
+                        help='handoff emits a fresh stopped-web proof only at matched WAITING_NATIVE')
     parser.add_argument('--state', required=True, type=Path, help='New private state directory for prepare; existing state for other actions')
     parser.add_argument('--release', type=Path, help='Private qualified bundle directory containing release.json, image-assets.json, web-image.tar')
     args = parser.parse_args()
@@ -777,6 +948,9 @@ def main():
             rollout.prepare(args.release)
         elif args.action == 'apply':
             rollout.apply()
+        elif args.action == 'handoff':
+            print(json.dumps(rollout.handoff()), flush=True)
+            return
         elif args.action == 'rollback':
             rollout.rollback()
         elif args.action == 'resume':

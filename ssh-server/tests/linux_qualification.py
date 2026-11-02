@@ -1190,7 +1190,9 @@ if (a.framed_owner or a.retained_policy) and not a.worker_isolation:
 
 if a.execution_policy:
     marker=json.loads(pathlib.Path('/run/ssh-exam-qualification-input/run.json').read_text())
-    assert a.username=='examq' and marker['username']=='examq' and marker['profile']=='execution-policy'
+    from overlay_guest import require_execution_policy_profile
+    proof=json.loads(pathlib.Path('/run/ssh-exam-qualification-output/native-install-proof.json').read_text()) if marker.get('profile')=='native-install' else None
+    require_execution_policy_profile(marker,a.username,proof)
     assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn' and temporary
     connection=Connection();panes=[]
     try:

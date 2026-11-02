@@ -44,6 +44,33 @@ operator workflows include exact-scope refusal, matched-CLI checks and this held
 rollback/reopen boundary. They mock privileged transport; unchanged real nginx
 and signed-startup timing evidence remains separate.
 
+The separate exact mode `reviewed-web-native`, scope
+`live-exam-execution-policy-v1`, coordinates the matched native transition. It is
+not an unchanged-native attestation. Its release pins all four old/new native
+executables, the loaded source worker, configuration/history and relay, and a
+unique transition nonce. `apply` fences, drains, stops the web service and takes
+the current incremental snapshot, then returns **WAITING_NATIVE**. The separately
+qualified native controller performs its guarded backup/install/start/verification.
+A private nonce-bound transition receipt and independent fresh after-guard are
+bridged to the application host; `resume` verifies those pins before starting the
+matched image. Startup also requires fresh signed live-policy support from all
+three loaded roles. Recovery resumes the same candidate with CURRENT data; old
+writer rollback and reopening are refused. The relay and existing consolidated
+service layout remain unchanged. This mode needs its own complete release
+qualification and an explicit deployment instruction before production use.
+
+Use `scripts/refresh_native_cohort_guard.py --release-dir PRIVATE_LOCAL_PLAN_DIR
+before` to obtain the actual native controller's fresh guard over the existing
+trusted SSH connection. After web `apply` returns WAITING_NATIVE, its `handoff`
+action rechecks the stopped container, current database and admission fence;
+`refresh_native_cohort_guard.py ... handoff` bridges that exact proof to the
+native private stage. Refresh it before each native write phase if its90-second
+validity could expire. After native verification, `... after` bridges the immutable
+transition receipt and fresh loaded-role guard. Repeat `after` every15–20seconds
+while observing an owned web `resume` operation; stop refreshing once it finishes.
+The helper writes private release metadata only. It does not stop services or
+install binaries. A stale or foreign proof refuses, preserving the held state.
+
 The entry point is `scripts/deploy-web-ui`. Preparation does expensive work while
 the current gateway remains online: verify/load the qualified image, retain the
 previous image, render maintenance responses, copy small configuration and warm

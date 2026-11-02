@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Candidate checks INSIDE the disposable overlay, never on the class host."""
 from contextlib import contextmanager
+import datetime
 import hashlib
 import json
 import os
@@ -17,12 +18,339 @@ import tempfile
 import time
 import traceback
 import uuid
+import sys
 
 INPUT = Path('/run/ssh-exam-qualification-input')
 OUTPUT = Path('/run/ssh-exam-qualification-output')
 REQUIRED = ('python3', 'systemctl', 'ssh', 'ssh-keygen', 'sftp', 'crontab',
             'su', 'bwrap', 'setpriv', 'systemd-run', 'sshd', 'usermod',
             'gpasswd', 'loginctl', 'sudo', 'nohup', 'sleep', 'ln', 'mkfifo', 'useradd')
+NATIVE_PATHS = {
+    'exam-agent': Path('/usr/local/sbin/exam-agent'),
+    'examctl': Path('/usr/local/sbin/examctl'),
+    'exam-login': Path('/usr/local/libexec/exam-login'),
+    'exam-info': Path('/usr/local/bin/exam-info'),
+}
+NATIVE_SERVICES = ('exam-agent.service', 'exam-deadline-watchdog.service', 'exam-source-setup.service')
+
+
+def require_execution_policy_profile(marker, username, install_proof=None):
+    """Exact shared marker contract for the two real policy-probe callers."""
+    assert username == marker.get('username') == 'examq'
+    assert marker.get('profile') in ('execution-policy', 'native-install')
+    if marker['profile'] == 'native-install':
+        nonce = marker['native_nonce']
+        assert str(uuid.UUID(nonce)) == nonce
+        expected = marker['native_sha256']
+        assert isinstance(expected, dict) and set(expected) == set(NATIVE_PATHS)
+        assert all(re.fullmatch('[a-f0-9]{64}', value) for value in expected.values())
+        assert isinstance(install_proof, dict) and isinstance(install_proof.get('results'), dict)
+        verified = install_proof['results'].get('verify', {})
+        after = install_proof['results'].get('guard-after', {})
+        assert verified.get('phase') == 'NATIVE_MATCHED_VERIFIED' and verified.get('nonce') == nonce
+        assert verified.get('binary_sha256') == expected
+        assert after.get('phase') == 'after-native' and after.get('nonce') == nonce
+        assert after.get('binary_sha256') == expected and after.get('policy_supported') is True
+        assert after.get('host') == 'private-native-install-qualification' and after.get('fixture') is True
+        assert after.get('production_writes') is False
+
+
+def native_install_context():
+    assert os.getuid() == os.geteuid() == 0
+    assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
+    assert INPUT.is_mount() and OUTPUT.is_mount()
+    marker = json.loads((INPUT / 'run.json').read_text())
+    assert marker['profile'] == 'native-install' and marker['username'] == 'examq'
+    assert str(uuid.UUID(marker['native_nonce'])) == marker['native_nonce']
+    assert set(marker['native_sha256']) == set(NATIVE_PATHS)
+    assert all(re.fullmatch('[a-f0-9]{64}', value) for value in marker['native_sha256'].values())
+    config = json.loads(Path('/etc/exam-agent/agent.json').read_text())
+    guards = json.loads(Path(config['guard_report']).read_text())
+    assert guards.get('fixture', '').startswith('Private qualification')
+    assert config['callback_url'] == 'https://127.0.0.1:9444'
+    assert not config.get('functional_test_account') and config.get('temporary_account_policy')
+    return marker, config
+
+
+def bootstrap_native_install():
+    """Copy candidate bytes only into this volatile overlay before roles load."""
+    marker, config = native_install_context()
+    state = json.loads((Path(config['state']) / 'state.json').read_text())
+    verify_finished_guest(state, 'native-install')
+    for service in NATIVE_SERVICES:
+        result = subprocess.run(['systemctl', 'show', service, '--property=MainPID', '--value'],
+                                check=True, capture_output=True, text=True, timeout=10)
+        assert int(result.stdout.strip() or '0') == 0, 'Bootstrap refuses an already loaded native role'
+    installed = {}
+    for name, target in NATIVE_PATHS.items():
+        assert target.parent.is_dir() and target.parent.resolve() == target.parent
+        if target.exists():
+            current = target.lstat()
+            assert stat.S_ISREG(current.st_mode) and current.st_uid == 0 and current.st_nlink == 1
+        assert not target.is_symlink()
+        descriptor = os.open(INPUT / name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, 'rb') as source:
+            info = os.fstat(source.fileno())
+            assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_size <= 64 * 1024**2
+            data = source.read(64 * 1024**2 + 1)
+        assert hashlib.sha256(data).hexdigest() == marker['native_sha256'][name]
+        assert data.startswith(b'\x7fELF'), 'A Linux ELF candidate is required'
+        # ELF loaders ignore bytes after the executable. This is the same code
+        # with a distinct private fixture identity, not an older protocol build.
+        # Distinct hashes force the REAL adapter to atomically replace all four
+        # files; equal before/after bytes would only exercise its no-op branch.
+        data += b'\nPRIVATE_NATIVE_BEFORE_COHORT:' + marker['native_nonce'].encode() + b'\n'
+        descriptor, temporary = tempfile.mkstemp(prefix='.private-native-bootstrap-', dir=target.parent)
+        try:
+            with os.fdopen(descriptor, 'wb') as stream:
+                stream.write(data)
+                os.fchmod(stream.fileno(), 0o755)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, target)
+            directory = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try: os.fsync(directory)
+            finally: os.close(directory)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+        assert not target.is_mount(), 'Candidate installation target must be replaceable overlay data'
+        actual = target.stat()
+        installed[name] = {'sha256': hashlib.sha256(target.read_bytes()).hexdigest(), 'device': actual.st_dev, 'inode': actual.st_ino}
+    receipt = OUTPUT / 'native-bootstrap.json'
+    descriptor = os.open(receipt, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        json.dump({'nonce': marker['native_nonce'], 'candidate_sha256': marker['native_sha256'], 'installed': installed,
+                   'before_identity': 'same ELF code, nonce footer makes all four before bytes distinct'}, stream)
+        stream.flush(); os.fsync(stream.fileno())
+    print('PRIVATE_NATIVE_BOOTSTRAP_OK', flush=True)
+    return 0
+
+
+NATIVE_FIXTURE_GUARD = r'''#!/usr/bin/python3
+import datetime, hashlib, json, os, stat, subprocess, sys
+from pathlib import Path
+INPUT=Path('/run/ssh-exam-qualification-input')
+OUTPUT=Path('/run/ssh-exam-qualification-output')
+assert os.getuid()==os.geteuid()==0 and __debug__
+assert Path('/run/systemd/container').read_text().strip()=='systemd-nspawn'
+assert INPUT.is_mount() and OUTPUT.is_mount()
+stage=Path(sys.argv[1]).resolve()
+assert stage.is_relative_to(OUTPUT) and stage.name in ('guard-before','guard-after') and sys.argv[2:] == ['after-cli']
+marker=json.loads((INPUT/'run.json').read_text())
+assert marker['profile']=='native-install' and marker['username']=='examq'
+release=json.loads((stage/'release.json').read_text())
+assert release['native_update']['nonce']==marker['native_nonce']
+def digest(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+config_path=Path('/etc/exam-agent/agent.json')
+config=json.loads(config_path.read_text())
+assert json.loads(Path(config['guard_report']).read_text()).get('fixture','').startswith('Private qualification')
+assert config['callback_url']=='https://127.0.0.1:9444' and config.get('temporary_account_policy') and not config.get('functional_test_account')
+state=json.loads((Path(config['state'])/'state.json').read_text())
+history=hashlib.sha256(json.dumps(state['attempts'],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+assert history==release['native_history_sha256']
+assert all(a['state'] in ('COMPLETED','CANCELLED_BEFORE_START') and a.get('access_state')!='HELD' and a.get('policy_state','NORMAL')=='NORMAL' for a in state['attempts'].values())
+assert digest(config_path)==release['native_config_sha256']
+assert digest('/etc/exam-agent/examctl.json')==release['cli_config_sha256']
+side='after' if stage.name=='guard-after' else 'before'
+expected=release['native_update'][side]
+paths={'exam-agent':'/usr/local/sbin/exam-agent','examctl':'/usr/local/sbin/examctl','exam-login':'/usr/local/libexec/exam-login','exam-info':'/usr/local/bin/exam-info'}
+for name,path in paths.items():
+ info=Path(path).lstat()
+ assert stat.S_ISREG(info.st_mode) and info.st_uid==0 and stat.S_IMODE(info.st_mode)==0o755 and digest(path)==expected['binary_sha256'][name]
+roles=[]
+for name in ('exam-agent.service','exam-deadline-watchdog.service','exam-source-setup.service'):
+ reply=subprocess.run(['systemctl','show',name,'--property=MainPID,ActiveState'],capture_output=True,text=True,check=True,timeout=10)
+ values=dict(line.split('=',1) for line in reply.stdout.splitlines())
+ pid=int(values['MainPID'])
+ assert values['ActiveState']=='active' and pid>1
+ assert Path('/proc/'+str(pid)+'/cgroup').read_text()=='0::/system.slice/'+name+'\n'
+ exe=digest('/proc/'+str(pid)+'/exe')
+ assert exe==expected['binary_sha256']['examctl' if name=='exam-source-setup.service' else 'exam-agent']
+ roles.append({'unit':name,'pid':pid})
+source=next(row['pid'] for row in roles if row['unit']=='exam-source-setup.service')
+print(json.dumps({'guard':'PASS','host':'private-native-install-qualification','fixture':True,'production_writes':False,'phase':'after-cli','at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+ 'history_sha256':history,'config_sha256':digest(config_path),'cli_config_sha256':digest('/etc/exam-agent/examctl.json'),
+ 'installed_cli_sha256':digest(paths['examctl']),'worker_cli_sha256':digest('/proc/'+str(source)+'/exe'),
+ 'native_roles':roles,'relay_pid':0,'relay_sha256':'0'*64}))
+'''
+
+
+def native_install_failure(config, phase, result):
+    """Bounded read-only diagnostics, only for this synthetic private guest."""
+    native_install_context()
+    deadline = time.monotonic() + 25
+    report = {'phase': phase, 'adapter_exit': result.returncode, 'private_fixture': True,
+              'installed': {}, 'services': {}}
+    def capture(command, maximum=5):
+        remaining = min(maximum, deadline - time.monotonic())
+        if remaining <= .1:
+            return {'unavailable': 'diagnostic budget exhausted'}
+        try:
+            value = subprocess.run(command, capture_output=True, text=True, timeout=remaining)
+            return {'exit': value.returncode, 'stdout': value.stdout[:8192]}
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return {'unavailable': type(error).__name__}
+    health = capture([str(NATIVE_PATHS['examctl']), 'health'])
+    try:
+        body = json.loads(health.pop('stdout', ''))
+        health['native_roles'] = body.get('native_roles')
+        health['execution_policy_support'] = body.get('execution_policy_support')
+    except (ValueError, TypeError):
+        health['invalid_or_unavailable_json'] = True
+    report['health'] = health
+    for name, path in NATIVE_PATHS.items():
+        try:
+            info = path.stat()
+            report['installed'][name] = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+                                        'device': info.st_dev, 'inode': info.st_ino, 'mode': stat.S_IMODE(info.st_mode)}
+        except OSError as error:
+            report['installed'][name] = {'unavailable': type(error).__name__}
+    for service in NATIVE_SERVICES:
+        observed = capture(['systemctl', 'show', service, '--property=MainPID,ActiveState,Result,ExecStart'])
+        if 'stdout' in observed:
+            observed['properties'] = dict(line.split('=', 1) for line in observed.pop('stdout').splitlines())
+            pid = int(observed['properties'].get('MainPID') or 0)
+            if pid > 1:
+                try:
+                    executable = Path('/proc') / str(pid) / 'exe'
+                    info = executable.stat()
+                    observed['loaded'] = {'path': os.readlink(executable), 'sha256': hashlib.sha256(executable.read_bytes()).hexdigest(),
+                                          'device': info.st_dev, 'inode': info.st_ino}
+                except OSError as error:
+                    observed['loaded'] = {'unavailable': type(error).__name__}
+        # PID1 messages describe unit lifecycle only; exclude application logs
+        # so even a future synthetic error cannot dump credentials or buffers.
+        journal = capture(['journalctl', '--no-pager', '-u', service, '_PID=1', '-n', '3', '-o', 'json'], 2)
+        messages = []
+        for line in journal.pop('stdout', '').splitlines():
+            try: messages.append(str(json.loads(line).get('MESSAGE', ''))[:512])
+            except ValueError: pass
+        observed['manager_messages'] = messages[-3:]
+        report['services'][service] = observed
+    descriptor = os.open(OUTPUT / 'native-install-failure.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        json.dump(report, stream); stream.flush(); os.fsync(stream.fileno())
+    print('PRIVATE_NATIVE_INSTALL_DIAGNOSTIC', json.dumps(report)[:16384], flush=True)
+
+
+def qualify_native_install(config):
+    """Rehearse the exact four-file adapter in this disposable namespace."""
+    marker, checked = native_install_context()
+    assert config == checked
+    bootstrap = json.loads((OUTPUT / 'native-bootstrap.json').read_text())
+    assert bootstrap['nonce'] == marker['native_nonce'] and bootstrap['candidate_sha256'] == marker['native_sha256']
+    # Match scriptLoadConfig's real CLI-only schema before the coordinator
+    # loads it. An existing but empty object is invalid, unlike an absent file.
+    # Both allowed fixture HTTPS origins are loopback and bypass this unused
+    # private proxy; no external or production network configuration changes.
+    cli_config = Path('/etc/exam-agent/examctl.json')
+    if not cli_config.exists():
+        descriptor = os.open(cli_config, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, 'w') as stream:
+            json.dump({'https_proxy': 'http://127.0.0.1:9', 'no_proxy': '127.0.0.1,localhost'}, stream)
+            stream.write('\n'); stream.flush(); os.fsync(stream.fileno())
+    # Normal-filesystem preparation changes the private config before this
+    # stage. Load source-worker with that exact current config before snapshot.
+    subprocess.run(['systemctl', 'restart', 'exam-source-setup.service'], check=True, timeout=25)
+    roles = native_role_snapshot(config)
+    assert set(roles) == {'agent', 'watchdog'}
+    health = None
+    until = time.monotonic() + 15
+    while True:
+        output = subprocess.run(['examctl', 'health'], capture_output=True, text=True, check=True, timeout=20)
+        health = json.loads(output.stdout)
+        if health['execution_policy_support']['supported']:
+            break
+        assert time.monotonic() < until, 'Initial private cohort did not report actual supported roles'
+        time.sleep(.1)
+    pids = {}
+    for service in NATIVE_SERVICES:
+        result = subprocess.run(['systemctl', 'show', service, '--property=MainPID', '--value'], check=True, capture_output=True, text=True, timeout=10)
+        pids[service] = int(result.stdout.strip())
+        assert pids[service] > 1
+    pids['exam-ssh-relay.service'] = 0  # This private guest has no relay.
+    before = {name: hashlib.sha256(path.read_bytes()).hexdigest() for name, path in NATIVE_PATHS.items()}
+    assert all(before[name] == bootstrap['installed'][name]['sha256'] and before[name] != marker['native_sha256'][name] for name in NATIVE_PATHS)
+    stage = OUTPUT / 'native-install-stage'
+    stage.mkdir(mode=0o700)
+    candidates = stage / 'native'
+    candidates.mkdir(mode=0o700)
+    for name in NATIVE_PATHS:
+        shutil.copyfile(INPUT / name, candidates / name)
+        (candidates / name).chmod(0o700)
+    def write_private(path, value):
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, 'w') as stream:
+            stream.write(value); stream.flush(); os.fsync(stream.fileno())
+    write_private(stage / 'native-guard.py', NATIVE_FIXTURE_GUARD)
+    state = json.loads((Path(config['state']) / 'state.json').read_text())
+    release = {
+        'schema': 37,
+        'native_history_sha256': hashlib.sha256(json.dumps(state['attempts'], sort_keys=True, separators=(',', ':')).encode()).hexdigest(),
+        'native_config_sha256': hashlib.sha256(Path('/etc/exam-agent/agent.json').read_bytes()).hexdigest(),
+        'cli_config_sha256': hashlib.sha256(cli_config.read_bytes()).hexdigest(),
+        'relay_sha256': '0' * 64,
+        'unit_sha256': hashlib.sha256(Path('/etc/systemd/system/exam-source-setup.service').read_bytes()).hexdigest(),
+        'old_image_config_id': 'sha256:' + '0' * 64,
+        'image_config_id': 'sha256:' + 'b' * 64,
+        'revision': 'a' * 40,
+        'fast_ui': {'state': str(stage / 'synthetic-web-state')},
+        'native_update': {
+            'nonce': marker['native_nonce'],
+            'before': {'binary_sha256': before, 'worker_cli_sha256': before['examctl'], 'service_pids': pids},
+            'after': {'binary_sha256': marker['native_sha256'], 'worker_cli_sha256': marker['native_sha256']['examctl']},
+            'guard_sha256': hashlib.sha256(NATIVE_FIXTURE_GUARD.encode()).hexdigest(),
+        },
+    }
+    write_private(stage / 'release.json', json.dumps(release))
+    # Avoid consuming the prepared watchdog's small start burst through three
+    # rapid private starts (boot, normal-filesystem setup, installation). This
+    # fixture wait changes no service settings or production limits.
+    spacing = subprocess.run(['systemctl', 'show', 'exam-deadline-watchdog.service', '--property=ExecMainStartTimestampMonotonic,StartLimitIntervalUSec'], check=True, capture_output=True, text=True, timeout=10)
+    values = dict(line.split('=', 1) for line in spacing.stdout.splitlines())
+    interval = values['StartLimitIntervalUSec'].replace(' ', '')
+    parts = re.findall(r'([0-9]+(?:\.[0-9]+)?)(min|ms|us|µs|s|h)', interval)
+    assert interval == '0' or ''.join(number + unit for number, unit in parts) == interval
+    seconds = sum(float(number) * {'us': .000001, 'µs': .000001, 'ms': .001, 's': 1, 'min': 60, 'h': 3600}[unit] for number, unit in parts)
+    assert 0 <= seconds <= 30
+    remaining = max(0, seconds + .25 - (time.monotonic() - int(values['ExecMainStartTimestampMonotonic']) / 1000000))
+    assert remaining <= 30.25
+    if remaining:
+        print('PRIVATE_NATIVE_INSTALL_START_SPACING', round(remaining, 3), flush=True)
+        time.sleep(remaining)
+    results = {}
+    for phase in ('guard-before', 'stop', 'backup', 'install', 'start', 'verify', 'guard-after'):
+        # This is deliberately a fixture gateway-stop stub, not a claim that
+        # this single-container test rehearses the real two-host web fence.
+        write_private(stage / 'web-stop.json', json.dumps({'fixture': True, 'nonce': marker['native_nonce'], 'phase': 'WAITING_NATIVE',
+            'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'web_state': release['fast_ui']['state'], 'web_status_sha256': '0' * 64, 'web_image_config_id': release['old_image_config_id'],
+            'revision': release['revision'], 'image_config_id': release['image_config_id'], 'native_binary_sha256': marker['native_sha256'],
+            'web_stopped': True, 'web_fenced': True}))
+        result = subprocess.run(['/usr/bin/python3', str(INPUT / 'deploy-native-cohort'), '--stage', str(stage), '--fixture', phase],
+                                capture_output=True, text=True, timeout=110 if phase == 'backup' else 100)
+        if result.returncode:
+            print('PRIVATE_NATIVE_INSTALL_FAILURE', phase, result.stdout[-4096:], result.stderr[-8192:], flush=True)
+            try:
+                native_install_failure(config, phase, result)
+            except Exception as error:
+                print('PRIVATE_NATIVE_INSTALL_DIAGNOSTIC_UNAVAILABLE', type(error).__name__, flush=True)
+        result.check_returncode()
+        results[phase] = json.loads(result.stdout)
+    transition = results['verify']
+    assert transition['phase'] == 'NATIVE_MATCHED_VERIFIED' and transition['nonce'] == marker['native_nonce']
+    assert transition['binary_sha256'] == marker['native_sha256']
+    assert all(transition['service_pids'][service] != pids[service] and transition['service_pids'][service] > 1 for service in NATIVE_SERVICES)
+    assert transition['service_pids']['exam-ssh-relay.service'] == 0
+    for name, path in NATIVE_PATHS.items():
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == marker['native_sha256'][name]
+        current = path.stat()
+        previous = bootstrap['installed'][name]
+        assert (current.st_dev, current.st_ino) != (previous['device'], previous['inode'])
+    assert results['guard-after']['host'] == 'private-native-install-qualification' and results['guard-after']['policy_supported']
+    assert results['guard-before']['phase'] == 'before-native' and results['guard-after']['phase'] == 'after-native'
+    write_private(OUTPUT / 'native-install-proof.json', json.dumps({'fixture_gateway_stop_stub': True, 'before_same_code_with_distinct_ELF_footer': True, 'results': results}))
+    print('PRIVATE_NATIVE_INSTALL_ADAPTER_OK all_four_files_replaced=true all_three_roles_reloaded=true', flush=True)
 
 
 def normal_filesystem_settings(config, sockets):
@@ -312,7 +640,8 @@ def qualify_loaded_role_cli(config):
 def qualify_execution_policy_roles(config):
     """Actual shipped source-worker unit, solely in this guarded overlay."""
     marker = json.loads((INPUT / 'run.json').read_text())
-    assert marker['profile'] == 'execution-policy' and marker['username'] == 'examq'
+    proof = json.loads((OUTPUT / 'native-install-proof.json').read_text()) if marker.get('profile') == 'native-install' else None
+    require_execution_policy_profile(marker, 'examq', proof)
     assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn' and INPUT.is_mount() and OUTPUT.is_mount()
     unit = 'exam-source-setup.service'
     receipt = Path(config['state']) / 'source-worker-policy-role.json'
@@ -488,7 +817,11 @@ def main():
     if settings.get('driver') == 'browser':
         from browser_bridge import run_guest
         return run_guest(config, prepare_retained_roles, native_role_snapshot)
-    if settings.get('profile') == 'execution-policy':
+    if settings.get('profile') == 'native-install':
+        qualify_native_install(config)
+        qualify_execution_policy_roles(config)
+        profiles = (['--execution-policy'],)
+    elif settings.get('profile') == 'execution-policy':
         qualify_execution_policy_roles(config)
         profiles = (['--execution-policy'],)
     elif settings.get('profile') == 'loaded-roles':
@@ -623,6 +956,9 @@ def main():
 
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['--native-bootstrap']:
+        raise SystemExit(bootstrap_native_install())
+    assert len(sys.argv) == 1, 'Unsupported private guest invocation'
     code = 1
     try:
         code = main()

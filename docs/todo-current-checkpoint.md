@@ -1,3 +1,32 @@
+# Current checkpoint — DePaul matched deployment PREPARED, NOT CUT OVER
+
+Explicit current authorization: push/deploy all pending work to marco/csc-sys.
+Theme/runtime source49d5e3b is pushed. DePaul white/navy/blue theme and favicon,
+unified70-student catalog and live shared exam limits are included. The native
+upgrade requires all four executables and three loaded roles; relay stays intact.
+
+All required qualification passes: theme5, packaged real-WASM12, exact schema37
+image/history/video/clock, web controller11+old37, bridge9, real62.566s signed-poll
+expiry/startup, native installer16 plus actual guarded file/service/SSH/collection/
+deadline rehearsal. Exact test guest cleanup and production preservation verified.
+Failures were corrected fixture producers; no readiness/hold/deadline weakening.
+See docs/depaul-matched-release.md for scope/evidence and retained limitations.
+
+Live site is still ONLINE on old release. Instructor signed out; web/native fresh
+guards must be repeated at cutover. Verified root-private code-only stages:
+marco /data/ssh-exam-depaul-20261102-f6eb051343/{release,code};
+csc-sys /var/tmp/ssh-exam-depaul-native-20261102-38068e610401.
+Web state will be /data/ssh-exam-depaul-20261102-f6eb051343/state.
+Immutable releaseSHA933b54d5…, imageConfigaca6572b…, adapterc0ea072a….
+
+Next: follow frozen var/collection-tests/depaul-matched-image.f6eb051343/
+matched-execution.md. Refresh before proof, prepare online with media reuse,
+apply→WAITING_NATIVE; fresh handoff before each native phase; nativeverify;
+refresh after proof throughout webresume→ONLINE. No old-writer reopening/data
+restore. Report unexpected fenced failure immediately; only qualified recovery.
+Preserve all ten original dirty documentation screenshots. No production record,
+configuration or service change has occurred yet; private staging only.
+
 # Current checkpoint — direct next-attempt editing COMPLETE LOCALLY, NOT DEPLOYED
 
 Validated source: backend/native/CLI `51b311c`; interface/browser `e950b6a`.
