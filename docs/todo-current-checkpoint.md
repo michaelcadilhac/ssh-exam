@@ -1,4 +1,22 @@
-# Current checkpoint — replay/status fixes DEPLOYED AND ONLINE
+# Active investigation — jump-server MFA refusal, READ-ONLY
+
+November2: mcadilha reports AADSTS500121 during website SSH sign-in, identifies
+sshjump.depaul.edu and confirms no new phone prompt arrived. Web audit has three
+authentication failures at23:53–23:54UTC. Class SSH journal shows earlier success,
+not those later failures. No production records/configuration/services changed;
+no authentication/MFA initiated by the agent and no credentials/prompts recorded.
+Existing code refuses overlapping starts and preauthentication reconnect/password
+retries; that alone cannot rule out every client or upstream cause. Symbolic
+"DuplicateRequest" is not proof of duplication; no fixed cooldown is established.
+
+Pending user question: run one fresh direct keyboard-interactive terminal sign-in
+to sshjump with connection sharing disabled; report whether the phone prompt
+arrives or the same error occurs. Do not change identity services, reset MFA or
+retry automatically. Sanitized evidence/links and exact next action:
+var/collection-tests/mfa-signin-investigation.20261102a/observations.json.
+The application remains deployed/online as recorded below; no fix is claimed.
+
+# Last production checkpoint — replay/status fixes DEPLOYED AND ONLINE
 
 November2 at17:34:57 Chicago (23:34:57UTC): source89bb35b is pushed/deployed,
 including replay896a15c and status89bb35b. Exact image Confige60c3972/schema37.
