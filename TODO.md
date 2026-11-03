@@ -1,3 +1,13 @@
+# Current follow-up — isolated worker callback route COMPLETE LOCALLY, NOT DEPLOYED
+
+November2: confirmed that isolated preparation/collection workers lost the main
+agent's outbound proxy. Carry the selected proxy/direct route through their private
+request, preserving fresh signed policies, TLS and all clock/source/hold fences.
+Starter/saved-work signed-entry, refusal/retry/Start/collection and actual local
+user-systemd checks pass; full native races, build and vet pass. No production
+change or retry. Deployment needs a fresh instruction, a drained preparation and
+the guarded matched-native workflow. See docs/native-worker-callback-route.md.
+
 # Current follow-up — bulk settings status DEPLOYED
 
 November2: revised saved-work attempts show Updating attempt, with matching retry

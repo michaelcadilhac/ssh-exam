@@ -1,4 +1,30 @@
-# Active investigation — jump-server MFA refusal, READ-ONLY
+# Current milestone — worker callback route COMPLETE LOCALLY, NOT DEPLOYED
+
+November2: website SSH/MFA eventually succeeded, but private preparation for
+aa847641-5723-42c1-b161-8e32fb17a080 timed out fetching the fresh execution policy.
+Native and web read-only observations confirm PREPARING with zero/no start or
+deadline; the native execution lease is absent. The main agent has HTTPS_PROXY,
+while isolated systemd workers have no selected route. Direct HTTPS times out;
+the configured proxy returns headers in0.295s. No production changes/retry.
+
+Implemented: carry only the selected proxy/direct route in private worker stdin,
+validate before initialization and preserve current signed-policy/TLS checks.
+No environment copying, proxy credentials in systemd args, schema/configuration
+change, new permissions or timeout increase. Old-code reproduction fails at the
+intended policy request. Corrected starter/saved-work cases pass refusal, retry,
+source preservation, full allowance only at Start and protected collection, both
+in clean child processes and actual owned local user-systemd services. Every
+owned unit is inactive with MainPID0. Privileged account/writer hooks are synthetic.
+
+All native races pass (core219.602s, CLI6.978s), as do build/vet. No web/WASM/browser
+or public CLI syntax change; unchanged browser evidence is reused. Preserve the
+ten original dirty screenshots. Evidence: workspace-callback-route.20261102a
+under var/collection-tests; details and proposed rollout/recovery:
+docs/native-worker-callback-route.md. No open policy decision. Next: a new explicit
+deployment instruction and a drained preparation before qualifying/executing the
+guarded matched-native installation. No production-ready/deployed claim is made.
+
+# Previous investigation — intermittent jump-server MFA refusal, READ-ONLY
 
 November2: mcadilha reports AADSTS500121 during website SSH sign-in, identifies
 sshjump.depaul.edu and confirms no phone prompt or approval number appears, even
@@ -27,12 +53,11 @@ CONNECT through the configured proxy (HTTP200), and installed OpenBSD nc support
 the required options. The exact instructor-run command passes ssh -G validation;
 no authentication was initiated. Direct proxy access from euler timed out.
 
-Pending user question: from their own terminal on csc-sys, run one OpenSSH sign-in
-using nc through that same fixed proxy/address; report whether a phone prompt or
-the same error appears. No temporary files/listeners are required. If unavailable,
-use the prepared sanitized report for DePaul's jump/Entra administrator. No code
-defect or safe production route change is established. Do not reset MFA, change
-identity services or retry automatically. Sanitized evidence and exact command:
+Subsequent user retry completed website SSH/MFA successfully; the previously
+requested extra terminal test is no longer needed. The intermittent failure's
+cause remains unconfirmed. If it recurs, the prepared same-route command and
+sanitized administrator report remain available. No identity-service, MFA or
+production route change is justified by these observations. Evidence:
 var/collection-tests/mfa-signin-investigation.20261102a/observations.json.
 The application remains deployed/online as recorded below; no fix is claimed.
 

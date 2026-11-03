@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,9 @@ type collectionRequest struct {
 	Action  string `json:"action"`
 	ID      string `json:"id"`
 	Config  Config `json:"config"`
+	// Selected for Config.CallbackURL by the trusted coordinator. Private stdin
+	// only: credentials must never appear in systemd arguments or environment.
+	CallbackProxy *string `json:"callback_proxy,omitempty"`
 }
 
 type collectionReply struct {
@@ -84,8 +88,14 @@ func runCollectionWorkerWith(in io.Reader, out io.Writer, newEngine func(Config)
 	if request.Version != 1 || len(request.Nonce) != 64 || !attemptID.MatchString(request.ID) || (request.Action != "finalize" && request.Action != "manifest" && request.Action != "release" && request.Action != "check-release" && request.Action != "check-delete" && request.Action != "workspace-prepare") || !filepath.IsAbs(request.Config.State) || !filepath.IsAbs(request.Config.Work) {
 		return errors.New("invalid collection worker request")
 	}
+	if request.CallbackProxy != nil {
+		if _, err := parseCallbackProxy(*request.CallbackProxy); err != nil {
+			return err
+		}
+	}
 	e, err := newEngine(request.Config)
 	if err == nil {
+		e.callbackProxyOverride = request.CallbackProxy
 		err = e.runCollectionJob(request.Action, request.ID)
 	}
 	reply := collectionReply{Version: 1, Nonce: request.Nonce, Action: request.Action, ID: request.ID}
@@ -170,6 +180,21 @@ func (e *Engine) runCollectionProcess(action, id string) (runErr error) {
 		}()
 	}
 	request := collectionRequest{Version: 1, Nonce: Token(), Action: action, ID: id, Config: e.Config}
+	route := ""
+	if e.Config.CallbackURL != "" {
+		callback, err := http.NewRequest("POST", e.Config.CallbackURL, nil)
+		if err != nil {
+			return errors.New("callback destination unavailable; check the coordinator's outbound configuration")
+		}
+		proxy, err := e.callbackProxy(callback)
+		if err != nil {
+			return err
+		}
+		if proxy != nil {
+			route = proxy.String()
+		}
+	}
+	request.CallbackProxy = &route
 	payload, err := json.Marshal(request)
 	if err != nil || len(payload) > 8*1024*1024 {
 		return errors.New("collection worker request could not be encoded within its limit")

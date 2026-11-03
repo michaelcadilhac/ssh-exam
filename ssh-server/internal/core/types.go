@@ -216,6 +216,7 @@ type PaneInstance struct {
 	Cancelled       bool  `json:"cancelled,omitempty"`
 }
 type Engine struct {
+	callbackProxyOverride     *string // Private worker route; nil uses this process's proxy environment.
 	terminalMonitoring        terminalMonitoringBridge
 	renewalReceiptMu          sync.Mutex
 	renewalReceiptConfirmed   map[string]executionRenewalConfirmation

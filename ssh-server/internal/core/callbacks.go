@@ -102,6 +102,35 @@ func (e *Engine) ReportConfiguration() error {
 		return nil
 	})
 }
+
+// Private workers receive only the coordinator's resolved callback route, not
+// its environment. An explicit empty route means direct, even if the worker's
+// manager has a proxy. Never include a proxy URL in errors: it can contain auth.
+func parseCallbackProxy(value string) (*url.URL, error) {
+	if value == "" {
+		return nil, nil
+	}
+	proxy, err := url.Parse(value)
+	if err == nil && proxy.Hostname() != "" && proxy.Opaque == "" && proxy.Fragment == "" {
+		switch proxy.Scheme {
+		case "http", "https", "socks5", "socks5h":
+			return proxy, nil
+		}
+	}
+	return nil, errors.New("callback proxy route unavailable; check the coordinator's outbound network configuration")
+}
+
+func (e *Engine) callbackProxy(request *http.Request) (*url.URL, error) {
+	if e.callbackProxyOverride != nil {
+		return parseCallbackProxy(*e.callbackProxyOverride)
+	}
+	proxy, err := http.ProxyFromEnvironment(request)
+	if err != nil {
+		return nil, errors.New("callback proxy route unavailable; check the coordinator's outbound network configuration")
+	}
+	return proxy, nil
+}
+
 func (e *Engine) callbackClient() (*http.Client, error) {
 	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS13}
 	if e.Config.CallbackCA != "" {
@@ -115,7 +144,7 @@ func (e *Engine) callbackClient() (*http.Client, error) {
 		}
 		tlsConfig.RootCAs = pool
 	}
-	return &http.Client{Timeout: 45 * time.Second, Transport: &http.Transport{Proxy: http.ProxyFromEnvironment, TLSClientConfig: tlsConfig}, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("callback redirects forbidden") }}, nil
+	return &http.Client{Timeout: 45 * time.Second, Transport: &http.Transport{Proxy: e.callbackProxy, TLSClientConfig: tlsConfig}, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("callback redirects forbidden") }}, nil
 }
 func (e *Engine) postCallback(client *http.Client, key ed25519.PrivateKey, endpoint string, payload []byte, body io.Reader, contentType string) error {
 	req, err := http.NewRequest("POST", strings.TrimSuffix(e.Config.CallbackURL, "/")+endpoint, body)

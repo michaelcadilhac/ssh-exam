@@ -613,6 +613,15 @@ The agent persists the original start/deadline, the current collection deadline,
 
 After local protection, the agent sends signed completion/manifest metadata and monitoring records to the webserver. Submission archive bytes stay in root-private protected storage on the SSH server; there is no archive callback, web download or web deletion endpoint. Authorized server administrators retrieve the verified protected copy locally with `examctl export`. Status receipt retries preserve recoverability without recollecting work or sending submission contents to the webserver. The webserver may retain immutable collection receipts/checksums separately from monitoring; it does not host submission archives.
 
+Isolated preparation and collection workers must preserve the coordinator's
+selected outbound callback route, including an explicit direct/NO_PROXY choice.
+The selected proxy is carried only in the root-private worker request, not in
+systemd command arguments, service environment, durable state or logs. Workers
+still obtain fresh signed policies over verified TLS; this carries transport
+configuration, never cached authorization. See
+[the local routing correction](docs/native-worker-callback-route.md) for its
+verification and deployment status.
+
 ### 4.1 Browser SSH and fixed relay
 
 Run both SSH protocols in the browser's dedicated Go/WebAssembly worker using
