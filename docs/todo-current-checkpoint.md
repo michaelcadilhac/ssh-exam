@@ -20,11 +20,19 @@ Existing inspected paths refuse overlapping starts, preauthentication reconnect
 and repeated password submission; this does not exclude every client/upstream
 cause. "DuplicateRequest" alone proves neither duplication nor a fixed cooldown.
 
-Pending user question: inspect the failed event at mysignins.microsoft.com and
-report only Failure reason/Additional details. DePaul's jump/Entra administrator
-may need to compare that event with the successful direct sign-in. No confirmed
-code defect or safe route change is established. Do not reset MFA, change identity
-services or retry automatically. Sanitized evidence/links and exact next action:
+The account portal shows only one unsuccessful event, with no failure reason or
+additional details. Its incomplete view does not establish why other attempts are
+absent. A simpler same-route test is now prepared: the ordinary csc-sys shell can
+CONNECT through the configured proxy (HTTP200), and installed OpenBSD nc supports
+the required options. The exact instructor-run command passes ssh -G validation;
+no authentication was initiated. Direct proxy access from euler timed out.
+
+Pending user question: from their own terminal on csc-sys, run one OpenSSH sign-in
+using nc through that same fixed proxy/address; report whether a phone prompt or
+the same error appears. No temporary files/listeners are required. If unavailable,
+use the prepared sanitized report for DePaul's jump/Entra administrator. No code
+defect or safe production route change is established. Do not reset MFA, change
+identity services or retry automatically. Sanitized evidence and exact command:
 var/collection-tests/mfa-signin-investigation.20261102a/observations.json.
 The application remains deployed/online as recorded below; no fix is claimed.
 
