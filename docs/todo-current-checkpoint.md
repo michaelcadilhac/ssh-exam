@@ -1,18 +1,30 @@
 # Active investigation — jump-server MFA refusal, READ-ONLY
 
 November2: mcadilha reports AADSTS500121 during website SSH sign-in, identifies
-sshjump.depaul.edu and confirms no new phone prompt arrived. Web audit has three
-authentication failures at23:53–23:54UTC. Class SSH journal shows earlier success,
-not those later failures. No production records/configuration/services changed;
-no authentication/MFA initiated by the agent and no credentials/prompts recorded.
-Existing code refuses overlapping starts and preauthentication reconnect/password
-retries; that alone cannot rule out every client or upstream cause. Symbolic
-"DuplicateRequest" is not proof of duplication; no fixed cooldown is established.
+sshjump.depaul.edu and confirms no phone prompt or approval number appears, even
+after closing other sign-ins and retrying once. Direct keyboard-interactive SSH
+from euler with sharing disabled does produce a phone prompt. Web audit has three
+failures at23:53–23:54UTC; no corresponding class-server SSH events were observed.
 
-Pending user question: run one fresh direct keyboard-interactive terminal sign-in
-to sshjump with connection sharing disabled; report whether the phone prompt
-arrives or the same error occurs. Do not change identity services, reset MFA or
-retry automatically. Sanitized evidence/links and exact next action:
+Routes differ: euler resolves the jump host to74.249.245.57; the active production
+relay uses proxy.is.depaul.edu:3128 →10.192.202.6:22. Different addresses do not
+prove different physical servers or the cause. A temporary same-route terminal
+diagnostic could not be established through private Unix-socket forwards. Both
+owned forwards and temporary remote/local directories were removed and verified.
+Its setup failure is not evidence of a product defect. Synthetic byte-preservation
+and proxy-refusal checks passed, but no real same-route authentication test ran.
+
+No production records/configuration/services changed; no student/jump-host
+authentication or MFA initiated by the agent and no credentials/prompts recorded.
+Existing inspected paths refuse overlapping starts, preauthentication reconnect
+and repeated password submission; this does not exclude every client/upstream
+cause. "DuplicateRequest" alone proves neither duplication nor a fixed cooldown.
+
+Pending user question: inspect the failed event at mysignins.microsoft.com and
+report only Failure reason/Additional details. DePaul's jump/Entra administrator
+may need to compare that event with the successful direct sign-in. No confirmed
+code defect or safe route change is established. Do not reset MFA, change identity
+services or retry automatically. Sanitized evidence/links and exact next action:
 var/collection-tests/mfa-signin-investigation.20261102a/observations.json.
 The application remains deployed/online as recorded below; no fix is claimed.
 
