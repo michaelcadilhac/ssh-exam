@@ -1,4 +1,36 @@
-# Current milestone — worker callback route COMPLETE LOCALLY, NOT DEPLOYED
+# Current production milestone — worker callback route DEPLOYED AND ONLINE
+
+November2 at19:03:39 Chicago (November3 01:03:39UTC): native568daaf is installed;
+web89bb35b/imagee60c3972/schema37 stays unchanged. Exact four-binary candidate passed
+the guarded disposable installation profile, seven SSH/policy/collection/deadline
+assertions and hardened source-worker refusal/repair. Independent unit/guest cleanup
+and unchanged host authority passed. Current local process/user-systemd regressions,
+full native races/build/vet also pass. No real student MFA/Start was performed.
+
+Production drain was zero sessions/unfinished exams; prior failed setup expired
+without a clock. Matched native roles are2520094/2520090/2520092; relay893011 and
+SSH were not restarted. All176 native and111 web histories and41 preservation
+contracts pass; exact installed/loaded hashes, signed existing-sandbox CLI read,
+public TLS/readiness and all8 shipped assets pass. Background pause is RELEASED.
+Configuration, settings, original deadlines and protected data remain preserved.
+
+One initial native stop guard saw an extra process that exited before the bounded
+read-only inspection. No service/binary change occurred on that refusal. One
+documented forward retry with fresh handoff and the unchanged guard passed.
+No guard relaxation, unknown-process termination, old database restore or migration.
+Maintenance396.18s; online preparation8.45s and installation rehearsal102.70s.
+Earlier read-only preparation/staging is additional; see timing receipt for the
+known measured interval rather than treating cutover as total deployment time.
+
+Evidence: var/collection-tests/worker-route-deployment.20261102a/. Private web
+stage /var/tmp/ssh-exam-worker-route-20261102-568daaf-4ce4b27e-web; CURRENT-data
+snapshot /data/ssh-exam-worker-route-20261102-568daaf-4ce4b27e-state; native stage
+/var/tmp/ssh-exam-worker-route-20261102-568daaf-4ce4b27e-native. Native recovery
+snapshot208824320bytes; web91.5MB database plus291492 small-file bytes reused all
+970286469 recording bytes with zero new media objects. Keep current data and
+matched roles for forward recovery. No required deployment operation remains.
+
+# Previous local milestone — worker callback route qualification
 
 November2: website SSH/MFA eventually succeeded, but private preparation for
 aa847641-5723-42c1-b161-8e32fb17a080 timed out fetching the fresh execution policy.

@@ -1,6 +1,39 @@
 # Isolated worker callback routing
 
-November 2, 2026. Investigation and local development; **not deployed**.
+November 2, 2026. Native source568daaf **DEPLOYED AND ONLINE** at19:03:39 Chicago;
+the existing web source89bb35b/imagee60c3972 and schema37 remain unchanged.
+
+Exact candidate installation/recovery profile passed in the private disposable
+guest before production cutover, including seven actual SSH/policy/collection/
+deadline checks and hardened saved-work worker refusal/repair. All owned guest
+processes/mounts were removed and host binaries/configuration/authority preserved.
+The current proxy-specific tests separately exercise TLS and CONNECT through
+clean actual processes and local user-systemd services. Existing unchanged guest
+fixture oracles were reused; they do not supply the new proxy regression itself.
+
+The older guest's loopback callback did not require the production proxy, masking
+this missing route. The new regression uses a reserved non-loopback logical host
+and a real private CONNECT proxy with strict TLS and signed policies.
+
+The authorized deployment passed fresh zero-session/exam guards and private
+consistent web/native recovery snapshots. All176 native and111 web histories,
+configuration, protected-file identity, original deadlines and41 web preservation
+contracts pass. All four installed binaries and three loaded roles match; relay
+and SSH remain running unchanged. Signed existing-sandbox CLI read and public TLS,
+readiness and all8 unchanged assets pass. Background pause released; no migration,
+student login/Start or production workspace retry was performed by the agent.
+
+One pre-stop guard refusal observed an extra exam process, which was absent at the
+bounded read-only inspection. Its identity was not captured. All original roles
+and binaries remained unchanged. The documented same-phase forward retry passed
+the unchanged guard after a fresh handoff. No process was killed or guard relaxed.
+
+Maintenance396.18s; preparation8.45s; exact native installation rehearsal102.70s.
+Additional read-only preparation/staging precedes those operations. Evidence and
+private release/recovery locations: docs/todo-current-checkpoint.md and
+var/collection-tests/worker-route-deployment.20261102a/.
+
+The following records the original investigation and local acceptance scope.
 
 Entry point: student SSH sign-in → preflight → signed `prepare-workspace`.
 The attempt aa847641-5723-42c1-b161-8e32fb17a080 was refused before staging
