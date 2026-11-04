@@ -1,3 +1,15 @@
+# Current follow-up — unusable resume approvals COMPLETE LOCALLY, NOT DEPLOYED
+
+Confirmed: administration accepted Resume approval after the original retained
+page/SSH session was known lost. The student/native refusal was correct. Shared
+web/CLI authorization now refuses new unusable approvals; review shows saved-work
+guidance instead of Allow resume. Same-page/legacy paths, old receipts, deadlines
+and holds remain protected. All33 affected application/actual compiled CLI tests,
+six browser cases, fixture types and build pass; native inputs unchanged. A
+separately instructor-approved live saved-work recovery completed and the new
+90-minute attempt was observed ACTIVE. No UI deployment or service restart.
+See docs/lost-session-approval.md and private incident receipts.
+
 # Current follow-up — isolated worker callback route DEPLOYED
 
 November2: confirmed that isolated preparation/collection workers lost the main

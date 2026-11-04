@@ -1,6 +1,31 @@
 import type { Attempt, Store } from "./db.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 
+// A negative recovery fact, never proof that another session is usable. Unknown
+// transport state and delayed heartbeats do not establish an SSH disconnect.
+export function requiresNewAttemptAfterSessionLoss(store: Store, a: Attempt) {
+  if (a.state !== "LOCKED" || a.monitoring_mode !== "v1") return false;
+  if (a.page_hash === null) return true;
+  if (!a.registered_owner) return false;
+  try {
+    const owner = monitoringOwner.parse(JSON.parse(a.registered_owner));
+    if (
+      owner.attempt !== a.id ||
+      owner.exam !== a.exam ||
+      owner.username !== a.username ||
+      owner.uid !== a.uid
+    )
+      return false;
+    return !!store.db
+      .prepare(
+        "SELECT 1 FROM audit WHERE target=? AND actor='class-agent' AND action='native-ssh-exited' AND detail=? LIMIT 1",
+      )
+      .get(a.id, JSON.stringify(owner));
+  } catch {
+    return false;
+  }
+}
+
 // Signed status order is not ownership order: a queued LOCKED generation N
 // still names the pre-Continue owner N-1. Once owner N committed, that retired
 // observation cannot re-hold it or invalidate its already-consumed operation.

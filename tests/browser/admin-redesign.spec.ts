@@ -974,6 +974,33 @@ test("student plus and delete controls work from the keyboard without a row menu
   await expect(remove).toBeFocused();
 });
 
+test("ended retained sessions offer saved-work guidance and no unusable resume approval", async ({
+  page,
+}) => {
+  const s = await fixture(page, false, false, true);
+  const bob = s.rows.find((row) => row.username === "bob")!;
+  bob.attempts[0].requiresNewAttempt = true;
+  await page
+    .getByRole("rowgroup", { name: "bob", exact: true })
+    .getByRole("button", { name: "Review", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "bob · Attempt 1",
+    exact: true,
+  });
+  await expect(
+    dialog.getByText(
+      "This session ended. Resuming needs another attempt from saved files.",
+    ),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Allow resume", exact: true }),
+  ).toHaveCount(0);
+  expect(s.calls.filter((call) => call.path.endsWith("/authorize"))).toEqual(
+    [],
+  );
+});
+
 test("retained instructor authorization preserves the original page and SSH rather than requesting replacement authentication", async ({
   page,
 }) => {

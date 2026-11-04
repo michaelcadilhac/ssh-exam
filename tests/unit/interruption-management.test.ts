@@ -49,6 +49,117 @@ function fixture() {
   };
 }
 
+it.each(["legacy", "v1"])(
+  "%s approvals distinguish a lost retained page from legacy reauthentication",
+  (mode) => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(100000);
+    const f = fixture();
+    try {
+      f.store.db
+        .prepare("UPDATE attempts SET monitoring_mode=? WHERE id='a'")
+        .run(mode);
+      const original = f.body(),
+        receipt = f.management.authorize(original, "teacher");
+      const approval = f.store.db.prepare("SELECT * FROM continuations").get();
+      f.store.db.exec("UPDATE attempts SET page_hash=NULL WHERE id='a'");
+      const shown = f.management.show({ id: "a" });
+      expect(shown.requiresNewAttempt).toBe(mode === "v1");
+      expect(shown).not.toHaveProperty("page_hash");
+      expect(shown).not.toHaveProperty("registered_owner");
+      expect(shown).not.toHaveProperty("uid");
+      if (mode === "v1") {
+        expect(() => f.management.authorize(f.body(), "teacher")).toThrow(
+          "This session ended",
+        );
+        expect(f.store.db.prepare("SELECT * FROM continuations").get()).toEqual(
+          approval,
+        );
+        expect(
+          f.store.db
+            .prepare("SELECT count(*) n FROM continuation_requests")
+            .get(),
+        ).toEqual({ n: 1 });
+      } else {
+        expect(f.management.authorize(f.body(), "teacher").status).toBe(
+          "authorized",
+        );
+      }
+      // An old durable receipt stays inspectable; it is never renewed by replay.
+      expect(f.management.authorize(original, "teacher")).toEqual(receipt);
+      expect(f.store.attempt("a")).toMatchObject({
+        state: "LOCKED",
+        start: 1,
+        deadline: 900000,
+        original_deadline: 900000,
+        access_state: "HELD",
+      });
+    } finally {
+      f.close();
+      clock.mockRestore();
+    }
+  },
+);
+
+it("only a confirmed exit of the current retained owner blocks approval while the original page remains bound", () => {
+  const clock = vi.spyOn(Date, "now").mockReturnValue(100000);
+  const f = fixture();
+  try {
+    const id = randomUUID(),
+      owner = {
+        attempt: id,
+        exam: "e",
+        username: "bob",
+        uid: 1002,
+        transport_hash: "a".repeat(64),
+        boot: randomUUID(),
+        page_epoch: "b".repeat(64),
+        input_epoch: "c".repeat(64),
+        generation: 0,
+        clock_revision: 0,
+      };
+    f.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,generation,page_hash,access_state,monitoring_mode,registered_owner) VALUES(?,'e','bob',1002,'LOCKED','{}',1,900000,900000,1,?,'HELD','v1',?)",
+      )
+      .run(id, owner.page_epoch, JSON.stringify(owner));
+    f.store.audit(
+      "class-agent",
+      "native-ssh-exited",
+      id,
+      JSON.stringify({ ...owner, input_epoch: "d".repeat(64) }),
+    );
+    expect(f.management.show({ id }).requiresNewAttempt).toBe(false);
+    const body = () => ({
+      id,
+      generation: 1,
+      revision: f.management.show({ id }).revision,
+      requestID: randomUUID(),
+      reason: "Reviewed retained session",
+    });
+    f.management.authorize(body(), "teacher");
+    const previous = f.store.db
+      .prepare("SELECT * FROM continuations WHERE attempt=?")
+      .get(id);
+    f.store.audit(
+      "class-agent",
+      "native-ssh-exited",
+      id,
+      JSON.stringify(owner),
+    );
+    expect(f.management.show({ id }).requiresNewAttempt).toBe(true);
+    expect(() => f.management.authorize(body(), "teacher")).toThrow(
+      "This session ended",
+    );
+    expect(
+      f.store.db.prepare("SELECT * FROM continuations WHERE attempt=?").get(id),
+    ).toEqual(previous);
+    expect(f.store.attempt(id).page_hash).toBe(owner.page_epoch);
+  } finally {
+    f.close();
+    clock.mockRestore();
+  }
+});
+
 it("fences generations AND same-generation review changes, without invalidating no-op reports", () => {
   const clock = vi.spyOn(Date, "now").mockReturnValue(100000);
   const f = fixture();

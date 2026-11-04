@@ -370,6 +370,7 @@ export function AdminReview({
   const activityIncidents = a.interruptions
     ? incidents.filter((i: any) => i.message || i.review_at)
     : incidents;
+  const requiresNewAttempt = a.requiresNewAttempt === true;
   const activityCount = a.interruptions
     ? a.interruptions.length + activityIncidents.length
     : incidents.length;
@@ -412,7 +413,7 @@ export function AdminReview({
           )}
         </div>
         <div className="review-heading-actions">
-          {a.state === "LOCKED" && (
+          {a.state === "LOCKED" && !requiresNewAttempt && (
             <button
               ref={authorizeButton}
               className="primary"
@@ -447,7 +448,12 @@ export function AdminReview({
           </button>
         </div>
       </div>
-      {authorization && (
+      {a.state === "LOCKED" && requiresNewAttempt && (
+        <p className="warn" role="status">
+          This session ended. Resuming needs another attempt from saved files.
+        </p>
+      )}
+      {authorization && !requiresNewAttempt && (
         <fieldset
           className="continuation-confirmation"
           disabled={busy}
@@ -637,7 +643,7 @@ export function AdminReview({
           Updates paused. Refresh before allowing resume.
         </p>
       )}
-      {notice && <p role="status">{notice}</p>}
+      {notice && !requiresNewAttempt && <p role="status">{notice}</p>}
       {((!authorization && error) || refreshError) && (
         <p className="warn" role="alert">
           {(!authorization && error) || refreshError}{" "}

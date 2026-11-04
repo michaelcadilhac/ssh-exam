@@ -1,4 +1,5 @@
 import { hash, now, type Store } from "./db.js";
+import { requiresNewAttemptAfterSessionLoss } from "./native-monitoring-state.js";
 import {
   interruptionShow,
   interruptionReview,
@@ -19,7 +20,8 @@ export class InterruptionManagement {
       .prepare(
         `SELECT id,exam,username,state,generation,
       continuation_revision revision,start,deadline,original_deadline,clock_revision,
-      ended,protected,access_state,monitoring_mode,retained_hold,monitoring_hold_kind FROM attempts WHERE id=?`,
+      ended,protected,access_state,monitoring_mode,retained_hold,monitoring_hold_kind,
+      uid,page_hash,registered_owner FROM attempts WHERE id=?`,
       )
       .get(id) as any;
     if (!a)
@@ -32,8 +34,10 @@ export class InterruptionManagement {
         "SELECT generation,expires,consumed FROM continuations WHERE attempt=?",
       )
       .get(id) as any;
+    const { uid, page_hash, registered_owner, ...metadata } = a;
     return {
-      ...a,
+      ...metadata,
+      requiresNewAttempt: requiresNewAttemptAfterSessionLoss(this.store, a),
       authorization: authorization || null,
       historyDeleted: !!this.store.db
         .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
@@ -172,6 +176,10 @@ export class InterruptionManagement {
         a.deadline <= at
       )
         return refuse(`Attempt cannot continue. ${guidance}`);
+      if (current.requiresNewAttempt)
+        return refuse(
+          "This session ended. Resume approval cannot reconnect it. Allow another attempt from verified saved files, with an explicit time limit and start window.",
+        );
       const expires = Math.min(a.deadline, at + 300000);
       this.store.db
         .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")

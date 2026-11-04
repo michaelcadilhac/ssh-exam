@@ -905,6 +905,15 @@ A connection failure beyond the grace, page reload/closure, SSH loss, or explici
 
 ### 7.5 Instructor-authorized continuation
 
+For negotiated retained sessions, Resume approval applies to the original page
+and authenticated SSH session. A known lost page binding or accepted exit of the
+current registered SSH owner requires a reviewed NEW attempt from verified saved
+files, with an instructor-chosen allowance and finite start dates. The web/CLI
+authorization service refuses unusable new Resume approvals; its inspection flag
+is negative recovery guidance, never proof that a session may execute. Unknown
+heartbeats or a retired owner's exit do not establish current-session loss. See
+[the approval correction](docs/lost-session-approval.md).
+
 The locked page shows the reason, remaining time, and **Request instructor review**, with a short message. Rate-limit duplicate requests. Restoring focus alone does not resume access.
 
 The instructor chooses **Authorize resume** in the authenticated dashboard. The dashboard has no stop/end action. Early administrator termination requires SSH administrator access to the class server and `examctl stop ATTEMPT --reason ...`; never kill the shared agent or deadline watchdog to stop one attempt. Authorization is stored at the gateway until fresh student SSH authentication. A signed registration command carries that single grant to the root agent, followed by transport attachment and consumption only after browser preflight is restored. Authorization is bound to the current incident/attempt generation, single-use, expires after five minutes or the deadline, and is auditable. Stale authorizations cannot override newer incidents.

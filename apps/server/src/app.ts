@@ -41,7 +41,10 @@ import {
 } from "./exam-execution-policy.js";
 import { RecoverySources } from "./recovery-source.js";
 import { AttemptGrants } from "./attempt-grants.js";
-import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
+import {
+  nativeContinuationOutcomeRecorded,
+  requiresNewAttemptAfterSessionLoss,
+} from "./native-monitoring-state.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { GrantIssuance } from "./grant-issuance.js";
 import { SourceSetup } from "./source-setup.js";
@@ -2637,6 +2640,7 @@ export async function createApp(
     return {
       ...a,
       pendingClockReset: clocks.pending(a.id),
+      requiresNewAttempt: requiresNewAttemptAfterSessionLoss(store, a),
       connected,
       working: a.state === "ACTIVE" && connected && a.deadline > now(),
       terminalCount: conn?.alive ? conn.panes.size : 0,

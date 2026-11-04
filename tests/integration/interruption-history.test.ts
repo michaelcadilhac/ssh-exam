@@ -161,6 +161,46 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
       await app.inject({ url: "/api/admin/exams/other/dashboard", headers })
     ).json();
     expect(other.students).toEqual([]);
+    const storedApproval = store.db
+      .prepare("SELECT * FROM continuations WHERE attempt=?")
+      .get(id);
+    store.db
+      .prepare(
+        "UPDATE attempts SET monitoring_mode='v1',page_hash=NULL WHERE id=?",
+      )
+      .run(id);
+    const current = (
+      await app.inject({
+        url: `/api/admin/attempts/${id}/interruption`,
+        headers,
+      })
+    ).json();
+    expect(current.requiresNewAttempt).toBe(true);
+    expect(current).not.toHaveProperty("page_hash");
+    expect(current).not.toHaveProperty("registered_owner");
+    result = (await app.inject({ url: url + `?review=${id}`, headers })).json();
+    expect(result.reviewAttempt.requiresNewAttempt).toBe(true);
+    const refused = await app.inject({
+      method: "POST",
+      url: authorizeURL,
+      headers,
+      payload: {
+        ...approvedIntent,
+        revision: current.revision,
+        requestID: randomUUID(),
+      },
+    });
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json().error).toContain("This session ended");
+    expect(
+      store.db.prepare("SELECT * FROM continuations WHERE attempt=?").get(id),
+    ).toEqual(storedApproval);
+    expect(store.attempt(id)).toMatchObject({
+      state: "LOCKED",
+      deadline: current.deadline,
+      original_deadline: current.original_deadline,
+      access_state: current.access_state,
+    });
     store.db
       .prepare("UPDATE attempts SET state='COMPLETED',ended=? WHERE id=?")
       .run(Date.now(), id);

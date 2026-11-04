@@ -155,6 +155,35 @@ export async function qualifyInterruptionCLI(
   await expect(invoke("interruptions", freshArgs)).rejects.toMatchObject({
     stderr: expect.stringContaining("review changed"),
   });
+  const savedApproval = f.current.store.db
+    .prepare("SELECT * FROM continuations WHERE attempt=?")
+    .get(id);
+  f.current.store.db
+    .prepare(
+      "UPDATE attempts SET monitoring_mode='v1',page_hash=NULL WHERE id=?",
+    )
+    .run(id);
+  const lostSession = await run(["show", id]);
+  expect(lostSession.requiresNewAttempt).toBe(true);
+  await expect(
+    invoke("interruptions", [
+      "authorize",
+      id,
+      "--generation",
+      String(lostSession.generation),
+      "--revision",
+      String(lostSession.revision),
+      "--reason",
+      "Do not approve an ended session",
+    ]),
+  ).rejects.toMatchObject({
+    stderr: expect.stringContaining("This session ended"),
+  });
+  expect(
+    f.current.store.db
+      .prepare("SELECT * FROM continuations WHERE attempt=?")
+      .get(id),
+  ).toEqual(savedApproval);
   f.current.store.db
     .prepare("UPDATE attempts SET state='COMPLETED',ended=? WHERE id=?")
     .run(Date.now(), id);

@@ -1,4 +1,27 @@
-# Current production milestone — worker callback route DEPLOYED AND ONLINE
+# Current incident — recovery COMPLETE; approval guard COMPLETE LOCALLY
+
+A midterm student's PC reset was followed by confirmed current-owner native SSH
+exit and page-binding loss. Administration nevertheless accepted three unusable
+Resume approvals. Instructor explicitly chose a NEW90-minute saved-work attempt,
+30-minute start window and verified early disposition. Supported CLI protection,
+manifest verification, issuance, durable retention and override completed. The
+replacement was observed ACTIVE with5400seconds/webcam Off and the exact protected
+source. Old history, original deadline and archive remain preserved. No service
+restart or unrelated account action. Private evidence:
+var/incident-reports/jmoor144-resume.20261104/recovery.json and final-live-status.json.
+
+Local correction: shared web/CLI service refuses NEW Resume approvals after known
+retained-page/current-owner SSH loss; dashboard review hides the unusable control
+and gives saved-work guidance. Unknown liveness is not treated as loss. Same-page
+retention, legacy reconnection, old receipts, deadlines and holds remain unchanged.
+All33 affected application/actual compiled CLI tests, six browser cases, full
+fixture types and build pass. Eight inputs frozen;314 native inputs and the ten
+original dirty documentation images unchanged. Owned browser ports are closed.
+Details: docs/lost-session-approval.md. No policy decision remains. Code is local,
+NOT DEPLOYED; any release needs a new instruction and the normal prepared/drained
+workflow. No production restart is authorized by this incident recovery alone.
+
+# Previous production milestone — worker callback route DEPLOYED AND ONLINE
 
 November2 at19:03:39 Chicago (November3 01:03:39UTC): native568daaf is installed;
 web89bb35b/imagee60c3972/schema37 stays unchanged. Exact four-binary candidate passed
