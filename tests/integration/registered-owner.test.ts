@@ -1075,6 +1075,119 @@ it("signed technical continuation proves the original live stream and cannot tur
   }
 });
 
+it("signed files-only bootstrap binds the new connection/page, original owner, current approval and fresh capture", async () => {
+  const f = await activeEvidenceFixture(false, false, true);
+  try {
+    const original = f.store.attempt(f.id),
+      page = hash("fresh files-only page"),
+      transport = hash("fresh authenticated files-only SSH");
+    f.store.db
+      .prepare(
+        "UPDATE attempts SET state='LOCKED',generation=1,page_hash=? WHERE id=?",
+      )
+      .run(page, f.id);
+    const approved = await f.post(`/api/admin/attempts/${f.id}/authorize`, {
+      generation: 1,
+      revision: f.store.attempt(f.id).continuation_revision,
+      requestID: randomUUID(),
+      reason: "Reviewed same-attempt files-only resume",
+    });
+    expect(approved.statusCode, approved.body).toBe(200);
+    const owner = {
+      ...f.owner,
+      page_epoch: page,
+      transport_hash: transport,
+      generation: 1,
+      input_epoch: hash("fresh files-only input"),
+    };
+    const request = {
+      type: "monitoring-files-continue/v1",
+      agent: "class",
+      nonce: hash(randomUUID()),
+      previous_owner: f.owner,
+      owner,
+    };
+    const route = "/api/agent/monitoring-continue";
+    let connected = false;
+    f.monitoring.filesResumeConnection = (a, candidate) =>
+      connected &&
+      a.id === f.id &&
+      candidate.transport_hash === transport &&
+      candidate.page_epoch === page;
+    expect((await f.authenticated(route, request)).statusCode).toBe(409);
+    connected = true;
+    expect((await f.authenticated(route, request)).statusCode).toBe(409); // Old-page images cannot qualify.
+    const a = f.store.attempt(f.id),
+      ticket = f.monitoring.captureChallenge(a, page, "screen");
+    await f.monitoring.challengedFrame(
+      a,
+      {
+        source: "screen",
+        seq: ticket.after_sequence + 1,
+        captured: Date.now(),
+        monotonic: 1,
+        data: f.jpeg,
+        challenge: ticket.challenge,
+        readiness: f.ready,
+      },
+      page,
+    );
+    expect(
+      (
+        await f.authenticated(route, {
+          ...request,
+          type: "monitoring-continue/v1",
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(
+      (
+        await f.authenticated(route, {
+          ...request,
+          previous_owner: {
+            ...f.owner,
+            input_epoch: hash("retired wrong owner"),
+          },
+        })
+      ).statusCode,
+    ).toBe(409);
+    const accepted = await f.authenticated(route, request);
+    expect(accepted.statusCode, accepted.body).toBe(200);
+    const proof = JSON.parse(
+      Buffer.from(accepted.json().payload, "base64").toString(),
+    );
+    expect(proof).toMatchObject({
+      type: request.type,
+      previous_owner: f.owner,
+      owner,
+      authorization_expires: approved.json().expires,
+      bootstrap: { owner, sequence: 1 },
+    });
+    expect(proof.capture_valid_for_ms).toBeGreaterThan(0);
+    expect(proof.capture_valid_for_ms).toBeLessThanOrEqual(15000);
+    expect(f.store.attempt(f.id)).toMatchObject({
+      state: "LOCKED",
+      start: original.start,
+      deadline: original.deadline,
+      original_deadline: original.original_deadline,
+      registered_owner: JSON.stringify(f.owner),
+      grant_id: original.grant_id,
+    });
+    expect(
+      f.store.db
+        .prepare("SELECT consumed FROM continuations WHERE attempt=?")
+        .get(f.id),
+    ).toEqual({ consumed: 0 });
+    connected = false;
+    expect(
+      (await f.authenticated(route, { ...request, nonce: hash(randomUUID()) }))
+        .statusCode,
+    ).toBe(409);
+  } finally {
+    await f.close();
+  }
+});
+
 it("signed pending native Continue remains retryable; confirmed native consumption keeps live evidence available while the reply is lost", async () => {
   const f = await activeEvidenceFixture(false, false, true);
   let clock: ReturnType<typeof vi.spyOn> | undefined;

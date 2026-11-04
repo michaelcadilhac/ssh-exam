@@ -905,14 +905,21 @@ A connection failure beyond the grace, page reload/closure, SSH loss, or explici
 
 ### 7.5 Instructor-authorized continuation
 
-For negotiated retained sessions, Resume approval applies to the original page
-and authenticated SSH session. A known lost page binding or accepted exit of the
-current registered SSH owner requires a reviewed NEW attempt from verified saved
-files, with an instructor-chosen allowance and finite start dates. The web/CLI
-authorization service refuses unusable new Resume approvals; its inspection flag
-is negative recovery guidance, never proof that a session may execute. Unknown
-heartbeats or a retired owner's exit do not establish current-session loss. See
-[the approval correction](docs/lost-session-approval.md).
+Policy revision approved November4,2026 (local implementation; not deployed):
+Resume approval also permits fresh SSH/MFA after genuine connection or page loss
+on the SAME unfinished attempt. Its saved files reopen in fresh terminals;
+programs and unsaved buffers need not survive. Start, original/current deadlines,
+consumed grant and account hold remain unchanged. Adding time is a separate
+instructor clock action. A completed or expired attempt cannot reopen.
+
+The distinct native files-only continuation verifies the old registered owner's
+positive SSH exit, termination of its recorded workloads, exclusive new native
+SSH ownership and fresh challenged capture before admitting new panes. Legacy
+transport replacement stays refused for retained attempts. Delayed heartbeats,
+unknown process state and saved metadata grant no permission and prove no student
+violation. Viable same-page SSH uses retained Continue and preserves buffers.
+See [files-only resume](docs/files-only-resume.md); the earlier new-attempt-only
+rule and local approval refusal are superseded by this explicit policy change.
 
 The locked page shows the reason, remaining time, and **Request instructor review**, with a short message. Rate-limit duplicate requests. Restoring focus alone does not resume access.
 
@@ -920,7 +927,13 @@ The instructor chooses **Authorize resume** in the authenticated dashboard. The 
 
 One authorization covers fresh SSH authentication, transport/page replacement and continuation. After authorization, the student signs in again as the same identity, restores required capture/fullscreen/keyboard conditions and explicitly clicks **Continue exam**. Verify a current frame from every required source and current server state before new terminal access. The old deadline remains unchanged.
 
-Every pause requires a new SSH login; there is no separate reauthentication approval and no same-transport continuation. Stop capture before displaying credentials and record the gap. The native agent rejects old SSH transport identities and consuming a continuation before a new transport attaches. End old shells on pause; saved files and the original deadline survive, while unsaved editor buffers are lost.
+Legacy attempts require fresh SSH after a pause. Negotiated retained attempts
+preserve a viable same-page SSH session and its frozen shells. Only files-only
+recovery replaces a lost connection: stop capture before displaying credentials,
+record the gap, require the same account's fresh SSH and a new page identity,
+and explicitly Resume after capture is ready. Do not replay old input or restore
+old pane capabilities. Saved files and the original clock survive; unsaved editor
+buffers and running programs are not restored after genuine SSH loss.
 
 ## 8. Floating-terminal workspace
 

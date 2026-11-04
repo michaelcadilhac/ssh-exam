@@ -81,7 +81,7 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 	}
 	result.Bootstrap = &seed
 	technical := result.Type == monitoringTechnicalContinue
-	if (result.Type != "monitoring-continue/v1" && !technical) || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || (!technical && result.Expires <= Millis()) || result.Expires <= 0 || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence == 0 || seed.Sequence > monitoringEvidenceMaxSequence || (!technical && seed.Sequence != 1) || !monitoringDigest.MatchString(seed.CoverageEpoch) {
+	if (result.Type != "monitoring-continue/v1" && result.Type != monitoringFilesContinue && !technical) || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || (!technical && result.Expires <= Millis()) || result.Expires <= 0 || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence == 0 || seed.Sequence > monitoringEvidenceMaxSequence || (!technical && seed.Sequence != 1) || !monitoringDigest.MatchString(seed.CoverageEpoch) {
 		return result, errMonitoringEvidence
 	}
 	return result, nil
@@ -442,7 +442,7 @@ func (e *Engine) finishMonitoredResume(expected *Attempt, owner monitoringOwner,
 	if err != nil || at >= fresh.View.AuthorityUntilMS {
 		return committed, errMonitoringAuthority
 	}
-	return map[string]any{"attempt": committed, "input_epochs": fresh.InputEpochs, "monitoring_remaining_ms": fresh.View.AuthorityUntilMS - at}, nil
+	return map[string]any{"attempt": committed, "input_epochs": fresh.InputEpochs, "files_only": fresh.FilesOnly, "monitoring_remaining_ms": fresh.View.AuthorityUntilMS - at}, nil
 }
 
 func (e *Engine) resumeMonitored(a *Attempt, request Request) (any, error) {

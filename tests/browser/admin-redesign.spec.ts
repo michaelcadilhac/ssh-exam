@@ -974,12 +974,12 @@ test("student plus and delete controls work from the keyboard without a row menu
   await expect(remove).toBeFocused();
 });
 
-test("ended retained sessions offer saved-work guidance and no unusable resume approval", async ({
+test("ended retained sessions offer same-deadline files-only resume approval", async ({
   page,
 }) => {
   const s = await fixture(page, false, false, true);
   const bob = s.rows.find((row) => row.username === "bob")!;
-  bob.attempts[0].requiresNewAttempt = true;
+  bob.attempts[0].filesOnlyResume = true;
   await page
     .getByRole("rowgroup", { name: "bob", exact: true })
     .getByRole("button", { name: "Review", exact: true })
@@ -989,13 +989,11 @@ test("ended retained sessions offer saved-work guidance and no unusable resume a
     exact: true,
   });
   await expect(
-    dialog.getByText(
-      "This session ended. Resuming needs another attempt from saved files.",
-    ),
+    dialog.getByText(/Saved files reopen in new terminals/),
   ).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: "Allow resume", exact: true }),
-  ).toHaveCount(0);
+  ).toBeEnabled();
   expect(s.calls.filter((call) => call.path.endsWith("/authorize"))).toEqual(
     [],
   );
@@ -1016,8 +1014,10 @@ test("retained instructor authorization preserves the original page and SSH rath
   await dialog
     .getByRole("button", { name: "Allow resume", exact: true })
     .click();
-  await expect(dialog).toContainText("on the same page and connection");
-  await expect(dialog).toContainText("A lost session needs another attempt");
+  await expect(dialog).toContainText(
+    "After a lost session, they sign in again",
+  );
+  await expect(dialog).toContainText("The deadline stays the same");
   const approval = dialog.getByRole("group", {
     name: "Confirm resume approval",
     exact: true,
@@ -1036,7 +1036,7 @@ test("retained instructor authorization preserves the original page and SSH rath
     .getByRole("button", { name: "Allow resume", exact: true })
     .click();
   await expect(dialog).toContainText(
-    "The student must restore the checks and choose Resume exam on the same page and connection",
+    "The student restores the checks and chooses Resume exam",
   );
   await expect(dialog).not.toContainText("must reconnect");
 });

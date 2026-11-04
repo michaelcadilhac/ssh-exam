@@ -1,5 +1,17 @@
 # Instructor operations
 
+## Files-only Resume candidate (November4; not deployed)
+
+**Review → Allow resume** and the matching `examctl web interruptions authorize`
+workflow now authorize fresh SSH/MFA after confirmed connection loss on the SAME
+unfinished attempt. Students reconnect, restore capture checks and explicitly
+Resume; saved files reopen in new terminals. Programs/unsaved buffers are lost.
+Original/current deadlines and account holds do not change. Add time separately
+if intended; do not stop the attempt or issue a new allowance just to reconnect.
+Viable same-page SSH still preserves editors through retained Resume. See
+[the recovery runbook](recovery-runbook.md) and
+[current local qualification](files-only-resume.md).
+
 ## Current local follow-up: direct editing
 
 These changes are implemented and tested locally; they are not yet installed.

@@ -233,7 +233,9 @@ export async function liveMonitoring(
       store,
       life,
       h,
-      connection,
+      get connection() {
+        return connection!;
+      },
       id,
       page,
       deadline,

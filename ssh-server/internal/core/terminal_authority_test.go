@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited"} {
+	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -58,10 +58,17 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Desktop role/group seam; real root profile uses production probing.
 			var stopRole func()
 			var stopSSH func()
-			if mode == "ssh-exited" {
+			if mode == "ssh-exited" || mode == "files-resume" {
 				guard, stop := testNativeRoleLifetime(t)
 				stopSSH = stop
 				t.Setenv("EXAM_TEST_SSH_PEER_PID", fmt.Sprint(guard.identity.pid))
+				if mode == "files-resume" {
+					file := filepath.Join(t.TempDir(), "synthetic-ssh-peer")
+					if err := os.WriteFile(file, []byte(fmt.Sprint(guard.identity.pid)), 0600); err != nil {
+						t.Fatal(err)
+					}
+					t.Setenv("EXAM_TEST_SSH_PEER_FILE", file)
+				}
 			}
 			if mode == "roles-unavailable" {
 				e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return nil, errNativeRoles }
@@ -402,10 +409,19 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				}
 				resumeMode.Store(mode)
 			})
-			if mode == "ssh-exited" {
+			if mode == "ssh-exited" || mode == "files-resume" {
 				observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
 				if err != nil || observed.SSHPeer != "pinned-live" {
 					t.Fatal("fixture missed positively live SSH owner before exit", observed, err)
+				}
+				if mode == "files-resume" {
+					current, err := readStateSnapshot(e.Config.State)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "check-files-exit", Attempt: a.ID, Owner: *current.Attempts[a.ID].RegisteredOwner}, nil, false); err == nil {
+						t.Fatal("a positively live original SSH lifetime was accepted as exited")
+					}
 				}
 				stopSSH()
 				for limit := time.Now().Add(5 * time.Second); ; {
@@ -429,6 +445,9 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 						}
 						if !found {
 							t.Fatal("positive exit never reached the durable authenticated callback outbox")
+						}
+						if mode == "files-resume" {
+							testActualFilesResume(t, e, key, ended, original, &approvalUntil, &resumeMode)
 						}
 						break
 					}

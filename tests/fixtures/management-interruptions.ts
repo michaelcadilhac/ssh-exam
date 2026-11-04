@@ -164,26 +164,27 @@ export async function qualifyInterruptionCLI(
     )
     .run(id);
   const lostSession = await run(["show", id]);
-  expect(lostSession.requiresNewAttempt).toBe(true);
-  await expect(
-    invoke("interruptions", [
-      "authorize",
-      id,
-      "--generation",
-      String(lostSession.generation),
-      "--revision",
-      String(lostSession.revision),
-      "--reason",
-      "Do not approve an ended session",
-    ]),
-  ).rejects.toMatchObject({
-    stderr: expect.stringContaining("This session ended"),
-  });
+  expect(lostSession.filesOnlyResume).toBe(true);
+  const recoveryApproval = await run([
+    "authorize",
+    id,
+    "--generation",
+    String(lostSession.generation),
+    "--revision",
+    String(lostSession.revision),
+    "--reason",
+    "Approve files-only resume on the original deadline",
+  ]);
+  expect(recoveryApproval.status).toBe("authorized");
   expect(
     f.current.store.db
       .prepare("SELECT * FROM continuations WHERE attempt=?")
       .get(id),
-  ).toEqual(savedApproval);
+  ).toMatchObject({
+    attempt: id,
+    generation: lostSession.generation,
+    consumed: 0,
+  });
   f.current.store.db
     .prepare("UPDATE attempts SET state='COMPLETED',ended=? WHERE id=?")
     .run(Date.now(), id);

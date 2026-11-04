@@ -92,6 +92,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		return nil, errors.New("command expired")
 	}
 	technicalResume := cmd.Op == "consume-technical-continuation"
+	filesResume := cmd.Op == "consume-files-continuation"
 	monitoredResume := cmd.Op == "consume-monitored-continuation" || technicalResume
 	if monitoredResume {
 		cmd.Op, cmd.Body.ownerRequired = "consume-continuation", true
@@ -373,6 +374,23 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 			return errors.New("command account mismatch")
 		}
 		switch cmd.Op {
+		case "consume-files-continuation":
+			a, err := e.Find(r.ID)
+			if err != nil || a.Username != username || a.UID != account.UID || r.Generation != a.Generation || (r.Transport != "" && r.Transport != transport) {
+				return errFilesResume
+			}
+			copy := *a
+			copy.Units = append([]string(nil), a.Units...)
+			if a.RegisteredOwner != nil {
+				owner := *a.RegisteredOwner
+				copy.RegisteredOwner = &owner
+			}
+			if a.SSHExitedOwner != nil {
+				owner := *a.SSHExitedOwner
+				copy.SSHExitedOwner = &owner
+			}
+			result = &copy
+			return nil
 		case "reconcile-recovery-allowance":
 			if r.UID != account.UID || r.Username != username || r.Transport != transport {
 				return errors.New("recovery allowance identity mismatch")
@@ -482,6 +500,13 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 		result, err = e.callLocked(op, r)
 		return err
 	})
+	if err == nil && filesResume {
+		if len(original) != 1 || original[0] == nil {
+			return nil, errFilesResume
+		}
+		cmd.Body.Transport = transport
+		return e.resumeFiles(result.(*Attempt), cmd.Body, original[0])
+	}
 	if err == nil && recoveryAllowance {
 		return e.reconcileRecoveryAllowance(cmd.Body, cmd.Expires)
 	}

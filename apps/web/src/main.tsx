@@ -575,7 +575,7 @@ function App() {
                       <>
                         <p className="warn">
                           {info.attempt.monitoring_mode === "v1"
-                            ? "This session cannot resume. Ask your instructor for another attempt from saved files. The original clock and server restrictions still apply."
+                            ? "Ask your instructor to approve resuming, then sign in again. Saved files reopen in new terminals; programs and unsaved changes are lost. The clock keeps running."
                             : isSandbox(info.exam.id)
                               ? "Resume this practice attempt. The clock keeps running."
                               : "Resuming after a reload needs instructor approval. The clock keeps running."}
@@ -589,62 +589,57 @@ function App() {
                                     `/student/attempts/${info.attempt.id}/review-request`,
                                     {
                                       message:
-                                        info.attempt.monitoring_mode === "v1"
-                                          ? "Page reloaded; requesting a reviewed new attempt from verified saved work"
-                                          : "Page reloaded; requesting review",
+                                        "Requesting approval to resume after connection or page loss",
                                     },
                                   ),
                                 )
                               }
                             >
-                              {info.attempt.monitoring_mode === "v1"
-                                ? "Request another attempt"
-                                : "Ask your instructor to review"}
+                              Ask your instructor to review
                             </button>
                           </>
                         )}
-                        {info.attempt.monitoring_mode !== "v1" &&
-                          (!info.sshConnected ? (
-                            <>
-                              <button
-                                disabled={browserBlocked || !!navigation}
-                                onClick={() =>
-                                  action(async () => {
+                        {!info.sshConnected || info.needsSSHSignIn ? (
+                          <>
+                            <button
+                              disabled={browserBlocked || !!navigation}
+                              onClick={() =>
+                                action(async () => {
+                                  await requireExamBrowser();
+                                  await api(
+                                    `/student/attempts/${info.attempt.id}/reauth`,
+                                    {},
+                                  );
+                                  setSession({ user: null, info: null });
+                                })
+                              }
+                            >
+                              Reconnect SSH
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              disabled={browserBlocked || !!navigation}
+                              onClick={() =>
+                                action(async () => {
+                                  await navigate("restore", async () => {
                                     await requireExamBrowser();
-                                    await api(
-                                      `/student/attempts/${info.attempt.id}/reauth`,
+                                    const r = await api(
+                                      `/student/attempts/${info.attempt.id}/claim`,
                                       {},
                                     );
-                                    setSession({ user: null, info: null });
-                                  })
-                                }
-                              >
-                                Reconnect SSH
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                disabled={browserBlocked || !!navigation}
-                                onClick={() =>
-                                  action(async () => {
-                                    await navigate("restore", async () => {
-                                      await requireExamBrowser();
-                                      const r = await api(
-                                        `/student/attempts/${info.attempt.id}/claim`,
-                                        {},
-                                      );
-                                      setReservation(r);
-                                    });
-                                  })
-                                }
-                              >
-                                {navigation === "restore"
-                                  ? "Restoring exam…"
-                                  : "Resume exam"}
-                              </button>
-                            </>
-                          ))}
+                                    setReservation(r);
+                                  });
+                                })
+                              }
+                            >
+                              {navigation === "restore"
+                                ? "Restoring exam…"
+                                : "Resume exam"}
+                            </button>
+                          </>
+                        )}
                       </>
                     ) : (
                       <>

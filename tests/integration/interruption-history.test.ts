@@ -175,12 +175,12 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
         headers,
       })
     ).json();
-    expect(current.requiresNewAttempt).toBe(true);
+    expect(current.filesOnlyResume).toBe(true);
     expect(current).not.toHaveProperty("page_hash");
     expect(current).not.toHaveProperty("registered_owner");
     result = (await app.inject({ url: url + `?review=${id}`, headers })).json();
-    expect(result.reviewAttempt.requiresNewAttempt).toBe(true);
-    const refused = await app.inject({
+    expect(result.reviewAttempt.filesOnlyResume).toBe(true);
+    const renewed = await app.inject({
       method: "POST",
       url: authorizeURL,
       headers,
@@ -190,11 +190,14 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
         requestID: randomUUID(),
       },
     });
-    expect(refused.statusCode).toBe(409);
-    expect(refused.json().error).toContain("This session ended");
+    expect(renewed.statusCode, renewed.body).toBe(200);
     expect(
       store.db.prepare("SELECT * FROM continuations WHERE attempt=?").get(id),
-    ).toEqual(storedApproval);
+    ).toMatchObject({
+      attempt: id,
+      generation: current.generation,
+      consumed: 0,
+    });
     expect(store.attempt(id)).toMatchObject({
       state: "LOCKED",
       deadline: current.deadline,

@@ -58,7 +58,7 @@ async function paused(
   };
 }
 
-test("retained SSH loss requests a new-attempt review without offering replacement authentication, even with unused approval", async ({
+test("retained SSH loss offers fresh sign-in only after approval and preserves the existing deadline", async ({
   page,
 }) => {
   const p = await paused(page, true);
@@ -70,25 +70,25 @@ test("retained SSH loss requests a new-attempt review without offering replaceme
       replacementRequests.push(request.url());
   });
   await expect(
-    page.getByText(/Ask your instructor for another attempt from saved files/),
+    page.getByText(
+      /After instructor approval, sign in again to reopen saved files/,
+    ),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Reconnect SSH", exact: true }),
-  ).toBeHidden();
+  ).toBeDisabled();
   p.update("approved", Date.now() + 60000);
   await expect(
     page.locator('[data-continuation-state="approved"]'),
-  ).toContainText(
-    "This approval applies only to your original page and connection",
-  );
+  ).toContainText(/approved|allowed/i);
   await expect(page.getByRole("button", { name: /Resume exam/ })).toBeHidden();
   await expect(
-    page.getByText("Request instructor review", { exact: true }).first(),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Reconnect SSH", exact: true }),
+  ).toBeEnabled();
   expect(replacementRequests).toEqual([]);
 });
 
-test("a reloaded retained attempt offers a new-attempt review instead of restoring the original page", async ({
+test("a reloaded retained attempt explains saved files, lost programs and the unchanged clock", async ({
   page,
 }) => {
   const f = await fixture(page, "LOCKED", "student", "retained-new-attempt");
@@ -100,12 +100,14 @@ test("a reloaded retained attempt offers a new-attempt review instead of restori
       requests.push({ path, body: request.postDataJSON() });
   });
   await page.goto("/");
-  await expect(page.getByText(/This session cannot resume/)).toBeVisible();
+  await expect(
+    page.getByText(/Saved files reopen in new terminals/),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Reconnect SSH|Resume exam/ }),
-  ).toHaveCount(0);
+  ).toHaveCount(1);
   await page
-    .getByRole("button", { name: "Request another attempt", exact: true })
+    .getByRole("button", { name: "Ask your instructor to review", exact: true })
     .click();
   await expect
     .poll(() => requests)
@@ -114,7 +116,7 @@ test("a reloaded retained attempt offers a new-attempt review instead of restori
         path: `/api/student/attempts/${f.model.attempt.id}/review-request`,
         body: {
           message:
-            "Page reloaded; requesting a reviewed new attempt from verified saved work",
+            "Requesting approval to resume after connection or page loss",
         },
       },
     ]);

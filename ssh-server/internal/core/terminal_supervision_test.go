@@ -362,7 +362,15 @@ func TestTerminalSupervisorChild(t *testing.T) {
 			}
 			return nil, errMonitoringProcess
 		}
-		if synthetic := os.Getenv("EXAM_TEST_SSH_PEER_PID"); synthetic != "" {
+		synthetic := os.Getenv("EXAM_TEST_SSH_PEER_PID")
+		if file := os.Getenv("EXAM_TEST_SSH_PEER_FILE"); file != "" {
+			data, err := os.ReadFile(file)
+			if err != nil {
+				return nil, err
+			}
+			synthetic = strings.TrimSpace(string(data))
+		}
+		if synthetic != "" {
 			var err error
 			pid, err = strconv.Atoi(synthetic)
 			if err != nil || pid <= 1 {

@@ -2,6 +2,37 @@
 
 Never edit deadline state or remove account gates to resolve outages. Grant extra time only through audited instructor Reset clock or Extend time actions.
 
+## Same-attempt files-only resume — local candidate, not deployed
+
+November4 policy revision: for a paused, unfinished attempt whose existing
+deadline has not passed, use **Review → Allow resume**. The equivalent CLI is
+`examctl web interruptions show ATTEMPT`, `review ATTEMPT`, then `authorize
+ATTEMPT --generation N --revision R --reason TEXT`, using a fresh request ID and
+the reviewed current values. See `examctl web interruptions help`. Approval lasts
+at most five minutes and never beyond the current deadline.
+
+After genuine SSH/page loss, the student chooses **Reconnect SSH**, completes
+fresh SSH/MFA as the same account, restores screen/camera/fullscreen/keyboard
+checks, then explicitly chooses **Resume exam**. Saved files reopen in new
+terminals; running programs and unsaved changes are lost. The SAME attempt,
+original/current deadline, consumed permission and account hold remain intact.
+No Stop, archive issuance, early access override or new attempt is needed.
+For a viable same-page connection, preserve it and use ordinary retained Resume.
+
+If confirmation fails, preserve the page and retry Resume while approval remains
+valid. Inspect `examctl info ATTEMPT --read-only` and `examctl panes supervisor
+ATTEMPT`; unknown/still-live old ownership or unverified cleanup refuses recovery.
+Do not clear state, reset a clock, downgrade monitoring or release account holds.
+After expiry or completion use the separately reviewed NEW-attempt workflow below
+only when the instructor actually intends another allowance. Full current scope
+and qualification limitations: [files-only-resume.md](files-only-resume.md).
+
+## Historical new-attempt recovery / separate new allowance
+
+The old requirement to use this sequence for EVERY genuine SSH loss is superseded
+by the approved local candidate above. The sequence remains valid when explicitly
+issuing a separate attempt with a separately chosen allowance.
+
 For the locally qualified retained-mode release (not deployed), genuine SSH
 loss uses a reviewed **new attempt**, not continuation on a replacement transport.
 The joined guarded qualification now passes this sequence; it does not authorize

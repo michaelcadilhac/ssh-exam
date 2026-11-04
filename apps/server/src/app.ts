@@ -43,7 +43,7 @@ import { RecoverySources } from "./recovery-source.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import {
   nativeContinuationOutcomeRecorded,
-  requiresNewAttemptAfterSessionLoss,
+  needsFilesOnlyResume,
 } from "./native-monitoring-state.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { GrantIssuance } from "./grant-issuance.js";
@@ -313,6 +313,18 @@ export async function createApp(
   };
   const connections = new Map<string, Connection>();
   const attemptConnections = new Map<string, Connection>();
+  // A page/connection claim permits capture and a native recovery REQUEST only.
+  // Never persisted/reconstructed as execution authority after a gateway restart.
+  const filesResumeClaims = new Map<
+    string,
+    {
+      connection: Connection;
+      page: string;
+      generation: number;
+      previousOwner: string;
+      expires: number;
+    }
+  >();
   const pending = new Map<
     string,
     {
@@ -334,6 +346,7 @@ export async function createApp(
   life.onClockChanged = life.onEnd;
   // Do not deliver PTY hangup/signals before the agent has secured its frozen file view.
   life.onSecured = (a) => {
+    filesResumeClaims.delete(a.id);
     const connection = attemptConnections.get(a.id);
     if (connection) {
       connection.onLoss = () => {};
@@ -536,9 +549,39 @@ export async function createApp(
     if (attemptConnections.get(a.id) === conn) attemptConnections.delete(a.id);
     return true;
   };
+  const filesResumeConnection = (a: Attempt) => {
+    const claim = filesResumeClaims.get(a.id);
+    if (!claim) return;
+    const auth = store.db
+      .prepare(
+        "SELECT generation,expires,consumed FROM continuations WHERE attempt=?",
+      )
+      .get(a.id) as any;
+    if (
+      a.state === "LOCKED" &&
+      a.monitoring_mode === "v1" &&
+      a.page_hash === claim.page &&
+      a.generation === claim.generation &&
+      a.registered_owner === claim.previousOwner &&
+      a.deadline &&
+      a.deadline > now() &&
+      auth &&
+      !auth.consumed &&
+      auth.generation === a.generation &&
+      auth.expires === claim.expires &&
+      auth.expires > now() &&
+      claim.connection.alive &&
+      attemptConnections.get(a.id) === claim.connection &&
+      connections.get(`${a.exam}:${a.username}`) === claim.connection
+    )
+      return claim.connection;
+    filesResumeClaims.delete(a.id);
+  };
+  monitoring.filesResumeConnection = (a, owner) =>
+    filesResumeConnection(a)?.transport === owner.transport_hash;
   const authenticationGap = (id: string) => {
     const a = store.attempt(id);
-    if (retainedConnection(a)) return false;
+    if (retainedConnection(a) || filesResumeConnection(a)) return false;
     if (a.monitoring_mode === "v1" && a.registered_owner) {
       let owner: ReturnType<typeof monitoringOwner.parse>;
       try {
@@ -899,9 +942,11 @@ export async function createApp(
       );
       const request = JSON.parse(payload.toString());
       return agent.signTiming(
-        request.type === "monitoring-technical-continue/v1"
-          ? monitoring.continueTechnicalBootstrap(request, agent.id)
-          : monitoring.continueBootstrap(request, agent.id),
+        request.type === "monitoring-files-continue/v1"
+          ? monitoring.continueFilesBootstrap(request, agent.id)
+          : request.type === "monitoring-technical-continue/v1"
+            ? monitoring.continueTechnicalBootstrap(request, agent.id)
+            : monitoring.continueBootstrap(request, agent.id),
       );
     },
   );
@@ -1398,6 +1443,12 @@ export async function createApp(
       ...executionPolicies.status(s.exam!),
       enrollment: row,
       sshConnected: !!connections.get(`${s.exam}:${s.username}`)?.alive,
+      needsSSHSignIn:
+        latest?.monitoring_mode === "v1" &&
+        latest.state === "LOCKED" &&
+        !!latest.registered_owner &&
+        connections.get(`${s.exam}:${s.username}`)?.transport ===
+          JSON.parse(latest.registered_owner).transport_hash,
       attempt: repeat ? null : latest || null,
       grants: pendingGrant ? [pendingGrant] : availableGrants,
       selected_grant: selectedGrant?.id ?? null,
@@ -2282,9 +2333,7 @@ export async function createApp(
     if (a.state === "ACTIVE") {
       await life.lock(
         a.id,
-        a.monitoring_mode === "v1"
-          ? "Page reloaded; instructor review for a new attempt required"
-          : "Page reloaded; fresh SSH authentication required",
+        "Page reloaded; instructor approval and fresh SSH required",
       );
       a = store.attempt(a.id);
     }
@@ -2311,10 +2360,6 @@ export async function createApp(
   });
   app.post("/api/student/attempts/:id/reauth", async (req, reply) => {
     let a = studentAttempt(req);
-    if (a.monitoring_mode === "v1")
-      throw Error(
-        "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
-      );
     await autoAuthorizeSandbox(a.id, true);
     a = store.attempt(a.id);
     const auth = store.db
@@ -2322,6 +2367,11 @@ export async function createApp(
       .get(a.id) as any;
     if (
       a.state !== "LOCKED" ||
+      !a.start ||
+      a.protected ||
+      a.ended ||
+      !a.deadline ||
+      a.deadline <= now() ||
       !auth ||
       auth.consumed ||
       auth.generation !== a.generation ||
@@ -2331,6 +2381,7 @@ export async function createApp(
         "Ask your instructor to approve resuming, then sign in again. Your deadline is unchanged.",
       );
     connections.get(`${a.exam}:${a.username}`)?.close();
+    filesResumeClaims.delete(a.id);
     store.db
       .prepare("DELETE FROM sessions WHERE token=?")
       .run(hash(req.cookies.session!));
@@ -2340,10 +2391,6 @@ export async function createApp(
   });
   app.post("/api/student/attempts/:id/claim", async (req) => {
     let a = studentAttempt(req);
-    if (a.monitoring_mode === "v1")
-      throw Error(
-        "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
-      );
     await autoAuthorizeSandbox(a.id);
     a = store.attempt(a.id);
     const auth = store.db
@@ -2351,6 +2398,11 @@ export async function createApp(
       .get(a.id) as any;
     if (
       a.state !== "LOCKED" ||
+      !a.start ||
+      a.protected ||
+      a.ended ||
+      !a.deadline ||
+      a.deadline <= now() ||
       !auth ||
       auth.consumed ||
       auth.generation !== a.generation ||
@@ -2364,20 +2416,66 @@ export async function createApp(
       throw Error(
         "Sign in again with the same account after your instructor approves resuming.",
       );
-    await conn.command("attach-transport", {
-      id: a.id,
-      username: a.username,
-      transport: conn.transport,
-      generation: a.generation,
-    });
+    if (a.monitoring_mode === "v1") {
+      const owner = monitoringOwner.parse(
+        JSON.parse(a.registered_owner || "null"),
+      );
+      if (conn.transport === owner.transport_hash)
+        throw Error(
+          "Sign in again to resume from saved files in new terminals. Your deadline is unchanged.",
+        );
+    } else {
+      await conn.command("attach-transport", {
+        id: a.id,
+        username: a.username,
+        transport: conn.transport,
+        generation: a.generation,
+      });
+    }
     attemptConnections.set(a.id, conn);
     await clocks.deliver(a.id);
+    const current = store.attempt(a.id),
+      authorization = store.db
+        .prepare(
+          "SELECT generation,expires,consumed FROM continuations WHERE attempt=?",
+        )
+        .get(a.id) as any;
+    if (
+      current.state !== "LOCKED" ||
+      current.generation !== a.generation ||
+      current.page_hash !== a.page_hash ||
+      current.registered_owner !== a.registered_owner ||
+      current.clock_revision !== a.clock_revision ||
+      current.settings !== a.settings ||
+      !current.deadline ||
+      current.deadline <= now() ||
+      current.ended ||
+      current.protected ||
+      !conn.alive ||
+      connections.get(`${a.exam}:${a.username}`) !== conn ||
+      !authorization ||
+      authorization.consumed ||
+      authorization.generation !== a.generation ||
+      authorization.expires !== auth.expires ||
+      authorization.expires <= now()
+    )
+      throw Error(
+        "The attempt or approval changed while reconnecting. Check the current status and ask your instructor to review it. Your deadline is unchanged.",
+      );
     const pageSecret = secret();
     sockets.get(a.id)?.close(1008, "Authorized replacement page");
     sockets.delete(a.id);
     store.db
       .prepare("UPDATE attempts SET page_hash=? WHERE id=?")
       .run(hash(pageSecret), a.id);
+    if (a.monitoring_mode === "v1")
+      filesResumeClaims.set(a.id, {
+        connection: conn,
+        page: hash(pageSecret),
+        generation: a.generation,
+        previousOwner: a.registered_owner!,
+        expires: auth.expires,
+      });
     store.audit(a.username, "authorized-page-replacement", a.id);
     store.audit(a.username, "authentication-gap-ended", a.id);
     return {
@@ -2456,11 +2554,18 @@ export async function createApp(
     const secondary = automaticTechnical
       ? monitoring.requestTechnicalRecovery(a)
       : undefined;
+    const filesOnly = !automaticTechnical && !!filesResumeConnection(a);
     try {
+      if (filesOnly && (await conn.prepareMonitoring()) !== true)
+        throw Error(
+          "This browser connection cannot safely restore the exam. Ask your instructor to check the browser and server versions. Your deadline is unchanged.",
+        );
       const primary = agent.call(
-        automaticTechnical
-          ? "consume-technical-continuation"
-          : "consume-continuation",
+        filesOnly
+          ? "consume-files-continuation"
+          : automaticTechnical
+            ? "consume-technical-continuation"
+            : "consume-continuation",
         {
           id: a.id,
           generation: a.generation,
@@ -2483,7 +2588,9 @@ export async function createApp(
           !["LOCKED", "ACTIVE"].includes(current.state) ||
           current.generation !== a.generation ||
           current.page_hash !== a.page_hash ||
-          retainedConnection(current) !== conn
+          (filesOnly
+            ? filesResumeConnection(current) || retainedConnection(current)
+            : retainedConnection(current)) !== conn
         )
           throw Error(
             "The pause or page changed while resuming. Keep this page and its terminals open, then check the current status.",
@@ -2501,7 +2608,12 @@ export async function createApp(
             "Resuming is not yet confirmed. Keep this page open and retry Resume exam. This does not create another approval or reset the clock.",
           );
         life.acceptRemote(result.attempt);
-        inputEpochs = await conn.changeInputEpochs(a.id, result.input_epochs);
+        inputEpochs =
+          result.files_only === true &&
+          conn.panes.size === 0 &&
+          Object.keys(result.input_epochs).length === 0
+            ? {}
+            : await conn.changeInputEpochs(a.id, result.input_epochs);
         const agreed = store.attempt(a.id);
         if (
           agreed.page_hash !== a.page_hash ||
@@ -2521,6 +2633,17 @@ export async function createApp(
           "Continuation acknowledgment lost; instructor review required",
         );
         await life.reconcile(a.id).catch(() => {});
+      }
+      if (filesOnly) {
+        store.audit(
+          "gateway",
+          "files-only-resume-unconfirmed",
+          a.id,
+          String(error).slice(0, 1000),
+        );
+        throw Error(
+          "Reconnection could not be confirmed. Keep this page open and retry Resume exam. If it still fails, ask your instructor to check it. Your deadline is unchanged.",
+        );
       }
       throw error;
     } finally {
@@ -2640,7 +2763,7 @@ export async function createApp(
     return {
       ...a,
       pendingClockReset: clocks.pending(a.id),
-      requiresNewAttempt: requiresNewAttemptAfterSessionLoss(store, a),
+      filesOnlyResume: needsFilesOnlyResume(store, a),
       connected,
       working: a.state === "ACTIVE" && connected && a.deadline > now(),
       terminalCount: conn?.alive ? conn.panes.size : 0,

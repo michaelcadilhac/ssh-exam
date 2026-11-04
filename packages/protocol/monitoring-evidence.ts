@@ -74,6 +74,14 @@ export const nativeMonitoringContinuation = z
   })
   .strict();
 
+// Fresh SSH and fresh terminals on the original countdown. Older roles refuse
+// the distinct purpose rather than treating it as a retained same-peer thaw.
+export const nativeFilesContinuation = nativeMonitoringContinuation
+  .extend({
+    type: z.literal("monitoring-files-continue/v1"),
+  })
+  .strict();
+
 // A distinct purpose cannot consume a reviewed approval without proving the
 // original live monitoring stream. The nonce is a native memory acceptance
 // anchor, not a permission restored from storage.

@@ -163,7 +163,7 @@ it("same-page retained pause keeps SSH; failed native Continue retries the same 
     });
     expect(reauth.statusCode, reauth.body).toBe(400);
     expect(reauth.json().error).toContain(
-      "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
+      "Ask your instructor to approve resuming, then sign in again. Your deadline is unchanged.",
     );
     expect(f.connection.alive).toBe(true);
     const continued = await continueAttempt();
@@ -191,8 +191,8 @@ it("same-page retained pause keeps SSH; failed native Continue retries the same 
   }
 });
 
-it.each(["reauth", "claim"])(
-  "retained %s refuses replacement authentication before changing a valid unused approval, session or interval",
+it.each(["claim"])(
+  "retained %s refuses reusing the old transport before changing a valid unused approval, session or interval",
   async (operation) => {
     const f = await liveMonitoring({ ownedAttempt: true });
     const original = f.store.attempt(f.id);
@@ -253,7 +253,7 @@ it.each(["reauth", "claim"])(
       });
       expect(refused.statusCode, refused.body).toBe(400);
       expect(refused.json().error).toContain(
-        "A new connection cannot resume this attempt. Ask your instructor for another attempt from verified saved files; they choose its time limit and start times. Unsaved editor changes are not restored. The earlier deadline and access restrictions still apply. No time is added automatically.",
+        "Sign in again to resume from saved files in new terminals. Your deadline is unchanged.",
       );
       expect(close).not.toHaveBeenCalled();
       expect(command.mock.calls.some(([op]) => op === "attach-transport")).toBe(

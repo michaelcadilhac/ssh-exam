@@ -3,7 +3,7 @@ import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.
 
 // A negative recovery fact, never proof that another session is usable. Unknown
 // transport state and delayed heartbeats do not establish an SSH disconnect.
-export function requiresNewAttemptAfterSessionLoss(store: Store, a: Attempt) {
+export function needsFilesOnlyResume(store: Store, a: Attempt) {
   if (a.state !== "LOCKED" || a.monitoring_mode !== "v1") return false;
   if (a.page_hash === null) return true;
   if (!a.registered_owner) return false;

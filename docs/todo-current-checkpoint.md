@@ -1,4 +1,29 @@
-# Current incident — recovery COMPLETE; approval guard COMPLETE LOCALLY
+# Current milestone — files-only SAME-attempt resume COMPLETE LOCALLY, NOT DEPLOYED
+
+November4: instructor explicitly requests implementing fresh SSH/MFA and fresh
+terminals after SSH loss, retaining saved files and the SAME unfinished attempt
+and existing deadline. This supersedes the prior NEW-attempt-only restriction
+and the local approval guard below. Additional time remains separate. Local
+development/tests only; do not change the student's already-active replacement,
+push, deploy or restart production. Plan/acceptance: docs/files-only-resume.md.
+Implemented the distinct verified native transition and joined student/web/CLI
+flow. Legacy retained attach remains refused. Native full races/build/vet,
+23 final interfaces,66 affected browser cases, actual WASM/legacy checks and
+build/types pass; one stale video assertion corrected and its CLI/export test
+passes. Evidence: var/collection-tests/files-only-resume.20261104a/.
+Joined actual release-native/browser test passes53.7s: genuine SSH loss, current
+approval, fresh MFA/SSH/capture, SAME-attempt new shell/saved bytes/unchanged clock,
+protected Finish and HELD access. Guestdt6p6p9g is independently inactive/MainPID0,
+exit0/no owned processes; host/base files and authority unchanged. Two preceding
+driver failures are retained and explained in the feature document. No runtime
+change after native/app qualification. Candidate bundle privateupload.0hzvncwa.
+Local fixture corrections committed ccaabf1; the coherent feature follows it.
+All741 final inputs are frozen, original screenshots unchanged, local fixture
+ports closed and synthetic TLS key removed. Next: a NEW deployment instruction
+and exact matched image/install/recovery readiness; nothing is pushed/deployed.
+Preserve the ten existing dirty documentation screenshots. No open policy choice.
+
+# Previous incident — recovery COMPLETE; approval guard COMPLETE LOCALLY
 
 A midterm student's PC reset was followed by confirmed current-owner native SSH
 exit and page-binding loss. Administration nevertheless accepted three unusable

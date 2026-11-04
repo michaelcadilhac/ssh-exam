@@ -40,13 +40,12 @@ can renew an unused approval under existing rules, retaining its history. Approv
 expires at the earlier of five minutes from gateway acceptance or the current deadline.
 It does NOT resume execution, thaw work, stop/reset time, release account holds,
 reopen completed work or bypass current page, authenticated ownership and monitoring.
-Retained v1 attempts keep the original page and viable SSH connection: restore
-conditions and explicitly Continue there. Approval cannot transfer to a new page
-or SSH connection. Genuine loss requires a reviewed NEW attempt from verified
-saved work with a chosen allowance/finite Begin window; inspect web grants help
-and the recovery runbook. The old interval/hold remains; early access disposition
-is a separate audited decision. Existing legacy attempts require fresh SSH under
-their established policy. A delayed command/control reply alone proves no loss.
+Retained attempts keep viable SSH and editor buffers: restore checks and choose
+Resume exam there. After confirmed SSH loss, the SAME approval allows fresh
+SSH/MFA and fresh terminals using the attempt's saved files. Programs and unsaved
+buffers are lost. Original/current deadlines, consumed grant and account hold
+stay unchanged; adding time remains a separate clock operation. No new attempt,
+automatic refund or access override is needed. A delayed reply proves no loss.
 
 Common flags: --config FILE (default /etc/exam-agent/agent.json), --request UUID.
 Lost mutation reply: retry identical arguments with the printed --request UUID.

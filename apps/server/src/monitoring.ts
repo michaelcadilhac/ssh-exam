@@ -32,6 +32,7 @@ import {
   monitoringOwner,
   nativeMonitoringChallenge,
   nativeMonitoringContinuation,
+  nativeFilesContinuation,
   nativeTechnicalContinuation,
   nativeTechnicalPoll,
   nativeTechnicalResult,
@@ -45,6 +46,7 @@ export class Monitoring {
   // proof is unavailable without it; an in-memory negative must not disappear
   // on restart and allow a genuine policy violation to bypass approval.
   onLivePolicyLoss?: (a: Attempt) => void;
+  filesResumeConnection?: (a: Attempt, owner: MonitoringOwner) => boolean;
   private readiness = new MonitoringReadiness();
   private liveLedger: MonitoringEvidenceLedger;
   private pendingBegins = new Map<
@@ -495,8 +497,13 @@ export class Monitoring {
     if (!issuance) return undefined;
     return JSON.stringify([row.generation, row.expires, issuance.identity]);
   }
-  continueBootstrap(input: unknown, agent: string) {
-    const request = nativeMonitoringContinuation.parse(input),
+  continueFilesBootstrap(input: unknown, agent: string) {
+    return this.continueBootstrap(input, agent, true);
+  }
+  continueBootstrap(input: unknown, agent: string, filesOnly = false) {
+    const request = (
+        filesOnly ? nativeFilesContinuation : nativeMonitoringContinuation
+      ).parse(input),
       a = this.store.attempt(request.owner.attempt);
     if (
       !a ||
@@ -521,8 +528,12 @@ export class Monitoring {
       owner.username !== a.username ||
       owner.uid !== a.uid ||
       owner.page_epoch !== a.page_hash ||
-      owner.page_epoch !== previous.page_epoch ||
-      owner.transport_hash !== previous.transport_hash ||
+      (filesOnly
+        ? owner.page_epoch === previous.page_epoch ||
+          owner.transport_hash === previous.transport_hash ||
+          this.filesResumeConnection?.(a, owner) !== true
+        : owner.page_epoch !== previous.page_epoch ||
+          owner.transport_hash !== previous.transport_hash) ||
       owner.boot !== previous.boot ||
       owner.generation !== a.generation ||
       owner.generation <= previous.generation ||
@@ -540,7 +551,9 @@ export class Monitoring {
       ),
       result = this.captureBootstrap(a, owner, snapshot, authorization);
     return {
-      type: "monitoring-continue/v1",
+      type: filesOnly
+        ? "monitoring-files-continue/v1"
+        : "monitoring-continue/v1",
       audience: agent,
       nonce: request.nonce,
       previous_owner: previous,
@@ -1157,9 +1170,15 @@ export class Monitoring {
         .run(id);
       this.store.db.prepare("DELETE FROM frames WHERE attempt=?").run(id);
       this.store.db.prepare("DELETE FROM recordings WHERE attempt=?").run(id);
-      this.store.db.prepare("DELETE FROM monitoring_video_segments WHERE attempt=?").run(id);
-      this.store.db.prepare(`UPDATE monitoring_video_jobs SET status='deleted',owner=NULL,
-        error=NULL,verified=NULL,updated=? WHERE attempt=?`).run(now(),id);
+      this.store.db
+        .prepare("DELETE FROM monitoring_video_segments WHERE attempt=?")
+        .run(id);
+      this.store.db
+        .prepare(
+          `UPDATE monitoring_video_jobs SET status='deleted',owner=NULL,
+        error=NULL,verified=NULL,updated=? WHERE attempt=?`,
+        )
+        .run(now(), id);
       this.store.db
         .prepare(
           "UPDATE incidents SET events='[]',message=NULL WHERE attempt=?",

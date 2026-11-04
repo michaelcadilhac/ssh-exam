@@ -50,7 +50,7 @@ function fixture() {
 }
 
 it.each(["legacy", "v1"])(
-  "%s approvals distinguish a lost retained page from legacy reauthentication",
+  "%s approvals allow reconnection without resetting the original interval",
   (mode) => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(100000);
     const f = fixture();
@@ -63,27 +63,16 @@ it.each(["legacy", "v1"])(
       const approval = f.store.db.prepare("SELECT * FROM continuations").get();
       f.store.db.exec("UPDATE attempts SET page_hash=NULL WHERE id='a'");
       const shown = f.management.show({ id: "a" });
-      expect(shown.requiresNewAttempt).toBe(mode === "v1");
+      expect(shown.filesOnlyResume).toBe(mode === "v1");
       expect(shown).not.toHaveProperty("page_hash");
       expect(shown).not.toHaveProperty("registered_owner");
       expect(shown).not.toHaveProperty("uid");
-      if (mode === "v1") {
-        expect(() => f.management.authorize(f.body(), "teacher")).toThrow(
-          "This session ended",
-        );
-        expect(f.store.db.prepare("SELECT * FROM continuations").get()).toEqual(
-          approval,
-        );
-        expect(
-          f.store.db
-            .prepare("SELECT count(*) n FROM continuation_requests")
-            .get(),
-        ).toEqual({ n: 1 });
-      } else {
-        expect(f.management.authorize(f.body(), "teacher").status).toBe(
-          "authorized",
-        );
-      }
+      expect(f.management.authorize(f.body(), "teacher").status).toBe(
+        "authorized",
+      );
+      expect(f.store.db.prepare("SELECT * FROM continuations").get()).toEqual(
+        approval,
+      );
       // An old durable receipt stays inspectable; it is never renewed by replay.
       expect(f.management.authorize(original, "teacher")).toEqual(receipt);
       expect(f.store.attempt("a")).toMatchObject({
@@ -100,7 +89,7 @@ it.each(["legacy", "v1"])(
   },
 );
 
-it("only a confirmed exit of the current retained owner blocks approval while the original page remains bound", () => {
+it("only a confirmed current-owner exit selects files-only guidance; approval still needs native verification", () => {
   const clock = vi.spyOn(Date, "now").mockReturnValue(100000);
   const f = fixture();
   try {
@@ -128,7 +117,7 @@ it("only a confirmed exit of the current retained owner blocks approval while th
       id,
       JSON.stringify({ ...owner, input_epoch: "d".repeat(64) }),
     );
-    expect(f.management.show({ id }).requiresNewAttempt).toBe(false);
+    expect(f.management.show({ id }).filesOnlyResume).toBe(false);
     const body = () => ({
       id,
       generation: 1,
@@ -146,10 +135,8 @@ it("only a confirmed exit of the current retained owner blocks approval while th
       id,
       JSON.stringify(owner),
     );
-    expect(f.management.show({ id }).requiresNewAttempt).toBe(true);
-    expect(() => f.management.authorize(body(), "teacher")).toThrow(
-      "This session ended",
-    );
+    expect(f.management.show({ id }).filesOnlyResume).toBe(true);
+    expect(f.management.authorize(body(), "teacher").status).toBe("authorized");
     expect(
       f.store.db.prepare("SELECT * FROM continuations WHERE attempt=?").get(id),
     ).toEqual(previous);

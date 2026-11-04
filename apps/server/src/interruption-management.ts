@@ -1,5 +1,5 @@
 import { hash, now, type Store } from "./db.js";
-import { requiresNewAttemptAfterSessionLoss } from "./native-monitoring-state.js";
+import { needsFilesOnlyResume } from "./native-monitoring-state.js";
 import {
   interruptionShow,
   interruptionReview,
@@ -37,7 +37,7 @@ export class InterruptionManagement {
     const { uid, page_hash, registered_owner, ...metadata } = a;
     return {
       ...metadata,
-      requiresNewAttempt: requiresNewAttemptAfterSessionLoss(this.store, a),
+      filesOnlyResume: needsFilesOnlyResume(this.store, a),
       authorization: authorization || null,
       historyDeleted: !!this.store.db
         .prepare("SELECT 1 FROM tombstones WHERE attempt=?")
@@ -176,10 +176,6 @@ export class InterruptionManagement {
         a.deadline <= at
       )
         return refuse(`Attempt cannot continue. ${guidance}`);
-      if (current.requiresNewAttempt)
-        return refuse(
-          "This session ended. Resume approval cannot reconnect it. Allow another attempt from verified saved files, with an explicit time limit and start window.",
-        );
       const expires = Math.min(a.deadline, at + 300000);
       this.store.db
         .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")

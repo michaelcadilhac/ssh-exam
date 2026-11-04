@@ -237,7 +237,7 @@ export function Workspace({
   const replacementRequired =
     attempt.monitoring_mode === "v1" && !!attempt.start && authenticationGap;
   const replacementMessage =
-    "Your connection ended. Ask your instructor for another attempt from saved files. Unsaved edits cannot be restored. The original clock and server restrictions still apply.";
+    "Your connection ended. After instructor approval, sign in again to reopen saved files in new terminals. Programs and unsaved changes are lost. Your deadline is unchanged.";
   const preflightRecovery =
     attempt.state === "PREPARING" && (authenticationGap || recoveryExpired);
   const covered =
@@ -1846,27 +1846,20 @@ export function Workspace({
                   {!sandbox && attempt.state === "LOCKED" && (
                     <p
                       className={
-                        approval.state === "approved" && !replacementRequired
-                          ? "status"
-                          : "warn"
+                        approval.state === "approved" ? "status" : "warn"
                       }
                       role="status"
                       aria-live="polite"
                       data-continuation-state={approval.state}
                     >
-                      {replacementRequired
-                        ? "This approval applies only to your original page and connection. Ask your instructor for another attempt if either is lost."
-                        : continuationNotice(approval, authenticationGap)}
-                      {!replacementRequired &&
-                        approval.state === "approved" &&
-                        approval.expires && (
-                          <> Approval expires {chicago(approval.expires)}.</>
-                        )}
+                      {continuationNotice(approval, authenticationGap)}
+                      {approval.state === "approved" && approval.expires && (
+                        <> Approval expires {chicago(approval.expires)}.</>
+                      )}
                     </p>
                   )}
                   {!sandbox &&
-                    (replacementRequired ||
-                      !["approved", "completing"].includes(approval.state)) && (
+                    !["approved", "completing"].includes(approval.state) && (
                       <details className="review-request">
                         <summary>Request instructor review</summary>
                         <label>
@@ -2022,7 +2015,10 @@ export function Workspace({
                     Resume exam
                   </button>
                   <button
-                    hidden={!authenticationGap || replacementRequired}
+                    hidden={!authenticationGap}
+                    disabled={
+                      !!restoring || (!sandbox && approval.state !== "approved")
+                    }
                     onClick={() =>
                       void recoveryAction(
                         "Opening SSH sign-in",

@@ -54,6 +54,7 @@ type terminalAuthorityRequest struct {
 	Unit                string           `json:"unit,omitempty"`
 	Proof               *PaneInstance    `json:"proof,omitempty"`
 	NextOwner           *monitoringOwner `json:"next_owner,omitempty"`
+	PreviousOwner       *monitoringOwner `json:"previous_owner,omitempty"`
 	Generation          int              `json:"generation,omitempty"`
 	Clock               *ClockReset      `json:"clock,omitempty"`
 }
@@ -72,6 +73,7 @@ type terminalAuthorityReply struct {
 	Continuity  *terminalTechnicalContinuity `json:"continuity,omitempty"`
 	ResumeKind  string                       `json:"resume_kind,omitempty"`
 	InputEpochs map[string]string            `json:"input_epochs,omitempty"`
+	FilesOnly   bool                         `json:"files_only,omitempty"`
 	HeldOwner   *monitoringOwner             `json:"held_owner,omitempty"`
 	Cutoff      *monitoringCutoffDescriptor  `json:"cutoff,omitempty"`
 	cutoffFile  *os.File
@@ -97,6 +99,7 @@ type terminalAuthorityPending struct {
 	claim     *monitoringOwnerClaim
 	cutoff    *monitoringSharedCutoff
 	ready     bool
+	previous  *monitoringOwner // Files-only replacement; never a new grant/start.
 	cancelled atomic.Bool
 	mu        sync.Mutex
 }
@@ -142,6 +145,7 @@ type terminalAuthorityRuntime struct {
 	resumeKind                                        string
 	clockReset                                        *ClockReset      // Exact durable clock intent; lost replies never apply it twice.
 	cancelledResumeOwner                              *monitoringOwner // Negative-control alias only; never positive permission.
+	filesPreviousOwner                                *monitoringOwner
 	start, deadline, originalDeadline, deadlineBootMS int64
 }
 
@@ -164,7 +168,8 @@ func (s *terminalSupervisor) prepareAuthority(q terminalAuthorityRequest, origin
 	if err := terminalAuthorityReadiness(); err != nil {
 		return terminalAuthorityBegin{}, err
 	}
-	if !validMonitoringOwner(q.Owner) || q.Owner.Boot != boot() || q.Attempt != s.id || q.Owner.Attempt != s.id || !identifier.MatchString(q.Agent) || len(q.GatewayKey) != ed25519.PublicKeySize || !validGrant(q.Grant) || !attemptID.MatchString(q.Intent) || original == nil || caller == nil {
+	files := q.Op == "prepare-files"
+	if !validMonitoringOwner(q.Owner) || q.Owner.Boot != boot() || q.Attempt != s.id || q.Owner.Attempt != s.id || !identifier.MatchString(q.Agent) || len(q.GatewayKey) != ed25519.PublicKeySize || (!files && (!validGrant(q.Grant) || !attemptID.MatchString(q.Intent))) || (files && (q.PreviousOwner == nil || !validFilesReplacement(*q.PreviousOwner, q.Owner))) || original == nil || caller == nil {
 		return terminalAuthorityBegin{}, errMonitoringScope
 	}
 	issued, err := monitoringBootMillis()
@@ -172,6 +177,10 @@ func (s *terminalSupervisor) prepareAuthority(q terminalAuthorityRequest, origin
 		return terminalAuthorityBegin{}, err
 	}
 	p := &terminalAuthorityPending{begin: terminalAuthorityBegin{Attempt: s.id, Nonce: Token(), Owner: q.Owner, IssuedBootMS: issued}, agent: q.Agent, key: append(ed25519.PublicKey(nil), q.GatewayKey...), grant: q.Grant, intent: q.Intent}
+	if files {
+		previous := *q.PreviousOwner
+		p.previous = &previous
+	}
 	p.cutoff, err = newMonitoringSharedCutoff(q.Owner, 0, 0) // Probe/allocate BEFORE any clock/material release.
 	if err != nil {
 		return terminalAuthorityBegin{}, err
@@ -291,7 +300,8 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 	p.mu.Unlock()
 	s.mu.Unlock()
 	current, err := rootCaller.live()
-	if err != nil || !current || q.Frame == nil || q.State != "ACTIVE" || q.Start <= 0 || q.Deadline <= q.Start || q.OriginalDeadline != q.Deadline || q.DeadlineBootMS <= 0 || q.Owner.Boot != boot() {
+	files := p.previous != nil
+	if err != nil || !current || q.Frame == nil || q.State != "ACTIVE" || q.Start <= 0 || q.Deadline <= q.Start || q.OriginalDeadline <= 0 || (!files && q.OriginalDeadline != q.Deadline) || files != (q.Op == "commit-files") || (files && (q.PreviousOwner == nil || *q.PreviousOwner != *p.previous)) || q.DeadlineBootMS <= 0 || q.Owner.Boot != boot() {
 		return monitoringAuthorityView{}, errMonitoringAuthority
 	}
 	if len(q.Frame.Payload) > base64.StdEncoding.EncodedLen(4096) {
@@ -303,10 +313,18 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 		return monitoringAuthorityView{}, errMonitoringEvidence
 	}
 	var reply grantBeginReply
-	d := json.NewDecoder(bytes.NewReader(payload))
-	d.DisallowUnknownFields()
-	if d.Decode(&reply) != nil || reply.Type != "grant-begin/v3" || reply.Audience != p.agent || reply.Nonce != p.begin.Nonce || reply.Attempt != s.id || reply.Intent != p.intent || !sameGrant(reply.Grant, p.grant) || reply.Transport != q.Owner.TransportHash || reply.Boot != q.Owner.Boot || reply.PageEpoch != q.Owner.PageEpoch || reply.Bootstrap == nil || reply.Bootstrap.Type != "monitoring-bootstrap/v1" || reply.Bootstrap.ControlRetention != "v1" || reply.Bootstrap.PolicyReports != "v1" || reply.Bootstrap.Owner != q.Owner || reply.Bootstrap.Sequence != 1 || !monitoringDigest.MatchString(reply.Bootstrap.CoverageEpoch) || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Expires <= Millis() {
-		return monitoringAuthorityView{}, errMonitoringEvidence
+	if files {
+		proof, err := decodeMonitoringContinuation(*q.Frame, p.key)
+		if err != nil || proof.Type != monitoringFilesContinue || proof.Audience != p.agent || proof.Nonce != p.begin.Nonce || proof.PreviousOwner != *p.previous || proof.Owner != q.Owner || !validFilesReplacement(proof.PreviousOwner, proof.Owner) {
+			return monitoringAuthorityView{}, errMonitoringEvidence
+		}
+		reply.Bootstrap, reply.CaptureValidFor, reply.Expires = proof.Bootstrap, proof.CaptureValidFor, proof.Expires
+	} else {
+		d := json.NewDecoder(bytes.NewReader(payload))
+		d.DisallowUnknownFields()
+		if d.Decode(&reply) != nil || reply.Type != "grant-begin/v3" || reply.Audience != p.agent || reply.Nonce != p.begin.Nonce || reply.Attempt != s.id || reply.Intent != p.intent || !sameGrant(reply.Grant, p.grant) || reply.Transport != q.Owner.TransportHash || reply.Boot != q.Owner.Boot || reply.PageEpoch != q.Owner.PageEpoch || reply.Bootstrap == nil || reply.Bootstrap.Type != "monitoring-bootstrap/v1" || reply.Bootstrap.ControlRetention != "v1" || reply.Bootstrap.PolicyReports != "v1" || reply.Bootstrap.Owner != q.Owner || reply.Bootstrap.Sequence != 1 || !monitoringDigest.MatchString(reply.Bootstrap.CoverageEpoch) || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Expires <= Millis() {
+			return monitoringAuthorityView{}, errMonitoringEvidence
+		}
 	}
 	now, err := monitoringBootMillis()
 	until := min(p.begin.IssuedBootMS+reply.CaptureValidFor, q.VerifiedUntilBootMS, q.DeadlineBootMS)
@@ -314,6 +332,7 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 		return monitoringAuthorityView{}, errMonitoringAuthority
 	}
 	r := &terminalAuthorityRuntime{owner: q.Owner, beginNonce: q.Nonce, key: append(ed25519.PublicKey(nil), p.key...), peer: ssh, claim: claim, launches: map[string]PaneInstance{}, start: q.Start, deadline: q.Deadline, originalDeadline: q.OriginalDeadline, deadlineBootMS: q.DeadlineBootMS}
+	r.filesPreviousOwner = p.previous
 	r.live.Store(true)
 	if cutoff == nil || cutoff.initialize(until, q.DeadlineBootMS) != nil {
 		return monitoringAuthorityView{}, errMonitoringCutoff
@@ -475,10 +494,18 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		return
 	}
 	defer caller.close()
-	if q.Op == "prepare" {
+	if q.Op == "prepare" || q.Op == "prepare-files" {
 		if len(files) != 1 {
 			reply.Error = "original native Begin control socket required; no positive authority created"
 			return
+		}
+		if q.Op == "prepare-files" {
+			if done, err := s.prepareFilesReplacement(q, &reply); done || err != nil {
+				if err != nil {
+					reply.Error = err.Error()
+				}
+				return
+			}
 		}
 		begin, err := s.prepareAuthority(q, files[0], caller)
 		if err != nil {
@@ -492,10 +519,35 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		reply.Error = "authority control does not accept descriptors"
 		return
 	}
+	if q.Op == "files-result" || q.Op == "resume-result" {
+		s.mu.Lock()
+		r := s.workAuthority
+		if r != nil && r.filesPreviousOwner != nil && r.owner == q.Owner && r.beginNonce == q.Nonce {
+			view := r.authority.check()
+			reply.View, reply.InputEpochs, reply.ResumeKind = &view, map[string]string{}, "reviewed"
+			reply.FilesOnly = true
+			s.mu.Unlock()
+			return
+		}
+		s.mu.Unlock()
+		if q.Op == "files-result" {
+			reply.Error = errMonitoringScope.Error()
+			return
+		}
+	}
 	if q.Op == "hold" || q.Op == "expire" {
 		_ = c.SetDeadline(time.Now().Add(5 * time.Second))
 	}
 	switch q.Op {
+	case "check-files-exit":
+		s.mu.Lock()
+		r := s.workAuthority
+		valid := r == nil || (sameExitedLifetime(r.owner, q.Owner) && r.peer.observation() == "exited") ||
+			(r.filesPreviousOwner != nil && sameExitedLifetime(*r.filesPreviousOwner, q.Owner) && s.active == 0 && len(s.requests) == 0)
+		s.mu.Unlock()
+		if !valid {
+			reply.Error = errMonitoringProcess.Error()
+		}
 	case "check-clock", "commit-clock":
 		view, err := s.changeAuthorityClock(q)
 		if err != nil {
@@ -635,6 +687,13 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 	case "cancel-pending":
 		s.cancelAuthorityPending(q.Nonce)
 	case "commit":
+		view, err := s.commitAuthority(q, caller)
+		if err != nil {
+			reply.Error = err.Error()
+			return
+		}
+		reply.View = &view
+	case "commit-files":
 		view, err := s.commitAuthority(q, caller)
 		if err != nil {
 			reply.Error = err.Error()

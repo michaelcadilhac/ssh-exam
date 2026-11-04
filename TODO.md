@@ -1,4 +1,18 @@
-# Current follow-up — unusable resume approvals COMPLETE LOCALLY, NOT DEPLOYED
+# Current follow-up — files-only SAME-attempt resume COMPLETE LOCALLY, NOT DEPLOYED
+
+November4: instructor explicitly approved fresh SSH/MFA and new terminals after
+SSH loss on the SAME unfinished attempt, with saved files and unchanged original/
+current deadline. Additional time remains separate. This supersedes the earlier
+NEW-attempt-only recovery rule and local guard below. Implemented/tested the verified
+ownership transfer and existing student/web/CLI workflow locally; no deployment
+or production/student changes. Local implementation/native races/interfaces/UI/
+WASM/build checks pass. Joined guarded actual release-native/browser qualification
+passes53.7s, including protected Finish, unchanged interval/grant/holds and actual
+saved-file read-back. Guest independently inactive/MainPID0/exit0, host/base and
+authority preserved. No deploy or production/student-record changes. Evidence:
+docs/files-only-resume.md.
+
+# Previous follow-up — unusable resume approvals COMPLETE LOCALLY, NOT DEPLOYED
 
 Confirmed: administration accepted Resume approval after the original retained
 page/SSH session was known lost. The student/native refusal was correct. Shared

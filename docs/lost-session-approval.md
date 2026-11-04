@@ -1,5 +1,9 @@
 # Resume approval after a lost session
 
+Superseded November4 by the instructor's explicit SAME-attempt files-only resume
+request. See [files-only-resume.md](files-only-resume.md). This document records
+the preceding local-only correction, not the new policy or its implementation.
+
 Local correction; **not deployed**. The approved recovery policy is unchanged.
 
 Resume approval applies to the original retained page/SSH session. A page reload

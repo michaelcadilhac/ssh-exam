@@ -1,5 +1,12 @@
 # Retained mode after genuine SSH loss
 
+November4 policy revision: the instructor explicitly requested SAME-attempt,
+files-only resume with fresh SSH and unchanged deadline. Local implementation
+and current verification are in [files-only-resume.md](files-only-resume.md).
+The NEW-attempt-only policy and public refusal described below are historical;
+their legacy-attach safety regression remains required. No new deployment is
+authorized by that development request.
+
 October26,2026. The joined C7 new-attempt workflow and consistent student guidance/
 web refusals are qualified locally (joined baseline67bd49f). Public native admission
 stays OFF; no deployment. Earlier investigation/failed receipts below are historical,

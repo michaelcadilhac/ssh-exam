@@ -370,7 +370,7 @@ export function AdminReview({
   const activityIncidents = a.interruptions
     ? incidents.filter((i: any) => i.message || i.review_at)
     : incidents;
-  const requiresNewAttempt = a.requiresNewAttempt === true;
+  const filesOnlyResume = a.filesOnlyResume === true;
   const activityCount = a.interruptions
     ? a.interruptions.length + activityIncidents.length
     : incidents.length;
@@ -413,7 +413,7 @@ export function AdminReview({
           )}
         </div>
         <div className="review-heading-actions">
-          {a.state === "LOCKED" && !requiresNewAttempt && (
+          {a.state === "LOCKED" && (
             <button
               ref={authorizeButton}
               className="primary"
@@ -448,12 +448,13 @@ export function AdminReview({
           </button>
         </div>
       </div>
-      {a.state === "LOCKED" && requiresNewAttempt && (
+      {a.state === "LOCKED" && filesOnlyResume && (
         <p className="warn" role="status">
-          This session ended. Resuming needs another attempt from saved files.
+          The student must sign in again. Saved files reopen in new terminals;
+          programs and unsaved changes are lost. The deadline stays the same.
         </p>
       )}
-      {authorization && !requiresNewAttempt && (
+      {authorization && (
         <fieldset
           className="continuation-confirmation"
           disabled={busy}
@@ -464,7 +465,7 @@ export function AdminReview({
             Approval lasts up to five minutes, or until the deadline. The clock
             keeps running.{" "}
             {a.monitoring_mode === "v1"
-              ? "The student must restore the checks and choose Resume exam on the same page and connection. A lost session needs another attempt."
+              ? "The student restores the checks and chooses Resume exam. After a lost session, they sign in again and reopen saved files in new terminals. The deadline stays the same."
               : "The student must sign in again and restore the checks."}
           </p>
           <details>
@@ -495,7 +496,7 @@ export function AdminReview({
                   await onChanged();
                   return `Resume allowed until ${chicago(result.expires)}. ${
                     a.monitoring_mode === "v1"
-                      ? "The student must restore the checks and choose Resume exam on the same page and connection."
+                      ? "The student restores the checks and chooses Resume exam. After a lost session, they sign in again. The deadline stays the same."
                       : "The student must sign in again and restore the checks."
                   }`;
                 })
@@ -643,7 +644,7 @@ export function AdminReview({
           Updates paused. Refresh before allowing resume.
         </p>
       )}
-      {notice && !requiresNewAttempt && <p role="status">{notice}</p>}
+      {notice && <p role="status">{notice}</p>}
       {((!authorization && error) || refreshError) && (
         <p className="warn" role="alert">
           {(!authorization && error) || refreshError}{" "}

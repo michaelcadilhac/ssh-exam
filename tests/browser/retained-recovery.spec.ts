@@ -26,7 +26,7 @@ const native = z
   })
   .passthrough();
 
-test("genuine SSH loss uses reviewed protected work and a new chosen allowance without reopening the original attempt", async ({
+test("genuine SSH loss follows the explicitly reviewed recovery and timing policy", async ({
   browser,
   request,
 }) => {
@@ -88,7 +88,7 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
         await request.get("/api/admin/attempts", { params: { q: "examq" } })
       ).json()
     ).attempts as any[];
-  const preflight = async (context: BrowserContext, grant?: string) => {
+  const signIn = async (context: BrowserContext) => {
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
     await simulatedMedia(page);
@@ -105,6 +105,10 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
     );
     await page.getByRole("button", { name: "Continue", exact: true }).click();
     const summary = await (await summaryReady).json();
+    return { page, summary };
+  };
+  const preflight = async (context: BrowserContext, grant?: string) => {
+    const { page, summary } = await signIn(context);
     const open = page.getByRole("button", {
       name: "Check setup and practice",
       exact: true,
@@ -203,6 +207,173 @@ test("genuine SSH loss uses reviewed protected work and a new chosen allowance w
       access_state: "HELD",
       grant: original.grant,
     });
+    if (process.env.EXAM_BROWSER_NATIVE_FILES_RESUME === "1") {
+      // The existing fixture remains single-student/real WASM/root native. No
+      // Stop, new grant, access override or artificial clock change is used.
+      await expect
+        .poll(
+          async () =>
+            (await publicAttempts()).find((a) => a.id === original.id)?.state,
+          { timeout: 25000 },
+        )
+        .toBe("LOCKED");
+      // Native inspection can observe exit before its authenticated callback
+      // reaches the gateway. Until then a still-viable retained route must not
+      // be displaced. Wait for the PUBLIC recovery projection, not elapsed time.
+      await expect
+        .poll(
+          async () => {
+            const response = await request.get(
+              `/api/admin/attempts/${original.id}/interruption`,
+            );
+            return (
+              response.ok() && (await response.json()).filesOnlyResume === true
+            );
+          },
+          { timeout: 25000 },
+        )
+        .toBe(true);
+      const inspection = await request.get(
+        `/api/admin/attempts/${original.id}/interruption`,
+      );
+      expect(inspection.ok(), await inspection.text()).toBe(true);
+      const web = await inspection.json();
+      expect(Number.isSafeInteger(web.revision)).toBe(true);
+      const approval = await request.post(
+        `/api/admin/attempts/${original.id}/authorize`,
+        {
+          headers,
+          data: {
+            generation: web.generation,
+            revision: web.revision,
+            requestID: crypto.randomUUID(),
+            reason:
+              "Private instructor approves same-deadline files-only resume",
+          },
+        },
+      );
+      expect(approval.ok(), await approval.text()).toBe(true);
+      const second = await browser.newContext({ ignoreHTTPSErrors: true });
+      contexts.push(second);
+      const next = await signIn(second);
+      expect(next.summary.attempt.id).toBe(original.id);
+      let completeCapture = false;
+      next.page.on("response", async (response) => {
+        if (
+          new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+          response.status() === 200
+        ) {
+          try {
+            completeCapture =
+              (await response.json()).monitoring?.complete === true;
+          } catch {
+            /* Closed response cannot prove capture. */
+          }
+        }
+      });
+      await next.page
+        .getByRole("button", { name: "Resume exam", exact: true })
+        .click();
+      await expect(
+        next.page.getByRole("button", {
+          name: "Restore screen sharing",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(next.page.locator(".xterm-helper-textarea")).toHaveCount(0);
+      for (const name of [
+        "Restore screen sharing",
+        "Restore fullscreen",
+        "Restore keyboard lock",
+      ]) {
+        const control = next.page.getByRole("button", { name, exact: true });
+        await expect(control).toBeEnabled();
+        await control.click();
+        await expect(control).toHaveAttribute("aria-pressed", "true");
+      }
+      await expect.poll(() => completeCapture, { timeout: 15000 }).toBe(true);
+      const resumeResponse = next.page.waitForResponse(
+        (r) => new URL(r.url()).pathname.endsWith("/continue"),
+        { timeout: 20000 },
+      );
+      await next.page
+        .getByRole("button", { name: "Resume exam", exact: true })
+        .click();
+      const resumedResponse = await resumeResponse;
+      expect(resumedResponse.ok(), await resumedResponse.text()).toBe(true);
+      await expect
+        .poll(async () => (await inspect(original.id)).attempt.state, {
+          timeout: 15000,
+        })
+        .toBe("ACTIVE");
+      const resumed = (await inspect(original.id)).attempt;
+      expect(resumed).toMatchObject({
+        id: original.id,
+        start: original.start,
+        deadline: original.deadline,
+        original_deadline: original.original_deadline,
+        access_state: "HELD",
+        grant: original.grant,
+      });
+      expect(resumed.registered_owner!.transport_hash).not.toBe(
+        original.registered_owner!.transport_hash,
+      );
+      expect(resumed.registered_owner!.page_epoch).not.toBe(
+        original.registered_owner!.page_epoch,
+      );
+      if ((await next.page.locator(".xterm-helper-textarea").count()) === 0)
+        await next.page
+          .getByRole("button", { name: "New terminal", exact: true })
+          .click();
+      await expect(
+        next.page.locator('.terminal[aria-busy="false"]'),
+      ).toHaveCount(1);
+      await command(
+        next.page,
+        "IFS= read -r saved < /work/recovery-proof.txt; printf 'RESUMED:%s\\n' \"$saved\"",
+        "RESUMED:SAVED-before-genuine-SSH-loss",
+      );
+      await command(
+        next.page,
+        "printf 'SAVED-actual-native-END\\n' > /work/browser-proof.txt; printf 'UNSAVED-native-editor\\n' > /work/browser-editor.txt; printf 'FILES-%s\\n' READY",
+        "FILES-READY",
+      );
+      await next.page
+        .getByRole("button", { name: "Finish exam", exact: true })
+        .click();
+      await next.page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Finish exam", exact: true })
+        .click();
+      await expect
+        .poll(
+          async () =>
+            (await publicAttempts()).find((a) => a.id === original.id)?.state,
+          { timeout: 45000 },
+        )
+        .toBe("COMPLETED");
+      const finish = await request.post("/api/fixture/native-finish", {
+        headers,
+        data: { attempt: original.id },
+        timeout: 90000,
+      });
+      expect(finish.ok(), await finish.text()).toBe(true);
+      const finished = await finish.json();
+      expect(finished.preservation).toBe("FULL");
+      expect(finished.attempt).toMatchObject({
+        id: original.id,
+        start: original.start,
+        deadline: original.deadline,
+        original_deadline: original.original_deadline,
+        access_state: "HELD",
+        protected: true,
+        grant: original.grant,
+      });
+      expect(
+        (await publicAttempts()).filter((a) => a.username === "examq"),
+      ).toHaveLength(1);
+      return;
+    }
     await operator(original.id, "stop");
     await expect
       .poll(async () => (await inspect(original.id)).attempt.state, {
