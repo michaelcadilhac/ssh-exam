@@ -1,4 +1,11 @@
-# Current follow-up — files-only SAME-attempt resume COMPLETE LOCALLY, NOT DEPLOYED
+# Current follow-up — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
+
+November4 push/deploy instruction: pushed through0c52b07. Deployment stopped
+before maintenance: exact web image/matched installation/recovery qualification
+is not prepared. AGENTS.md requires this preflight stop; feature qualification
+does not substitute for release readiness. Production stays online/ready with
+maintenance false; no service/configuration/student-record changes. Next:
+separate bounded release preparation and exact install/recovery qualification.
 
 November4: instructor explicitly approved fresh SSH/MFA and new terminals after
 SSH loss on the SAME unfinished attempt, with saved files and unchanged original/

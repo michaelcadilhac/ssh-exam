@@ -1,4 +1,14 @@
-# Current milestone — files-only SAME-attempt resume COMPLETE LOCALLY, NOT DEPLOYED
+# Current milestone — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
+
+November4 subsequent instruction: pushed main through0c52b07. Deployment stopped
+BEFORE maintenance under AGENTS.md's execution contract: this revision has no
+frozen web image or exact matched install/recovery qualification receipt. The
+feature/native-browser qualification below is not installation qualification;
+older deployment receipts do not qualify the new artifacts. No production write,
+service restart or admission fence. Public live/ready return200, ready true,
+maintenance false. Next is a separate bounded release-preparation milestone:
+freeze the exact image/native cohort, qualify install/current-data recovery and
+reopen, verify recovery coverage, then execute a newly instructed deployment.
 
 November4: instructor explicitly requests implementing fresh SSH/MFA and fresh
 terminals after SSH loss, retaining saved files and the SAME unfinished attempt
@@ -19,8 +29,8 @@ driver failures are retained and explained in the feature document. No runtime
 change after native/app qualification. Candidate bundle privateupload.0hzvncwa.
 Local fixture corrections committed ccaabf1; the coherent feature follows it.
 All741 final inputs are frozen, original screenshots unchanged, local fixture
-ports closed and synthetic TLS key removed. Next: a NEW deployment instruction
-and exact matched image/install/recovery readiness; nothing is pushed/deployed.
+ports closed and synthetic TLS key removed. Feature source is pushed; no change
+is deployed. Exact matched image/install/recovery readiness remains required.
 Preserve the ten existing dirty documentation screenshots. No open policy choice.
 
 # Previous incident — recovery COMPLETE; approval guard COMPLETE LOCALLY
