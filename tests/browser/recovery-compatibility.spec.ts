@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { ready, simulatedMedia, confirmFinish } from "./transition-fixture.js";
 
-test("actual WASM legacy first preflight and Begin refuse old roles, then retry the same allowance after repair", async ({
+test("actual WASM existing legacy preflight and Begin refuse old roles, then retry the same allowance after repair", async ({
   page,
 }) => {
   test.setTimeout(75000);
@@ -40,17 +40,24 @@ test("actual WASM legacy first preflight and Begin refuse old roles, then retry 
       exact: true,
     }),
   ).toBeVisible({ timeout: 10000 });
+  const legacy = await read();
+  expect(legacy.web).toHaveLength(1);
+  expect(legacy.web[0]).toMatchObject({
+    state: "PREPARING",
+    start: null,
+    deadline: null,
+  });
   await role(true);
   await page
     .getByRole("button", { name: "Check setup and practice", exact: true })
-    .click();
+    .click({ timeout: 5000 });
   await expect(page.getByRole("alert")).toContainText(
     "The exam server cannot confirm this attempt's saved time limit. Ask your instructor to check the server. Keep this setup and its saved files; this request did not start an exam or use an attempt.",
     { timeout: 10000 },
   );
   const refused = await read();
-  expect(refused.web).toEqual([]);
-  expect(refused.native).toEqual([]);
+  expect(refused.web).toEqual(legacy.web);
+  expect(refused.native).toEqual(legacy.native);
   expect(refused.operations).not.toContain("prepare-attempt");
   await role(false);
   await page

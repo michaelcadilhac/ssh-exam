@@ -1118,6 +1118,40 @@ definitions.create(
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("recovery-compatibility", "recovery01", null, null, null, 10046);
+// This compatibility scenario is an EXISTING legacy preparation. A bare unused
+// legacy enrollment no longer permits a first start: it requires reviewed grant
+// issuance. Preserve that production rule instead of bypassing it for this test.
+const recoveryLegacyID = randomUUID();
+const recoveryLegacySettings = JSON.parse(
+  (
+    store.db
+      .prepare("SELECT config FROM exams WHERE id='recovery-compatibility'")
+      .get() as any
+  ).config,
+);
+store.db
+  .prepare(
+    "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,preflight_started_at) VALUES(?,'recovery-compatibility','recovery01',10046,'PREPARING',?,?,?)",
+  )
+  .run(
+    recoveryLegacyID,
+    JSON.stringify(recoveryLegacySettings),
+    hash("authored historical legacy setup page"),
+    Date.now(),
+  );
+attempts.set(recoveryLegacyID, {
+  id: recoveryLegacyID,
+  exam: "recovery-compatibility",
+  username: "recovery01",
+  uid: 10046,
+  state: "PREPARING",
+  settings: recoveryLegacySettings,
+  transport: hash("retired legacy setup SSH"),
+  generation: 0,
+  start: 0,
+  deadline: 0,
+  original_deadline: 0,
+});
 definitions.create(
   {
     ...exam,

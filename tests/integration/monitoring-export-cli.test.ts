@@ -437,7 +437,14 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         { timeout: 15000, interval: 100 },
       );
       const review = (await recordings()).json();
-      expect(review.frames).toEqual(expect.arrayContaining(beforeCaptures));
+      // Video-backed review keeps every original capture field and adds the
+      // segment/offset needed by the deployed synchronized video player.
+      expect(review.frames).toHaveLength(beforeCaptures.length);
+      expect(review.frames).toEqual(
+        expect.arrayContaining(
+          beforeCaptures.map((frame) => expect.objectContaining(frame)),
+        ),
+      );
       expect(f.store.attempt(videoId)).toEqual(beforeVideo);
       const manage = (verb: string, intent?: string) =>
         run(
