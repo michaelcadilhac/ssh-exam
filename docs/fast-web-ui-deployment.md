@@ -59,6 +59,16 @@ writer rollback and reopening are refused. The relay and existing consolidated
 service layout remain unchanged. This mode needs its own complete release
 qualification and an explicit deployment instruction before production use.
 
+The exact matched-native scope `files-only-resume-v1` uses that same forward-only
+four-binary handoff for the reviewed SAME-attempt recovery policy. It requires
+the exact qualified source and incompatible-previous-writer declaration; no
+unchanged-backend attestation or UI-only shortcut is allowed. Existing live
+execution-policy support still verifies infrastructure readiness, while pinned
+loaded-role hashes and the joined files-only test qualify the new native purpose.
+No schema migration or attempt/grant/clock rewrite is performed. Unknown scope
+versions/suffixes and mismatched source refuse before fencing. See
+[the release preparation](files-only-resume-release.md).
+
 Use `scripts/refresh_native_cohort_guard.py --release-dir PRIVATE_LOCAL_PLAN_DIR
 before` to obtain the actual native controller's fresh guard over the existing
 trusted SSH connection. After web `apply` returns WAITING_NATIVE, its `handoff`

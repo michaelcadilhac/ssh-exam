@@ -1,4 +1,27 @@
-# Current milestone — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
+# Current milestone — files-only resume RELEASE ARTIFACTS QUALIFIED; NOT DEPLOYED
+
+November4: matched release preparation passes. Frozen image source c7ed0d6 /
+Config5aced132, exact four feature-native binaries, final installer scope and
+reviewed execution/recovery manifest are under
+var/collection-tests/files-only-resume-release.20261104a/. Public CLI phase/fault
+checks, real populated-image startup/current-data recovery, guarded native
+installation, shipped-WASM browser and joined actual-native recovery all pass.
+All41 preservation contracts, original snapshot/no-extra-start recovery and both
+guest cleanup/unchanged host authority pass. Detailed evidence and test seams:
+docs/files-only-resume-release.md. Runtime inputs are unchanged; ten original
+dirty screenshots preserved. No policy decision remains.
+
+Production stays online on its old image/native cohort. No production restart,
+fence, configuration/student change or new remote release stage. A private
+2.36-second media warm copied25.1MB/reused970.3MB; all995.4MB current recording
+bytes now have verified recovery objects. A new execution must stage the frozen
+archives, run online PREPARED, obtain fresh complete drains, take CURRENT stopped
+snapshots, install/reopen with the matched forward-only plan. One web session is
+still signed in; no unfinished exams were observed. Do not clear that session.
+Exact next action after a new deployment instruction: follow the frozen
+matched-execution.md; no rebuilding, feature work or old-database rollback.
+
+# Previous milestone — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
 
 November4 subsequent instruction: pushed main through0c52b07. Deployment stopped
 BEFORE maintenance under AGENTS.md's execution contract: this revision has no

@@ -196,4 +196,26 @@ class MatchedNative(unittest.TestCase):
                 self.assertEqual(f.stopped_calls(),[])
 
 
+class FilesOnlyResume(MatchedNative):
+    """Run the same public installation/recovery/refusal matrix for this scope."""
+    def setUp(self):
+        super().setUp()
+        self.f.release['fast_ui']['reviewed_scope'] = 'files-only-resume-v1'
+        (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+
+    def test_scope_is_exact_and_does_not_allow_a_mismatched_source(self):
+        f=self.f; original=json.loads(json.dumps(f.release))
+        for number,(key,value) in enumerate([
+            ('reviewed_scope','files-only-resume-v2'),
+            ('reviewed_scope','files-only-resume-v1-extra'),
+            ('qualified_source','f'*40),
+        ]):
+            with self.subTest(field=key,value=value):
+                f.state=f.root/('invalid-files-scope-'+str(number))
+                f.release=json.loads(json.dumps(original));f.release['fast_ui'][key]=value
+                (f.bundle/'release.json').write_text(json.dumps(f.release))
+                f.cli('prepare',expect=1)
+                self.assertEqual(f.stopped_calls(),[])
+
+
 if __name__=='__main__': unittest.main()

@@ -6,8 +6,9 @@ maintenance responses while the current gateway remains online. Apply requires a
 positive idle/native drain, then takes a stopped incremental snapshot. Failures
 retain the admission fence. Rollback selects the retained previous image with
 CURRENT data; it never restores a database or directly touches native services.
-The exact reviewed-web-native/live-exam-execution-policy-v1 scope returns
-WAITING_NATIVE after its durable stopped snapshot. Run the separately qualified
+The exact reviewed-web-native scopes live-exam-execution-policy-v1 and
+files-only-resume-v1 return WAITING_NATIVE after their durable stopped snapshot.
+Run the separately qualified
 native controller, bridge its nonce-bound transition and fresh after-guard, then
 resume this command. It admits only the matched candidate and forward recovery;
 older native/web writers cannot be restored or reopened in that scope.
@@ -116,13 +117,13 @@ class Rollout:
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
-            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') != 'live-exam-execution-policy-v1'
+            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or self.settings.get('previous_reader_policy_compatible') is not False
                     or self.settings.get('unchanged_backend_protocol_native') is not False
                     or self.settings.get('state') != str(self.state)):
-                raise ValueError('Matched native mode requires the exact qualified live-policy scope and incompatible-previous-writer declaration')
+                raise ValueError('Matched native mode requires an exact qualified matched-native scope and incompatible-previous-writer declaration')
             if not isinstance(update.get('nonce'), str) or str(uuid.UUID(update['nonce'])) != update['nonce']:
                 raise ValueError('A canonical native transition nonce is required')
             for cohort in ('before', 'after'):

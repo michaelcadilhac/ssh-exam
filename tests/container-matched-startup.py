@@ -33,6 +33,7 @@ p.add_argument('--image',required=True)
 p.add_argument('--image-receipt',required=True,type=Path)
 p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
+p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'
 assert a.docker_host in ('unix:///var/run/docker.sock',f'unix:///run/user/{os.getuid()}/docker.sock')
@@ -207,7 +208,7 @@ else:
         outcome=json.loads(raw);assert outcome['ok'] is True and outcome['result']=={'task':None},outcome
         polls.append(request);return request
     rollout=object.__new__(deploy.Rollout);rollout.project=project;rollout.data=data;rollout.state=state
-    rollout.settings={'mode':'reviewed-web-native'};rollout.record={'phase':'NATIVE_UPDATED'}
+    rollout.settings={'mode':'reviewed-web-native','reviewed_scope':a.reviewed_scope};rollout.record={'phase':'NATIVE_UPDATED'}
     rollout.release={'schema':37};rollout.image={'config_id':base['Id'],'tag':a.image}
     rollout.env=state/'environment';rollout.env.write_text('EXAM_IMAGE='+a.image+'\n');rollout.env.chmod(0o600)
     (state/'environment-before').write_bytes(rollout.env.read_bytes())
@@ -333,7 +334,7 @@ else:
         inspection=json.loads(run(docker+['inspect',container]))[0]
         assert inspection['Image']==base['Id'] and inspection['Config']['User']=='10001:10001'
         assert inspection['HostConfig']['ReadonlyRootfs'] and inspection['HostConfig']['NetworkMode']=='none' and inspection['HostConfig']['CapDrop']==['ALL']
-        print(json.dumps({'status':'PASS','base_image':base['Id'],'qualified_export_config':qualified['config_id'],'rootfs_layers_match':True,
+        print(json.dumps({'status':'PASS','reviewed_scope':a.reviewed_scope,'base_image':base['Id'],'qualified_export_config':qualified['config_id'],'rootfs_layers_match':True,
             'actual_startup_wait_seconds':elapsed,'publisher_interval_seconds':a.fresh_after_seconds,
             'old_ready_blocked':events['old_ready_blocked'],'expired_policy_blocked':events['expired_support_blocked'],'nonce_live_at_start':True,
             'real_signed_polls':len(polls),'production_wait_predicate':True,'preservation':result,

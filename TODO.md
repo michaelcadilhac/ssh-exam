@@ -1,4 +1,18 @@
-# Current follow-up — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
+# Current follow-up — files-only resume RELEASE ARTIFACTS QUALIFIED, NOT DEPLOYED
+
+The matched installer scope, frozen image/native artifacts, populated-image
+startup/current-data recovery, guarded native installation, shipped-WASM and
+joined real-native/browser recovery all pass. Execution/recovery manifests and
+measured incremental backup coverage are frozen; see
+docs/files-only-resume-release.md and the current checkpoint. Runtime sources
+and original dirty screenshots are preserved. No policy choice remains.
+Production stays on the old release, online: no fence/restart/configuration or
+student change. Only private backup objects were warmed, copying25.1MB and
+reusing970.3MB. A newly instructed execution must stage the frozen archives, run
+PREPARED, freshly drain (one web session remains), take CURRENT stopped snapshots
+and execute the qualified matched forward-only cutover. Nothing is deployed.
+
+# Previous follow-up — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
 
 November4 push/deploy instruction: pushed through0c52b07. Deployment stopped
 before maintenance: exact web image/matched installation/recovery qualification
