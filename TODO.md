@@ -1,16 +1,18 @@
-# Current follow-up — files-only resume RELEASE ARTIFACTS QUALIFIED, NOT DEPLOYED
+# Current follow-up — files-only SAME-attempt resume DEPLOYED
 
-The matched installer scope, frozen image/native artifacts, populated-image
-startup/current-data recovery, guarded native installation, shipped-WASM and
-joined real-native/browser recovery all pass. Execution/recovery manifests and
-measured incremental backup coverage are frozen; see
-docs/files-only-resume-release.md and the current checkpoint. Runtime sources
-and original dirty screenshots are preserved. No policy choice remains.
-Production stays on the old release, online: no fence/restart/configuration or
-student change. Only private backup objects were warmed, copying25.1MB and
-reusing970.3MB. A newly instructed execution must stage the frozen archives, run
-PREPARED, freshly drain (one web session remains), take CURRENT stopped snapshots
-and execute the qualified matched forward-only cutover. Nothing is deployed.
+November4 at18:38:38 Chicago: frozen matched sourcec7ed0d6/feature0c52b07,
+imageConfig5aced132/schema37 deployed under explicit instruction. Complete drains,
+CURRENT snapshots, four installed binaries/three loaded roles,41 preservation
+contracts,114 web/181 native histories, TLS/readiness/all8 assets and signed actual
+CLI read pass. No migration, new exam/clock, SSH/relay restart or student repair.
+The sole admin session was signed out/audited under explicit instructor authority;
+the zero-session guard remained intact. One transient-process refusal preceded a
+qualified same-phase retry with unchanged guards. Site online, video pause RELEASED.
+Maintenance350.56s;995.4MB media reused without copying. Recovery retains CURRENT
+data and the matched candidate; see docs/files-only-resume-release.md and the
+current checkpoint. All original dirty screenshots preserved. No required rollout
+operation remains. Separate optional investigation: identify the transient native
+process seen only by the first stop guard, preserving conservative refusal.
 
 # Previous follow-up — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
 

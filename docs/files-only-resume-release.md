@@ -6,6 +6,34 @@ native binary bundle and joined browser/SSH qualification are already frozen in
 var/collection-tests/files-only-resume.20261104a/. Preserve those exact native
 bytes and the ten existing dirty documentation screenshots.
 
+## Deployment completion
+
+The subsequent explicit Deploy completed November4 at18:38:38 Chicago
+(November5,00:38:38UTC). Exact matched image/native installation, fresh drains,
+CURRENT snapshots, all41 preservation contracts/47 verified physical-purge
+rechecks,114 web/181 native histories, TLS/public readiness, all8 asset hashes and
+the actual installed CLI's signed existing-sandbox read pass. Site ONLINE and
+video pause RELEASED. No migration, student repair, new exam/clock, SSH or relay
+restart. The following preparation-only statements are the retained prior record.
+
+The instructor explicitly permitted proceeding with only an admin session left.
+Its sign-out was atomic and audited after proving no student session/unfinished
+exam; the zero-session deployment guard was retained. Native stop first refused
+an unexpected process before changing a service. The bounded read-only inspection
+found only expected roles; one qualified same-phase retry with fresh handoff passed.
+No guard relaxation or unknown-process termination. Treat identifying that
+transient process as a separate follow-up, not additional deployment debugging.
+
+Maintenance350.56s; instruction-to-online730.76s including private staging/admin
+handling; online prepare9.95s and web resume66.43s. All995,396,787 recording bytes
+were reused, with zero new objects; current web snapshot is109,584,384 database
+bytes plus314,452 small-file bytes. Native snapshot213,504,000bytes. Full timing,
+exact acceptance and recovery locations are in
+`var/collection-tests/files-only-resume-release.20261104a/deployment-completion.json`.
+Keep the current snapshot, transition receipt, matched candidate and forward-only
+runbook; do not restore an old database or reopen old writers. No required
+deployment operation remains. All ten pre-existing dirty screenshots preserved.
+
 ## Delivery plan and acceptance
 
 1. Register an exact files-only-resume scope in the existing matched web/native

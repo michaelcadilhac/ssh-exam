@@ -1,25 +1,32 @@
-# Current milestone — files-only resume RELEASE ARTIFACTS QUALIFIED; NOT DEPLOYED
+# Current milestone — files-only SAME-attempt resume DEPLOYED AND ONLINE
 
-November4: matched release preparation passes. Frozen image source c7ed0d6 /
-Config5aced132, exact four feature-native binaries, final installer scope and
-reviewed execution/recovery manifest are under
-var/collection-tests/files-only-resume-release.20261104a/. Public CLI phase/fault
-checks, real populated-image startup/current-data recovery, guarded native
-installation, shipped-WASM browser and joined actual-native recovery all pass.
-All41 preservation contracts, original snapshot/no-extra-start recovery and both
-guest cleanup/unchanged host authority pass. Detailed evidence and test seams:
-docs/files-only-resume-release.md. Runtime inputs are unchanged; ten original
-dirty screenshots preserved. No policy decision remains.
+November4,18:38:38 Chicago (November5,00:38:38UTC): explicit Deploy completed
+with frozen web/native source c7ed0d6, feature0c52b07, image Config5aced132/schema37
+and qualified operatore2a0613. Fresh complete drains, CURRENT snapshots, exact
+four-file installation/three loaded roles, all41 preservation contracts and47
+verified physical-purge rechecks pass. All114 web/181 native histories, settings,
+original deadlines and protected data remain preserved. TLS/public readiness,
+all8 shipped assets and the actual installed CLI's signed existing-sandbox read
+pass. Video pause RELEASED; no new exam/clock or migration. No remaining required
+deployment operation or design decision.
 
-Production stays online on its old image/native cohort. No production restart,
-fence, configuration/student change or new remote release stage. A private
-2.36-second media warm copied25.1MB/reused970.3MB; all995.4MB current recording
-bytes now have verified recovery objects. A new execution must stage the frozen
-archives, run online PREPARED, obtain fresh complete drains, take CURRENT stopped
-snapshots, install/reopen with the matched forward-only plan. One web session is
-still signed in; no unfinished exams were observed. Do not clear that session.
-Exact next action after a new deployment instruction: follow the frozen
-matched-execution.md; no rebuilding, feature work or old-database rollback.
+One remaining admin session was signed out/audited under the instructor's explicit
+exception; no student session was changed and the zero-session guard stayed intact.
+Initial native stop refused an extra transient process before any service change.
+One bounded same-phase retry with fresh proof and unchanged guard passed; no
+unknown process was killed. SSH/relay unchanged. Maintenance350.56s; online
+preparation9.95s, web resume66.43s, instruction-to-online730.76s including staging
+and admin-session handling. Detailed timing/acceptance/backup evidence:
+var/collection-tests/files-only-resume-release.20261104a/deployment-completion.json.
+
+Web CURRENT snapshot: /data/ssh-exam-files-resume-20261104-c7ed0d6-48d7cbfb-state.
+Native recovery stage: /var/tmp/ssh-exam-files-resume-20261104-c7ed0d6-48d7cbfb-native.
+Web snapshot copied109.6MB database/314KB small files and reused all995.4MB media;
+native snapshot213.5MB. Recover forward with CURRENT data and the frozen matched
+candidate; old-writer rollback/reopening and old-database restore remain refused.
+New native PIDs2640800/2640795/2640797, relay893011 unchanged. Preserve all ten
+original dirty screenshots. Optional separate follow-up: identify the transient
+process responsible for the conservative initial stop refusal; do not weaken it.
 
 # Previous milestone — files-only SAME-attempt resume PUSHED, NOT DEPLOYED
 
