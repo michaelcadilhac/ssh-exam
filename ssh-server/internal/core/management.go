@@ -15,7 +15,6 @@ import (
 	"os"
 	"strings"
 	"syscall"
-	"time"
 )
 
 const managementPurpose = "ssh-exam-management/v1"
@@ -126,7 +125,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 	}()
 	issued, nonce := Millis(), Token()
 	payload, err := json.Marshal(map[string]any{"version": 1, "purpose": managementPurpose, "audience": strings.TrimSuffix(c.CallbackURL, "/"),
-		"agent": c.AgentID, "actor": "agent-root", "request": requestID, "nonce": nonce, "issued": issued, "expires": issued + 30000, "operation": operation, "body": body})
+		"agent": c.AgentID, "actor": "agent-root", "request": requestID, "nonce": nonce, "issued": issued, "expires": issued + operationTimeoutMS, "operation": operation, "body": body})
 	if err != nil || len(payload) > 12*1024*1024 {
 		return result, errors.New("management request exceeds its encoding/size limit")
 	}
@@ -142,7 +141,7 @@ func ManagementCall(c Config, operation string, body any, requestID string) (Man
 		return result, err
 	}
 	defer client.CloseIdleConnections()
-	client.Timeout = 15 * time.Second
+	client.Timeout = operationTimeout
 	req, err := http.NewRequest("POST", strings.TrimSuffix(c.CallbackURL, "/")+"/api/agent/management", bodyReader)
 	if err != nil {
 		return result, err

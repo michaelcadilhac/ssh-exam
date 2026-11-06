@@ -1,7 +1,11 @@
 import { expect, it } from "vitest";
-import { sign } from "node:crypto";
+import { sign, randomUUID } from "node:crypto";
 import { hash } from "../../apps/server/src/db.js";
 import { liveMonitoring } from "../fixtures/live-monitoring.js";
+import {
+  hasRecordedSSHExit,
+  needsFilesOnlyResume,
+} from "../../apps/server/src/native-monitoring-state.js";
 
 it("signed SSH-exit callbacks retire only the exact current retained owner; unknown and stale facts preserve live SSH", async () => {
   const f = await liveMonitoring({ ownedAttempt: true });
@@ -26,6 +30,7 @@ it("signed SSH-exit callbacks retire only the exact current retained owner; unkn
   const remote: any = {
     ...original,
     settings: JSON.parse(original.settings),
+    clock_resets: [],
     state: "LOCKED",
     generation: 1,
     boot: owner.boot,
@@ -90,17 +95,45 @@ it("signed SSH-exit callbacks retire only the exact current retained owner; unkn
       await live();
     }
     const current = { ...owner, clock_revision: 1 };
+    const history = [
+      {
+        id: randomUUID(),
+        actor: "instructor",
+        requested_at: original.deadline! - 600000,
+        applied_at: Date.now(),
+        previous_deadline: original.deadline,
+        deadline: original.deadline,
+        remaining_seconds: 600,
+        revision: 1,
+      },
+    ];
     f.store.db
       .prepare(
-        "UPDATE attempts SET clock_revision=1,registered_owner=? WHERE id=?",
+        "UPDATE attempts SET clock_revision=1,registered_owner=?,clock_resets=? WHERE id=?",
       )
-      .run(JSON.stringify(current), f.id);
+      .run(JSON.stringify(current), JSON.stringify(history), f.id);
     await post({ ssh_exited_owner: owner }); // Valid old fact, old clock revision.
     await live();
+    for (const proof of [
+      { ...owner, clock_revision: 2 },
+      { ...owner, input_epoch: hash("another input lifetime") },
+      { ...owner, page_epoch: hash("another page") },
+      { ...owner, generation: 1 },
+    ]) {
+      await post({
+        clock_revision: 1,
+        registered_owner: current,
+        clock_resets: history,
+        ssh_exited_owner: proof,
+      });
+      await live();
+      expect(hasRecordedSSHExit(f.store, f.store.attempt(f.id))).toBe(false);
+    }
     await post({
       clock_revision: 1,
       registered_owner: current,
-      ssh_exited_owner: current,
+      clock_resets: history,
+      ssh_exited_owner: owner, // Fresh canonical snapshot, actual exit before clock handover.
     });
     expect(f.connection.alive).toBe(false);
     expect(f.store.attempt(f.id)).toMatchObject({
@@ -119,6 +152,8 @@ it("signed SSH-exit callbacks retire only the exact current retained owner; unkn
         .get(f.id),
     ).toEqual({ count: 1 });
     expect(f.store.attempt(f.id).reason).not.toContain("SSH transport lost");
+    expect(hasRecordedSSHExit(f.store, f.store.attempt(f.id))).toBe(true);
+    expect(needsFilesOnlyResume(f.store, f.store.attempt(f.id))).toBe(true);
   } finally {
     await f.close();
   }

@@ -15,7 +15,6 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
-	"time"
 )
 
 const ExamExecutionPolicyCapability = "live-exam-execution-policy-v1"
@@ -86,7 +85,7 @@ func (e *Engine) fetchExecutionPolicy(exam string) (*verifiedExecutionPolicy, er
 		return nil, err
 	}
 	defer client.CloseIdleConnections()
-	client.Timeout = 5 * time.Second
+	client.Timeout = operationTimeout
 	key, err := privateKey(e.Config.CallbackKey)
 	if err != nil {
 		return nil, err
@@ -149,15 +148,15 @@ func (e *Engine) fetchExecutionPolicy(exam string) (*verifiedExecutionPolicy, er
 	d := json.NewDecoder(bytes.NewReader(signed))
 	d.DisallowUnknownFields()
 	if d.Decode(&reply) != nil || d.Decode(new(any)) != io.EOF || reply.Type != "exam-execution-policy" ||
-		reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 ||
+		reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+operationTimeoutMS+1000 ||
 		!validExecutionPolicy(reply.Policy, e.Config.AgentID, exam) {
 		return nil, errExecutionPolicy
 	}
 	nowBoot, err := monitoringBootMillis()
-	if err != nil || nowBoot < issuedBoot || nowBoot-issuedBoot >= 30000 {
+	if err != nil || nowBoot < issuedBoot || nowBoot-issuedBoot >= operationTimeoutMS {
 		return nil, errExecutionPolicy
 	}
-	until := min(issuedBoot+30000, nowBoot+reply.Expires-Millis())
+	until := min(issuedBoot+operationTimeoutMS, nowBoot+reply.Expires-Millis())
 	if until <= nowBoot {
 		return nil, errExecutionPolicy
 	}

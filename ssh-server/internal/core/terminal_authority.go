@@ -233,7 +233,7 @@ func (s *terminalSupervisor) prepareAuthority(q terminalAuthorityRequest, origin
 	}
 	now, err := monitoringBootMillis()
 	s.mu.Lock()
-	if err != nil || now < issued || now-issued >= 15000 || s.authorityPending != p || p.cancelled.Load() {
+	if err != nil || now < issued || now-issued >= monitoringEvidenceWindowMS || s.authorityPending != p || p.cancelled.Load() {
 		s.mu.Unlock()
 		coordinator.close()
 		claim.close()
@@ -264,7 +264,7 @@ func (s *terminalSupervisor) expireAuthorityPending() {
 	now, err := monitoringBootMillis()
 	s.mu.Lock()
 	p := s.authorityPending
-	if p == nil || (err == nil && now >= p.begin.IssuedBootMS && now-p.begin.IssuedBootMS < 15000) {
+	if p == nil || (err == nil && now >= p.begin.IssuedBootMS && now-p.begin.IssuedBootMS < monitoringEvidenceWindowMS) {
 		s.mu.Unlock()
 		return
 	}
@@ -322,7 +322,7 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 	} else {
 		d := json.NewDecoder(bytes.NewReader(payload))
 		d.DisallowUnknownFields()
-		if d.Decode(&reply) != nil || reply.Type != "grant-begin/v3" || reply.Audience != p.agent || reply.Nonce != p.begin.Nonce || reply.Attempt != s.id || reply.Intent != p.intent || !sameGrant(reply.Grant, p.grant) || reply.Transport != q.Owner.TransportHash || reply.Boot != q.Owner.Boot || reply.PageEpoch != q.Owner.PageEpoch || reply.Bootstrap == nil || reply.Bootstrap.Type != "monitoring-bootstrap/v1" || reply.Bootstrap.ControlRetention != "v1" || reply.Bootstrap.PolicyReports != "v1" || reply.Bootstrap.Owner != q.Owner || reply.Bootstrap.Sequence != 1 || !monitoringDigest.MatchString(reply.Bootstrap.CoverageEpoch) || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Expires <= Millis() {
+		if d.Decode(&reply) != nil || reply.Type != "grant-begin/v3" || reply.Audience != p.agent || reply.Nonce != p.begin.Nonce || reply.Attempt != s.id || reply.Intent != p.intent || !sameGrant(reply.Grant, p.grant) || reply.Transport != q.Owner.TransportHash || reply.Boot != q.Owner.Boot || reply.PageEpoch != q.Owner.PageEpoch || reply.Bootstrap == nil || reply.Bootstrap.Type != "monitoring-bootstrap/v2" || reply.Bootstrap.ControlRetention != "v1" || reply.Bootstrap.PolicyReports != "v1" || reply.Bootstrap.Owner != q.Owner || reply.Bootstrap.Sequence != 1 || !monitoringDigest.MatchString(reply.Bootstrap.CoverageEpoch) || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > monitoringEvidenceWindowMS || reply.Expires <= Millis() {
 			return monitoringAuthorityView{}, errMonitoringEvidence
 		}
 	}

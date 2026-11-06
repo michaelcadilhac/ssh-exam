@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import type { Writable } from "node:stream";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
@@ -44,6 +45,7 @@ import { AttemptGrants } from "./attempt-grants.js";
 import {
   nativeContinuationOutcomeRecorded,
   needsFilesOnlyResume,
+  hasRecordedSSHExit,
 } from "./native-monitoring-state.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
 import { GrantIssuance } from "./grant-issuance.js";
@@ -589,14 +591,7 @@ export async function createApp(
       } catch {
         return false;
       } // Unknown metadata is not proven SSH loss.
-      if (
-        store.db
-          .prepare(
-            "SELECT 1 FROM audit WHERE target=? AND action='native-ssh-exited' AND detail=?",
-          )
-          .get(id, JSON.stringify(owner))
-      )
-        return true;
+      if (hasRecordedSSHExit(store, a)) return true;
       const last = store.db
         .prepare(
           "SELECT action FROM audit WHERE target=? AND action IN ('reauthentication-required','authorized-authentication-gap','authentication-gap-ended','attempt-worker-failed','retained-control-verified') ORDER BY rowid DESC LIMIT 1",
@@ -687,7 +682,7 @@ export async function createApp(
         retainedRestores.delete(a.id);
         connection.close();
       }
-    }, 10000);
+    }, OPERATION_TIMEOUT_MS);
     try {
       let remote = await connection.restoreRetained(owner);
       const currentScope = () => {
@@ -804,7 +799,7 @@ export async function createApp(
           "SELECT received FROM frames WHERE attempt=? AND source=? AND page_hash=? ORDER BY received DESC LIMIT 1",
         )
         .get(a.id, source, a.page_hash) as any;
-      if (!f || now() - f.received > 15000) return false;
+      if (!f || now() - f.received > OPERATION_TIMEOUT_MS) return false;
     }
     return true;
   };
@@ -986,6 +981,37 @@ export async function createApp(
     },
   );
   app.post(
+    "/api/agent/clock-changes",
+    { config: { rateLimit: false } },
+    async (req) => {
+      const payload = req.body as Buffer;
+      if (!Buffer.isBuffer(payload) || payload.length > 4096)
+        throw Error("Raw signed clock delivery request required");
+      agent.verifyCallback(
+        payload,
+        String(req.headers["x-exam-signature"] || ""),
+      );
+      const request = z
+        .object({
+          agent: z.literal(config.agent.id),
+          nonce: z.string().regex(/^[a-f0-9]{64}$/),
+          at: z.number().int(),
+          after: z.union([z.literal(""), z.string().uuid()]),
+        })
+        .strict()
+        .parse(JSON.parse(payload.toString()));
+      if (Math.abs(now() - request.at) > OPERATION_TIMEOUT_MS)
+        throw Error("Stale clock delivery request");
+      return agent.signTiming({
+        type: "clock-changes/v1",
+        audience: config.agent.id,
+        nonce: request.nonce,
+        expires: now() + OPERATION_TIMEOUT_MS,
+        ...clocks.dispatch(request.after),
+      });
+    },
+  );
+  app.post(
     "/api/agent/timing",
     { config: { rateLimit: false } },
     async (req) => {
@@ -1010,7 +1036,7 @@ export async function createApp(
             .passthrough(),
         })
         .parse(JSON.parse(payload.toString()));
-      if (Math.abs(now() - request.at) > 30000)
+      if (Math.abs(now() - request.at) > OPERATION_TIMEOUT_MS)
         throw Error("Stale timing request");
       life.acceptRemote(request.attempt);
       const a = store.attempt(request.attempt.id);
@@ -1025,7 +1051,7 @@ export async function createApp(
         audience: config.agent.id,
         id: a.id,
         nonce: request.nonce,
-        expires: now() + 30000,
+        expires: now() + OPERATION_TIMEOUT_MS,
         deadline: a.deadline,
         clock_revision: a.clock_revision,
         collect: !reset && !!a.deadline && now() >= a.deadline,
@@ -2762,7 +2788,7 @@ export async function createApp(
     const connected =
       !!conn?.alive &&
       sockets.get(a.id)?.readyState === WebSocket.OPEN &&
-      now() - (a.last_contact || 0) <= 15000;
+      now() - (a.last_contact || 0) <= OPERATION_TIMEOUT_MS;
     return {
       ...a,
       pendingClockReset: clocks.pending(a.id),
@@ -3496,7 +3522,7 @@ export async function createApp(
             timer: setTimeout(() => {
               waiting = null;
               reject(Error("Authentication timed out"));
-            }, 120000),
+            }, OPERATION_TIMEOUT_MS),
           };
           send(ws, { type: "challenge", host, instruction, prompts, round });
         });
@@ -3808,7 +3834,7 @@ export async function createApp(
           if (
             a.monitoring_mode !== "v1" &&
             a.last_contact &&
-            now() - a.last_contact > 15000 &&
+            now() - a.last_contact > OPERATION_TIMEOUT_MS &&
             a.state === "ACTIVE"
           )
             await life.lock(a.id, "Connection grace expired");
@@ -4036,7 +4062,7 @@ export async function createApp(
           (a.state === "ACTIVE" &&
             (!a.deadline ||
               a.deadline <= now() ||
-              now() - (a.last_contact || 0) > 15000)) ||
+              now() - (a.last_contact || 0) > OPERATION_TIMEOUT_MS)) ||
           !conn?.alive
         ) {
           // Window layout/close events can arrive after pause or finalization.

@@ -19,7 +19,7 @@ func evidenceFixture(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey, monit
 	}
 	o := monitoringOwner{Attempt: finalID, Exam: "synthetic", Username: "student", UID: 10001, TransportHash: strings.Repeat("a", 64), Boot: "11111111-1111-4111-8111-111111111111", PageEpoch: strings.Repeat("b", 64), InputEpoch: strings.Repeat("c", 64), Generation: 0, ClockRevision: 0}
 	c := monitoringChallenge{Agent: "class", Nonce: strings.Repeat("d", 64), Owner: o, IssuedUptimeMS: 10000, ExpiresUptimeMS: 15000, AuthorityUntilMS: 16000, DeadlineUptimeMS: 100000, AfterSequence: 3, CoverageEpoch: strings.Repeat("e", 64)}
-	p := monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: c.Agent, Nonce: c.Nonce, Owner: o, Sequence: 4, AgeMS: 1000, Complete: true, CoverageEpoch: c.CoverageEpoch}
+	p := monitoringEvidence{Type: "monitoring-execution-evidence-v2", Audience: c.Agent, Nonce: c.Nonce, Owner: o, Sequence: 4, AgeMS: 1000, Complete: true, CoverageEpoch: c.CoverageEpoch}
 	return pub, key, c, p
 }
 
@@ -35,12 +35,28 @@ func signEvidence(t *testing.T, key ed25519.PrivateKey, proof monitoringEvidence
 	return signEvidenceBytes(key, payload)
 }
 
+func TestMonitoringEvidenceSixtySecondDelayDoesNotRefreshBudget(t *testing.T) {
+	pub, key, challenge, proof := evidenceFixture(t)
+	challenge.ExpiresUptimeMS = challenge.IssuedUptimeMS + 60000
+	challenge.AuthorityUntilMS = 75000
+	frame := signEvidence(t, key, proof)
+	for _, received := range []int64{45000, 68999} {
+		candidate, err := verifyMonitoringEvidence(frame, pub, challenge, received)
+		if err != nil || candidate.UntilUptimeMS != 69000 {
+			t.Fatalf("sixty-second budget lost or refreshed on delivery: %+v %v", candidate, err)
+		}
+	}
+	if _, err := verifyMonitoringEvidence(frame, pub, challenge, 69000); err == nil {
+		t.Fatal("exhausted original evidence budget accepted")
+	}
+}
+
 func TestMonitoringEvidenceNeverFreshensOnDeliveryOrRetry(t *testing.T) {
 	pub, key, c, p := evidenceFixture(t)
 	frame := signEvidence(t, key, p)
 	for _, now := range []int64{10000, 12000, 14999} {
 		v, err := verifyMonitoringEvidence(frame, pub, c, now)
-		if err != nil || v.UntilUptimeMS != 24000 || v.Sequence != 4 || v.Owner != c.Owner || v.Nonce != c.Nonce {
+		if err != nil || v.UntilUptimeMS != 69000 || v.Sequence != 4 || v.Owner != c.Owner || v.Nonce != c.Nonce {
 			t.Fatalf("reply age=%d changed its original budget: %+v %v", now, v, err)
 		}
 	}
@@ -61,6 +77,7 @@ func TestMonitoringEvidenceFencesEveryOwnershipAndPolicyField(t *testing.T) {
 	pub, key, c, p := evidenceFixture(t)
 	changes := map[string]func(*monitoringEvidence){
 		"type":              func(v *monitoringEvidence) { v.Type = "deadline-timing" },
+		"old_window":        func(v *monitoringEvidence) { v.Type = "monitoring-execution-evidence-v1" },
 		"agent":             func(v *monitoringEvidence) { v.Audience = "other" },
 		"nonce":             func(v *monitoringEvidence) { v.Nonce = strings.Repeat("e", 64) },
 		"attempt":           func(v *monitoringEvidence) { v.Owner.Attempt = "22222222-2222-4222-8222-222222222222" },
@@ -77,7 +94,7 @@ func TestMonitoringEvidenceFencesEveryOwnershipAndPolicyField(t *testing.T) {
 		"incomplete":        func(v *monitoringEvidence) { v.Complete = false },
 		"old_sequence":      func(v *monitoringEvidence) { v.Sequence = c.AfterSequence },
 		"overflow_sequence": func(v *monitoringEvidence) { v.Sequence = monitoringEvidenceMaxSequence + 1 },
-		"old_evidence":      func(v *monitoringEvidence) { v.AgeMS = 15000 },
+		"old_evidence":      func(v *monitoringEvidence) { v.AgeMS = monitoringEvidenceWindowMS },
 		"future_evidence":   func(v *monitoringEvidence) { v.AgeMS = -1 },
 	}
 	for name, change := range changes {
@@ -156,7 +173,7 @@ func TestMonitoringEvidenceBoundsNativeClockAndPriorAuthority(t *testing.T) {
 	for _, mutate := range []func(*monitoringChallenge){
 		func(c *monitoringChallenge) { c.IssuedUptimeMS = -1 },
 		func(c *monitoringChallenge) { c.IssuedUptimeMS = 12001 },
-		func(c *monitoringChallenge) { c.ExpiresUptimeMS++ },
+		func(c *monitoringChallenge) { c.ExpiresUptimeMS = c.IssuedUptimeMS + monitoringChallengeWindowMS + 1 },
 		func(c *monitoringChallenge) { c.ExpiresUptimeMS = c.IssuedUptimeMS },
 		func(c *monitoringChallenge) { c.AuthorityUntilMS = 12000 },
 		func(c *monitoringChallenge) { c.Owner.UID = 0 },
@@ -171,7 +188,7 @@ func TestMonitoringEvidenceBoundsNativeClockAndPriorAuthority(t *testing.T) {
 		}
 	}
 	// A wall-clock jump is irrelevant: no remote or local Unix clock is an input.
-	p.AgeMS = 14900
+	p.AgeMS = monitoringEvidenceWindowMS - 100
 	if _, err := verifyMonitoringEvidence(signEvidence(t, key, p), pub, c, 10100); err == nil {
 		t.Fatal("round trip outlived remaining evidence freshness")
 	}
@@ -237,7 +254,7 @@ func FuzzMonitoringEvidenceSignedMetadata(f *testing.F) {
 			return
 		}
 		v, err := verifyMonitoringEvidence(signEvidenceBytes(key, payload), pub, c, 12000)
-		if err == nil && (v.Owner != o || v.Nonce != c.Nonce || v.CoverageEpoch != c.CoverageEpoch || v.Sequence <= c.AfterSequence || v.Sequence > monitoringEvidenceMaxSequence || v.UntilUptimeMS <= 12000 || v.UntilUptimeMS > 25000 || v.UntilUptimeMS > c.DeadlineUptimeMS) {
+		if err == nil && (v.Owner != o || v.Nonce != c.Nonce || v.CoverageEpoch != c.CoverageEpoch || v.Sequence <= c.AfterSequence || v.Sequence > monitoringEvidenceMaxSequence || v.UntilUptimeMS <= 12000 || v.UntilUptimeMS > c.IssuedUptimeMS+monitoringEvidenceWindowMS || v.UntilUptimeMS > c.DeadlineUptimeMS) {
 			t.Fatal("malformed signed input produced invalid candidate", v)
 		}
 	})

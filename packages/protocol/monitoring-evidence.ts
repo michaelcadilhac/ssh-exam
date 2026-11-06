@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { OPERATION_TIMEOUT_MS } from "./timeouts.js";
 
 // Authenticated capture/bootstrap/evidence for the guarded native supervisor.
 // Installed retained admission remains disabled. Registered identity alone is
 // not execution authorization and cannot reconstruct a live permit from disk.
-export const MONITORING_EVIDENCE_WINDOW_MS = 15_000;
-export const MONITORING_CHALLENGE_WINDOW_MS = 5_000;
+export const MONITORING_EVIDENCE_WINDOW_MS = OPERATION_TIMEOUT_MS;
+export const MONITORING_CHALLENGE_WINDOW_MS = OPERATION_TIMEOUT_MS;
 export const MONITORING_EVIDENCE_MAX_BYTES = 4096;
 const name = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -30,7 +31,7 @@ export const monitoringOwner = z
   .strict();
 export const monitoringEvidence = z
   .object({
-    type: z.literal("monitoring-execution-evidence-v1"),
+    type: z.literal("monitoring-execution-evidence-v2"),
     audience: name,
     nonce: digest,
     owner: monitoringOwner,
@@ -54,7 +55,7 @@ export type MonitoringEvidence = z.infer<typeof monitoringEvidence>;
 // durable ACTIVE commit, exclusive live ownership and kernel peer verification.
 export const monitoringBootstrap = z
   .object({
-    type: z.literal("monitoring-bootstrap/v1"),
+    type: z.literal("monitoring-bootstrap/v2"),
     control_retention: z.literal("v1"),
     policy_reports: z.literal("v1"),
     owner: monitoringOwner,

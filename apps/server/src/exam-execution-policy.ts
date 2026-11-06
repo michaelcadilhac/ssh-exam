@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import type { FastifyInstance } from "fastify";
 import { isDeepStrictEqual } from "node:util";
 import { examConfiguration } from "../../../packages/protocol/index.js";
@@ -20,7 +21,10 @@ const executionValues = examConfiguration.pick({
   collection_total_mib: true,
 });
 export class ExamExecutionPolicyError extends Error {
-  constructor(message: string, public readonly statusCode = 503) {
+  constructor(
+    message: string,
+    public readonly statusCode = 503,
+  ) {
     super(message);
     this.name = "ExamExecutionPolicyError";
   }
@@ -195,7 +199,7 @@ export function registerExamExecutionPolicy(
       );
       if (request.agent !== agent.id)
         return unavailable("Exam settings agent scope rejected", 403);
-      if (Math.abs(now() - request.at) > 30000)
+      if (Math.abs(now() - request.at) > OPERATION_TIMEOUT_MS)
         return unavailable(
           "Exam settings request expired; request a fresh observation",
           409,
@@ -204,7 +208,7 @@ export function registerExamExecutionPolicy(
         type: "exam-execution-policy",
         audience: agent.id,
         nonce: request.nonce,
-        expires: now() + 30000,
+        expires: now() + OPERATION_TIMEOUT_MS,
         policy: policies.current(request.exam),
       });
       try {

@@ -7,7 +7,8 @@ positive idle/native drain, then takes a stopped incremental snapshot. Failures
 retain the admission fence. Rollback selects the retained previous image with
 CURRENT data; it never restores a database or directly touches native services.
 The exact reviewed-web-native scopes live-exam-execution-policy-v1 and
-files-only-resume-v1 return WAITING_NATIVE after their durable stopped snapshot.
+files-only-resume-v1, plus monitoring-timeouts-v2 with its explicitly pinned relay,
+return WAITING_NATIVE after their durable stopped snapshot.
 Run the separately qualified
 native controller, bridge its nonce-bound transition and fresh after-guard, then
 resume this command. It admits only the matched candidate and forward recovery;
@@ -117,7 +118,10 @@ class Rollout:
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
-            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1')
+            relay_update = self.settings.get('reviewed_scope') == 'monitoring-timeouts-v2'
+            if relay_update:
+                names.add('exam-ssh-relay')
+            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or self.settings.get('previous_reader_policy_compatible') is not False
@@ -139,6 +143,8 @@ class Rollout:
                     or update['before'].get('service_pids') != self.release['service_pids']
                     or not Path(update.get('transition_receipt', '')).is_absolute()):
                 raise ValueError('Native before/after pins disagree with the qualified release')
+            if relay_update and update['before']['binary_sha256']['exam-ssh-relay'] != self.release['relay_sha256']:
+                raise ValueError('Relay before pin differs from the guarded installed relay')
             command_after = self.settings.get('native_after_guard')
             if not isinstance(command_after, list) or not command_after or not all(isinstance(part, str) for part in command_after) or not Path(command_after[0]).is_absolute():
                 raise ValueError('A separate absolute fresh native-after guard is required')
@@ -269,7 +275,7 @@ class Rollout:
                     ('history_sha256', 'native_history_sha256'), ('config_sha256', 'native_config_sha256'), ('cli_config_sha256', 'cli_config_sha256')))
                 or set(receipt.get('service_pids', {})) != set(self.release['service_pids'])
                 or any(type(pid) is not int or pid <= 0 for pid in receipt['service_pids'].values())
-                or receipt['service_pids']['exam-ssh-relay.service'] != self.release['service_pids']['exam-ssh-relay.service']
+                or (self.settings.get('reviewed_scope') != 'monitoring-timeouts-v2' and receipt['service_pids']['exam-ssh-relay.service'] != self.release['service_pids']['exam-ssh-relay.service'])
                 or (self.record.get('native_transition_sha256') and checksum != self.record['native_transition_sha256'])):
             raise ValueError('Native transition does not prove this candidate and preserved CURRENT authority')
         return receipt, checksum
@@ -288,7 +294,7 @@ class Rollout:
                     or not -1 <= age <= 90 or result.get('nonce') != self.release['native_update']['nonce']
                     or result.get('phase') != ('after-native' if after else 'before-native')
                     or result.get('binary_sha256') != cohort['binary_sha256']
-                    or result.get('relay_sha256') != self.release['relay_sha256']):
+                    or result.get('relay_sha256') != cohort['binary_sha256'].get('exam-ssh-relay', self.release['relay_sha256'])):
                 raise ValueError('Fresh independently observed matched native cohort is unavailable')
             if after:
                 receipt, checksum = self.transition()

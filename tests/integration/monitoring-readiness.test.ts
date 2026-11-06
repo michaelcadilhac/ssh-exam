@@ -150,7 +150,7 @@ it.each([false, true])(
       });
       expect(retag.statusCode).toBe(409);
       expect(retag.json().code).toBe("monitoring_challenge_sequence");
-      clock.now += 15001;
+      clock.now += 60001;
       const expired = await app.inject({
         method: "POST",
         url: url + "/frames/challenged",

@@ -17,11 +17,12 @@ type terminalCutoffWatch struct {
 func (w *terminalCutoffWatch) close() { w.slot.close(); w.peer.close() }
 
 type terminalCutoffFact struct {
-	owner     monitoringOwner
-	view      *monitoringAuthorityView
-	held      bool
-	sshExited bool
-	error     error
+	owner       monitoringOwner
+	view        *monitoringAuthorityView
+	held        bool
+	sshExited   bool
+	exitedOwner *monitoringOwner
+	error       error
 }
 
 func (e *Engine) terminalCutoffFor(a *Attempt) (*terminalCutoffWatch, error) {
@@ -134,8 +135,10 @@ func (e *Engine) observeTerminalSharedCutoffs() (map[string]terminalCutoffFact, 
 			// the gateway owner; delays, lost metadata and unknown/closed handles
 			// provide no such evidence. Locked attempts need this observation too.
 			if a.State == "LOCKED" || err != nil || (fact.view != nil && !fact.view.ExecutionAuthorized) {
-				if observed, observeErr := ObserveTerminalSupervisor(e.Config.State, a.ID); observeErr == nil && observed.MonitoringMode == "v1" && observed.Boot == a.RegisteredOwner.Boot && observed.RegisteredOwner != nil && *observed.RegisteredOwner == fact.owner && observed.SSHPeer == "exited" {
+				if observed, observeErr := ObserveTerminalSupervisor(e.Config.State, a.ID); observeErr == nil && observed.MonitoringMode == "v1" && observed.Boot == a.RegisteredOwner.Boot && observed.RegisteredOwner != nil && sameExitedLifetime(*observed.RegisteredOwner, fact.owner) && observed.SSHPeer == "exited" {
 					fact.sshExited = true
+					owner := *observed.RegisteredOwner
+					fact.exitedOwner = &owner
 				}
 			}
 			fact.error = err

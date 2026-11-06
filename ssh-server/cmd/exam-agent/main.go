@@ -64,6 +64,7 @@ func main() {
 	if err = e.Tick(); err != nil {
 		log.Fatal(err)
 	}
-	// No TCP listener and no command polling. The only command input is the local SSH gate.
+	// No TCP listener or generic command polling. The watchdog separately fetches
+	// already-authorized instructor clock intents over authenticated outbound HTTPS.
 	log.Fatal(e.ServeLocal())
 }

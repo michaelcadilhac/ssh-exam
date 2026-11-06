@@ -1,5 +1,13 @@
 # Monitoring-evidence verifier contract (historical H2b/H3)
 
+November6 local candidate: operational evidence freshness is now60 seconds,
+explicitly identified by monitoring-execution-evidence-v2 and
+monitoring-bootstrap/v2. Old purposes refuse before authority or Start is granted.
+Capture cadence, complete-evidence requirements, monotonic age and scope checks
+remain enforced. This is implemented/tested locally, not deployed. The v1/15s
+description below is retained historical design, not the candidate contract.
+Current evidence: timer-controls-followup.md.
+
 October25 current status: the guarded supervisor runtime invokes this verifier
 through authenticated native challenges and the gateway evidence route. Installed
 retained admission stays OFF. Current integration, exact verification and remaining

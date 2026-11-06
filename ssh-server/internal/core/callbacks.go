@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 )
 
 type CallbackEvent struct {
@@ -144,7 +143,7 @@ func (e *Engine) callbackClient() (*http.Client, error) {
 		}
 		tlsConfig.RootCAs = pool
 	}
-	return &http.Client{Timeout: 45 * time.Second, Transport: &http.Transport{Proxy: e.callbackProxy, TLSClientConfig: tlsConfig}, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("callback redirects forbidden") }}, nil
+	return &http.Client{Timeout: operationTimeout, Transport: &http.Transport{Proxy: e.callbackProxy, TLSClientConfig: tlsConfig}, CheckRedirect: func(*http.Request, []*http.Request) error { return errors.New("callback redirects forbidden") }}, nil
 }
 func (e *Engine) postCallback(client *http.Client, key ed25519.PrivateKey, endpoint string, payload []byte, body io.Reader, contentType string) error {
 	req, err := http.NewRequest("POST", strings.TrimSuffix(e.Config.CallbackURL, "/")+endpoint, body)

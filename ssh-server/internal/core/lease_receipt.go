@@ -26,9 +26,9 @@ func (e *Engine) confirmExecutionRenewal(id, hash string, untilBoot int64) {
 	if e.renewalReceiptConfirmed == nil {
 		e.renewalReceiptConfirmed = map[string]executionRenewalConfirmation{}
 	}
-	// Each accepted receipt lasts at most15 seconds. No IO under this mutex and
+	// Each accepted receipt lasts at most60 seconds. No IO under this mutex and
 	// no fresh confirmation is evicted to recover another account's reply.
-	now := untilBoot - 15000
+	now := untilBoot - operationTimeoutMS
 	for attempt, confirmation := range e.renewalReceiptConfirmed {
 		if confirmation.UntilBoot <= now {
 			delete(e.renewalReceiptConfirmed, attempt)
@@ -121,14 +121,14 @@ func (e *Engine) signedRenewalReceipt(cmd Command, username, transport string) (
 	receipt, found := lease.Receipts[cmd.Body.RenewalNonce]
 	nowBoot, clockErr := monitoringBootMillis()
 	now := Millis()
-	if !found || clockErr != nil || cmd.Expires <= now || lease.Nonces[cmd.Body.RenewalNonce] <= now || receipt.Exam != a.Exam || receipt.UID != a.UID || receipt.Start != a.Start || receipt.Deadline != a.Deadline || receipt.OriginalDeadline != a.OriginalDeadline || receipt.Issued <= 0 || receipt.IssuedBoot < 0 || receipt.Until <= receipt.Issued || receipt.Until-receipt.Issued != 15000 || receipt.UntilBoot <= receipt.IssuedBoot || receipt.UntilBoot-receipt.IssuedBoot != 15000 || nowBoot < receipt.IssuedBoot || receipt.Until > lease.Until {
+	if !found || clockErr != nil || cmd.Expires <= now || lease.Nonces[cmd.Body.RenewalNonce] <= now || receipt.Exam != a.Exam || receipt.UID != a.UID || receipt.Start != a.Start || receipt.Deadline != a.Deadline || receipt.OriginalDeadline != a.OriginalDeadline || receipt.Issued <= 0 || receipt.IssuedBoot < 0 || receipt.Until <= receipt.Issued || receipt.Until-receipt.Issued != operationTimeoutMS || receipt.UntilBoot <= receipt.IssuedBoot || receipt.UntilBoot-receipt.IssuedBoot != operationTimeoutMS || nowBoot < receipt.IssuedBoot || receipt.Until > lease.Until {
 		return nil, errExecutionRenewalReceipt
 	}
 	remaining := min(receipt.Until-now, receipt.UntilBoot-nowBoot, a.Lease-now, a.Deadline-now)
 	if a.UptimeDeadline > 0 {
 		remaining = min(remaining, int64(a.UptimeDeadline*1000)-nowBoot)
 	}
-	if remaining <= 0 || remaining > 15000 || !e.executionRenewalConfirmed(a.ID, Hash(data), nowBoot) {
+	if remaining <= 0 || remaining > operationTimeoutMS || !e.executionRenewalConfirmed(a.ID, Hash(data), nowBoot) {
 		return nil, errExecutionRenewalReceipt
 	}
 	return executionRenewalStatus{Version: 1, Nonce: cmd.Body.RenewalNonce, Until: receipt.Until, RemainingMS: remaining, Attempt: publicAttempt(a)}, nil

@@ -303,7 +303,7 @@ func (a *monitoringAuthority) accept(p monitoringPermitCandidate) (monitoringCom
 			delete(a.committed, n)
 		}
 	}
-	if len(a.committed) >= 32 {
+	if len(a.committed) >= 128 {
 		return monitoringCommitReceipt{}, errMonitoringCapacity
 	}
 	if a.revision == monitoringEvidenceMaxSequence {

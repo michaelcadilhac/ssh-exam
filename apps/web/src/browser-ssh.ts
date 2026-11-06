@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { terminalInputChunks } from "./terminal-input.js";
 import { socket } from "./api.js";
 import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
@@ -593,7 +594,7 @@ export class BrowserSSH {
     if (this.stopped) return;
     if (
       !this.retainedTransport &&
-      performance.now() - this.disconnected > 15000
+      performance.now() - this.disconnected > OPERATION_TIMEOUT_MS
     ) {
       this.emit({ type: "loss" });
       this.close();
@@ -623,7 +624,7 @@ export class BrowserSSH {
       if (m.type === "browser-bound") {
         if (
           !this.retainedTransport &&
-          performance.now() - this.disconnected > 15000
+          performance.now() - this.disconnected > OPERATION_TIMEOUT_MS
         ) {
           this.emit({ type: "loss" });
           this.close();

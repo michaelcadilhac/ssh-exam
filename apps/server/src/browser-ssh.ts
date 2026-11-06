@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { EventEmitter } from "node:events";
 import { randomUUID, sign, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -144,7 +145,7 @@ export class BrowserConnection extends Connection {
     const offered = await this.request(
       "retained-control",
       { owner, controlToken: this.controlToken },
-      5000,
+      OPERATION_TIMEOUT_MS,
     );
     this.browserFeatures(offered);
     if (
@@ -330,7 +331,7 @@ export class BrowserConnection extends Connection {
     if (
       !this.hasRetainedTransport() &&
       this.detachedAt !== null &&
-      performance.now() - this.detachedAt >= 15000
+      performance.now() - this.detachedAt >= OPERATION_TIMEOUT_MS
     ) {
       this.alive = false;
       this.onLoss();
@@ -355,7 +356,7 @@ export class BrowserConnection extends Connection {
           this.alive = false;
           this.onLoss();
           this.close();
-        }, 15000);
+        }, OPERATION_TIMEOUT_MS);
       }
     });
     // Install close handling before replay: a failed resend must still start
@@ -428,7 +429,7 @@ export class BrowserConnection extends Connection {
   private request(
     op: string,
     args: any,
-    timeout = 120000,
+    timeout = OPERATION_TIMEOUT_MS,
     id = randomUUID(),
   ): Promise<any> {
     if (this.closed || !this.socket || this.socket.readyState !== 1)
@@ -499,7 +500,7 @@ export class BrowserConnection extends Connection {
               next,
               instance: channel.outputEpoch,
             },
-            15000,
+            OPERATION_TIMEOUT_MS,
           );
           if (
             !this.alive ||
@@ -547,7 +548,7 @@ export class BrowserConnection extends Connection {
         op: "relay-connect",
         nonce: randomUUID(),
         issued,
-        expires: issued + 30000,
+        expires: issued + OPERATION_TIMEOUT_MS,
         origin: this.settings.origin,
         target: "sshjump.depaul.edu:22",
         username: this.username,
@@ -603,11 +604,11 @@ export class BrowserConnection extends Connection {
   protected override exchangeCommand(
     frame: any,
     nonce: string,
-    timeout = 120000,
+    timeout = OPERATION_TIMEOUT_MS,
   ) {
     const id = randomUUID();
     const promise = this.request("command", frame, timeout, id);
-    if (timeout < 120000 && this.commandCancellationSupported)
+    if (timeout < OPERATION_TIMEOUT_MS && this.commandCancellationSupported)
       void promise.catch(() => this.notify("cancel-command", { nonce }));
     return {
       promise,
@@ -652,7 +653,7 @@ export class BrowserConnection extends Connection {
       const acknowledgment = await this.request(
         "open",
         { pane, token: admission.token, input_epoch: admission.input_epoch },
-        15000,
+        OPERATION_TIMEOUT_MS,
       );
       const receipt = this.receipt(
         acknowledgment?.proof,

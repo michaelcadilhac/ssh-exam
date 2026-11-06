@@ -258,7 +258,7 @@ func ManagementExport(c Config, id, request string, consume func(json.RawMessage
 		return errors.New("export gateway signing key unavailable; inspect matching configured pinned keys")
 	}
 	issued, nonce := Millis(), Token()
-	payload, _ := json.Marshal(map[string]any{"version": 1, "purpose": managementPurpose, "audience": strings.TrimSuffix(c.CallbackURL, "/"), "agent": c.AgentID, "actor": "agent-root", "request": request, "nonce": nonce, "issued": issued, "expires": issued + 30000, "operation": "monitoring.export", "body": map[string]any{"id": id}})
+	payload, _ := json.Marshal(map[string]any{"version": 1, "purpose": managementPurpose, "audience": strings.TrimSuffix(c.CallbackURL, "/"), "agent": c.AgentID, "actor": "agent-root", "request": request, "nonce": nonce, "issued": issued, "expires": issued + operationTimeoutMS, "operation": "monitoring.export", "body": map[string]any{"id": id}})
 	client, err := (&Engine{Config: c}).callbackClient()
 	if err != nil {
 		return err
@@ -266,9 +266,9 @@ func ManagementExport(c Config, id, request string, consume func(json.RawMessage
 	defer client.CloseIdleConnections()
 	client.Timeout = 0
 	if transport, ok := client.Transport.(*http.Transport); ok {
-		transport.ResponseHeaderTimeout = 15 * time.Second
-		transport.TLSHandshakeTimeout = 15 * time.Second
-		transport.DialContext = (&net.Dialer{Timeout: 15 * time.Second, KeepAlive: 30 * time.Second}).DialContext
+		transport.ResponseHeaderTimeout = operationTimeout
+		transport.TLSHandshakeTimeout = operationTimeout
+		transport.DialContext = (&net.Dialer{Timeout: operationTimeout, KeepAlive: 30 * time.Second}).DialContext
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
@@ -279,7 +279,7 @@ func ManagementExport(c Config, id, request string, consume func(json.RawMessage
 	requestBody.Header.Set("Content-Type", "application/vnd.ssh-exam-management")
 	requestBody.Header.Set("X-Exam-Signature", base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload)))
 	budget := &exportReadBudget{cancel: cancel}
-	stop := budget.begin(15 * time.Second)
+	stop := budget.begin(operationTimeout)
 	response, err := client.Do(requestBody)
 	stop()
 	if err != nil || budget.failed() {
@@ -291,7 +291,7 @@ func ManagementExport(c Config, id, request string, consume func(json.RawMessage
 	defer response.Body.Close()
 	kind, _, typeErr := mime.ParseMediaType(response.Header.Get("Content-Type"))
 	if response.StatusCode != 200 || typeErr != nil || kind != MonitoringExportContentType {
-		stop = budget.begin(15 * time.Second)
+		stop = budget.begin(operationTimeout)
 		raw, readErr := io.ReadAll(io.LimitReader(response.Body, 65537))
 		stop()
 		var envelope SignedFrame
@@ -313,7 +313,7 @@ func ManagementExport(c Config, id, request string, consume func(json.RawMessage
 		}
 		return fmt.Errorf("gateway refused monitoring export (status %d); inspect monitoring show %s, explicit monitoring.export authorization, matching CLI/gateway versions and private gateway storage; retry the same --request %s with a NEW output directory", refusal.Status, id, request)
 	}
-	err = readMonitoringExport(response.Body, public, exportWireScope{agent: c.AgentID, request: request, nonce: nonce, id: id, issued: issued}, consume, budget, 15*time.Second)
+	err = readMonitoringExport(response.Body, public, exportWireScope{agent: c.AgentID, request: request, nonce: nonce, id: id, issued: issued}, consume, budget, operationTimeout)
 	if err == nil && ctx.Err() != nil {
 		return errMonitoringExport
 	}

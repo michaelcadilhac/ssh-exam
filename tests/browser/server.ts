@@ -1,5 +1,6 @@
 // Browser fixtures only; this file is excluded from the production server build.
 import { PREFLIGHT_TIMEOUT_MS } from "../../packages/protocol/preflight.js";
+import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 import { smtpFixture } from "../fixtures/smtp.js";
 import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
 import { createApp } from "../../apps/server/src/app.js";
@@ -487,13 +488,13 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
           reply.expires <= Date.now() ||
           !Number.isSafeInteger(reply.capture_valid_for_ms) ||
           reply.capture_valid_for_ms <= 0 ||
-          reply.capture_valid_for_ms > 15000 ||
+          reply.capture_valid_for_ms > OPERATION_TIMEOUT_MS ||
           JSON.stringify(reply.grant) !== JSON.stringify(a.grant)
         )
           throw Error("Bad signed browser-fixture Begin response");
         if (
           monitored &&
-          (reply.bootstrap?.type !== "monitoring-bootstrap/v1" ||
+          (reply.bootstrap?.type !== "monitoring-bootstrap/v2" ||
             reply.bootstrap.control_retention !== "v1" ||
             reply.bootstrap.policy_reports !== "v1" ||
             !isDeepStrictEqual(reply.bootstrap.owner, initialOwner) ||
@@ -664,7 +665,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         !isDeepStrictEqual(reply.owner, owner) ||
         reply.expires <= Date.now() ||
         reply.expires > reply.authorization_expires ||
-        reply.bootstrap?.type !== "monitoring-bootstrap/v1" ||
+        reply.bootstrap?.type !== "monitoring-bootstrap/v2" ||
         reply.bootstrap.control_retention !== "v1" ||
         reply.bootstrap.policy_reports !== "v1" ||
         !isDeepStrictEqual(reply.bootstrap.owner, owner) ||
@@ -672,7 +673,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
         !/^[a-f0-9]{64}$/.test(reply.bootstrap.coverage_epoch || "") ||
         !Number.isSafeInteger(reply.capture_valid_for_ms) ||
         reply.capture_valid_for_ms <= 0 ||
-        reply.capture_valid_for_ms > 15000
+        reply.capture_valid_for_ms > OPERATION_TIMEOUT_MS
       )
         throw Error("Bad signed browser-fixture continuation proof");
       const panes = [...h.activePanes.values()].filter(
@@ -909,7 +910,10 @@ h.control.command = async (op, b, frame) => {
       b,
     );
     const attempt = structuredClone({ ...result, transport: frame.transport });
-    renewalReceipts.set(frame.nonce, { until: Date.now() + 15000, attempt });
+    renewalReceipts.set(frame.nonce, {
+      until: Date.now() + OPERATION_TIMEOUT_MS,
+      attempt,
+    });
     return attempt;
   }
   if (op === "execution-renewal-receipt") {

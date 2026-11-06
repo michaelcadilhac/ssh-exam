@@ -113,7 +113,7 @@ it("provisional snapshots promote only as original-age evidence for an exact tru
   ).toThrow(/fresh/i);
   const stale = new MonitoringEvidenceLedger("class"),
     staleBinding = stale.registerTrustedOwner(owner, true);
-  clock.now = 25000;
+  clock.now = 70000;
   expect(() =>
     stale.seedValidatedBegin(staleBinding, snapshot, "e".repeat(64)),
   ).toThrow(/technical-gap/);

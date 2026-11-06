@@ -93,7 +93,7 @@ func TestPaneInputGateStartsRevokedAndConsumesOnlyCurrentDrain(t *testing.T) {
 	for _, bad := range []struct {
 		epoch           string
 		until, deadline int64
-	}{{"", 5000, 90000}, {strings.Repeat("A", 64), 5000, 90000}, {a, 1000, 90000}, {a, 5000, 4999}, {a, 16001, 90000}} {
+	}{{"", 5000, 90000}, {strings.Repeat("A", 64), 5000, 90000}, {a, 1000, 90000}, {a, 5000, 4999}, {a, 1001 + operationTimeoutMS, 90000}} {
 		if err := g.arm(d, bad.epoch, bad.until, bad.deadline); err == nil {
 			t.Fatal("invalid permit armed gate")
 		}
@@ -239,7 +239,7 @@ func TestPaneInputGateRenewalCannotRecoverExpiryOrChangeDeadline(t *testing.T) {
 	for _, c := range []struct {
 		epoch string
 		until int64
-	}{{strings.Repeat("b", 64), 17000}, {epoch, 17001}, {epoch, 2000}, {epoch, 90001}} {
+	}{{strings.Repeat("b", 64), 17000}, {epoch, 2001 + operationTimeoutMS}, {epoch, 2000}, {epoch, 90001}} {
 		if err := g.renew(c.epoch, c.until); err == nil || g.until != 17000 || g.deadline != 90000 {
 			t.Fatal("invalid renewal changed authority", err)
 		}

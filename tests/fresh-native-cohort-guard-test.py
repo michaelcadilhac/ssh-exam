@@ -45,6 +45,22 @@ class FreshCohort(unittest.TestCase):
     def test_real_private_before_split_cli_and_after_cohort_proofs(self):
         self.assertEqual(read_current(self.root,'before',self.now)['worker_cli_sha256'],'9'*64)
         self.assertTrue(read_current(self.root,'after',self.now)['policy_supported'])
+
+    def test_exact_timeout_scope_binds_new_relay_hash_and_pid_to_transition(self):
+        self.release['fast_ui']={'reviewed_scope':'monitoring-timeouts-v2'}
+        self.release['native_update']['before']['binary_sha256']['exam-ssh-relay']=self.release['relay_sha256']
+        self.release['native_update']['after']['binary_sha256']['exam-ssh-relay']='b'*64
+        self.transition['binary_sha256']=self.release['native_update']['after']['binary_sha256']
+        self.transition['service_pids']={**self.after,'exam-ssh-relay.service':104}
+        self.write('release.json',self.release);self.write('native-transition.json',self.transition)
+        value={**self.values['after'],'binary_sha256':self.transition['binary_sha256'],
+            'relay_sha256':'b'*64,'relay_pid':104,
+            'transition_receipt_sha256':hashlib.sha256((self.root/'native-transition.json').read_bytes()).hexdigest()}
+        self.wrap('after',value)
+        self.assertEqual(read_current(self.root,'after',self.now)['relay_pid'],104)
+        for field,old in [('relay_sha256',self.release['relay_sha256']),('relay_pid',4)]:
+            with self.subTest(field=field),self.assertRaises(ValueError):
+                self.wrap('after',{**value,field:old});read_current(self.root,'after',self.now)
     def test_expired_nonce_phase_binary_and_relay_failures_refuse(self):
         for field,value in [('at',(self.now-datetime.timedelta(seconds=91)).isoformat()),('nonce','other'),('phase','before-native'),('binary_sha256',{}),('relay_pid',10),('relay_sha256','0'*64)]:
             with self.subTest(field=field),self.assertRaises(ValueError):

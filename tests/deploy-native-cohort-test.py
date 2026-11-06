@@ -75,7 +75,7 @@ class OperatorWorkflow(unittest.TestCase):
         self.units["exam-ssh-relay.service"] = {"ActiveState": "active", "MainPID": "4"}
         self.calls = []
         helper = self.stage / "native-guard.py"
-        helper.write_text("from pathlib import Path\nimport json,sys,datetime\nr=json.loads((Path(sys.argv[1])/'release.json').read_text())\nprint(json.dumps({'guard':'PASS','host':'csc-sys','phase':'after-cli','at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'native_roles':[{'unit':k,'pid':v} for k,v in r['service_pids'].items() if k!='exam-ssh-relay.service'],'history_sha256':r['native_history_sha256'],'config_sha256':r['native_config_sha256'],'cli_config_sha256':r['cli_config_sha256'],'installed_cli_sha256':r['cli_sha256'],'worker_cli_sha256':r['worker_cli_sha256'],'relay_pid':4,'relay_sha256':'0'*64}))\n")
+        helper.write_text("from pathlib import Path\nimport json,sys,datetime\nr=json.loads((Path(sys.argv[1])/'release.json').read_text())\nprint(json.dumps({'guard':'PASS','host':'csc-sys','phase':'after-cli','at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'native_roles':[{'unit':k,'pid':v} for k,v in r['service_pids'].items() if k!='exam-ssh-relay.service'],'history_sha256':r['native_history_sha256'],'config_sha256':r['native_config_sha256'],'cli_config_sha256':r['cli_config_sha256'],'installed_cli_sha256':r['cli_sha256'],'worker_cli_sha256':r['worker_cli_sha256'],'relay_pid':r['service_pids']['exam-ssh-relay.service'],'relay_sha256':r['relay_sha256']}))\n")
         helper.chmod(0o600)
         self.release = {"schema": 37, "revision": "a" * 40, "old_image_config_id": "sha256:" + "b" * 64, "image_config_id": "sha256:" + "c" * 64, "fast_ui": {"state": str(self.root / "web-state")}, "native_history_sha256": hashlib.sha256(native.canonical(state["attempts"])).hexdigest(), "native_config_sha256": native.digest(self.config), "cli_config_sha256": native.digest(self.cli_config), "relay_sha256": "0" * 64, "unit_sha256": "d" * 64,
                         "native_update": {"nonce": str(uuid.uuid4()), "guard_sha256": native.digest(helper), "before": {"binary_sha256": before, "worker_cli_sha256": before["examctl"], "service_pids": {k: int(v["MainPID"]) for k, v in self.units.items() if k in native.ROLES or k == "exam-ssh-relay.service"}}, "after": {"binary_sha256": after, "worker_cli_sha256": after["examctl"]}}}
@@ -103,6 +103,13 @@ class OperatorWorkflow(unittest.TestCase):
 
     def command(self, args, timeout=25):
         self.calls.append(list(map(str, args)))
+        if args[0] == "/usr/sbin/nginx":
+            if getattr(self, "nginx_refused", False):
+                raise AssertionError("synthetic proxy validation refused")
+            return ""
+        if args[:2] == ["/usr/bin/systemctl", "reload"]:
+            self.assertEqual(args[2:], ["nginx.service"])
+            return ""
         if args[0] != "/usr/bin/systemctl":
             return REAL_COMMAND(args, timeout)
         if args[1] == "show":
@@ -112,7 +119,7 @@ class OperatorWorkflow(unittest.TestCase):
                 self.units[name] = {"ActiveState": "inactive", "MainPID": "0"}
             elif self.units[name]["ActiveState"] != "active":
                 self.pid += 1
-                self.units[name] = {"ActiveState": "active", "MainPID": str(self.pid if name in native.ROLES else 0)}
+                self.units[name] = {"ActiveState": "active", "MainPID": str(self.pid if name in native.ROLES or name == "exam-ssh-relay.service" else 0)}
         return ""
 
     def health(self, operation):
@@ -129,6 +136,64 @@ class OperatorWorkflow(unittest.TestCase):
     def stopped_backup(self):
         self.cli("stop")
         return self.cli("backup")
+
+    def relay_setup(self):
+        relay = self.root / "exam-ssh-relay"
+        relay.write_bytes(b"old relay fixture"); relay.chmod(0o755)
+        candidate = self.stage / "native/exam-ssh-relay"
+        candidate.write_bytes(b"new relay fixture"); candidate.chmod(0o700)
+        preserve = [self.config_dir / name for name in ("relay-config.json", "relay-trust.pub", "relay.service")]
+        for path in preserve: path.write_bytes(b"existing trust and local configuration")
+        nginx = self.config_dir / "relay-nginx.conf"; nginx.write_bytes(b"old proxy"); nginx.chmod(0o644)
+        source = self.stage / "relay-nginx.conf"; source.write_bytes(b"new sixty-second proxy"); source.chmod(0o600)
+        self.release["fast_ui"]["reviewed_scope"] = "monitoring-timeouts-v2"
+        self.release["relay_sha256"] = native.digest(relay)
+        update = self.release["native_update"]
+        update["before"]["binary_sha256"]["exam-ssh-relay"] = native.digest(relay)
+        update["after"]["binary_sha256"]["exam-ssh-relay"] = native.digest(candidate)
+        update["relay"] = {"preserve_sha256": {str(p): native.digest(p) for p in preserve},
+            "nginx_before_sha256": native.digest(nginx), "nginx_after_sha256": native.digest(source)}
+        self.web["native_binary_sha256"] = update["after"]["binary_sha256"]
+        for patcher in [patch.object(native, "RELAY", relay), patch.object(native, "RELAY_NGINX", nginx),
+                patch.object(native, "RELAY_PRESERVE", preserve),
+                patch.object(native.Native, "backup_paths", lambda operation: [self.state, self.work, self.config_dir, relay, *map(Path, self.targets.values())])]:
+            patcher.start(); self.patchers.append(patcher)
+        self.write_release(); self.write_web()
+        return relay, nginx, preserve
+
+    def test_five_binary_upgrade_keeps_relay_trust_and_retries_proxy_refusal_while_stopped(self):
+        relay, nginx, preserve = self.relay_setup()
+        original = {p: p.read_bytes() for p in preserve}
+        backup = self.stopped_backup()
+        with tarfile.open(backup["backup"]) as archive:
+            self.assertEqual(archive.extractfile(str(relay).lstrip("/")).read(), b"old relay fixture")
+        self.nginx_refused = True
+        with self.assertRaisesRegex(AssertionError, "proxy validation"):
+            self.cli("install")
+        self.assertEqual(self.cli("status")["phase"], "INSTALLING")
+        self.assertEqual(self.units["exam-ssh-relay.service"]["ActiveState"], "inactive")
+        self.nginx_refused = False
+        self.cli("install"); self.cli("start")
+        proof = self.cli("verify")
+        after = self.cli("guard-after")
+        self.assertEqual(after["relay_sha256"], native.digest(relay))
+        self.assertEqual(after["relay_pid"], proof["service_pids"]["exam-ssh-relay.service"])
+        self.assertEqual(native.digest(relay), self.release["native_update"]["after"]["binary_sha256"]["exam-ssh-relay"])
+        self.assertNotEqual(proof["service_pids"]["exam-ssh-relay.service"], 4)
+        self.assertEqual(nginx.read_bytes(), b"new sixty-second proxy")
+        self.assertEqual({p: p.read_bytes() for p in preserve}, original)
+        self.assertEqual(self.buffer.read_bytes(), b"int main(void) { return 0; }\n")
+
+    def test_relay_config_drift_and_missing_fifth_binary_refuse_before_stopping(self):
+        relay, nginx, preserve = self.relay_setup()
+        prior = preserve[0].read_bytes(); preserve[0].write_bytes(b"changed configuration")
+        with self.assertRaisesRegex(AssertionError, "Relay trust/configuration changed"):
+            self.cli("stop")
+        self.assertFalse(self.calls)
+        preserve[0].write_bytes(prior)
+        (self.stage / "native/exam-ssh-relay").unlink()
+        with self.assertRaises(FileNotFoundError): self.cli("stop")
+        self.assertFalse(self.calls)
 
     def test_full_cli_forward_upgrade_retains_data_and_produces_bound_guard(self):
         old = {name: Path(path).stat().st_ino for name, path in self.targets.items()}

@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 import ssh2 from "ssh2";
 const { Server, utils } = ssh2;
 import { generateKeyPairSync, randomUUID, sign, verify } from "node:crypto";
@@ -130,7 +131,7 @@ export async function hosts(
           nonce,
           username: authenticatedUsername,
           transport: transportID,
-          expires: Date.now() + 120000,
+          expires: Date.now() + OPERATION_TIMEOUT_MS,
           result,
           error,
         }),

@@ -1,3 +1,4 @@
+import { MONITORING_EVIDENCE_WINDOW_MS as WINDOW } from "../../packages/protocol/monitoring-evidence.js";
 import { expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -40,7 +41,7 @@ it("technical continuity needs the exact accepted native receipt across an outag
   f.at(26000);
   expect(f.ledger.technicalSnapshot(f.binding, witness)).toMatchObject({
     coverageEpoch: proof.coverage_epoch,
-    remainingMS: 14000,
+    remainingMS: WINDOW - 1000,
   });
   for (const patch of [
     { last_accepted_nonce: nonce() },
@@ -57,7 +58,7 @@ it("technical continuity needs the exact accepted native receipt across an outag
   expect(
     f.ledger.technicalSnapshot(f.binding, { ...witness, owner: changed })
       .remainingMS,
-  ).toBe(14000);
+  ).toBe(WINDOW - 1000);
   const next = {
       ...changed,
       generation: changed.generation + 1,
@@ -80,7 +81,7 @@ it("technical continuity needs the exact accepted native receipt across an outag
       after_sequence: snapshot.sequence,
       last_accepted_nonce: accepted,
     }).remainingMS,
-  ).toBe(14000);
+  ).toBe(WINDOW - 1000);
 });
 
 it("fresh frames and technical identity transfer never cure a gap or genuine negative", () => {
@@ -88,7 +89,7 @@ it("fresh frames and technical identity transfer never cure a gap or genuine neg
     const f = fixture();
     f.full();
     const proof = f.ledger.issueForNativeChallenge(f.binding, f.request());
-    f.at(negative ? 1000 : 15000);
+    f.at(negative ? 1000 : WINDOW);
     f.full(negative ? { ...ready, visible: false } : ready);
     const next = {
       ...owner,
@@ -136,7 +137,7 @@ it("technical recovery waits through focus grace without declaring a violation o
   f.policy();
   expect(f.ledger.technicalSnapshot(f.binding, witness)).toMatchObject({
     coverageEpoch: proof.coverage_epoch,
-    remainingMS: 14000,
+    remainingMS: WINDOW - 1000,
   });
 });
 function fixture(webcam = true, limit = 32) {
@@ -242,7 +243,7 @@ it("never aligns a witnessed gap, a negative or unknown focus history", () => {
           : ready,
     );
     if (mode === "gap") {
-      f.at(15000);
+      f.at(WINDOW);
       f.full();
     }
     const before = f.ledger.inspect(f.binding);
@@ -330,7 +331,7 @@ it("carries identical trusted clock facts without refreshing age, cutoff, covera
     expect(() => f.ledger.transferTrustedClock(f.binding, changed)).toThrow(
       /ownership/,
     );
-  f.at(15000);
+  f.at(WINDOW);
   f.ledger.transferTrustedClock(f.binding, {
     ...next,
     clock_revision: next.clock_revision + 1,
@@ -375,7 +376,7 @@ it("late negative combined capture cannot hide behind newer positive policy, whi
   });
   expect(f.ledger.inspect(f.binding)).toMatchObject({
     state: "fresh",
-    remainingMS: 13000,
+    remainingMS: WINDOW - 2000,
   });
   const negative = f.ledger.issueBrowserChallenge(f.binding, "screen");
   const positive = f.ledger.issueBrowserChallenge(f.binding, "webcam");
@@ -407,11 +408,11 @@ it("combined focus loss keeps the existing grace and cannot mature across missin
   observe(false, 3);
   f.at(15000);
   observe(false, 4);
-  f.at(19999);
+  f.at(59999);
   expect(f.ledger.issueForNativeChallenge(f.binding, f.request()).age_ms).toBe(
-    14999,
+    59999,
   );
-  f.at(20000);
+  f.at(60000);
   expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
   const gap = fixture(false);
   const challenge = gap.ledger.issueBrowserChallenge(gap.binding, "screen");
@@ -419,7 +420,7 @@ it("combined focus loss keeps the existing grace and cannot mature across missin
     ...ready,
     focus: false,
   });
-  gap.at(21000);
+  gap.at(60001);
   expect(gap.ledger.inspect(gap.binding).state).toBe("technical-gap");
 });
 
@@ -447,7 +448,7 @@ it("requires complete fresh policy and every required challenged frame; receipt 
   });
   expect(f.ledger.inspect(f.binding)).toMatchObject({
     state: "fresh",
-    remainingMS: 12500,
+    remainingMS: WINDOW - 2500,
     gaps: 0,
   });
 });
@@ -479,7 +480,8 @@ it("keeps original proof age/sequence on exact retry despite new observations an
     f.request(first.coverage_epoch, first.sequence),
   );
   expect(next.sequence).toBeGreaterThan(first.sequence);
-  f.at(5000);
+  f.at(WINDOW);
+  f.full();
   expect(() => f.ledger.issueForNativeChallenge(f.binding, request)).toThrow(
     /challenge/,
   );
@@ -508,7 +510,7 @@ it("rejects stale, replayed and out-of-order challenges without refreshing cover
     pendingChallenges: 0,
   });
   const delayed = f.ledger.issueBrowserChallenge(f.binding, "screen");
-  f.at(15000);
+  f.at(WINDOW);
   expect(() =>
     f.ledger.confirmValidatedFrame(f.binding, delayed, "screen", 100),
   ).toThrow(/challenge/);
@@ -522,7 +524,7 @@ it("assigns a new coverage identity after an unknown gap, never repairing the ea
   const f = fixture();
   f.full();
   const before = f.ledger.issueForNativeChallenge(f.binding, f.request());
-  f.at(15000);
+  f.at(WINDOW);
   f.full();
   const after = f.ledger.issueForNativeChallenge(f.binding, f.request());
   expect(after.coverage_epoch).not.toBe(before.coverage_epoch);
@@ -542,10 +544,10 @@ it("assigns a new coverage identity after an unknown gap, never repairing the ea
 it("does not replay an old bootstrap proof as current coverage after a short gap", () => {
   const f = fixture();
   f.full();
-  f.at(13000);
+  f.at(WINDOW - 2000);
   const request = f.request();
   f.ledger.issueForNativeChallenge(f.binding, request);
-  f.at(15100);
+  f.at(WINDOW + 100);
   f.full();
   expect(() => f.ledger.issueForNativeChallenge(f.binding, request)).toThrow(
     /technical-gap/,
@@ -582,19 +584,19 @@ it("preserves focus grace across repeated reports, clips evidence to its cutoff 
   const coverage = f.ledger.inspect(f.binding).coverageEpoch;
   f.at(10000);
   f.full({ ...ready, focus: false });
-  f.at(19500);
+  f.at(59500);
   f.full({ ...ready, focus: false });
   const proof = f.ledger.issueForNativeChallenge(
     f.binding,
     f.request(coverage!),
   );
-  expect(proof.age_ms).toBe(14500);
+  expect(proof.age_ms).toBe(59500);
   expect(f.ledger.inspect(f.binding)).toMatchObject({
     state: "fresh",
     remainingMS: 500,
     gaps: 0,
   });
-  f.at(20000);
+  f.at(60000);
   expect(() => f.policy()).toThrow(/policy-blocked/);
   expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
 });
@@ -604,9 +606,9 @@ it("does not mature stale blur across an unknown monitoring gap into a policy vi
   f.full({ ...ready, focus: false });
   const original = f.ledger.issueForNativeChallenge(f.binding, f.request());
   // No observations across this interval: e.g. a suspended gateway. Required
-  // monitoring expires at15s, BEFORE the20s focus grace. Time alone proves no
+  // monitoring expires at60s alongside the focus grace. Time alone proves no
   // continuous blur; work still stops and the old coverage cannot be restored.
-  f.at(21000);
+  f.at(60001);
   expect(f.ledger.inspect(f.binding)).toMatchObject({
     state: "technical-gap",
     gaps: 1,
@@ -636,7 +638,7 @@ it("accepts focus restored within grace, retains coverage and inherits webcam po
   const coverage = f.ledger.inspect(f.binding).coverageEpoch;
   f.at(10000);
   f.full({ ...ready, webcam: false, focus: true });
-  f.at(20000);
+  f.at(60000);
   f.full({ ...ready, webcam: false, focus: true });
   expect(f.ledger.inspect(f.binding)).toMatchObject({
     state: "fresh",
@@ -716,7 +718,7 @@ it("bounds owner/challenge/receipt capacity without evicting another current stu
   ).toThrow(/challenge/);
   const original = f.request(),
     proof = f.ledger.issueForNativeChallenge(f.binding, original);
-  for (let i = 1; i < 32; i++)
+  for (let i = 1; i < 128; i++)
     f.ledger.issueForNativeChallenge(f.binding, f.request());
   expect(() =>
     f.ledger.issueForNativeChallenge(f.binding, f.request()),
@@ -724,7 +726,7 @@ it("bounds owner/challenge/receipt capacity without evicting another current stu
   expect(f.ledger.issueForNativeChallenge(f.binding, original)).toBe(proof);
   expect(f.ledger.inspect(f.binding)).toMatchObject({
     state: "fresh",
-    retainedNativeReceipts: 32,
+    retainedNativeReceipts: 128,
   });
 });
 
@@ -750,7 +752,7 @@ it("new frames alone cannot extend expired complete-policy evidence", () => {
   expect(f.ledger.issueForNativeChallenge(f.binding, f.request()).age_ms).toBe(
     14000,
   );
-  f.at(15000);
+  f.at(WINDOW);
   f.frame("screen");
   f.frame("webcam");
   expect(() =>
@@ -765,7 +767,7 @@ it("new frames alone cannot extend expired complete-policy evidence", () => {
 it("one owner's full receipt cache does not block another current owner", () => {
   const f = fixture(false, 2);
   f.full();
-  for (let i = 0; i < 32; i++)
+  for (let i = 0; i < 128; i++)
     f.ledger.issueForNativeChallenge(f.binding, f.request());
   const secondOwner = {
     ...owner,
@@ -853,13 +855,13 @@ it("has zero modelled false holds across five minutes of healthy cadence with in
       // Model the separately tested native conservative budget with an
       // additional independent 700 ms request/reply round trip. Not a kernel or
       // real-network availability claim; those remain H5 release requirements.
-      nativeUntil = 100000 + at - 700 + 15000 - proof.age_ms;
+      nativeUntil = 100000 + at - 700 + WINDOW - proof.age_ms;
       after = proof.sequence;
       accepted++;
     }
     expect(nativeUntil).toBeGreaterThan(100000 + at);
     expect(status.pendingChallenges).toBeLessThanOrEqual(16);
-    expect(status.retainedNativeReceipts).toBeLessThanOrEqual(32);
+    expect(status.retainedNativeReceipts).toBeLessThanOrEqual(128);
   }
   expect(accepted).toBeGreaterThan(100);
 });

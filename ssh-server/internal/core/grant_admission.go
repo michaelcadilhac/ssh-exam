@@ -11,7 +11,6 @@ import (
 	"math"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type GrantWork struct {
@@ -122,7 +121,7 @@ func (e *Engine) verifyGrantBeginContext(a *Attempt, intent, page string, initia
 		return verifiedGrantBegin{}, err
 	}
 	defer client.CloseIdleConnections()
-	client.Timeout = 5 * time.Second
+	client.Timeout = operationTimeout
 	key, err := privateKey(e.Config.CallbackKey)
 	if err != nil {
 		return verifiedGrantBegin{}, err
@@ -201,7 +200,7 @@ func (e *Engine) verifyGrantBeginContext(a *Attempt, intent, page string, initia
 	var reply grantBeginReply
 	decoder := json.NewDecoder(bytes.NewReader(signed))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&reply) != nil || decoder.Decode(new(any)) != io.EOF || reply.Type != requestType || reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > 15000 || reply.Attempt != a.ID || !sameGrant(reply.Grant, a.Grant) || reply.Intent != intent || reply.Transport != a.Transport || reply.Boot != ownerBoot || reply.PageEpoch != page {
+	if decoder.Decode(&reply) != nil || decoder.Decode(new(any)) != io.EOF || reply.Type != requestType || reply.Audience != e.Config.AgentID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+operationTimeoutMS+1000 || reply.CaptureValidFor <= 0 || reply.CaptureValidFor > operationTimeoutMS || reply.Attempt != a.ID || !sameGrant(reply.Grant, a.Grant) || reply.Intent != intent || reply.Transport != a.Transport || reply.Boot != ownerBoot || reply.PageEpoch != page {
 		return verifiedGrantBegin{}, errors.New("fresh grant Begin reply scope/freshness rejected; preserve original intent and inspect status")
 	}
 	if initial == nil && reply.Bootstrap != nil {
@@ -217,7 +216,7 @@ func (e *Engine) verifyGrantBeginContext(a *Attempt, intent, page string, initia
 		if err != nil {
 			return verifiedGrantBegin{}, errMonitoringEvidence
 		}
-		if _, err := decodeMonitoringObject(fields["owner"], &bootstrap.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil || bootstrap.Type != "monitoring-bootstrap/v1" || bootstrap.ControlRetention != "v1" || bootstrap.PolicyReports != "v1" || bootstrap.Owner != *initial || !monitoringDigest.MatchString(bootstrap.CoverageEpoch) || bootstrap.Sequence != 1 {
+		if _, err := decodeMonitoringObject(fields["owner"], &bootstrap.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil || bootstrap.Type != "monitoring-bootstrap/v2" || bootstrap.ControlRetention != "v1" || bootstrap.PolicyReports != "v1" || bootstrap.Owner != *initial || !monitoringDigest.MatchString(bootstrap.CoverageEpoch) || bootstrap.Sequence != 1 {
 			return verifiedGrantBegin{}, errMonitoringEvidence
 		}
 		reply.Bootstrap = &bootstrap

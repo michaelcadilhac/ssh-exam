@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { formatCountdown } from "../../../packages/protocol/time.js";
 export let csrf = "";
 export function setCsrf(v: string) {
@@ -12,8 +13,8 @@ export async function api(
   const res = await fetch("/api" + url, {
     method: body === undefined ? "GET" : "POST",
     signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
-      : undefined,
+      ? AbortSignal.any([signal, AbortSignal.timeout(OPERATION_TIMEOUT_MS)])
+      : AbortSignal.timeout(OPERATION_TIMEOUT_MS),
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": csrf,

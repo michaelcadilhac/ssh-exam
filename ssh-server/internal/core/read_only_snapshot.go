@@ -364,7 +364,7 @@ func ObserveNativeReadOnly(stateDir string, q ReadOnlyQuery) (ReadOnlySnapshot, 
 				v.Lease.MatchesRecordedBoot = lease.Boot == a.Boot && a.Boot != ""
 				v.Lease.MatchesCurrentBoot = currentBoot != "" && lease.Boot == currentBoot
 				v.Lease.UnexpiredAtRead = lease.Until > v.Lease.ObservedAt
-				v.Lease.WithinLeaseWindowAtRead = v.Lease.UnexpiredAtRead && lease.Until-v.Lease.ObservedAt <= 15000
+				v.Lease.WithinLeaseWindowAtRead = v.Lease.UnexpiredAtRead && lease.Until-v.Lease.ObservedAt <= operationTimeoutMS
 			}
 		}
 		result.Attempts = append(result.Attempts, v)

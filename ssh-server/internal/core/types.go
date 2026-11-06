@@ -116,6 +116,7 @@ type Attempt struct {
 	OriginalDeadline            int64                      `json:"original_deadline,omitempty"`
 	OriginalUptimeDeadline      float64                    `json:"original_uptime_deadline,omitempty"`
 	ClockRevision               int                        `json:"clock_revision,omitempty"`
+	ClockHandoverPending        bool                       `json:"clock_handover_pending,omitempty"`
 	ClockResets                 []ClockReset               `json:"clock_resets,omitempty"`
 	BrowserSSH                  bool                       `json:"browser_ssh,omitempty"`
 	TerminalSupervised          bool                       `json:"terminal_supervised,omitempty"`
@@ -217,6 +218,8 @@ type PaneInstance struct {
 }
 type Engine struct {
 	callbackProxyOverride     *string // Private worker route; nil uses this process's proxy environment.
+	clockDispatchMu           sync.Mutex
+	clockDispatchAfter        string // In-memory paging only; restart retries durable, idempotent intents.
 	terminalMonitoring        terminalMonitoringBridge
 	renewalReceiptMu          sync.Mutex
 	renewalReceiptConfirmed   map[string]executionRenewalConfirmation
@@ -237,6 +240,7 @@ type Engine struct {
 	workerCommand             func(string) []string
 	workerTimeout             time.Duration
 	workspaceCheckpoint       func(string) error // Test-only fault barriers, never configurable.
+	clockHandoverCheckpoint   func() error       // Test-only failure after durable clock save; never configurable.
 	activationPrepare         func(*Attempt) error
 	preparationReady          func() (bool, []string)
 	preparationHome           func(*Attempt) error

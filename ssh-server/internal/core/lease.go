@@ -63,7 +63,7 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		}
 	}
 	now := Millis()
-	if cmd.Expires <= now || cmd.Expires > now+30000 {
+	if cmd.Expires <= now || cmd.Expires > now+operationTimeoutMS {
 		return nil, errors.New("command expired")
 	}
 	state, err := readStateSnapshot(e.Config.State)
@@ -131,9 +131,9 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, errors.New("command replay rejected")
 	}
 	nonces[cmd.Nonce] = cmd.Expires
-	lease = executionLease{ID: a.ID, Username: username, Transport: transport, Boot: a.Boot, Generation: a.Generation, ClockRevision: a.ClockRevision, Until: now + 15000, Nonces: nonces, Receipts: receipts}
+	lease = executionLease{ID: a.ID, Username: username, Transport: transport, Boot: a.Boot, Generation: a.Generation, ClockRevision: a.ClockRevision, Until: now + operationTimeoutMS, Nonces: nonces, Receipts: receipts}
 	if cmd.Body.renewalReceipt {
-		receipts[cmd.Nonce] = executionRenewalReceipt{Issued: now, Until: lease.Until, IssuedBoot: issuedBoot, UntilBoot: issuedBoot + 15000, Exam: a.Exam, UID: a.UID, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline}
+		receipts[cmd.Nonce] = executionRenewalReceipt{Issued: now, Until: lease.Until, IssuedBoot: issuedBoot, UntilBoot: issuedBoot + operationTimeoutMS, Exam: a.Exam, UID: a.UID, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline}
 	}
 	if a.RegisteredOwner != nil {
 		lease.RegisteredOwner = *a.RegisteredOwner
@@ -180,7 +180,7 @@ func (e *Engine) renewSignedLease(cmd Command, username, transport string) (any,
 		return nil, errors.New("lease superseded by attempt transition")
 	}
 	if cmd.Body.renewalReceipt {
-		e.confirmExecutionRenewal(a.ID, Hash(b), issuedBoot+15000)
+		e.confirmExecutionRenewal(a.ID, Hash(b), issuedBoot+operationTimeoutMS)
 	}
 	a.Lease = lease.Until
 	return publicAttempt(a), nil
@@ -215,7 +215,7 @@ func applyExecutionLeaseValue(a *Attempt, v executionLease, now int64) {
 	if (a.RegisteredOwner == nil && v.RegisteredOwner != (monitoringOwner{})) || (a.RegisteredOwner != nil && v.RegisteredOwner != *a.RegisteredOwner) {
 		return
 	}
-	if v.ID == a.ID && v.Username == a.Username && v.Transport == a.Transport && v.Generation == a.Generation && v.Boot == a.Boot && v.Boot == boot() && v.Until > now && v.Until <= now+15000 && v.Until > a.Lease {
+	if v.ID == a.ID && v.Username == a.Username && v.Transport == a.Transport && v.Generation == a.Generation && v.Boot == a.Boot && v.Boot == boot() && v.Until > now && v.Until <= now+operationTimeoutMS && v.Until > a.Lease {
 		a.Lease = v.Until
 	}
 }

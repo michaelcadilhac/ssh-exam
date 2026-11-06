@@ -99,8 +99,14 @@ Shared ClockControl.stage is synchronous: eligibility, exact intent, revision,
 timestamp and audit commit without any SSH/network/systemd wait in SQLite.
 ClockManagement shares bulk validation/staging with the browser. Individual web
 resets retain their existing immediate delivery attempt outside the transaction;
-bulk/root changes remain honestly pending for existing authenticated student SSH
-heartbeat delivery or signed outbound deadline timing. The native watchdog still
+bulk/root changes remain honestly pending until native confirmation. The native
+watchdog now fetches already-authorized clock intents once per second over its
+existing authenticated outbound HTTPS path, independently of student SSH and
+without waiting for the old deadline. Signed requests/responses bind the agent,
+nonce, expiry and bounded page; retries keep the original intent and amount.
+A durable record with clock_handover_pending=true is not live confirmation.
+The same request stays queued until the supervisor acknowledges its new clock,
+including an identical-history callback at the same revision. The watchdog still
 freezes at its committed deadline and verifies timing before collection. Missing
 transport is not permission to discard the request, reset its timestamp or write
 beyond the last committed deadline.

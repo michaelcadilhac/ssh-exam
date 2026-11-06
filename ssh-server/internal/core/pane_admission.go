@@ -226,7 +226,7 @@ func (e *Engine) reserveClosedPane(p *paneLaunchAdmission, token, name, unit str
 		}
 		now, err := monitoringBootMillis()
 		remaining := cap.Expires - Millis()
-		if err != nil || now <= 0 || remaining <= 0 || remaining > 15000 {
+		if err != nil || now <= 0 || remaining <= 0 || remaining > operationTimeoutMS {
 			return errPaneBootstrap
 		}
 		_, kind, instance, _ := recordedPaneIdentity(a.ID, unit)

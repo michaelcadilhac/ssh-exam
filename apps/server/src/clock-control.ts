@@ -17,6 +17,24 @@ export class ClockControl {
       .get(id) as any;
     return row ? JSON.parse(row.body) : null;
   }
+  // Clock-only delivery over the existing authenticated native outbound path.
+  // The request was already authorized/audited by web or examctl. Paging keeps
+  // one unapplicable request from starving later students; this creates no
+  // permission, account reservation or new clock intent.
+  dispatch(after: string) {
+    const rows = this.store.db
+      .prepare(
+        `SELECT r.id,r.body FROM clock_reset_requests r JOIN attempts a ON a.id=r.attempt
+       WHERE r.status='pending' AND a.state IN ('ACTIVE','LOCKED') AND a.protected=0
+       AND r.id>? ORDER BY r.id LIMIT 101`,
+      )
+      .all(after) as { id: string; body: string }[];
+    const page = rows.slice(0, 100);
+    return {
+      requests: page.map((row) => JSON.parse(row.body)),
+      after: rows.length > 100 ? page[page.length - 1].id : "",
+    };
+  }
   async deliver(id: string) {
     const request = this.pending(id);
     if (request && this.agent.connected(this.store.attempt(id).username))

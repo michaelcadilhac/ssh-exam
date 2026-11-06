@@ -18,7 +18,7 @@ func (e *Engine) SSHReceipt(kind, nonce, user, transport string, result any, com
 	if commandErr != nil {
 		message = commandErr.Error()
 	}
-	payload, err := json.Marshal(map[string]any{"agent": e.Config.AgentID, "type": kind, "nonce": nonce, "username": user, "transport": transport, "expires": Millis() + 120000, "result": result, "error": message})
+	payload, err := json.Marshal(map[string]any{"agent": e.Config.AgentID, "type": kind, "nonce": nonce, "username": user, "transport": transport, "expires": Millis() + operationTimeoutMS, "result": result, "error": message})
 	if err != nil {
 		return SignedFrame{}, err
 	}

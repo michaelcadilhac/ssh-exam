@@ -115,7 +115,7 @@ it("gateway ledger proofs cross the real native test-binary verifier without ref
     };
     expect(await verify(first, challenge, 22000)).toMatchObject({
       accepted: true,
-      until: 33000,
+      until: 78000,
       sequence: first.sequence,
       coverage_epoch: first.coverage_epoch,
     });
@@ -125,7 +125,7 @@ it("gateway ledger proofs cross the real native test-binary verifier without ref
     expect(retry).toBe(first);
     expect(await verify(retry, challenge, 24000)).toMatchObject({
       accepted: true,
-      until: 33000,
+      until: 78000,
     });
     expect(await verify(retry, challenge, 25000)).toMatchObject({
       accepted: false,
@@ -146,7 +146,7 @@ it("gateway ledger proofs cross the real native test-binary verifier without ref
         generateKeyPairSync("ed25519").privateKey,
       ),
     ).toMatchObject({ accepted: false });
-    now = 18000;
+    now = 63000;
     full();
     const after = ledger.issueForNativeChallenge(binding, request());
     expect(after.coverage_epoch).not.toBe(first.coverage_epoch);

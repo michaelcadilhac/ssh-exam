@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { hasProtectedFiles } from "../../../packages/protocol/admin.js";
 import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
@@ -187,7 +188,7 @@ function App() {
             "/student/exam",
             undefined,
             undefined,
-            AbortSignal.timeout(15000),
+            AbortSignal.timeout(OPERATION_TIMEOUT_MS),
           );
         } catch (error) {
           if (

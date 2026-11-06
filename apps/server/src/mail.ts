@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { readFileSync } from "node:fs";
 import { connect } from "node:net";
 import nodemailer from "nodemailer";
@@ -5,9 +6,9 @@ import type { Config } from "../../../packages/config/index.js";
 
 export function mailTransport(smtp: NonNullable<Config["smtp"]>) {
   const timeouts = {
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
+    connectionTimeout: OPERATION_TIMEOUT_MS,
+    greetingTimeout: OPERATION_TIMEOUT_MS,
+    socketTimeout: OPERATION_TIMEOUT_MS,
   };
   if ("socket" in smtp) {
     return nodemailer.createTransport({

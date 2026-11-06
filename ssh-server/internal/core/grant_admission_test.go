@@ -177,7 +177,7 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 				w.WriteHeader(400)
 				return
 			}
-			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", PolicyReports: "v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
+			seed = &monitoringBootstrap{Type: "monitoring-bootstrap/v2", ControlRetention: "v1", PolicyReports: "v1", Owner: *request.InitialOwner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 1}
 		}
 		reply, status := handler(grantBeginReply{Type: request.Type, Audience: request.Agent, Nonce: request.Nonce, Expires: Millis() + 30000, CaptureValidFor: 15000, Attempt: request.Attempt, Grant: request.Grant, Intent: request.Intent, Transport: request.Transport, Boot: request.Boot, PageEpoch: request.PageEpoch, Bootstrap: seed})
 		if status != 200 {
@@ -946,7 +946,7 @@ func TestInitialGrantFreshSignedRepliesCannotChangeScope(t *testing.T) {
 				case "capture-negative":
 					reply.CaptureValidFor = -1
 				case "capture-excess":
-					reply.CaptureValidFor = 15001
+					reply.CaptureValidFor = monitoringEvidenceWindowMS + 1
 				case "capture-transit":
 					reply.CaptureValidFor = 1000
 					time.Sleep(1200 * time.Millisecond)
@@ -965,26 +965,30 @@ func TestInitialGrantFreshSignedRepliesCannotChangeScope(t *testing.T) {
 }
 
 func TestInitialGrantShortFreshReplyDoesNotDoubleChargeTransit(t *testing.T) {
-	e, key, r := initialGrantFixture(t)
-	var reached atomic.Bool
-	initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
-		reached.Store(true)
-		reply.CaptureValidFor = 3000
-		reply.Expires = Millis() + 3000
-		time.Sleep(1700 * time.Millisecond)
-		return reply, 200
-	})
-	r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
-	cmd := preparationCommand(r)
-	cmd.Op = "activate-grant-attempt"
-	actual := Millis()
-	result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
-	if err != nil || !reached.Load() {
-		t.Fatal("valid original freshness was charged twice", err)
-	}
-	a := result.(*Attempt)
-	if a.State != "ACTIVE" || a.Start < actual+1700 || a.Deadline-a.Start != 5400000 || a.GrantBeginIntent != r.GrantBeginIntent {
-		t.Fatal("fresh delayed Begin did not receive its original full allowance", a)
+	for _, delay := range []time.Duration{1700 * time.Millisecond, 6 * time.Second} {
+		t.Run(delay.String(), func(t *testing.T) {
+			e, key, r := initialGrantFixture(t)
+			var reached atomic.Bool
+			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
+				reached.Store(true)
+				reply.CaptureValidFor = delay.Milliseconds() + 1300
+				reply.Expires = Millis() + reply.CaptureValidFor
+				time.Sleep(delay)
+				return reply, 200
+			})
+			r.GrantBeginIntent = "44444444-1234-4234-8234-123456789abc"
+			cmd := preparationCommand(r)
+			cmd.Op = "activate-grant-attempt"
+			actual := Millis()
+			result, err := e.Command(signedCommand(key, cmd), r.Username, r.Transport)
+			if err != nil || !reached.Load() {
+				t.Fatal("valid original freshness was charged twice or the sixty-second HTTP budget ended early", err)
+			}
+			a := result.(*Attempt)
+			if a.State != "ACTIVE" || a.Start < actual+delay.Milliseconds() || a.Deadline-a.Start != 5400000 || a.GrantBeginIntent != r.GrantBeginIntent {
+				t.Fatal("fresh delayed Begin did not receive its original full allowance", a)
+			}
+		})
 	}
 }
 

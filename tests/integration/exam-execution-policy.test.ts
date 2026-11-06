@@ -248,7 +248,7 @@ it("serves the exact current policy through a nonce-bound authenticated signed H
       policy: f.policies.current(f.settings.id),
     });
     expect(reply.expires).toBeGreaterThan(Date.now());
-    expect(reply.expires).toBeLessThanOrEqual(Date.now() + 30000);
+    expect(reply.expires).toBeLessThanOrEqual(Date.now() + 60000);
     expect(Object.keys(reply.policy).sort()).toEqual(
       [
         "schema",
@@ -275,8 +275,8 @@ it("refuses invalid signatures, stale requests and wrong scopes through the publ
       [{}, true, 403],
       [{ agent: "other" }, false, 403],
       [{ exam: "missing" }, false, 404],
-      [{ at: Date.now() - 60000 }, false, 409],
-      [{ at: Date.now() + 60000 }, false, 409],
+      [{ at: Date.now() - 61000 }, false, 409],
+      [{ at: Date.now() + 61000 }, false, 409],
       [{ nonce: "short" }, false, 400],
       [{ webcam: true }, false, 400],
     ] as const) {

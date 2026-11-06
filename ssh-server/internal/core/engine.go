@@ -318,7 +318,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 					return errors.New("practice terminal limit")
 				}
 				e.revokePaneAdmissions(a.ID, r.Pane)
-				result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: r.Purpose, Transport: r.Transport, Expires: Millis() + 15000})
+				result = e.issue(Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: r.Purpose, Transport: r.Transport, Expires: Millis() + operationTimeoutMS})
 				break
 			}
 			if a.State != "ACTIVE" || expired(a) || !nativeLeaseMetadataAllowsAdmission(a) {
@@ -328,7 +328,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				return errors.New("terminal limit")
 			}
 			e.revokePaneAdmissions(a.ID, r.Pane)
-			capability := Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + 15000}
+			capability := Capability{Username: a.Username, ID: a.ID, Pane: r.Pane, Purpose: "exam", Transport: r.Transport, Expires: Millis() + operationTimeoutMS}
 			if a.RegisteredOwner != nil {
 				capability.RegisteredOwner = *a.RegisteredOwner
 			}
@@ -387,7 +387,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			if a.State != "ACTIVE" || expired(a) || a.Lease <= Millis() {
 				return errors.New("cannot renew locked/ended workload")
 			}
-			a.Lease = Millis() + 15000
+			a.Lease = Millis() + operationTimeoutMS
 			result = a
 		case "authorize-continuation":
 			if a.State != "LOCKED" || (len(a.Units) > 0 && !(a.MonitoringMode == "v1" && a.RetainedHold == "held")) || expired(a) || r.Generation != a.Generation || r.Expires > Millis()+300000 || r.Expires > a.Deadline {
@@ -426,7 +426,7 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 				}
 			}
 			a.Authorization = 0
-			a.Lease = Millis() + 15000
+			a.Lease = Millis() + operationTimeoutMS
 			if err = e.freeze(a, false); err != nil {
 				return err
 			}
@@ -801,11 +801,11 @@ func (e *Engine) Tick() error {
 			// Another attempt's cleanup may have taken time since this state
 			// transaction began. Renewals use their own per-attempt journal.
 			if a.MonitoringMode == "v1" {
-				if fact, known := liveCutoffs[a.ID]; known && fact.sshExited && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner {
-					owner := fact.owner
+				if fact, known := liveCutoffs[a.ID]; known && fact.sshExited && fact.exitedOwner != nil && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner {
+					owner := *fact.exitedOwner
 					a.SSHExitedOwner = &owner
 				}
-				if fact, known := liveCutoffs[a.ID]; a.State == "ACTIVE" && known && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner && fact.view != nil && !fact.view.ExecutionAuthorized {
+				if fact, known := liveCutoffs[a.ID]; a.State == "ACTIVE" && known && a.RegisteredOwner != nil && *a.RegisteredOwner == fact.owner && (fact.sshExited || (fact.view != nil && !fact.view.ExecutionAuthorized)) {
 					a.State, a.Reason, a.Authorization, a.Lease = "LOCKED", terminalTechnicalHoldReason(fact), 0, 0
 					a.MonitoringHoldKind = "technical"
 					if terminalCutoffPolicyCause(fact) {
@@ -829,7 +829,7 @@ func (e *Engine) Tick() error {
 			if a.State == "ACTIVE" && (Millis() > a.Lease || a.Boot != boot()) {
 				a.State = "LOCKED"
 				a.Generation++
-				a.Reason = "Monitoring authorization expired after 15 seconds without renewal"
+				a.Reason = "Monitoring authorization expired after 60 seconds without renewal"
 				if a.Boot != boot() {
 					a.Reason = "Class server restarted; exam access paused"
 				}
@@ -927,11 +927,22 @@ func (e *Engine) Watch() {
 	policy := make(chan struct{}, 1)
 	running := make(chan struct{}, 1)
 	timing := make(chan struct{}, 1)
+	clockChanges := make(chan struct{}, 1)
 	delivery := make(chan error, 1)
 	deliveryRunning := false
 	nextDelivery := time.Time{}
 	backoff := time.Second
 	for range ticker.C {
+		select {
+		case clockChanges <- struct{}{}:
+			go func() {
+				defer func() { <-clockChanges }()
+				if err := e.RefreshClockChanges(); err != nil {
+					log.Printf("instructor clock delivery pending: %v", err)
+				}
+			}()
+		default:
+		}
 		select {
 		case policy <- struct{}{}:
 			go func() {
@@ -998,7 +1009,7 @@ func commitStart(a *Attempt, at int64, elapsed float64, bootID string) {
 	a.AccessHeldAt = at
 	a.Deadline = at + a.Settings.Duration*1000
 	a.OriginalDeadline = a.Deadline
-	a.Lease = at + 15000
+	a.Lease = at + operationTimeoutMS
 	a.Boot = bootID
 	a.UptimeDeadline = elapsed + float64(a.Settings.Duration)
 	a.OriginalUptimeDeadline = a.UptimeDeadline

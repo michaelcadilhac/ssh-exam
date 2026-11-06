@@ -11,7 +11,6 @@ import (
 	"errors"
 	"os"
 	"reflect"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -81,7 +80,7 @@ func decodeMonitoringContinuation(frame SignedFrame, key ed25519.PublicKey) (mon
 	}
 	result.Bootstrap = &seed
 	technical := result.Type == monitoringTechnicalContinue
-	if (result.Type != "monitoring-continue/v1" && result.Type != monitoringFilesContinue && !technical) || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || (!technical && result.Expires <= Millis()) || result.Expires <= 0 || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > 15000 || seed.Type != "monitoring-bootstrap/v1" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence == 0 || seed.Sequence > monitoringEvidenceMaxSequence || (!technical && seed.Sequence != 1) || !monitoringDigest.MatchString(seed.CoverageEpoch) {
+	if (result.Type != "monitoring-continue/v1" && result.Type != monitoringFilesContinue && !technical) || !identifier.MatchString(result.Audience) || !monitoringDigest.MatchString(result.Nonce) || !validMonitoringOwner(result.PreviousOwner) || !validMonitoringOwner(result.Owner) || (!technical && result.Expires <= Millis()) || result.Expires <= 0 || result.Expires > result.AuthorizationExpires || result.CaptureValidFor <= 0 || result.CaptureValidFor > monitoringEvidenceWindowMS || seed.Type != "monitoring-bootstrap/v2" || seed.ControlRetention != "v1" || seed.PolicyReports != "v1" || seed.Owner != result.Owner || seed.Sequence == 0 || seed.Sequence > monitoringEvidenceMaxSequence || (!technical && seed.Sequence != 1) || !monitoringDigest.MatchString(seed.CoverageEpoch) {
 		return result, errMonitoringEvidence
 	}
 	return result, nil
@@ -122,7 +121,7 @@ func (s *terminalSupervisor) prepareAuthorityResume(owner monitoringOwner, gener
 	if err := h.pruneExited(active); err != nil {
 		return terminalResumePrepared{}, err
 	}
-	if p := r.resume; p != nil && p.Owner.Generation == generation && now >= p.IssuedBootMS && now-p.IssuedBootMS < 15000 {
+	if p := r.resume; p != nil && p.Owner.Generation == generation && now >= p.IssuedBootMS && now-p.IssuedBootMS < monitoringEvidenceWindowMS {
 		return *p, nil
 	}
 	if len(r.launches) != len(s.requests) || len(s.requests) != len(s.timed) {
@@ -173,7 +172,7 @@ func (s *terminalSupervisor) prepareAuthorityResumeRecovery(owner monitoringOwne
 	if err := h.pruneExited(active); err != nil {
 		return terminalResumePrepared{}, err
 	}
-	if p := r.resume; p.PreviousNonce == nonce && now >= p.IssuedBootMS && now-p.IssuedBootMS < 15000 {
+	if p := r.resume; p.PreviousNonce == nonce && now >= p.IssuedBootMS && now-p.IssuedBootMS < monitoringEvidenceWindowMS {
 		return *p, nil
 	}
 	p := &terminalResumePrepared{Nonce: Token(), PreviousNonce: nonce, PreviousOwner: r.resume.PreviousOwner, Owner: owner, IssuedBootMS: now, InputEpochs: map[string]string{}}
@@ -497,7 +496,7 @@ func (e *Engine) resumeMonitoredPurpose(a *Attempt, request Request, technical b
 	if prepared.HeldOwner == nil || (*prepared.HeldOwner != p.PreviousOwner && (!recovering || *prepared.HeldOwner != p.Owner)) {
 		return a, errMonitoringScope
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), operationTimeout)
 	defer cancel()
 	kind := "monitoring-continue/v1"
 	var continuity *terminalTechnicalContinuity

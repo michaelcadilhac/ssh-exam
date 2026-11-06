@@ -75,13 +75,22 @@ def execution_policy_reply(data,policy,now):
  return dict(type='exam-execution-policy',audience=data['agent'],nonce=data['nonce'],expires=now+30000,policy=policy)
 
 
+def clock_fixture_reply(data,agent,now):
+ """Empty clock-only queue for standalone guests; browser guests forward HTTP."""
+ assert set(data)=={'agent','nonce','at','after'} and data['agent']==agent
+ assert isinstance(data['nonce'],str) and re.fullmatch(r'[a-f0-9]{64}',data['nonce'])
+ assert type(data['at']) is int and abs(data['at']-now)<=60000
+ assert isinstance(data['after'],str) and (data['after']=='' or re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}',data['after']))
+ return dict(type='clock-changes/v1',audience=agent,nonce=data['nonce'],expires=now+60000,requests=[],after='')
+
+
 def fixture_reply(path,data,expected,approval,owners,now):
  """Finite synthetic capture, NOT real camera qualification or a control API."""
  def key(owner):return json.dumps(owner,sort_keys=True,separators=(',',':'))
  def bootstrap(owner):
   encoded=key(owner);coverage=hashlib.sha256(encoded.encode()).hexdigest()
   owners[encoded]=coverage
-  return {'type':'monitoring-bootstrap/v1','control_retention':'v1','policy_reports':'v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
+  return {'type':'monitoring-bootstrap/v2','control_retention':'v1','policy_reports':'v1','owner':owner,'coverage_epoch':coverage,'sequence':1}
  assert data['agent']==expected['agent']
  transfer=expected.get('clock_transfer')
  if transfer:
@@ -106,7 +115,7 @@ def fixture_reply(path,data,expected,approval,owners,now):
   assert data.get('policy_reports')=='v1'
   coverage=owners[key(data['owner'])]
   assert data['coverage_epoch']==coverage and 0<data['after_sequence']<9007199254740991
-  return {'type':'monitoring-execution-evidence-v1','audience':data['agent'],'nonce':data['nonce'],
+  return {'type':'monitoring-execution-evidence-v2','audience':data['agent'],'nonce':data['nonce'],
           'owner':data['owner'],'coverage_epoch':coverage,'sequence':data['after_sequence']+1,'age_ms':0,'complete':True}
  assert path=='/api/agent/monitoring-continue' and data['type']=='monitoring-continue/v1'
  assert approval and approval['expires']>now and approval['expires']<=now+300000
@@ -185,6 +194,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     assert expected['agent']==config['agent_id']
     approval=private_registry('/run/qualification-retained-approval.json') if self.path.endswith('/monitoring-continue') else None
     with owner_lock:reply=fixture_reply(self.path,data,expected,approval,owners,int(time.time()*1000))
+    payload=json.dumps(reply,separators=(',',':')).encode()
+    result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
+   elif self.path=='/api/agent/clock-changes':
+    reply=clock_fixture_reply(data,config['agent_id'],int(time.time()*1000))
     payload=json.dumps(reply,separators=(',',':')).encode()
     result={'payload':base64.b64encode(payload).decode(),'signature':base64.b64encode(gateway.sign(payload)).decode()}
    elif self.path=='/api/agent/timing':

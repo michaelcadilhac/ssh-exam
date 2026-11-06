@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"time"
 )
 
 func (e *Engine) timingRequired(a *Attempt) bool {
@@ -88,7 +87,7 @@ func (e *Engine) checkTiming(a *Attempt) error {
 		return err
 	}
 	defer client.CloseIdleConnections()
-	client.Timeout = 5 * time.Second
+	client.Timeout = operationTimeout
 	key, err := privateKey(e.Config.CallbackKey)
 	if err != nil {
 		return err
@@ -141,7 +140,7 @@ func (e *Engine) checkTiming(a *Attempt) error {
 	if err = json.Unmarshal(signed, &reply); err != nil {
 		return err
 	}
-	if reply.Type != "deadline-timing" || reply.Audience != e.Config.AgentID || reply.ID != a.ID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+31000 || reply.Deadline != a.Deadline || reply.ClockRevision != a.ClockRevision {
+	if reply.Type != "deadline-timing" || reply.Audience != e.Config.AgentID || reply.ID != a.ID || reply.Nonce != nonce || reply.Expires <= Millis() || reply.Expires > Millis()+operationTimeoutMS+1000 || reply.Deadline != a.Deadline || reply.ClockRevision != a.ClockRevision {
 		return errors.New("timing reply scope rejected")
 	}
 	return e.WithState(func() error {

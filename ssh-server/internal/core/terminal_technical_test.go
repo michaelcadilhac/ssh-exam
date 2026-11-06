@@ -12,7 +12,7 @@ func TestMonitoringTechnicalContinuationPurposePreservesSequenceWithoutWeakening
 	owner := previous
 	owner.Generation++
 	owner.InputEpoch = strings.Repeat("d", 64)
-	seed := monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", PolicyReports: "v1", Owner: owner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 40}
+	seed := monitoringBootstrap{Type: "monitoring-bootstrap/v2", ControlRetention: "v1", PolicyReports: "v1", Owner: owner, CoverageEpoch: strings.Repeat("e", 64), Sequence: 40}
 	proof := monitoringContinueReply{Type: monitoringTechnicalContinue, Audience: "class", Nonce: strings.Repeat("f", 64), PreviousOwner: previous, Owner: owner, AuthorizationExpires: Millis() + 30000, Expires: Millis() + 20000, CaptureValidFor: 12000, Bootstrap: &seed}
 	decode := func() error {
 		payload, err := json.Marshal(proof)
@@ -43,7 +43,7 @@ func TestMonitoringTechnicalContinuationPurposePreservesSequenceWithoutWeakening
 	if err := decode(); err != nil {
 		t.Fatal("wall time replaced native cutoff", err)
 	}
-	for _, invalid := range []int64{0, 15001} {
+	for _, invalid := range []int64{0, monitoringEvidenceWindowMS + 1} {
 		proof.CaptureValidFor = invalid
 		if decode() == nil {
 			t.Fatal("invalid capture allowance accepted", invalid)

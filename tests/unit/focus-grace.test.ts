@@ -50,11 +50,11 @@ function setup(state = "ACTIVE") {
     },
   };
 }
-it("retains an active connection through focus loss up to 20 seconds, without extending deadline", async () => {
+it("retains an active connection through focus loss up to 60 seconds, without extending deadline", async () => {
   const f = setup(),
     deadline = f.store.attempt("a").deadline;
   await reportFocus(f.life, "a", false);
-  f.advance(19999);
+  f.advance(59999);
   await f.life.tick();
   expect(f.store.attempt("a").state).toBe("ACTIVE");
   await reportFocus(f.life, "a", true);
@@ -72,7 +72,7 @@ it("repeated blur and heartbeats cannot restart the server countdown", async () 
   f.advance(12000);
   await reportFocus(f.life, "a", false);
   expect(f.store.attempt("a").focus_lost_at).toBe(first);
-  f.advance(8000);
+  f.advance(48000);
   await f.life.tick();
   expect(f.store.attempt("a")).toMatchObject({
     state: "LOCKED",
@@ -83,7 +83,7 @@ it("repeated blur and heartbeats cannot restart the server countdown", async () 
 it("a late focus return cannot evade the cutoff between server timer ticks", async () => {
   const f = setup();
   await reportFocus(f.life, "a", false);
-  f.advance(20000);
+  f.advance(60000);
   await reportFocus(f.life, "a", true);
   expect(f.store.attempt("a").state).toBe("LOCKED");
   await reportFocus(f.life, "a", true);
@@ -91,11 +91,12 @@ it("a late focus return cannot evade the cutoff between server timer ticks", asy
 });
 it("does not delay other incidents or lost-network enforcement", async () => {
   const f = setup();
+  f.advance(1000, false);
   await reportFocus(f.life, "a", false);
-  f.advance(15001, false);
+  f.advance(59001, false);
   await f.life.tick();
   expect(f.store.attempt("a").reason).toBe(
-    "Client contact exceeded 15 seconds",
+    "Client contact exceeded 60 seconds",
   );
 });
 it("ignores focus changes during preflight and keeps start/continue readiness strict", async () => {
@@ -131,11 +132,11 @@ it("ignores focus changes during preflight and keeps start/continue readiness st
     }).success,
   ).toBe(false);
 });
-it("shows a countdown with a full 20 seconds, including a monotonic zero start", () => {
+it("shows a countdown with a full 60 seconds, including a monotonic zero start", () => {
   expect(focusGraceSeconds(null, 0)).toBeNull();
-  expect(focusGraceSeconds(0, 0)).toBe(20);
-  expect(focusGraceSeconds(0, 1)).toBe(20);
-  expect(focusGraceSeconds(0, 1000)).toBe(19);
-  expect(focusGraceSeconds(0, 19999)).toBe(1);
-  expect(focusGraceSeconds(0, 20000)).toBe(0);
+  expect(focusGraceSeconds(0, 0)).toBe(60);
+  expect(focusGraceSeconds(0, 1)).toBe(60);
+  expect(focusGraceSeconds(0, 1000)).toBe(59);
+  expect(focusGraceSeconds(0, 59999)).toBe(1);
+  expect(focusGraceSeconds(0, 60000)).toBe(0);
 });

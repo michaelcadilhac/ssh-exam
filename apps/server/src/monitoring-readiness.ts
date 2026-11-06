@@ -1,3 +1,4 @@
+import { MONITORING_EVIDENCE_WINDOW_MS } from "../../../packages/protocol/monitoring-evidence.js";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import type { Attempt } from "./db.js";
@@ -57,7 +58,7 @@ type Entry = {
   frames: Map<Source, { issued: number; seq: number; ordinal: number }>;
   policy?: { issued: number; ordinal: number; value: Policy };
 };
-const WINDOW = 15000;
+const WINDOW = MONITORING_EVIDENCE_WINDOW_MS;
 export class MonitoringChallengeError extends Error {
   readonly statusCode = 409;
   constructor(readonly code: string) {
@@ -164,7 +165,7 @@ export class MonitoringReadiness {
     }
     for (const [id, ticket] of entry.tickets)
       if (now - ticket.issued > WINDOW * 2) entry.tickets.delete(id);
-    if (entry.tickets.size >= 32) return refuse("capacity");
+    if (entry.tickets.size >= 64) return refuse("capacity");
     if (entry.ordinal >= Number.MAX_SAFE_INTEGER) return refuse("sequence");
     const challenge = randomUUID();
     entry.tickets.set(challenge, {

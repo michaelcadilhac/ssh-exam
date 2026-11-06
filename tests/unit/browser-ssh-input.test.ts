@@ -63,7 +63,7 @@ it("invalidates queued worker writes even if input is re-enabled before the micr
   });
   client.close();
 });
-it("a delayed control acknowledgment after 15 seconds terminates SSH rather than restoring input", () => {
+it("a delayed control acknowledgment after 60 seconds terminates SSH rather than restoring input", () => {
   vi.useFakeTimers();
   const sockets: any[] = [];
   class Socket {
@@ -87,7 +87,7 @@ it("a delayed control acknowledgment after 15 seconds terminates SSH rather than
   client.subscribe((v) => events.push(v));
   c.disconnected = performance.now();
   c.reconnect();
-  vi.advanceTimersByTime(15001);
+  vi.advanceTimersByTime(60001);
   sockets[0].onmessage({ data: JSON.stringify({ type: "browser-bound" }) });
   expect(client.active).toBe(false);
   expect(client.controlConnected).toBe(false);

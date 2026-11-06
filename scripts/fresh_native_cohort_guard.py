@@ -30,8 +30,11 @@ def validate(release,value,phase,transition=None,observed=None):
             or value.get('nonce')!=update['nonce'] or value.get('phase')!=phase+'-native'
             or value.get('binary_sha256')!=cohort['binary_sha256']):
         raise ValueError('Native guard belongs to another transition/cohort')
-    for field,target in [('history_sha256','native_history_sha256'),('config_sha256','native_config_sha256'),('cli_config_sha256','cli_config_sha256'),('relay_sha256','relay_sha256')]:
+    for field,target in [('history_sha256','native_history_sha256'),('config_sha256','native_config_sha256'),('cli_config_sha256','cli_config_sha256')]:
         if value.get(field)!=release[target]: raise ValueError('Native authority/configuration/relay changed: '+field)
+    relay_update=release.get('fast_ui',{}).get('reviewed_scope')=='monitoring-timeouts-v2'
+    expected_relay=cohort['binary_sha256'].get('exam-ssh-relay',release['relay_sha256'])
+    if value.get('relay_sha256')!=expected_relay: raise ValueError('Loaded relay differs from this cohort')
     if value.get('installed_cli_sha256')!=cohort['binary_sha256']['examctl'] or value.get('worker_cli_sha256')!=cohort['worker_cli_sha256']:
         raise ValueError('Installed and loaded cohort differ from this phase')
     pids=update['before']['service_pids']
@@ -46,7 +49,7 @@ def validate(release,value,phase,transition=None,observed=None):
         pids=receipt['service_pids']
     rows=value['native_roles'];current={row['unit']:row['pid'] for row in rows};current['exam-ssh-relay.service']=value['relay_pid']
     if (len(rows)!=3 or current!=pids or set(pids)!=set(update['before']['service_pids'])
-            or pids['exam-ssh-relay.service']!=update['before']['service_pids']['exam-ssh-relay.service']
+            or (not relay_update and pids['exam-ssh-relay.service']!=update['before']['service_pids']['exam-ssh-relay.service'])
             or any(type(pid) is not int or pid<=0 for pid in pids.values())):
         raise ValueError('Native processes or untouched relay changed')
     return value

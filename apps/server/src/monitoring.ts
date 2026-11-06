@@ -29,6 +29,8 @@ import {
   type MonitoringEvidenceBinding,
 } from "./monitoring-evidence-ledger.js";
 import {
+  MONITORING_EVIDENCE_WINDOW_MS,
+  MONITORING_CHALLENGE_WINDOW_MS,
   monitoringOwner,
   nativeMonitoringChallenge,
   nativeMonitoringContinuation,
@@ -109,7 +111,7 @@ export class Monitoring {
     let cancel!: () => void;
     const nonce = randomBytes(32).toString("hex");
     const promise = new Promise<any>((resolve, reject) => {
-      const timer = setTimeout(() => cancel(), 8000);
+      const timer = setTimeout(() => cancel(), MONITORING_CHALLENGE_WINDOW_MS);
       const finish = () => {
         clearTimeout(timer);
         if (this.technicalRequests.get(a.id)?.nonce === nonce)
@@ -155,7 +157,7 @@ export class Monitoring {
       !a.deadline ||
       a.deadline <= now() ||
       a.deadline !== pending.a.deadline ||
-      monitoringBootTimeMS() - pending.started >= 8000
+      monitoringBootTimeMS() - pending.started >= MONITORING_CHALLENGE_WINDOW_MS
     )
       throw new MonitoringEvidenceUnavailable("ownership");
     return { pending, a };
@@ -467,7 +469,7 @@ export class Monitoring {
     const evidence = this.captureReadiness(a, a.page_hash ?? "");
     if (!evidence.complete || evidence.age_ms === null)
       throw new MonitoringChallengeError("monitoring_challenge_not_ready");
-    return 15000 - evidence.age_ms;
+    return MONITORING_EVIDENCE_WINDOW_MS - evidence.age_ms;
   }
   beginBootstrap(a: Attempt, owner: MonitoringOwner) {
     const current = this.currentCapture(a, owner.page_epoch),
@@ -559,7 +561,7 @@ export class Monitoring {
       previous_owner: previous,
       owner,
       authorization_expires: expires,
-      expires: Math.min(expires, now() + 30000),
+      expires: Math.min(expires, now() + MONITORING_CHALLENGE_WINDOW_MS),
       capture_valid_for_ms: result.remainingMS,
       bootstrap: result.bootstrap,
     };
@@ -690,7 +692,10 @@ export class Monitoring {
       throw new MonitoringEvidenceUnavailable("capacity");
     let authorization = this.continuationIdentity(a, false);
     if (!authorization) {
-      const expires = Math.min(a.deadline, now() + 30000);
+      const expires = Math.min(
+        a.deadline,
+        now() + MONITORING_CHALLENGE_WINDOW_MS,
+      );
       this.store.db.transaction(() => {
         this.store.db
           .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
@@ -719,10 +724,10 @@ export class Monitoring {
       previous_owner: previous,
       owner,
       authorization_expires: expires,
-      expires: Math.min(expires, now() + 30000),
+      expires: Math.min(expires, now() + MONITORING_CHALLENGE_WINDOW_MS),
       capture_valid_for_ms: evidence.remainingMS,
       bootstrap: {
-        type: "monitoring-bootstrap/v1" as const,
+        type: "monitoring-bootstrap/v2" as const,
         control_retention: "v1" as const,
         policy_reports: "v1" as const,
         owner,
@@ -768,7 +773,7 @@ export class Monitoring {
         throw new MonitoringEvidenceUnavailable("capacity");
       pending = {
         bootstrap: Object.freeze({
-          type: "monitoring-bootstrap/v1",
+          type: "monitoring-bootstrap/v2",
           control_retention: "v1",
           policy_reports: "v1",
           owner: Object.freeze({ ...owner }),
@@ -782,7 +787,7 @@ export class Monitoring {
           Math.min(
             snapshot.policy.issued,
             ...snapshot.frames.map((f) => f.issued),
-          ) + 15000,
+          ) + MONITORING_EVIDENCE_WINDOW_MS,
         authorization,
       };
       this.pendingBegins.set(encoded, pending);
@@ -791,7 +796,7 @@ export class Monitoring {
     if (
       !Number.isSafeInteger(remainingMS) ||
       remainingMS <= 0 ||
-      remainingMS > 15000
+      remainingMS > MONITORING_EVIDENCE_WINDOW_MS
     )
       throw new MonitoringEvidenceUnavailable("technical-gap");
     return { remainingMS, bootstrap: pending.bootstrap };

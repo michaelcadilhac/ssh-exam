@@ -155,7 +155,7 @@ func (e *Engine) prepareTerminalMonitoring() error {
 			b.initErr = err
 			return
 		}
-		client.Timeout = 5 * time.Second
+		client.Timeout = operationTimeout
 		if transport, ok := client.Transport.(*http.Transport); ok {
 			transport.MaxIdleConns, transport.MaxIdleConnsPerHost, transport.MaxConnsPerHost = 64, 64, 64
 		}

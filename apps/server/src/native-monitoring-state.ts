@@ -1,12 +1,24 @@
 import type { Attempt, Store } from "./db.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
+import { isDeepStrictEqual } from "node:util";
 
-// A negative recovery fact, never proof that another session is usable. Unknown
-// transport state and delayed heartbeats do not establish an SSH disconnect.
-export function needsFilesOnlyResume(store: Store, a: Attempt) {
-  if (a.state !== "LOCKED" || a.monitoring_mode !== "v1") return false;
-  if (a.page_hash === null) return true;
-  if (!a.registered_owner) return false;
+// Only a negative SSH-exit fact may span clock revisions. Every immutable
+// connection/page/input identity remains exact; this never authorizes work.
+export function sameExitedLifetime(
+  exited: ReturnType<typeof monitoringOwner.parse>,
+  current: ReturnType<typeof monitoringOwner.parse>,
+) {
+  return (
+    exited.clock_revision <= current.clock_revision &&
+    isDeepStrictEqual(
+      { ...exited, clock_revision: 0 },
+      { ...current, clock_revision: 0 },
+    )
+  );
+}
+
+export function hasRecordedSSHExit(store: Store, a: Attempt) {
+  if (a.monitoring_mode !== "v1" || !a.registered_owner) return false;
   try {
     const owner = monitoringOwner.parse(JSON.parse(a.registered_owner));
     if (
@@ -16,14 +28,26 @@ export function needsFilesOnlyResume(store: Store, a: Attempt) {
       owner.uid !== a.uid
     )
       return false;
-    return !!store.db
+    for (const row of store.db
       .prepare(
-        "SELECT 1 FROM audit WHERE target=? AND actor='class-agent' AND action='native-ssh-exited' AND detail=? LIMIT 1",
+        "SELECT detail FROM audit WHERE target=? AND actor='class-agent' AND action='native-ssh-exited' ORDER BY rowid DESC",
       )
-      .get(a.id, JSON.stringify(owner));
+      .iterate(a.id) as Iterable<{ detail: string }>) {
+      const exited = monitoringOwner.safeParse(JSON.parse(row.detail));
+      if (exited.success && sameExitedLifetime(exited.data, owner)) return true;
+    }
   } catch {
-    return false;
+    /* Unknown metadata is not proven SSH loss. */
   }
+  return false;
+}
+
+// A negative recovery fact, never proof that another session is usable. Unknown
+// transport state and delayed heartbeats do not establish an SSH disconnect.
+export function needsFilesOnlyResume(store: Store, a: Attempt) {
+  if (a.state !== "LOCKED" || a.monitoring_mode !== "v1") return false;
+  if (a.page_hash === null) return true;
+  return hasRecordedSSHExit(store, a);
 }
 
 // Signed status order is not ownership order: a queued LOCKED generation N

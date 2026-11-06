@@ -16,7 +16,7 @@ it.each(["legacy", "v1"])(
         .prepare(
           "UPDATE attempts SET monitoring_mode=?,last_contact=? WHERE id=?",
         )
-        .run(mode, Date.now() - 20000, f.id);
+        .run(mode, Date.now() - 61000, f.id);
       const before = f.store.attempt(f.id);
       await f.life.tick();
       const after = f.store.attempt(f.id);
@@ -35,7 +35,7 @@ it.each(["legacy", "v1"])(
         // native mode; only coordination uncertainty lost its violation path.
         f.store.db
           .prepare("UPDATE attempts SET focus_lost_at=? WHERE id=?")
-          .run(Date.now() - 21000, f.id);
+          .run(Date.now() - 61000, f.id);
         await f.life.tick();
         expect(f.store.attempt(f.id)).toMatchObject({
           state: "LOCKED",
@@ -85,7 +85,7 @@ it.each(["legacy", "v1"])(
         .prepare(
           "UPDATE attempts SET monitoring_mode=?,last_contact=? WHERE id=?",
         )
-        .run(mode, Date.now() - 20000, f.id);
+        .run(mode, Date.now() - 61000, f.id);
       const before = f.store.attempt(f.id),
         counts = { ...f.h.authCalls };
       socket = new WebSocket(

@@ -83,7 +83,8 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	a.ClockRevision++
 	refreshRegisteredOwnerClock(a)
 	change := ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision}
-	if a.MonitoringMode == "v1" && !clockWithoutRetainedWork(a) {
+	a.ClockHandoverPending = a.MonitoringMode == "v1" && !clockWithoutRetainedWork(a)
+	if a.ClockHandoverPending {
 		q, err := e.terminalClockRequest(a, change)
 		if err != nil {
 			return err

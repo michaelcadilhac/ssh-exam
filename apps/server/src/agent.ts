@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { readFileSync, constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { createPrivateKey, randomUUID, sign, verify } from "node:crypto";
@@ -157,9 +158,10 @@ export class Agent {
           );
           // Finish must still reach native revocation/freeze if metadata is
           // unavailable. The isolated collector independently obtains its policy.
-          const policy = op === "finalize-attempt"
-            ? policies.status(attempt.exam).executionPolicy
-            : policies.current(attempt.exam);
+          const policy =
+            op === "finalize-attempt"
+              ? policies.status(attempt.exam).executionPolicy
+              : policies.current(attempt.exam);
           if (policy) value.execution_policy = policy;
         }
         if (typeof value.grant_begin_intent === "string") {
@@ -181,7 +183,7 @@ export class Agent {
       JSON.stringify({
         audience: this.config.id,
         nonce: randomUUID(),
-        expires: Date.now() + 30000,
+        expires: Date.now() + OPERATION_TIMEOUT_MS,
         op,
         username,
         transport,

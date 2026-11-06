@@ -181,7 +181,7 @@ func (e *Engine) resumeFiles(snapshot *Attempt, request Request, original *net.U
 	defer e.cancelTerminalAuthority(p)
 	view := prepared.View
 	if view == nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5e9)
+		ctx, cancel := context.WithTimeout(context.Background(), operationTimeout)
 		defer cancel()
 		frame, err := e.exchangeTerminalMonitoring(ctx, "/api/agent/monitoring-continue", monitoringContinueRequest{Type: monitoringFilesContinue, Agent: e.Config.AgentID, Nonce: p.Nonce, PreviousOwner: previous, Owner: p.Owner})
 		if err != nil {
@@ -230,6 +230,7 @@ func (e *Engine) resumeFiles(snapshot *Attempt, request Request, original *net.U
 		a.Units = []string{}
 		a.Transport, a.ResumeTransport = request.Transport, request.Transport
 		a.RegisteredOwner, a.SSHExitedOwner = &p.Owner, nil
+		a.ClockHandoverPending = false // Fresh live authority verified the current clock.
 		a.State, a.RetainedHold, a.MonitoringHoldKind = "ACTIVE", "", ""
 		a.MonitoringResumeKind, a.MonitoringResumeNonce = "reviewed", p.Nonce
 		a.Authorization, a.Lease = 0, 0

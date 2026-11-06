@@ -55,7 +55,7 @@ func (f authorityFixture) proof(t *testing.T, sequence uint64, age int64) monito
 	if coverage == "" {
 		coverage = strings.Repeat("e", 64)
 	}
-	p := monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: c.Agent, Nonce: c.Nonce, Owner: c.Owner, CoverageEpoch: coverage, Sequence: sequence, AgeMS: age, Complete: true}
+	p := monitoringEvidence{Type: "monitoring-execution-evidence-v2", Audience: c.Agent, Nonce: c.Nonce, Owner: c.Owner, CoverageEpoch: coverage, Sequence: sequence, AgeMS: age, Complete: true}
 	candidate, err := verifyMonitoringEvidence(signEvidence(t, f.key, p), f.pub, c, f.clock.Load())
 	if err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestMonitoringAuthorityBootstrapCannotAuthorizeWorkOrInheritUnverifiedAllow
 	if v := f.a.check(); v.Phase != "awaiting-evidence" || v.ExecutionAuthorized {
 		t.Fatal("bootstrap was treated as work permission", v)
 	}
-	p := f.proof(t, 1, 12000) // Fixed candidate cutoff4000, shorter than prior bootstrap5000.
+	p := f.proof(t, 1, monitoringEvidenceWindowMS-3000) // Fixed candidate cutoff4000, shorter than prior bootstrap5000.
 	ticket := f.prepare(t, p)
 	if v := f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != p.UntilUptimeMS {
 		t.Fatal("fresh proof did not establish only its verified cutoff", v)
@@ -147,17 +147,17 @@ func TestMonitoringAuthorityRenewalSupersedesOldCutoffAndRetriesKeepOriginalOutc
 	f := nativeAuthorityFixture(t, false, 5000)
 	p := f.proof(t, 4, 0)
 	ticket := f.prepare(t, p)
-	if v := f.a.check(); v.AuthorityUntilMS != 16000 || !v.PublicationPending {
+	if v := f.a.check(); v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || !v.PublicationPending {
 		t.Fatal("live proof waited for publication", v)
 	}
 	r, err := f.a.published(ticket, ticket.publicationHash)
-	if err != nil || r.UntilUptimeMS != 16000 {
+	if err != nil || r.UntilUptimeMS != (1000+monitoringEvidenceWindowMS) {
 		t.Fatal(r, err)
 	}
 	f.clock.Store(3000)
 	newer := f.proof(t, 5, 0)
 	later := f.commit(t, newer)
-	if later.UntilUptimeMS != 18000 {
+	if later.UntilUptimeMS != (3000 + monitoringEvidenceWindowMS) {
 		t.Fatal(later)
 	}
 	for range 3 {
@@ -171,18 +171,18 @@ func TestMonitoringAuthorityRenewalSupersedesOldCutoffAndRetriesKeepOriginalOutc
 		}
 	}
 	f.clock.Store(5000)
-	if v := f.a.check(); v.Phase != "active" || v.AuthorityUntilMS != 18000 || !v.ExecutionAuthorized {
+	if v := f.a.check(); v.Phase != "active" || v.AuthorityUntilMS != (3000+monitoringEvidenceWindowMS) || !v.ExecutionAuthorized {
 		t.Fatal("old cutoff revoked a healthy committed renewal", v)
 	}
 	old, current, ok := f.a.receipt(p.Nonce)
-	if !ok || old != r || current.AuthorityUntilMS != 18000 {
+	if !ok || old != r || current.AuthorityUntilMS != (3000+monitoringEvidenceWindowMS) {
 		t.Fatal("history conflated with current authority", old, current, ok)
 	}
 }
 
 func TestMonitoringAuthorityActiveOutOfOrderCandidateCannotShortenExistingPermission(t *testing.T) {
 	f := nativeAuthorityFixture(t, false, 5000)
-	p := f.proof(t, 4, 12000)
+	p := f.proof(t, 4, monitoringEvidenceWindowMS-3000)
 	if p.UntilUptimeMS != 4000 {
 		t.Fatal(p)
 	}
@@ -205,12 +205,12 @@ func TestMonitoringAuthorityBlockedPublicationCannotDelayRevocationOrLateSuccess
 		finished <- err
 	}()
 	<-blocked
-	f.clock.Store(16000)
+	f.clock.Store(1000 + monitoringEvidenceWindowMS)
 	checked := make(chan monitoringAuthorityView, 1)
 	go func() { checked <- f.a.check() }()
 	select {
 	case v := <-checked:
-		if v.Phase != "revoking" || v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || !reflect.DeepEqual(v.Causes, []string{"technical-expiry"}) {
+		if v.Phase != "revoking" || v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || !reflect.DeepEqual(v.Causes, []string{"technical-expiry"}) {
 			close(release)
 			t.Fatal(v)
 		}
@@ -240,7 +240,7 @@ func TestMonitoringAuthorityPublicationFailureOrWrongReplyPreservesVerifiedLiveA
 			t.Fatal(err)
 		}
 		v := f.a.check()
-		if v.Phase != "active" || v.AuthorityUntilMS != 16000 || !v.ExecutionAuthorized || !v.PublicationFailureObserved || v.PublicationPending {
+		if v.Phase != "active" || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || !v.ExecutionAuthorized || !v.PublicationFailureObserved || v.PublicationPending {
 			t.Fatal("unconfirmed publication changed verified live authority", v)
 		}
 		f.clock.Store(2000)
@@ -252,7 +252,7 @@ func TestMonitoringAuthorityPublicationFailureOrWrongReplyPreservesVerifiedLiveA
 		if _, err := f.a.published(current, current.publicationHash); err != nil {
 			t.Fatal(err)
 		}
-		if f.a.check().AuthorityUntilMS != 17000 {
+		if f.a.check().AuthorityUntilMS != (2000 + monitoringEvidenceWindowMS) {
 			t.Fatal("replacement did not preserve its fixed cutoff")
 		}
 		if err := f.a.publicationFailed(old); err != errMonitoringPublication || f.a.check().PublicationFailureObserved {
@@ -272,7 +272,7 @@ func TestMonitoringAuthorityOnlyOwnIssuedChallengesAndCurrentCoverageCanCommit(t
 	for _, change := range []func(*monitoringPermitCandidate){
 		func(p *monitoringPermitCandidate) { p.Owner.UID++ }, func(p *monitoringPermitCandidate) { p.Owner.ClockRevision++ }, func(p *monitoringPermitCandidate) { p.Owner.InputEpoch = strings.Repeat("f", 64) },
 		func(p *monitoringPermitCandidate) { p.CoverageEpoch = strings.Repeat("f", 64) }, func(p *monitoringPermitCandidate) { p.Sequence = 3 }, func(p *monitoringPermitCandidate) { p.Sequence = monitoringEvidenceMaxSequence + 1 },
-		func(p *monitoringPermitCandidate) { p.UntilUptimeMS = 1000 }, func(p *monitoringPermitCandidate) { p.UntilUptimeMS = 16001 }, func(p *monitoringPermitCandidate) { p.Nonce = strings.Repeat("f", 64) },
+		func(p *monitoringPermitCandidate) { p.UntilUptimeMS = 1000 }, func(p *monitoringPermitCandidate) { p.UntilUptimeMS = 1001 + monitoringEvidenceWindowMS }, func(p *monitoringPermitCandidate) { p.Nonce = strings.Repeat("f", 64) },
 	} {
 		bad := p
 		change(&bad)
@@ -308,19 +308,31 @@ func TestMonitoringAuthorityOnlyOwnIssuedChallengesAndCurrentCoverageCanCommit(t
 func TestMonitoringAuthorityChallengeCapacityPrunesWithoutNonceReuseOrAllowanceRefresh(t *testing.T) {
 	f := nativeAuthorityFixture(t, false, 16000)
 	seen := map[string]bool{}
+	var first monitoringChallenge
 	for range 16 {
 		c, err := f.a.challenge()
 		if err != nil || seen[c.Nonce] {
 			t.Fatal(c, err)
+		}
+		if first.Nonce == "" {
+			first = c
 		}
 		seen[c.Nonce] = true
 	}
 	if _, err := f.a.challenge(); err != errMonitoringCapacity {
 		t.Fatal("challenge bound not enforced", err)
 	}
-	f.clock.Store(6000)
+	// Accept one of the already-issued challenges. Its original ownership
+	// cutoff is still16s, while the verified proof extends live authority to61s.
+	proof := monitoringEvidence{Type: "monitoring-execution-evidence-v2", Audience: first.Agent, Nonce: first.Nonce, Owner: first.Owner, CoverageEpoch: first.CoverageEpoch, Sequence: 4, Complete: true}
+	candidate, err := verifyMonitoringEvidence(signEvidence(t, f.key, proof), f.pub, first, f.clock.Load())
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.commit(t, candidate)
+	f.clock.Store(16000)
 	c, err := f.a.challenge()
-	if err != nil || seen[c.Nonce] || c.AfterSequence != 3 || c.AuthorityUntilMS != 16000 {
+	if err != nil || seen[c.Nonce] || c.AfterSequence != 4 || c.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) {
 		t.Fatal("prune reused nonce or refreshed prior allowance", c, err)
 	}
 	if len(f.a.challenges) != 1 {
@@ -331,8 +343,8 @@ func TestMonitoringAuthorityChallengeCapacityPrunesWithoutNonceReuseOrAllowanceR
 func TestMonitoringAuthorityReceiptCapacityPrunesOnlyExpiredOutcomesAndKeepsWatermark(t *testing.T) {
 	f := nativeAuthorityFixture(t, false, 5000)
 	first := ""
-	for n := uint64(4); n < 36; n++ {
-		if n == 35 {
+	for n := uint64(4); n < 132; n++ {
+		if n == 131 {
 			f.clock.Store(2000)
 		}
 		p := f.proof(t, n, 0)
@@ -341,14 +353,14 @@ func TestMonitoringAuthorityReceiptCapacityPrunesOnlyExpiredOutcomesAndKeepsWate
 		}
 		f.commit(t, p)
 	}
-	p := f.proof(t, 36, 0)
+	p := f.proof(t, 132, 0)
 	if _, err := f.a.accept(p); err != errMonitoringCapacity {
 		t.Fatal("unexpired outcomes evicted", err)
 	}
-	f.clock.Store(16000)
-	fresh := f.proof(t, 36, 0)
+	f.clock.Store(1000 + monitoringEvidenceWindowMS)
+	fresh := f.proof(t, 132, 0)
 	f.commit(t, fresh)
-	if len(f.a.committed) > 2 || f.a.check().Sequence != 36 {
+	if len(f.a.committed) > 2 || f.a.check().Sequence != 132 {
 		t.Fatal("receipt pruning lost bounds/watermark")
 	}
 	if _, _, ok := f.a.receipt(first); ok {
@@ -403,7 +415,7 @@ func TestMonitoringAuthorityEntropyAndInitialContextFailureDoNotInventAnIncarnat
 			t.Fatal("short entropy accepted/leaked", err)
 		}
 	}
-	for _, change := range []func(*monitoringActiveContext){func(c *monitoringActiveContext) { c.Owner.UID = 999 }, func(c *monitoringActiveContext) { c.AuthorityUntilMS = 1000 }, func(c *monitoringActiveContext) { c.AuthorityUntilMS = 16001 }, func(c *monitoringActiveContext) { c.DeadlineUptimeMS = 4000 }, func(c *monitoringActiveContext) { c.CoverageEpoch = "" }} {
+	for _, change := range []func(*monitoringActiveContext){func(c *monitoringActiveContext) { c.Owner.UID = 999 }, func(c *monitoringActiveContext) { c.AuthorityUntilMS = 1000 }, func(c *monitoringActiveContext) { c.AuthorityUntilMS = 1001 + monitoringEvidenceWindowMS }, func(c *monitoringActiveContext) { c.DeadlineUptimeMS = 4000 }, func(c *monitoringActiveContext) { c.CoverageEpoch = "" }} {
 		c := f.context
 		change(&c)
 		if a, err := newMonitoringAuthority(c, func() (int64, error) { return 1000, nil }); a != nil || err == nil {
@@ -423,16 +435,16 @@ func TestMonitoringAuthorityDelayedPublicationOrMutableWorkerCopyCannotChangeLiv
 	if !bytes.Equal(before, after) || again != expected || Hash(before) != expected {
 		t.Fatal("worker got mutable arbiter state")
 	}
-	f.clock.Store(6000) // Original challenge expired; its proof was accepted earlier.
-	if r, err := f.a.published(ticket, expected); err != nil || r.UntilUptimeMS != 16000 {
+	f.clock.Store(16000) // Original challenge expired; its proof was accepted earlier.
+	if r, err := f.a.published(ticket, expected); err != nil || r.UntilUptimeMS != (1000+monitoringEvidenceWindowMS) {
 		t.Fatal("delayed observation did not retain the original live outcome", r, err)
 	}
-	if v := f.a.check(); v.Phase != "active" || !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || v.Sequence != 4 {
+	if v := f.a.check(); v.Phase != "active" || !v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || v.Sequence != 4 {
 		t.Fatal("expired request caused early hold or fresh allowance", v)
 	}
 	p = f.proof(t, 5, 0)
 	f.commit(t, p)
-	if v := f.a.check(); v.PublicationFailureObserved || v.AuthorityUntilMS != 21000 {
+	if v := f.a.check(); v.PublicationFailureObserved || v.AuthorityUntilMS != 16000+monitoringEvidenceWindowMS {
 		t.Fatal("fresh confirmed publication did not resolve its fault", v)
 	}
 }

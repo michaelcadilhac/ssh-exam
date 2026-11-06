@@ -155,7 +155,7 @@ func (r *relay) consume(data []byte, now int64) (string, error) {
 	if decode(bytes, &t) != nil || t.Audience != r.config.Audience || t.Op != "relay-connect" || t.Origin != r.config.Origin || t.Target != destination || !usernamePattern.MatchString(t.Username) || !examPattern.MatchString(t.Exam) || !noncePattern.MatchString(t.Nonce) {
 		return "", errors.New("invalid ticket scope")
 	}
-	if t.Issued > now+5000 || t.Expires <= now || t.Expires <= t.Issued || t.Expires-t.Issued > 30000 || t.Expires > now+35000 {
+	if t.Issued > now+5000 || t.Expires <= now || t.Expires <= t.Issued || t.Expires-t.Issued > 60000 || t.Expires > now+65000 {
 		return "", errors.New("expired ticket")
 	}
 	r.mu.Lock()
@@ -241,7 +241,7 @@ type bufferedConn struct {
 func (c *bufferedConn) Read(p []byte) (int, error) { return c.reader.Read(p) }
 
 func (r *relay) dialJump(ctx context.Context) (net.Conn, error) {
-	d := net.Dialer{Timeout: 8 * time.Second, KeepAlive: 15 * time.Second}
+	d := net.Dialer{Timeout: 60 * time.Second, KeepAlive: 15 * time.Second}
 	if r.config.Proxy == "" {
 		return d.DialContext(ctx, "tcp", r.config.DialTarget)
 	}
@@ -260,7 +260,7 @@ func (r *relay) dialJump(ctx context.Context) (net.Conn, error) {
 			c.Close()
 		}
 	}()
-	deadline := time.Now().Add(8 * time.Second)
+	deadline := time.Now().Add(60 * time.Second)
 	if until, found := ctx.Deadline(); found && until.Before(deadline) {
 		deadline = until
 	}
@@ -311,7 +311,7 @@ func (r *relay) serve(ctx context.Context, w http.ResponseWriter, req *http.Requ
 	}
 	defer c.CloseNow()
 	c.SetReadLimit(8192)
-	loginCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	loginCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	kind, packet, err := c.Read(loginCtx)
 	cancel()
 	if err != nil || kind != websocket.MessageText {
@@ -332,7 +332,7 @@ func (r *relay) serve(ctx context.Context, w http.ResponseWriter, req *http.Requ
 		}
 		r.mu.Unlock()
 	}()
-	dialCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	dialCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	upstream, err := r.dial(dialCtx)
 	cancel()
 	if err != nil {
@@ -360,7 +360,7 @@ func (r *relay) serve(ctx context.Context, w http.ResponseWriter, req *http.Requ
 			case <-streamCtx.Done():
 				return
 			case <-ticker.C:
-				pingCtx, end := context.WithTimeout(streamCtx, 5*time.Second)
+				pingCtx, end := context.WithTimeout(streamCtx, 60*time.Second)
 				err := c.Ping(pingCtx)
 				end()
 				if err != nil {
@@ -404,14 +404,14 @@ func main() {
 		log.Fatal("relay configuration rejected: ", err)
 	}
 	if *probe {
-		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		conn, err := r.dialJump(ctx)
 		if err != nil {
 			log.Fatal("jump-host connection unavailable")
 		}
 		defer conn.Close()
-		conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		banner, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil || !strings.HasPrefix(banner, "SSH-2.0-") {
 			log.Fatal("jump-host SSH greeting unavailable")
@@ -425,10 +425,10 @@ func main() {
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-	server := &http.Server{Addr: c.Listen, Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) { r.serve(ctx, w, req) }), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 8192}
+	server := &http.Server{Addr: c.Listen, Handler: http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) { r.serve(ctx, w, req) }), ReadHeaderTimeout: 60 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 8192}
 	go func() {
 		<-ctx.Done()
-		stop, end := context.WithTimeout(context.Background(), 5*time.Second)
+		stop, end := context.WithTimeout(context.Background(), 60*time.Second)
 		defer end()
 		server.Shutdown(stop)
 	}()

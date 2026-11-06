@@ -86,7 +86,7 @@ func TestRegisteredOwnerFreshTLSBeginRefusalAndOriginalInterval(t *testing.T) {
 	if os.Getuid() < 1000 {
 		t.Skip("owner contract models student UIDs; real root/student boundary is separately qualified")
 	}
-	for _, mode := range []string{"current", "missing-reply-page", "wrong-reply-page", "wrong-bootstrap-owner", "missing-bootstrap", "old-reply-version", "wrong-bootstrap-sequence", "wrong-bootstrap-coverage", "missing-bootstrap-policy-reports", "wrong-bootstrap-policy-reports"} {
+	for _, mode := range []string{"current", "missing-reply-page", "wrong-reply-page", "wrong-bootstrap-owner", "old-bootstrap-window", "missing-bootstrap", "old-reply-version", "wrong-bootstrap-sequence", "wrong-bootstrap-coverage", "missing-bootstrap-policy-reports", "wrong-bootstrap-policy-reports"} {
 		t.Run(mode, func(t *testing.T) {
 			e, key, r := initialGrantUnpreparedFixture(t)
 			read := func() *Attempt {
@@ -126,6 +126,8 @@ func TestRegisteredOwnerFreshTLSBeginRefusalAndOriginalInterval(t *testing.T) {
 				switch mode {
 				case "wrong-bootstrap-owner":
 					reply.Bootstrap.Owner.InputEpoch = strings.Repeat("d", 64)
+				case "old-bootstrap-window":
+					reply.Bootstrap.Type = "monitoring-bootstrap/v1"
 				case "missing-bootstrap":
 					reply.Bootstrap = nil
 				case "old-reply-version":

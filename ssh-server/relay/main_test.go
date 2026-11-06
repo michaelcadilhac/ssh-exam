@@ -54,7 +54,7 @@ func signTicket(r *relay, key ed25519.PrivateKey, change func(*ticket)) []byte {
 	n := make([]byte, 24)
 	rand.Read(n)
 	now := time.Now().UnixMilli()
-	t := ticket{Audience: r.config.Audience, Op: "relay-connect", Nonce: base64.RawURLEncoding.EncodeToString(n), Issued: now, Expires: now + 30000, Origin: r.config.Origin, Target: destination, Username: "student", Exam: "sandbox"}
+	t := ticket{Audience: r.config.Audience, Op: "relay-connect", Nonce: base64.RawURLEncoding.EncodeToString(n), Issued: now, Expires: now + 60000, Origin: r.config.Origin, Target: destination, Username: "student", Exam: "sandbox"}
 	if change != nil {
 		change(&t)
 	}
@@ -69,7 +69,7 @@ func TestTicketScope(t *testing.T) {
 		"origin":        func(t *ticket) { t.Origin = "https://evil.example" },
 		"audience":      func(t *ticket) { t.Audience = "class" },
 		"op":            func(t *ticket) { t.Op = "register" },
-		"expired":       func(t *ticket) { t.Issued -= 60000; t.Expires -= 60000 },
+		"expired":       func(t *ticket) { t.Issued -= 61000; t.Expires -= 61000 },
 		"long lifetime": func(t *ticket) { t.Expires += 30000 },
 		"future":        func(t *ticket) { t.Issued += 10000; t.Expires += 10000 },
 		"path nonce":    func(t *ticket) { t.Nonce = "../../some-path-outside-state" },

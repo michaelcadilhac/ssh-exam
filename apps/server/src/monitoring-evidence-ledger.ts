@@ -210,7 +210,7 @@ export class MonitoringEvidenceLedger {
     return binding;
   }
   // Only after actual signed native ACTIVE ownership has been accepted. Preserve
-  // original server challenge times; promotion cannot mint another15 seconds.
+  // original server challenge times; promotion cannot mint another60 seconds.
   seedValidatedBegin(
     binding: MonitoringEvidenceBinding,
     snapshot: CaptureReadinessSnapshot,
@@ -614,7 +614,8 @@ export class MonitoringEvidenceLedger {
     // Retain the last bounded identities across a proof-path outage so C9 can
     // match the native last-accepted nonce. Retry age is still checked above;
     // retaining an expired receipt never refreshes or authorizes it.
-    if (e.receipts.size >= 32) {
+    // Two minutes at the native one-Hz cadence, bounded per attempt.
+    if (e.receipts.size >= 128) {
       const oldest = e.receipts.entries().next().value!;
       if (now - oldest[1].at < MONITORING_CHALLENGE_WINDOW_MS)
         return refuse("capacity");
@@ -649,7 +650,7 @@ export class MonitoringEvidenceLedger {
       return refuse("technical-gap");
     if (sequence <= r.after_sequence) return refuse("sequence");
     const proof = monitoringEvidence.parse({
-      type: "monitoring-execution-evidence-v1",
+      type: "monitoring-execution-evidence-v2",
       audience: this.agent,
       nonce: r.nonce,
       owner: e.owner,

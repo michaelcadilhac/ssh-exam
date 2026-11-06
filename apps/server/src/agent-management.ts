@@ -160,10 +160,10 @@ export function registerAgentManagement(
           r.audience !== config.origin ||
           r.agent !== config.agent.id ||
           r.issued > observed + 1000 ||
-          r.issued < observed - 30000 ||
+          r.issued < observed - 60000 ||
           r.expires <= observed ||
           r.expires <= r.issued ||
-          r.expires > r.issued + 30000
+          r.expires > r.issued + 60000
         )
           throw Object.assign(
             Error("Management audience, identity or freshness rejected"),

@@ -1,5 +1,5 @@
 {
-  "type": "monitoring-execution-evidence-v1",
+  "type": "monitoring-execution-evidence-v2",
   "audience": "class",
   "nonce": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
   "owner": {

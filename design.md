@@ -5,6 +5,23 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 6 local follow-up: timeouts and prompt clock delivery
+
+Operational network waits and monitoring freshness use 60 seconds. This is not a
+change to exam durations, preflight 15 minutes, polling cadence or kernel/resource
+containment bounds. Evidence/bootstrap purposes advance to v2 so old 15-second
+proofs cannot be interpreted as60-second authority. The existing watchdog fetches
+already-authorized clock changes once per second through authenticated outbound
+HTTPS; original deadlines, request identity, revision, holds and audit remain.
+Durable clock changes remain pending until the live supervisor confirms handover.
+Verified SSH-exit evidence may span only a clock revision of the same immutable
+connection lifetime; it is negative evidence and cannot authorize execution.
+Fresh saved-file continuation adopts the confirmed current clock without a new
+attempt, grant or allowance. This follow-up is local only. The instructor approved pausing only the countdown
+while monitored work continues, and customizable Allow resume validity including
+no expiry. Those controls and exact release qualification remain unfinished.
+See docs/timer-controls-followup.md for acceptance and verification.
+
 November2 status-copy follow-up, DEPLOYED at17:34:57 Chicago: saved-
 work revisions show Updating attempt with matching retry/error labels; first
 issuance retains Preparing saved work. Student waiting copy describes preparation

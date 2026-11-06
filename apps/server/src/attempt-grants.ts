@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
@@ -1247,7 +1248,7 @@ export class AttemptGrants {
       .get(b.attempt) as any;
     if (
       b.agent !== this.agent ||
-      Math.abs(now() - b.at) > 30000 ||
+      Math.abs(now() - b.at) > OPERATION_TIMEOUT_MS ||
       !a ||
       a.state !== "PREPARING" ||
       a.grant_id !== b.grant.id ||
@@ -1312,7 +1313,11 @@ export class AttemptGrants {
         typeof observation === "number"
           ? undefined
           : monitoringBootstrap.parse(observation.bootstrap);
-    if (!Number.isSafeInteger(remaining) || remaining <= 0 || remaining > 15000)
+    if (
+      !Number.isSafeInteger(remaining) ||
+      remaining <= 0 ||
+      remaining > OPERATION_TIMEOUT_MS
+    )
       return conflict(
         "Fresh preflight capture unavailable; sample again before retrying the same Begin intent. No interval committed.",
       );

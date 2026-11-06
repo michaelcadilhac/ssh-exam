@@ -328,7 +328,9 @@ it("failed replay on a replacement control socket still expires and clears pendi
   vi.useFakeTimers();
   const { conn, socket } = await setup();
   const pending = (conn as any).request("command", {});
-  const rejected = expect(pending).rejects.toThrow("SSH connection ended");
+  const rejected = expect(pending).rejects.toThrow(
+    "Browser SSH operation timed out",
+  );
   const replacement = Object.assign(new EventEmitter(), {
     send() {
       throw Error("write failed");
@@ -337,14 +339,14 @@ it("failed replay on a replacement control socket still expires and clears pendi
   });
   conn.attach(replacement as any);
   expect(socket.close).toHaveBeenCalledTimes(1);
-  await vi.advanceTimersByTimeAsync(15001);
+  await vi.advanceTimersByTimeAsync(60001);
   await rejected;
   expect(conn.alive).toBe(false);
   expect((conn as any).pending.size).toBe(0);
   expect(vi.getTimerCount()).toBe(0);
   await vi.advanceTimersByTimeAsync(120001);
 });
-it.each([14999, 15000, 20000])(
+it.each([59999, 60000, 65000])(
   "server control rebind at %d ms enforces elapsed grace even before timer dispatch",
   async (elapsed) => {
     vi.useFakeTimers();
@@ -359,7 +361,7 @@ it.each([14999, 15000, 20000])(
         send: vi.fn(),
         close: vi.fn(),
       });
-      if (elapsed < 15000) {
+      if (elapsed < 60000) {
         conn.attach(replacement as any);
         expect(conn.alive).toBe(true);
         expect(conn.onLoss).not.toHaveBeenCalled();

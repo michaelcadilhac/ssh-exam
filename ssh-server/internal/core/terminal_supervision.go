@@ -661,7 +661,7 @@ func (s *terminalSupervisor) attach(c *net.UnixConn, exe *os.File) {
 	}
 	defer caller.close()
 	var r terminalSupervisorAttach
-	if terminalDecode(buf[:n], &r) != nil || r.Attempt != s.id || !attemptID.MatchString(r.Pane) || r.PID <= 1 || r.UID < 0 || r.Proof.Attempt != s.id || r.Proof.Pane != r.Pane || r.Proof.Boot != boot() || r.Expires <= Millis() || r.Expires > Millis()+15000 {
+	if terminalDecode(buf[:n], &r) != nil || r.Attempt != s.id || !attemptID.MatchString(r.Pane) || r.PID <= 1 || r.UID < 0 || r.Proof.Attempt != s.id || r.Proof.Pane != r.Pane || r.Proof.Boot != boot() || r.Expires <= Millis() || r.Expires > Millis()+operationTimeoutMS {
 		return
 	}
 	timed := isTimedPanePurpose(r.Purpose)

@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import ssh2 from "ssh2";
 import type { Client as SSHClient, ClientChannel, ConnectConfig } from "ssh2";
 const { Client } = ssh2;
@@ -118,7 +119,10 @@ export class Connection {
       this.cancelAuthentication = undefined;
     };
     this.cancelAuthentication = release;
-    const timeout = setTimeout(() => this.close(), options.timeoutMs ?? 120000);
+    const timeout = setTimeout(
+      () => this.close(),
+      options.timeoutMs ?? OPERATION_TIMEOUT_MS,
+    );
     const ask = async (
       host: string,
       instruction: string,
@@ -269,9 +273,9 @@ export class Connection {
               );
             return verified;
           },
-          readyTimeout: options.timeoutMs ?? 120000,
+          readyTimeout: options.timeoutMs ?? OPERATION_TIMEOUT_MS,
           keepaliveInterval: 5000,
-          keepaliveCountMax: 2,
+          keepaliveCountMax: 12,
           tryKeyboard: true,
           authHandler: (left, partial, next) => {
             if (!verified || attempt.cancelled) {
@@ -376,7 +380,8 @@ export class Connection {
     if (recover) {
       try {
         born = monitoringBootTimeMS();
-        if (born > Number.MAX_SAFE_INTEGER - 30000) recover = false;
+        if (born > Number.MAX_SAFE_INTEGER - OPERATION_TIMEOUT_MS)
+          recover = false;
       } catch {
         recover = false;
       } // Optional recovery never invents a substitute clock or earlier hold.
@@ -449,7 +454,7 @@ export class Connection {
     // original one-use renewal or shortening its original failure timeout.
     for (;;) {
       try {
-        if (now() >= born + 30000) return primary.promise;
+        if (now() >= born + OPERATION_TIMEOUT_MS) return primary.promise;
       } catch {
         return primary.promise;
       }
@@ -476,7 +481,7 @@ export class Connection {
           recovered.until <= 0 ||
           !Number.isSafeInteger(recovered.remaining_ms) ||
           recovered.remaining_ms <= 0 ||
-          recovered.remaining_ms > 15000 ||
+          recovered.remaining_ms > OPERATION_TIMEOUT_MS ||
           recovered.attempt?.id !== body.id ||
           recovered.attempt.username !== this.username ||
           recovered.attempt.transport !== this.transport ||
@@ -514,7 +519,11 @@ export class Connection {
       return recovered.attempt;
     }
   }
-  private async dispatchCommand(op: string, body: any, timeout = 120000) {
+  private async dispatchCommand(
+    op: string,
+    body: any,
+    timeout = OPERATION_TIMEOUT_MS,
+  ) {
     const envelope = await this.agent.authorize(
       op,
       this.username,
@@ -629,7 +638,7 @@ export class Connection {
       r.username !== this.username ||
       !Number.isSafeInteger(r.expires) ||
       r.expires <= Date.now() ||
-      r.expires > Date.now() + 125000 ||
+      r.expires > Date.now() + OPERATION_TIMEOUT_MS + 5000 ||
       (transport !== undefined && r.transport !== transport)
     )
       throw Error("SSH acknowledgment scope rejected");
@@ -639,7 +648,7 @@ export class Connection {
   protected exchangeCommand(
     envelope: any,
     _nonce: string,
-    timeout = 120000,
+    timeout = OPERATION_TIMEOUT_MS,
   ): CommandExchange {
     let cancel = () => {};
     const promise = new Promise<any>((resolve, reject) => {

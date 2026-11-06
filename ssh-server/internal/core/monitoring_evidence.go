@@ -17,8 +17,8 @@ import (
 	"regexp"
 )
 
-const monitoringEvidenceWindowMS int64 = 15000
-const monitoringChallengeWindowMS int64 = 5000
+const monitoringEvidenceWindowMS int64 = operationTimeoutMS
+const monitoringChallengeWindowMS int64 = operationTimeoutMS
 const monitoringEvidenceMaxBytes = 4096
 const monitoringEvidenceMaxSequence uint64 = 9007199254740991
 
@@ -115,7 +115,7 @@ func decodeMonitoringObject(payload []byte, out any, keys []string) (map[string]
 
 // The trusted gateway reports evidence AGE at decision time, not its wall clock.
 // Charge the FULL native round trip against that remaining budget. A delayed or
-// retried reply therefore cannot mint a new 15-second window on receipt, and
+// retried reply therefore cannot mint a new 60-second window on receipt, and
 // ordinary cross-host wall-clock skew cannot invent permission or a false gap.
 func verifyMonitoringEvidence(frame SignedFrame, key ed25519.PublicKey, challenge monitoringChallenge, nowUptimeMS int64) (monitoringPermitCandidate, error) {
 	bad := func() (monitoringPermitCandidate, error) { return monitoringPermitCandidate{}, errMonitoringEvidence }
@@ -144,7 +144,7 @@ func verifyMonitoringEvidence(frame SignedFrame, key ed25519.PublicKey, challeng
 	if _, err = decodeMonitoringObject(fields["owner"], &proof.Owner, []string{"attempt", "exam", "username", "uid", "transport_hash", "boot", "page_epoch", "input_epoch", "generation", "clock_revision"}); err != nil {
 		return bad()
 	}
-	if proof.Type != "monitoring-execution-evidence-v1" || proof.Audience != challenge.Agent || proof.Nonce != challenge.Nonce || proof.Owner != challenge.Owner || !monitoringDigest.MatchString(proof.CoverageEpoch) || (challenge.CoverageEpoch != "" && proof.CoverageEpoch != challenge.CoverageEpoch) || !proof.Complete || proof.Sequence <= challenge.AfterSequence || proof.Sequence > monitoringEvidenceMaxSequence || proof.AgeMS < 0 || proof.AgeMS >= monitoringEvidenceWindowMS {
+	if proof.Type != "monitoring-execution-evidence-v2" || proof.Audience != challenge.Agent || proof.Nonce != challenge.Nonce || proof.Owner != challenge.Owner || !monitoringDigest.MatchString(proof.CoverageEpoch) || (challenge.CoverageEpoch != "" && proof.CoverageEpoch != challenge.CoverageEpoch) || !proof.Complete || proof.Sequence <= challenge.AfterSequence || proof.Sequence > monitoringEvidenceMaxSequence || proof.AgeMS < 0 || proof.AgeMS >= monitoringEvidenceWindowMS {
 		return bad()
 	}
 	remaining := monitoringEvidenceWindowMS - proof.AgeMS

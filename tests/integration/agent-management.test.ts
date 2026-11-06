@@ -454,9 +454,9 @@ it("requires explicit root-agent management purpose, audience, freshness, pinned
       { agent: "other" },
       { actor: "teacher" },
       { human: "claimed-admin" },
-      { issued: Date.now() - 60000 },
+      { issued: Date.now() - 61000 },
       { expires: Date.now() - 1 },
-      { expires: Date.now() + 60000 },
+      { expires: Date.now() + 61000 },
       { operation: "arbitrary.command" },
     ]) {
       const response = await f.post(f.request(bad));

@@ -199,7 +199,7 @@ func TestMonitoringPublisherSignedCandidateRoundTripAndOriginalRetry(t *testing.
 	proof := p.f.proof(t, 4, 0)
 	ticket := p.f.prepare(t, proof)
 	r, err := publishMonitoringTicket(context.Background(), p.claim, p.state, ticket, monitoringPublishTestOptions("normal"))
-	if err != nil || r.UntilUptimeMS != 16000 || r.Sequence != 4 {
+	if err != nil || r.UntilUptimeMS != (1000+monitoringEvidenceWindowMS) || r.Sequence != 4 {
 		t.Fatal("actual child publication failed", r, err)
 	}
 	file := filepath.Join(p.state, "monitoring-control", proof.Owner.Attempt+".provisional.json")
@@ -243,13 +243,13 @@ func TestMonitoringPublisherFatalAndUntrustedReplyFaultsPreserveVerifiedLiveAuth
 				t.Fatal("fault acknowledged or leaked worker data", err)
 			}
 			v := p.f.a.check()
-			if !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || v.Sequence != 4 || v.PublicationPending || !v.PublicationFailureObserved || len(v.Causes) != 0 {
+			if !v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || v.Sequence != 4 || v.PublicationPending || !v.PublicationFailureObserved || len(v.Causes) != 0 {
 				t.Fatal("fault caused early lock, violation or extra allowance", v)
 			}
 			// A fresh proof may replace only nonauthoritative provisional bytes.
 			p.f.clock.Store(2000)
 			fresh := p.f.prepare(t, p.f.proof(t, 5, 0))
-			if r, err := publishMonitoringTicket(context.Background(), p.claim, p.state, fresh, monitoringPublishTestOptions("normal")); err != nil || r.UntilUptimeMS != 17000 {
+			if r, err := publishMonitoringTicket(context.Background(), p.claim, p.state, fresh, monitoringPublishTestOptions("normal")); err != nil || r.UntilUptimeMS != (2000+monitoringEvidenceWindowMS) {
 				t.Fatal("crash retry did not preserve its own fixed cutoff", r, err)
 			}
 		})
@@ -272,7 +272,7 @@ func TestMonitoringPublisherConcurrentRetryDoesNotRetireInflightPublication(t *t
 	if _, err := publishMonitoringTicket(context.Background(), p.claim, p.state, ticket, opts); err != errMonitoringBusy || launches.Load() != 0 {
 		t.Fatal("retry launched/retired another publication", err)
 	}
-	if v := p.f.a.check(); !v.PublicationPending || v.PublicationFailureObserved || v.AuthorityUntilMS != 16000 {
+	if v := p.f.a.check(); !v.PublicationPending || v.PublicationFailureObserved || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) {
 		t.Fatal(v)
 	}
 	if err := os.WriteFile(monitoringPublisherTestMarker(p.state, "release"), nil, 0600); err != nil {
@@ -297,7 +297,7 @@ func TestMonitoringPublisherBlockedIOLeavesOtherAttemptAndCutoffIndependent(t *t
 	if _, err := publishMonitoringTicket(context.Background(), healthy.claim, healthy.state, other, monitoringPublishTestOptions("normal")); err != nil {
 		t.Fatal("another attempt waited on blocked writer", err)
 	}
-	p.f.clock.Store(16000)
+	p.f.clock.Store((1000 + monitoringEvidenceWindowMS))
 	start := time.Now()
 	if v := p.f.a.check(); v.Phase != "revoking" || v.ExecutionAuthorized || len(v.Causes) != 1 || v.Causes[0] != "technical-expiry" {
 		t.Fatal(v)
@@ -329,7 +329,7 @@ func TestMonitoringPublisherTimeoutAndCapacityNeverAddPermission(t *testing.T) {
 		if time.Since(start) > time.Second {
 			t.Fatal("timeout waited on worker")
 		}
-		if v := p.f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || len(v.Causes) != 0 {
+		if v := p.f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || len(v.Causes) != 0 {
 			t.Fatal(v)
 		}
 	})
@@ -351,7 +351,7 @@ func TestMonitoringPublisherTimeoutAndCapacityNeverAddPermission(t *testing.T) {
 		if _, err := publishMonitoringTicket(context.Background(), p.claim, p.state, ticket, monitoringPublishTestOptions("normal")); err != errMonitoringBusy {
 			t.Fatal("unbounded pool launch", err)
 		}
-		if v := p.f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 {
+		if v := p.f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) {
 			t.Fatal(v)
 		}
 	})
@@ -497,7 +497,7 @@ func TestMonitoringPublisherActualUserScopePreservesClaimsAndEnforcesResourceBou
 					t.Fatal("resource-failed publisher acknowledged")
 				}
 				v := p.f.a.check()
-				if !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 || len(v.Causes) != 0 {
+				if !v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) || len(v.Causes) != 0 {
 					t.Fatal("resource failure affected verified live authority", v)
 				}
 				result, err := exec.Command("/usr/bin/systemctl", "--user", "show", unit, "--property=Result", "--value").Output()
@@ -552,14 +552,14 @@ func TestMonitoringPublisherDoesNotAcceptForeignInheritedClaim(t *testing.T) {
 	if _, err := publishMonitoringTicket(context.Background(), other, p.state, ticket, monitoringPublishTestOptions("normal")); err == nil {
 		t.Fatal("foreign claim was accepted")
 	}
-	if v := p.f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != 16000 {
+	if v := p.f.a.check(); !v.ExecutionAuthorized || v.AuthorityUntilMS != (1000+monitoringEvidenceWindowMS) {
 		t.Fatal(v)
 	}
 }
 
 func FuzzMonitoringPublishMetadata(f *testing.F) {
 	owner := monitoringOwner{Attempt: finalID, Exam: "synthetic", Username: "student", UID: 10001, TransportHash: strings.Repeat("a", 64), Boot: "11111111-1111-4111-8111-111111111111", PageEpoch: strings.Repeat("b", 64), InputEpoch: strings.Repeat("c", 64)}
-	seed, _ := json.Marshal(monitoringPublishRequest{1, "monitoring-provisional-publication-v1", "/tmp/synthetic-monitoring", 0, monitoringPublication{1, strings.Repeat("d", 64), owner, strings.Repeat("e", 64), 4, strings.Repeat("f", 64), 16000, 16000, 1}})
+	seed, _ := json.Marshal(monitoringPublishRequest{1, "monitoring-provisional-publication-v1", "/tmp/synthetic-monitoring", 0, monitoringPublication{1, strings.Repeat("d", 64), owner, strings.Repeat("e", 64), 4, strings.Repeat("f", 64), (1000 + monitoringEvidenceWindowMS), (1000 + monitoringEvidenceWindowMS), 1}})
 	f.Add(seed)
 	f.Add([]byte(`{"version":1}`))
 	f.Add([]byte(`{"version":1,"version":1}`))

@@ -12,6 +12,15 @@ const fixture = JSON.parse(
   ),
 );
 
+it("accepts fresh evidence inside the sixty-second window and refuses its exact cutoff", () => {
+  expect(
+    monitoringEvidence.safeParse({ ...fixture, age_ms: 59_999 }).success,
+  ).toBe(true);
+  expect(
+    monitoringEvidence.safeParse({ ...fixture, age_ms: 60_000 }).success,
+  ).toBe(false);
+});
+
 it("shares one exact bounded owner/evidence contract with the unwired native verifier, including zero revisions", () => {
   expect(monitoringEvidence.parse(fixture)).toEqual(fixture);
   expect(Buffer.byteLength(JSON.stringify(fixture))).toBeLessThan(
@@ -65,8 +74,9 @@ it("requires every scope and freshness field explicitly, without missing/null de
 it("refuses wrong-purpose, expired/future/incomplete, overflowing and malformed ownership evidence", () => {
   for (const patch of [
     { type: "deadline-timing" },
+    { type: "monitoring-execution-evidence-v1" },
     { complete: false },
-    { age_ms: 15000 },
+    { age_ms: 60000 },
     { age_ms: -1 },
     { age_ms: 1.5 },
     { sequence: 0 },

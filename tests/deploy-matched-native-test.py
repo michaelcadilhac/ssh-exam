@@ -60,7 +60,7 @@ class MatchedNative(unittest.TestCase):
                     'nonce':f.release['native_update']['nonce'],'binary_sha256':cohort['binary_sha256'],
                     'history_sha256':f.release['native_history_sha256'],'config_sha256':f.release['native_config_sha256'],
                     'cli_config_sha256':f.release['cli_config_sha256'],'installed_cli_sha256':cohort['binary_sha256']['examctl'],
-                    'worker_cli_sha256':cohort['worker_cli_sha256'],'relay_pid':4,'relay_sha256':f.release['relay_sha256'],
+                    'worker_cli_sha256':cohort['worker_cli_sha256'],'relay_pid':pids['exam-ssh-relay.service'],'relay_sha256':cohort['binary_sha256'].get('exam-ssh-relay',f.release['relay_sha256']),
                     'native_roles':[{'unit':unit,'pid':pid} for unit,pid in pids.items() if unit!='exam-ssh-relay.service']}
                 if after_guard: value.update(transition_receipt_sha256=deploy.digest(self.receipt),policy_supported=True)
                 value.update(self.overrides)
@@ -216,6 +216,25 @@ class FilesOnlyResume(MatchedNative):
                 (f.bundle/'release.json').write_text(json.dumps(f.release))
                 f.cli('prepare',expect=1)
                 self.assertEqual(f.stopped_calls(),[])
+
+
+class MonitoringTimeouts(MatchedNative):
+    """The matched relay is part of this exact forward-only scope."""
+    def setUp(self):
+        super().setUp()
+        f = self.f
+        f.release['fast_ui']['reviewed_scope'] = 'monitoring-timeouts-v2'
+        f.release['native_update']['before']['binary_sha256']['exam-ssh-relay'] = f.release['relay_sha256']
+        f.release['native_update']['after']['binary_sha256']['exam-ssh-relay'] = '8'*64
+        self.pids['exam-ssh-relay.service'] = 104
+        (f.bundle/'release.json').write_text(json.dumps(f.release))
+
+    def test_missing_relay_pin_refuses_before_fencing(self):
+        f = self.f
+        del f.release['native_update']['after']['binary_sha256']['exam-ssh-relay']
+        (f.bundle/'release.json').write_text(json.dumps(f.release))
+        f.cli('prepare', expect=1)
+        self.assertFalse(f.stopped_calls())
 
 
 if __name__=='__main__': unittest.main()

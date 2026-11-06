@@ -180,9 +180,9 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 	c.auth = a
 	c.raw = raw
 	c.mu.Unlock()
-	ctx, end := context.WithTimeout(c.ctx, 120*time.Second)
+	ctx, end := context.WithTimeout(c.ctx, 60*time.Second)
 	defer end()
-	timer := time.AfterFunc(120*time.Second, c.Close)
+	timer := time.AfterFunc(60*time.Second, c.Close)
 	defer timer.Stop()
 	defer a.clear()
 	hop := func(conn net.Conn, h Host) (*ssh.Client, error) {
@@ -194,7 +194,7 @@ func (c *Client) Connect(raw net.Conn, user string, jump, class Host, dialogue D
 			}
 			return a.ask(ctx, h.Host, text, p)
 		}
-		config := &ssh.ClientConfig{User: user, Timeout: 120 * time.Second}
+		config := &ssh.ClientConfig{User: user, Timeout: 60 * time.Second}
 		config.HostKeyCallback = func(_ string, _ net.Addr, key ssh.PublicKey) error {
 			sum := sha256.Sum256(key.Marshal())
 			pin := hex.EncodeToString(sum[:])
@@ -329,7 +329,7 @@ func (c *Client) session() (*ssh.Session, error) {
 	return session, err
 }
 func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
-	ctx, cancel := context.WithTimeout(c.ctx, 120*time.Second)
+	ctx, cancel := context.WithTimeout(c.ctx, 60*time.Second)
 	defer cancel()
 	// Only an exact gateway-issued command nonce can cancel this channel.
 	// Legacy frames without a signed envelope retain their existing behavior.
@@ -409,7 +409,7 @@ func (c *Client) Open(pane, token string) (json.RawMessage, error) {
 }
 
 func (c *Client) open(pane, token, epoch string) (json.RawMessage, error) {
-	ctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(c.ctx, 60*time.Second)
 	opening := &pendingPane{cancel: cancel}
 	c.mu.Lock()
 	_, exists := c.panes[pane]
@@ -632,8 +632,8 @@ func (c *Client) HandoffPublicKey() (string, error) {
 		return "", err
 	}
 	c.handoffKey = key
-	c.handoffExpires = time.Now().Add(90 * time.Second).UnixMilli()
-	c.handoffTimer = time.AfterFunc(90*time.Second, c.DiscardHandoffKey)
+	c.handoffExpires = time.Now().Add(60 * time.Second).UnixMilli()
+	c.handoffTimer = time.AfterFunc(60*time.Second, c.DiscardHandoffKey)
 	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(k))), nil
 }
 
@@ -671,7 +671,7 @@ func (c *Client) HandoffClass(certificate string) error {
 	if err != nil {
 		return err
 	}
-	ctx, end := context.WithTimeout(c.ctx, 25*time.Second)
+	ctx, end := context.WithTimeout(c.ctx, 60*time.Second)
 	defer end()
 	conn, err := j.DialContext(ctx, "tcp", net.JoinHostPort(h.Host, itoa(h.Port)))
 	if err != nil {
@@ -679,7 +679,7 @@ func (c *Client) HandoffClass(certificate string) error {
 	}
 	stop := context.AfterFunc(ctx, func() { conn.Close() })
 	defer stop()
-	config := &ssh.ClientConfig{User: user, Timeout: 25 * time.Second, Auth: []ssh.AuthMethod{ssh.PublicKeys(signed)}, HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+	config := &ssh.ClientConfig{User: user, Timeout: 60 * time.Second, Auth: []ssh.AuthMethod{ssh.PublicKeys(signed)}, HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
 		sum := sha256.Sum256(key.Marshal())
 		pin := hex.EncodeToString(sum[:])
 		for _, s := range h.Pins {

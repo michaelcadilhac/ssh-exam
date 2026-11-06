@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume"} {
+	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume", "files-resume-clock"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -58,11 +58,11 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Desktop role/group seam; real root profile uses production probing.
 			var stopRole func()
 			var stopSSH func()
-			if mode == "ssh-exited" || mode == "files-resume" {
+			if mode == "ssh-exited" || strings.HasPrefix(mode, "files-resume") {
 				guard, stop := testNativeRoleLifetime(t)
 				stopSSH = stop
 				t.Setenv("EXAM_TEST_SSH_PEER_PID", fmt.Sprint(guard.identity.pid))
-				if mode == "files-resume" {
+				if strings.HasPrefix(mode, "files-resume") {
 					file := filepath.Join(t.TempDir(), "synthetic-ssh-peer")
 					if err := os.WriteFile(file, []byte(fmt.Sprint(guard.identity.pid)), 0600); err != nil {
 						t.Fatal(err)
@@ -157,7 +157,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				case proofReached <- struct{}{}:
 				default:
 				}
-				return monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: q.Agent, Nonce: q.Nonce, Owner: q.Owner, CoverageEpoch: q.CoverageEpoch, Sequence: q.AfterSequence + 1, AgeMS: 0, Complete: true}, 200
+				return monitoringEvidence{Type: "monitoring-execution-evidence-v2", Audience: q.Agent, Nonce: q.Nonce, Owner: q.Owner, CoverageEpoch: q.CoverageEpoch, Sequence: q.AfterSequence + 1, AgeMS: 0, Complete: true}, 200
 			}, Continue: func(q monitoringContinueRequest) (monitoringContinueReply, int) {
 				if resumeMode.Load() == 0 {
 					return monitoringContinueReply{}, 403
@@ -171,7 +171,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 						return monitoringContinueReply{}, 403
 					}
 				}
-				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v1", ControlRetention: "v1", PolicyReports: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
+				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v2", ControlRetention: "v1", PolicyReports: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
 				switch resumeMode.Load() {
 				case 1:
 					reply.Owner.InputEpoch = Token()
@@ -405,22 +405,33 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			}
 			testActualMonitoredPaneInput(t, e, key, a, mode, func(mode int32) {
 				if mode != 0 && (resumeMode.Load() == 0 || (mode == 4 && resumeMode.Load() != 4)) {
-					approvalUntil.Store(Millis() + 60000)
+					approvalUntil.Store(Millis() + 300000) // Ordinary reviewed approval outlives one evidence window.
 				}
 				resumeMode.Store(mode)
 			})
-			if mode == "ssh-exited" || mode == "files-resume" {
+			if mode == "ssh-exited" || strings.HasPrefix(mode, "files-resume") {
 				observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
 				if err != nil || observed.SSHPeer != "pinned-live" {
 					t.Fatal("fixture missed positively live SSH owner before exit", observed, err)
 				}
-				if mode == "files-resume" {
+				if strings.HasPrefix(mode, "files-resume") {
 					current, err := readStateSnapshot(e.Config.State)
 					if err != nil {
 						t.Fatal(err)
 					}
 					if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "check-files-exit", Attempt: a.ID, Owner: *current.Attempts[a.ID].RegisteredOwner}, nil, false); err == nil {
 						t.Fatal("a positively live original SSH lifetime was accepted as exited")
+					}
+				}
+				if mode == "files-resume-clock" {
+					request := resetRequest(a)
+					request.ResetID, request.RemainingSeconds, request.ExtendSeconds = ManagementID(), 0, 60
+					clock := Command{Audience: "class", Nonce: Token(), Expires: Millis() + 20000, Op: "reset-clock", Username: a.Username, Transport: a.Transport, Body: request}
+					e.clockHandoverCheckpoint = func() error { return errors.New("synthetic handover unavailable before SSH exit") }
+					_, failed := e.Command(signedCommand(key, clock), a.Username, a.Transport)
+					e.clockHandoverCheckpoint = nil
+					if failed == nil || !strings.Contains(failed.Error(), "durably recorded") {
+						t.Fatal("fixture missed pending clock before SSH exit", failed)
 					}
 				}
 				stopSSH()
@@ -434,20 +445,31 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 					}
 					ended := state.Attempts[a.ID]
 					if ended.SSHExitedOwner != nil {
-						if ended.RegisteredOwner == nil || *ended.SSHExitedOwner != *ended.RegisteredOwner || ended.State != "LOCKED" || ended.RetainedHold != "held" || ended.MonitoringHoldKind != "technical" || ended.Start != a.Start || ended.Deadline != a.Deadline || ended.OriginalDeadline != a.OriginalDeadline {
+						expectedDeadline := a.Deadline
+						if mode == "files-resume-clock" {
+							expectedDeadline += 60000
+						}
+						if ended.RegisteredOwner == nil || !sameExitedLifetime(*ended.SSHExitedOwner, *ended.RegisteredOwner) || ended.State != "LOCKED" || (mode != "files-resume-clock" && ended.RetainedHold != "held") || ended.MonitoringHoldKind != "technical" || ended.Start != a.Start || ended.Deadline != expectedDeadline || ended.OriginalDeadline != a.OriginalDeadline {
 							t.Fatal("positive SSH exit lost exact ownership/hold/original time", ended)
 						}
 						found := false
 						for _, event := range state.Events {
-							if event.Attempt != nil && event.Attempt.ID == a.ID && event.Attempt.SSHExitedOwner != nil && *event.Attempt.SSHExitedOwner == *ended.RegisteredOwner {
+							if event.Attempt != nil && event.Attempt.ID == a.ID && event.Attempt.SSHExitedOwner != nil && *event.Attempt.SSHExitedOwner == *ended.SSHExitedOwner {
 								found = true
 							}
 						}
 						if !found {
 							t.Fatal("positive exit never reached the durable authenticated callback outbox")
 						}
-						if mode == "files-resume" {
+						if mode == "files-resume-clock" && (!ended.ClockHandoverPending || ended.SSHExitedOwner.ClockRevision != a.ClockRevision) {
+							t.Fatal("pending clock/actual exit provenance lost", ended)
+						}
+						if strings.HasPrefix(mode, "files-resume") {
 							testActualFilesResume(t, e, key, ended, original, &approvalUntil, &resumeMode)
+							completed, err := readStateSnapshot(e.Config.State)
+							if err != nil || completed.Attempts[a.ID].ClockHandoverPending {
+								t.Fatal("fresh verified files authority did not acknowledge its current clock", err)
+							}
 						}
 						break
 					}
@@ -946,6 +968,30 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			t.Fatal("failed publication changed live clock/freshness", oldLive, err)
 		}
 		clock.Nonce = Token()
+		e.clockHandoverCheckpoint = func() error { return errors.New("synthetic live clock acknowledgement unavailable") }
+		_, failed = e.Command(signedCommand(key, clock), a.Username, a.Transport)
+		e.clockHandoverCheckpoint = nil
+		if failed == nil || !strings.Contains(failed.Error(), "durably recorded") {
+			t.Fatal("fixture missed the saved-clock/unconfirmed-handover boundary", failed)
+		}
+		pendingClock, err := readStateSnapshot(e.Config.State)
+		if err != nil || !pendingClock.Attempts[a.ID].ClockHandoverPending || pendingClock.Attempts[a.ID].ClockRevision != a.ClockRevision+1 || len(pendingClock.Attempts[a.ID].ClockResets) != len(a.ClockResets)+1 {
+			t.Fatal("failed acknowledgement lost its durable retry state", err)
+		}
+		pendingEvent := false
+		for _, event := range pendingClock.Events {
+			if event.Attempt != nil && event.Attempt.ID == a.ID && event.Attempt.ClockHandoverPending && event.Attempt.ClockRevision == a.ClockRevision+1 {
+				pendingEvent = true
+			}
+		}
+		if !pendingEvent {
+			t.Fatal("callback outbox falsely confirmed the saved clock")
+		}
+		unchangedLive, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		if err != nil || unchangedLive.View == nil || !unchangedLive.View.ExecutionAuthorized || unchangedLive.View.DeadlineUptimeMS != prior.View.DeadlineUptimeMS || unchangedLive.View.AuthorityUntilMS != prior.View.AuthorityUntilMS {
+			t.Fatal("failed live handover changed work or monitoring facts", unchangedLive, err)
+		}
+		clock.Nonce = Token()
 		if _, err := e.Command(signedCommand(key, clock), a.Username, a.Transport); err != nil {
 			t.Fatal("live-pane clock handover failed", err)
 		}
@@ -954,11 +1000,14 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 			t.Fatal(err)
 		}
 		next := state.Attempts[a.ID]
+		if next.ClockHandoverPending {
+			t.Fatal("actual supervisor acknowledgement remained pending")
+		}
 		after, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *next.RegisteredOwner}, nil, false)
 		if err != nil || after.View == nil || !after.View.ExecutionAuthorized || after.View.AuthorityUntilMS != prior.View.AuthorityUntilMS || after.View.CoverageEpoch != prior.View.CoverageEpoch || after.View.Sequence != prior.View.Sequence || after.View.DeadlineUptimeMS != int64(next.UptimeDeadline*1000) {
 			t.Fatal("clock edit refreshed/forgot capture facts or left old deadline", prior, after, err)
 		}
-		oldProof := monitoringEvidence{Type: "monitoring-execution-evidence-v1", Audience: "class", Nonce: challenge.Challenge.Nonce, Owner: *a.RegisteredOwner, CoverageEpoch: prior.View.CoverageEpoch, Sequence: prior.View.Sequence + 1, AgeMS: 0, Complete: true}
+		oldProof := monitoringEvidence{Type: "monitoring-execution-evidence-v2", Audience: "class", Nonce: challenge.Challenge.Nonce, Owner: *a.RegisteredOwner, CoverageEpoch: prior.View.CoverageEpoch, Sequence: prior.View.Sequence + 1, AgeMS: 0, Complete: true}
 		payload, _ := json.Marshal(oldProof)
 		frame := SignedFrame{Payload: base64.StdEncoding.EncodeToString(payload), Signature: base64.StdEncoding.EncodeToString(ed25519.Sign(key, payload))}
 		if _, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "proof", Attempt: a.ID, Owner: *a.RegisteredOwner, Frame: &frame}, nil, false); err == nil {
@@ -1041,7 +1090,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		if untilBoot <= 0 {
 			t.Fatal("fixture missed unexpired current native proof")
 		}
-		for limit := time.Now().Add(18 * time.Second); ; {
+		for limit := time.Now().Add(operationTimeout + 3*time.Second); ; {
 			observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
 			if err != nil {
 				t.Fatal(err)
@@ -1301,7 +1350,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		t.Fatal("pending continuation is not inspectable at the actual supervisor interface", observedPending, err)
 	}
 	if mode == "expired-pending-resume" {
-		for limit := time.Now().Add(17 * time.Second); ; {
+		for limit := time.Now().Add(operationTimeout + 3*time.Second); ; {
 			observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
 			if err != nil || observed.PendingResume == nil || observed.PendingResume.ClockUnknown {
 				t.Fatal("pending expiry lost its exact native observation", observed, err)
@@ -1510,6 +1559,7 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 		e.terminalMonitoring = terminalMonitoringBridge{}
 	}
 	resume.Nonce = Token() // Fresh verification, same approval/allowance; no restored receipt permission.
+	resume.Expires = Millis() + operationTimeoutMS
 	continued, err := e.Command(signedCommand(key, resume), a.Username, a.Transport)
 	if err != nil {
 		t.Fatal("fresh approved native Continue failed", err)

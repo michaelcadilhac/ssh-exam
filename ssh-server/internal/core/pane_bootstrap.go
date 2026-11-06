@@ -80,7 +80,7 @@ func runPaneBootstrap(conn *net.UnixConn, unit string, expires, bootUntil int64,
 	}
 	remaining := time.Until(time.UnixMilli(expires))
 	now, clockErr := monitoringBootMillis()
-	if clockErr != nil || now >= bootUntil || bootUntil-now > 15000 || remaining <= 0 || remaining > 15*time.Second {
+	if clockErr != nil || now >= bootUntil || bootUntil-now > operationTimeoutMS || remaining <= 0 || remaining > operationTimeout {
 		return errPaneBootstrap
 	}
 	remaining = min(remaining, time.Duration(bootUntil-now)*time.Millisecond)
@@ -165,11 +165,11 @@ func awaitPaneBootstrap(conn *net.UnixConn, executable *os.File, unit string, ex
 
 func awaitPaneBootstrapIdentity(conn *net.UnixConn, executable *os.File, group string, uid int, expires, bootUntil int64) (*paneBootstrapPeer, error) {
 	now, clockErr := monitoringBootMillis()
-	if clockErr != nil || bootUntil <= now || bootUntil-now > 15000 {
+	if clockErr != nil || bootUntil <= now || bootUntil-now > operationTimeoutMS {
 		return nil, errPaneBootstrap
 	}
 	remaining := min(time.Until(time.UnixMilli(expires)), time.Duration(bootUntil-now)*time.Millisecond)
-	if clockErr != nil || remaining <= 0 || remaining > 15*time.Second {
+	if clockErr != nil || remaining <= 0 || remaining > operationTimeout {
 		return nil, errPaneBootstrap
 	}
 	if err := conn.SetDeadline(time.Now().Add(remaining)); err != nil {

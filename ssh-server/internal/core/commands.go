@@ -88,7 +88,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	if json.Unmarshal(payload, &cmd) != nil || cmd.Audience != e.Config.AgentID || cmd.Username != username || len(cmd.Nonce) < 16 || len(cmd.Nonce) > 64 {
 		return nil, errors.New("command scope rejected")
 	}
-	if cmd.Expires <= Millis() || cmd.Expires > Millis()+30000 {
+	if cmd.Expires <= Millis() || cmd.Expires > Millis()+operationTimeoutMS {
 		return nil, errors.New("command expired")
 	}
 	technicalResume := cmd.Op == "consume-technical-continuation"
@@ -264,7 +264,7 @@ func (e *Engine) command(frame SignedFrame, username, transport string, monitor 
 	var result any
 	err = e.WithState(func() error {
 		now := Millis()
-		if cmd.Expires <= now || cmd.Expires > now+30000 {
+		if cmd.Expires <= now || cmd.Expires > now+operationTimeoutMS {
 			return errors.New("command expired")
 		}
 		if e.state.Commands == nil {

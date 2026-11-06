@@ -270,7 +270,7 @@ it("accepted clock-only native revision preserves challenged HTTP evidence while
       deadline: changed,
     });
     expect(store.db.prepare("SELECT * FROM incidents").all()).toEqual([]);
-    clock.now = 25000;
+    clock.now = 70000;
     expect((await evidence(next)).statusCode).toBe(409);
   } finally {
     await app.close();

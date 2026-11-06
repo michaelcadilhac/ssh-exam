@@ -184,7 +184,13 @@ func (e *Engine) terminalClockRequest(a *Attempt, change ClockReset) (terminalAu
 
 func (e *Engine) commitTerminalClock(a *Attempt, change ClockReset) error {
 	if clockWithoutRetainedWork(a) {
+		a.ClockHandoverPending = false
 		return nil
+	}
+	if e.clockHandoverCheckpoint != nil {
+		if err := e.clockHandoverCheckpoint(); err != nil {
+			return fmt.Errorf("%w: %v", errTerminalClock, err)
+		}
 	}
 	if err := e.prepareTerminalMonitoring(); err != nil {
 		return fmt.Errorf("%w: %v", errTerminalClock, err)
@@ -200,5 +206,6 @@ func (e *Engine) commitTerminalClock(a *Attempt, change ClockReset) error {
 	if a.State == "ACTIVE" {
 		e.registerTerminalMonitoring(a.ID, *q.NextOwner, q.DeadlineBootMS)
 	}
+	a.ClockHandoverPending = false // Only the actual live supervisor acknowledgement clears it.
 	return nil
 }

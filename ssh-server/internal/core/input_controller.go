@@ -127,7 +127,7 @@ func (g *paneInputGate) arm(drain *paneInputDrain, epoch string, until, deadline
 		return errPaneInputBarrier
 	}
 	now, ok := g.clockLocked()
-	if !ok || until <= now || deadline < until || until-now > 15000 {
+	if !ok || until <= now || deadline < until || until-now > operationTimeoutMS {
 		return errPaneInputBarrier
 	}
 	g.epoch, g.until, g.deadline = epoch, until, deadline
@@ -145,7 +145,7 @@ func (g *paneInputGate) renew(epoch string, until int64) error {
 		g.revokeLocked()
 		return errPaneInputHeld
 	}
-	if epoch != g.epoch || until <= now || until > g.deadline || until-now > 15000 {
+	if epoch != g.epoch || until <= now || until > g.deadline || until-now > operationTimeoutMS {
 		return errPaneInputBarrier
 	}
 	if until > g.until {

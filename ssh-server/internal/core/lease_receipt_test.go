@@ -47,7 +47,7 @@ func TestSignedRenewalLostReplyRecoversExactOriginalCutoffWithoutRenewing(t *tes
 			Attempt   Attempt `json:"attempt"`
 		}
 		data, _ := json.Marshal(result)
-		if json.Unmarshal(data, &receipt) != nil || receipt.Version != 1 || receipt.Nonce != cmd.Nonce || receipt.Until != lease.Until || receipt.Remaining <= 0 || receipt.Remaining > 15000 || receipt.Attempt.ID != finalID || receipt.Attempt.State != "ACTIVE" {
+		if json.Unmarshal(data, &receipt) != nil || receipt.Version != 1 || receipt.Nonce != cmd.Nonce || receipt.Until != lease.Until || receipt.Remaining <= 0 || receipt.Remaining > operationTimeoutMS || receipt.Attempt.ID != finalID || receipt.Attempt.State != "ACTIVE" {
 			t.Fatal("recovery did not preserve the original current renewal", string(data))
 		}
 	}

@@ -19,13 +19,21 @@ source = Path(__file__).with_name('qualification_callbacks.py')
 tree = ast.parse(source.read_text())
 namespace = {'hashlib': hashlib, 'json': json, 'Path': Path, 're': re}
 exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n, ast.FunctionDef)
-                             and n.name in ('fixture_reply','source_fixture_reply','monitoring_fixture_path','execution_policy_reply')], type_ignores=[]),
+                             and n.name in ('fixture_reply','source_fixture_reply','monitoring_fixture_path','execution_policy_reply','clock_fixture_reply')], type_ignores=[]),
              str(source), 'exec'), namespace)
 reply = namespace['fixture_reply']
 source_reply = namespace['source_fixture_reply']
 
 
 class CallbackTests(unittest.TestCase):
+    def test_clock_delivery_is_authenticated_empty_and_bounded_for_standalone_guests(self):
+        request=dict(agent='private-agent',nonce='a'*64,at=1000000,after='')
+        actual=namespace['clock_fixture_reply'](request,'private-agent',1000000)
+        self.assertEqual(actual,dict(type='clock-changes/v1',audience='private-agent',nonce='a'*64,expires=1060000,requests=[],after=''))
+        for patch in ({'agent':'other'},{'nonce':'bad'},{'at':939999},{'after':'../outside'},{'command':'reset-clock'}):
+            with self.subTest(patch=patch),self.assertRaises(AssertionError):
+                namespace['clock_fixture_reply']({**request,**patch},'private-agent',1000000)
+
     def test_execution_policy_uses_exact_current_authored_scope_and_finite_nonce_reply(self):
         policy=dict(schema=1,agent='private-agent',exam='synthetic',instance='a'*32,revision=2,terminals=1,collection_file_mib=2,collection_total_mib=4)
         request=dict(agent='private-agent',exam='synthetic',nonce='b'*64,at=1000000)

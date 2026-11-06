@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { fork, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
@@ -221,7 +222,7 @@ export class IsolatedConnection implements ConnectionHandle {
       }
     });
     this.heartbeat = setInterval(() => {
-      if (performance.now() - this.lastPong > 10000)
+      if (performance.now() - this.lastPong > OPERATION_TIMEOUT_MS)
         this.fail({ cause: "unresponsive", code: null, signal: null });
       else this.post({ kind: "ping" });
     }, 2000);
@@ -315,7 +316,7 @@ export class IsolatedConnection implements ConnectionHandle {
       const timer = setTimeout(
         () =>
           this.fail({ cause: "operation-timeout", code: null, signal: null }),
-        125000,
+        OPERATION_TIMEOUT_MS,
       );
       this.replies.set(id, { resolve, reject, timer });
       this.post({ kind: "rpc", id, op, args });

@@ -129,8 +129,10 @@ per target; accepted intents survive other failures. No implicit all-students ed
 
 IMPORTANT: outer confirmed=true means the GATEWAY accepted the operation only.
 result.confirmed/status and each bulk target identify NATIVE applied versus pending
-or failed. Native SSH heartbeat/signed deadline timing performs delivery outside
-the SQLite transaction. Disconnected intents remain pending, never silently lost.
+or failed. The class agent fetches authorized clock changes every second while
+an attempt is unfinished, independently of student SSH and the old deadline.
+Native SSH also attempts delivery. Network failures remain explicitly pending;
+inspect a fresh clocks show rather than issuing another increase.
 show CLOCK_REQUEST_UUID and fresh web attempts show/native info verify application.
 
 Common flags: --config FILE (default /etc/exam-agent/agent.json), --request UUID.

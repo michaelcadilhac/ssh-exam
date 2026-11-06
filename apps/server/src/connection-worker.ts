@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { EventEmitter } from "node:events";
 import { writeFileSync } from "node:fs";
 import {
@@ -54,7 +55,7 @@ function authorityRequest(message: object): Promise<any> {
           "Gateway authority unavailable; preserve original attempt and retry current status",
         ),
       );
-    }, 5000);
+    }, OPERATION_TIMEOUT_MS);
     authorizations.set(id, { resolve, reject, timer });
     send({ kind: "authority", id, ...message });
   });

@@ -51,7 +51,7 @@ func TestMonitoringLiveConcurrentIdenticalEvidenceHasOneImmutableOutcome(t *test
 		if original.Nonce == "" {
 			original = r.receipt
 		}
-		if r.receipt != original || r.receipt.AcceptedRevision != 2 || r.receipt.UntilUptimeMS != 16000 {
+		if r.receipt != original || r.receipt.AcceptedRevision != 2 || r.receipt.UntilUptimeMS != (1000+monitoringEvidenceWindowMS) {
 			t.Fatal("concurrent retry created a fresh/different outcome", r.receipt)
 		}
 	}
@@ -143,7 +143,7 @@ func TestMonitoringLiveRetiredPublicationCannotLaunchAgainstNewPendingTicket(t *
 	if _, err := publishMonitoringTicket(context.Background(), p.claim, p.state, old, opts); err == nil || launches != 0 {
 		t.Fatal("retired metadata ticket launched against a newer pending operation", err, launches)
 	}
-	if v := p.f.a.check(); !v.ExecutionAuthorized || v.Sequence != 5 || v.AuthorityUntilMS != 17000 || !v.PublicationPending {
+	if v := p.f.a.check(); !v.ExecutionAuthorized || v.Sequence != 5 || v.AuthorityUntilMS != (2000+monitoringEvidenceWindowMS) || !v.PublicationPending {
 		t.Fatal("old ticket changed current live/publication state", v)
 	}
 	if _, err := publishMonitoringTicket(context.Background(), p.claim, p.state, current, monitoringPublishTestOptions("normal")); err != nil {

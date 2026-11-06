@@ -59,12 +59,12 @@ func executionPolicyServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, 
 			return
 		}
 		var q map[string]any
-		if json.Unmarshal(body, &q) != nil || len(q) != 4 || q["agent"] != "class" || q["exam"] != "exam" || q["at"].(float64) < float64(Millis()-30000) || !monitoringDigest.MatchString(q["nonce"].(string)) {
+		if json.Unmarshal(body, &q) != nil || len(q) != 4 || q["agent"] != "class" || q["exam"] != "exam" || q["at"].(float64) < float64(Millis()-operationTimeoutMS) || !monitoringDigest.MatchString(q["nonce"].(string)) {
 			t.Error("unsigned, malformed or incorrectly scoped actual policy request", string(body))
 			w.WriteHeader(403)
 			return
 		}
-		value := map[string]any{"type": "exam-execution-policy", "audience": "class", "nonce": q["nonce"], "expires": Millis() + 30000, "policy": executionPolicyFixture()}
+		value := map[string]any{"type": "exam-execution-policy", "audience": "class", "nonce": q["nonce"], "expires": Millis() + operationTimeoutMS, "policy": executionPolicyFixture()}
 		reply(value)
 		signed, err := json.Marshal(value)
 		if err != nil {
@@ -103,7 +103,7 @@ func TestExecutionPolicyAuthenticatedFreshAndMonotonic(t *testing.T) {
 		case "expired":
 			reply["expires"] = Millis() - 1
 		case "long":
-			reply["expires"] = Millis() + 60000
+			reply["expires"] = Millis() + operationTimeoutMS + 2000
 		case "extra":
 			reply["extra"] = true
 		case "signature":

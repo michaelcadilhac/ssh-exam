@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
@@ -7,6 +8,7 @@ import {
   observeNativeMonitoring,
   nativeContinuationOutcomeRecorded,
   retiredNativeMonitoringObservation,
+  sameExitedLifetime,
 } from "./native-monitoring-state.js";
 import {
   FOCUS_GRACE_MS,
@@ -446,6 +448,11 @@ export class Lifecycle {
         remote.uid !== a.uid)
     )
       throw Error("Agent attempt identity mismatch");
+    if (
+      remote.clock_handover_pending !== undefined &&
+      typeof remote.clock_handover_pending !== "boolean"
+    )
+      throw Error("Invalid native clock handover status");
     const currentRevision = a.clock_revision || 0;
     const revision = remote.clock_revision || 0;
     if (!Number.isSafeInteger(revision) || revision < 0)
@@ -511,16 +518,12 @@ export class Lifecycle {
           .run(original, deadline, revision, JSON.stringify(resets), id);
         this.store.audit(
           "class-agent",
-          "clock-reset-confirmed",
+          remote.clock_handover_pending
+            ? "clock-reset-recorded"
+            : "clock-reset-confirmed",
           id,
           JSON.stringify(resets.slice(currentRevision)),
         );
-        for (const reset of resets)
-          this.store.db
-            .prepare(
-              "UPDATE clock_reset_requests SET status='applied' WHERE id=? AND attempt=?",
-            )
-            .run(reset.id, id);
         if (
           a.state === "FINALIZING" &&
           [
@@ -541,6 +544,35 @@ export class Lifecycle {
             .run(id);
         }
         this.onClockChanged(this.store.attempt(id));
+      }
+    }
+    // Disk publication precedes live handover. Its later acknowledgement can
+    // have the SAME revision; keep dispatch retryable until that exact history
+    // is acknowledged rather than treating the durable row as live success.
+    if (
+      a.start &&
+      remote.start &&
+      revision > 0 &&
+      remote.clock_resets !== undefined
+    ) {
+      const recorded = JSON.parse(this.store.attempt(id).clock_resets || "[]");
+      if (!isDeepStrictEqual(recorded, remote.clock_resets))
+        throw Error("Conflicting clock reset history");
+      for (const reset of recorded) {
+        if (remote.clock_handover_pending && reset.revision === revision)
+          continue;
+        const result = this.store.db
+          .prepare(
+            "UPDATE clock_reset_requests SET status='applied' WHERE id=? AND attempt=? AND status='pending'",
+          )
+          .run(reset.id, id);
+        if (result.changes && revision === currentRevision)
+          this.store.audit(
+            "class-agent",
+            "clock-reset-confirmed",
+            id,
+            JSON.stringify([reset]),
+          );
       }
     }
     // Command responses may already have advanced state before older queued callbacks arrive.
@@ -569,8 +601,8 @@ export class Lifecycle {
       exited.success &&
       registered.success &&
       currentOwner &&
-      isDeepStrictEqual(exited.data, registered.data) &&
-      isDeepStrictEqual(exited.data, JSON.parse(currentOwner))
+      sameExitedLifetime(exited.data, registered.data) &&
+      isDeepStrictEqual(registered.data, JSON.parse(currentOwner))
         ? this.onSSHExited(this.store.attempt(id), exited.data)
         : false;
     if (
@@ -1337,9 +1369,9 @@ export class Lifecycle {
       else if (
         a.monitoring_mode !== "v1" &&
         a.state === "ACTIVE" &&
-        now() - (a.last_contact || 0) > 15000
+        now() - (a.last_contact || 0) > OPERATION_TIMEOUT_MS
       )
-        await this.lock(a.id, "Client contact exceeded 15 seconds");
+        await this.lock(a.id, "Client contact exceeded 60 seconds");
     }
     // There is no disconnected command polling. The agent reports authoritative results.
   }

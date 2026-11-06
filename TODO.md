@@ -1,4 +1,22 @@
-# Current follow-up — pending-clock SSH recovery fixes DEPLOYED
+# Current follow-up — timer controls and sixty-second timeouts IN PROGRESS
+
+November 5: requested operational timeouts of sixty seconds, immediate allowance
+increases, an instructor timer-pause control and configurable resume validity,
+including no expiry. Development/testing/deployment authorized, including with
+instructor sessions signed in. Student work/history and native enforcement remain
+protected. Approved: pause the countdown while allowing monitored work; customize
+Allow resume approval validity, including no expiry, without changing new-attempt
+start-window policy. Dependency plan,
+acceptance and delivery investigation: docs/timer-controls-followup.md.
+Sixty-second operational timeouts and authenticated prompt clock delivery are
+implemented and tested locally. Failed live clock handover stays retryable;
+verified SSH loss across a clock-only revision supports saved-file recovery on
+the same attempt without adding time. Final regression/release qualification is
+in progress. Timer pause and resume-expiry controls are next, using the approved
+semantics. Nothing from
+this follow-up is deployed.
+
+# Previous follow-up — pending-clock SSH recovery fixes DEPLOYED
 
 November5: webc5f95f7/image5d9d429e and natived744e5b deployed under explicit urgent
 authorization/login/broad-test waiver, with separate explicit native-install

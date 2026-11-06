@@ -1,6 +1,6 @@
-export const FOCUS_GRACE_MS = 20_000;
+export const FOCUS_GRACE_MS = 60_000;
 export const FOCUS_GRACE_REASON =
-  "Browser focus did not return within 20 seconds";
+  "Browser focus did not return within 60 seconds";
 
 export function focusGraceSeconds(lostAt: number | null, time: number) {
   return lostAt === null

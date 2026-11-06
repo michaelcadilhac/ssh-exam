@@ -58,7 +58,7 @@ func (s *terminalSupervisor) observation() TerminalSupervisorObservation {
 		v.MonitoringMode = "v1"
 		if p := runtime.resume; p != nil && runtime.resumeNonce != p.Nonce {
 			now, err := monitoringBootMillis()
-			v.PendingResume = &terminalResumeObservation{Generation: p.Owner.Generation, ExpiresBootMS: p.IssuedBootMS + 15000, Expired: err == nil && now >= p.IssuedBootMS+15000, ClockUnknown: err != nil || now < p.IssuedBootMS}
+			v.PendingResume = &terminalResumeObservation{Generation: p.Owner.Generation, ExpiresBootMS: p.IssuedBootMS + monitoringEvidenceWindowMS, Expired: err == nil && now >= p.IssuedBootMS+monitoringEvidenceWindowMS, ClockUnknown: err != nil || now < p.IssuedBootMS}
 		}
 		for unit := range runtime.launches {
 			if _, attached := s.requests[unit]; !attached {

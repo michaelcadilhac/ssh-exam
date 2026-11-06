@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Guarded, forward-only installation of a frozen four-binary native cohort.
+"""Guarded, forward-only installation of a frozen native cohort.
 
 Run only after the matched web controller has stopped the drained gateway.
-This never cancels an attempt, changes configuration, restores data or restarts SSH.
+The exact monitoring-timeouts-v2 scope also replaces the relay and its timeout
+snippet, preserving its existing trust/configuration/service files. Other scopes
+retain the original four binaries and untouched relay. This never cancels an
+attempt, restores data or restarts SSH.
 """
 import argparse
 import contextlib
@@ -31,6 +34,8 @@ START = ["exam-deadline-watchdog.service", "exam-source-setup.service", "exam-ag
 CONFIG = Path("/etc/exam-agent/agent.json")
 CLI_CONFIG = Path("/etc/exam-agent/examctl.json")
 RELAY = Path("/usr/local/libexec/exam-ssh-relay")
+RELAY_PRESERVE = [Path("/etc/exam-relay/config.json"), Path("/etc/exam-relay/gateway.pub"), Path("/etc/systemd/system/exam-ssh-relay.service")]
+RELAY_NGINX = Path("/etc/nginx/snippets/exam-ssh-relay.conf")
 GUARD_SHA256 = "3a49907d8b99b6994f2646d1b5cf066d608c55c0398cd63417e7de0ef6f6ff56"
 DIGEST = re.compile(r"^[a-f0-9]{64}$")
 OWNER_UID = 0
@@ -112,10 +117,21 @@ class Native:
         self.release = read_json(self.stage / "release.json")
         self.update = self.release["native_update"]
         assert self.release["schema"] == 37
+        self.relay_update = self.release["fast_ui"].get("reviewed_scope") == "monitoring-timeouts-v2"
+        self.targets = dict(TARGETS)
+        self.stop_units, self.start_units = list(STOP), list(START)
+        if self.relay_update:
+            self.targets["exam-ssh-relay"] = str(RELAY)
+            self.stop_units.append("exam-ssh-relay.service")
+            self.start_units.append("exam-ssh-relay.service")
+            relay = self.update["relay"]
+            assert set(relay["preserve_sha256"]) == {str(p) for p in RELAY_PRESERVE}
+            assert all(DIGEST.fullmatch(v) for v in relay["preserve_sha256"].values())
+            assert DIGEST.fullmatch(relay["nginx_before_sha256"]) and DIGEST.fullmatch(relay["nginx_after_sha256"])
         uuid.UUID(self.update["nonce"])
         for side in ("before", "after"):
             values = self.update[side]["binary_sha256"]
-            assert set(values) == set(TARGETS) and all(DIGEST.fullmatch(v) for v in values.values())
+            assert set(values) == set(self.targets) and all(DIGEST.fullmatch(v) for v in values.values())
         assert self.update["after"]["worker_cli_sha256"] == self.update["after"]["binary_sha256"]["examctl"]
         assert self.update["guard_sha256"] == digest(self.stage / "native-guard.py")
         assert fixture or self.update["guard_sha256"] == GUARD_SHA256, "Unqualified production guard"
@@ -139,9 +155,23 @@ class Native:
             info = path.lstat()
             assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and info.st_uid == os.geteuid() and not info.st_mode & 0o022
             assert 0 < info.st_size <= 128 * 1024 * 1024 and digest(path) == value, "Frozen candidate changed"
+        if self.relay_update:
+            path = self.stage / "relay-nginx.conf"
+            private(path)
+            assert digest(path) == self.update["relay"]["nginx_after_sha256"], "Frozen relay proxy configuration changed"
 
     def preserved(self):
         assert digest(CONFIG) == self.release["native_config_sha256"] and digest(CLI_CONFIG) == self.release["cli_config_sha256"], "Configuration changed"
+        if self.relay_update:
+            for path in RELAY_PRESERVE:
+                assert digest(path) == self.update["relay"]["preserve_sha256"][str(path)], "Relay trust/configuration changed"
+            relay = self.update["relay"]
+            info = RELAY_NGINX.lstat()
+            assert stat.S_ISREG(info.st_mode) and info.st_uid == OWNER_UID and not info.st_mode & 0o022 and info.st_nlink == 1, "Unsafe relay proxy target"
+            allowed = {relay["nginx_before_sha256"]} if self.record["phase"] in ("STAGED", "STOPPING", "STOPPED", "BACKED_UP") else {relay["nginx_after_sha256"]}
+            if self.record["phase"] == "INSTALLING":
+                allowed.add(relay["nginx_before_sha256"])
+            assert digest(RELAY_NGINX) in allowed, "Relay proxy differs from this installation phase"
         data = json.loads((self.state / "state.json").read_bytes())
         assert hashlib.sha256(canonical(data["attempts"])).hexdigest() == self.release["native_history_sha256"], "Attempt history changed"
         now = int(datetime.datetime.now().timestamp() * 1000)
@@ -157,14 +187,14 @@ class Native:
 
     def binaries(self, side):
         expected = self.update[side]["binary_sha256"]
-        for name, path in TARGETS.items():
+        for name, path in self.targets.items():
             info = Path(path).lstat()
             assert stat.S_ISREG(info.st_mode) and info.st_uid == OWNER_UID and stat.S_IMODE(info.st_mode) == 0o755 and digest(path) == expected[name], "Installed cohort differs: " + name
         return expected
 
     def pids(self):
         values = {name: int(unit(name)["MainPID"]) for name in ROLES}
-        values["exam-ssh-relay.service"] = 0 if self.fixture else int(unit("exam-ssh-relay.service")["MainPID"])
+        values["exam-ssh-relay.service"] = 0 if self.fixture and not self.relay_update else int(unit("exam-ssh-relay.service")["MainPID"])
         return values
 
     def guard(self, after=False):
@@ -178,6 +208,8 @@ class Native:
         plan.mkdir(mode=0o700, exist_ok=True)
         private(plan, directory=True)
         proof = {**self.release, "agent_sha256": values["binary_sha256"]["exam-agent"], "old_cli_sha256": values["binary_sha256"]["examctl"], "cli_sha256": values["binary_sha256"]["examctl"], "worker_cli_sha256": values["worker_cli_sha256"], "service_pids": self.record["service_pids"] if after else values["service_pids"]}
+        if self.relay_update:
+            proof["relay_sha256"] = values["binary_sha256"]["exam-ssh-relay"]
         atomic(plan / "release.json", canonical(proof))
         atomic(plan / "native-guard.py", (self.stage / "native-guard.py").read_bytes())
         previous = sys.argv
@@ -198,7 +230,7 @@ class Native:
 
     def stopped(self):
         self.preserved()
-        for name in STOP:
+        for name in self.stop_units:
             value = unit(name)
             assert value["ActiveState"] == "inactive" and int(value.get("MainPID", "0")) == 0, "Native writer remains: " + name
         assert not any(line.rstrip().endswith(self.config["socket"]) for line in Path("/proc/net/unix").read_text().splitlines()[1:]), "Native socket owner remains"
@@ -218,10 +250,10 @@ class Native:
             self.guard()
             self.save("STOPPING")
         assert self.record["phase"] in ("STOPPING", "STOPPED")
-        for name in ROLES:
+        for name in [*ROLES, *(["exam-ssh-relay.service"] if self.relay_update else [])]:
             assert int(unit(name)["MainPID"]) in (0, self.update["before"]["service_pids"][name]), "Unreviewed service replacement"
         self.binaries("before")
-        command(["/usr/bin/systemctl", "stop", *STOP])
+        command(["/usr/bin/systemctl", "stop", *self.stop_units])
         self.stopped()
         self.save("STOPPED")
 
@@ -255,7 +287,9 @@ class Native:
             os.close(descriptor)
 
     def backup_paths(self):
-        paths = [self.state, self.work, CONFIG.parent, Path("/etc/ssh"), Path("/etc/pam.d"), Path("/etc/security"), Path("/etc/shells"), *map(Path, TARGETS.values()), *map(Path, ("/usr/local/sbin/exam-account-policy", "/usr/local/sbin/exam-check-isolation", "/usr/local/bin/exam-control", "/usr/local/sbin/exam-principals"))]
+        paths = [self.state, self.work, CONFIG.parent, Path("/etc/ssh"), Path("/etc/pam.d"), Path("/etc/security"), Path("/etc/shells"), *map(Path, self.targets.values()), *map(Path, ("/usr/local/sbin/exam-account-policy", "/usr/local/sbin/exam-check-isolation", "/usr/local/bin/exam-control", "/usr/local/sbin/exam-principals"))]
+        if self.relay_update:
+            paths += [*RELAY_PRESERVE, RELAY_NGINX]
         for name in ("gateway_public_key", "callback_key", "handoff_ca"):
             if self.config.get(name):
                 path = Path(self.config[name])
@@ -274,14 +308,17 @@ class Native:
         self.stopped()
         self.check_backup()
         self.inputs()
-        for name, path in TARGETS.items():
+        for name, path in self.targets.items():
             info = Path(path).lstat()
             assert stat.S_ISREG(info.st_mode) and info.st_uid == OWNER_UID and not info.st_mode & 0o022
             assert digest(path) in (self.update["before"]["binary_sha256"][name], self.update["after"]["binary_sha256"][name]), "Unknown partially installed binary"
         self.save("INSTALLING")
-        for name, path in TARGETS.items():
+        for name, path in self.targets.items():
             if digest(path) != self.update["after"]["binary_sha256"][name]:
                 atomic(Path(path), (self.stage / "native" / name).read_bytes(), 0o755)
+        if self.relay_update:
+            atomic(RELAY_NGINX, (self.stage / "relay-nginx.conf").read_bytes(), 0o644)
+            command(["/usr/sbin/nginx", "-t"])
         self.binaries("after")
         self.save("INSTALLED")
 
@@ -293,8 +330,11 @@ class Native:
         if self.record["phase"] == "INSTALLED":
             self.stopped()
         self.save("STARTING")
-        for name in START:
+        for name in self.start_units:
             command(["/usr/bin/systemctl", "start", name])
+        if self.relay_update:
+            command(["/usr/sbin/nginx", "-t"])
+            command(["/usr/bin/systemctl", "reload", "nginx.service"])
         until = time.monotonic() + 20
         while True:
             try:
@@ -329,6 +369,11 @@ class Native:
             assert value["ActiveState"] == "active" and pid > 1, "Native service failed during startup"
             expected = self.update["after"]["binary_sha256"]["examctl" if name == "exam-source-setup.service" else "exam-agent"]
             assert digest(Path("/proc") / str(pid) / "exe") == expected, "Stale loaded native role: " + name
+        if self.relay_update:
+            value = unit("exam-ssh-relay.service")
+            pid = int(value["MainPID"])
+            assert value["ActiveState"] == "active" and pid > 1, "Relay failed during startup"
+            assert digest(Path("/proc") / str(pid) / "exe") == self.update["after"]["binary_sha256"]["exam-ssh-relay"], "Stale loaded relay"
 
     def files_identity(self):
         hashes = []
@@ -345,7 +390,9 @@ class Native:
         self.health()
         assert self.files_identity() == self.record["files_sha256"], "Protected files, work or account metadata changed"
         pids = self.pids()
-        assert pids == self.record["service_pids"] and pids["exam-ssh-relay.service"] == self.update["before"]["service_pids"]["exam-ssh-relay.service"]
+        assert pids == self.record["service_pids"]
+        if not self.relay_update:
+            assert pids["exam-ssh-relay.service"] == self.update["before"]["service_pids"]["exam-ssh-relay.service"]
         proof = {"nonce": self.update["nonce"], "phase": "NATIVE_MATCHED_VERIFIED", "binary_sha256": self.update["after"]["binary_sha256"], "service_pids": pids, **{k: self.release[k] for k in ("native_history_sha256", "native_config_sha256", "cli_config_sha256")}}
         proof["history_sha256"] = proof.pop("native_history_sha256")
         proof["config_sha256"] = proof.pop("native_config_sha256")

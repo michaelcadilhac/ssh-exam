@@ -222,7 +222,7 @@ it("a restarted gateway renews only overlapping live native coverage, preserving
     expect(empty.statusCode).toBe(409); // Disk identity cannot reconstruct facts.
     await capture();
 
-    for (const [index, nativeNow] of [3000, 7000, 12000].entries()) {
+    for (const [index, nativeNow] of [3000, 11000, 12000].entries()) {
       const vector = data + `/authority-${index}.json`,
         jwk = keys.publicKey.export({ format: "jwk" });
       writeFileSync(
@@ -326,11 +326,11 @@ it("a restarted gateway renews only overlapping live native coverage, preserving
           JSON.stringify({ frame: response.json(), now: nativeNow }),
         );
         const result = await next();
-        expect(result.accepted).toBe(index === 0);
+        expect(result.accepted).toBe(index < 2);
         expect(result.view).toMatchObject({
           DeadlineUptimeMS: 90000,
           CoverageEpoch: prior.coverage_epoch,
-          AuthorityUntilMS: index === 0 ? 17000 - facts.age_ms : 12000,
+          AuthorityUntilMS: index < 2 ? 62000 - facts.age_ms : 12000,
           ExecutionAuthorized: index < 2,
         });
         expect(await closed).toBe(0);

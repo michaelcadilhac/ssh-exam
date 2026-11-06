@@ -483,7 +483,7 @@ async function activeEvidenceFixture(
     bootstrapReply = JSON.parse(bytes.toString());
     expect(bootstrapReply).toMatchObject({
       type: "grant-begin/v3",
-      bootstrap: { type: "monitoring-bootstrap/v1", owner, sequence: 1 },
+      bootstrap: { type: "monitoring-bootstrap/v2", owner, sequence: 1 },
     });
     expect(f.store.attempt(f.id)).toEqual(prepared);
     expect(
@@ -683,7 +683,7 @@ it("partial technical recovery retries the exact accepted prior seed while prese
       );
       expect(reply.bootstrap.coverage_epoch).toBe(evidence.coverage_epoch);
       expect(reply.capture_valid_for_ms).toBeGreaterThan(0);
-      expect(reply.capture_valid_for_ms).toBeLessThanOrEqual(15000);
+      expect(reply.capture_valid_for_ms).toBeLessThanOrEqual(60000);
       // Canonical outcome has not completed yet: new real capture must retain
       // the positively witnessed held owner instead of retiring its live ledger.
       const a = f.store.attempt(f.id),
@@ -1164,7 +1164,7 @@ it("signed files-only bootstrap binds the new connection/page, original owner, c
       bootstrap: { owner, sequence: 1 },
     });
     expect(proof.capture_valid_for_ms).toBeGreaterThan(0);
-    expect(proof.capture_valid_for_ms).toBeLessThanOrEqual(15000);
+    expect(proof.capture_valid_for_ms).toBeLessThanOrEqual(60000);
     expect(f.store.attempt(f.id)).toMatchObject({
       state: "LOCKED",
       start: original.start,
@@ -1696,7 +1696,7 @@ it("actual challenged JPEG and native authenticated HTTP issue scoped live evide
     ).toBe(true);
     const evidence = JSON.parse(payload.toString());
     expect(evidence).toMatchObject({
-      type: "monitoring-execution-evidence-v1",
+      type: "monitoring-execution-evidence-v2",
       audience: "class",
       owner: f.owner,
       nonce: f.challenge.nonce,

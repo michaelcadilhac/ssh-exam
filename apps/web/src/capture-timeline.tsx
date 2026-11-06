@@ -1,3 +1,4 @@
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import React, {
   useCallback,
   useEffect,
@@ -96,7 +97,10 @@ function CaptureView({
         const response = await fetch(
           `/api/admin/attempts/${encodeURIComponent(attempt)}/videos/${encodeURIComponent(segment)}`,
           {
-            signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]),
+            signal: AbortSignal.any([
+              abort.signal,
+              AbortSignal.timeout(OPERATION_TIMEOUT_MS),
+            ]),
             cache: "no-store",
           },
         );
