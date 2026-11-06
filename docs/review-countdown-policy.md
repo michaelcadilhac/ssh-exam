@@ -1,7 +1,8 @@
 # Exam-wide countdown pause during review
 
-November 6, 2026. Implemented and tested locally; release qualification in progress.
-Production remains unchanged until the guarded matched rollout completes.
+November 6, 2026. PUSHED, DEPLOYED AND ONLINE at 19:24:15 UTC (13:24 Chicago).
+Runtime source c62f0cc includes the prior automatic-resume commit 0fd1289.
+Existing exam definitions remain off by default; no student setting was changed.
 
 In **Exam settings**, enable **Pause countdown while instructor review is needed**.
 It is off by default. This is a live exam-wide policy, separate from saved attempt
@@ -63,3 +64,55 @@ rollout reloads that role. Relay/SSH remain running. Reopening requires signed
 readiness, current-data preservation, exact loaded binaries and public acceptance.
 Recovery is forward with current data and the matched candidate; older writers
 must not reopen. Original snapshots and shared media recovery coverage are retained.
+
+## Deployed release and recovery
+
+Full application qualification: **840 pass, one existing opt-in skip**, 142 files,
+396.97 seconds. Exact image schema-37 smoke and real delayed signed startup pass:
+63.05 seconds against a 62-second synthetic publisher, with due purge/tombstones,
+60-second nonces, 41 preservation contracts and CURRENT-data recovery without
+another start or replacing the original snapshot. Matched controller47 and
+historical proof-repair5 pass. Actual guarded four-binary installation, three
+reloaded roles, live policy, pane/collection/clock checks pass. Independent cleanup
+confirms the exact guest unit inactive/MainPID0/exit0, no owned processes, unchanged
+host/base files and student authority. Unchanged proxy templates reuse the actual
+0.220-second master-reload qualification from timer-controls.20261105a.
+
+The release image Config is `sha256:2ff55a02b9618001e3254c0da5d6335ebf523d43ee5860da1875ad8702cacf84`;
+its exported manifest Config and rootfs layers are bound to the local source image.
+CLI SHA256 is `0ed88c8d42584b0b0978f4aca2fd5fdd58fc28ed09e2d0867c39c4284a5802cb`.
+The other three native binaries are byte-identical to their previously installed
+versions. The four-file guarded procedure reloads the saved-work worker to match
+the new installed CLI. Relay PID910635 and its binary remain unchanged; SSH was
+not restarted. No schema/configuration/permission migration was needed.
+
+Online preparation took10.35 seconds. The existing1,047,562,391 recording bytes
+were verified/reused, with zero new media objects/copies. The current stopped web
+snapshot contains126,509,056 database bytes plus343,358 nonmedia bytes; the fresh
+native backup is206,120,960 bytes. Both original snapshots remain intact.
+Maintenance lasted184.05 seconds, with no unexpected cutover failure or rollback.
+Public TLS/eight assets, readiness/notifications, exact installed/loaded cohort,
+actual signed read-only examctl and CLI help pass. All41 preservation contracts
+passed before reopening; recording pause is RELEASED. Extra read-only acceptance
+initially used an unsupported help spelling/wrong background-status field, then
+incorrectly reran the idle-only preservation oracle after its own signed CLI read.
+Those receipt mistakes were corrected against the real interfaces; production
+and enforcement were unchanged. The recorded pre-reopening proof remains intact.
+
+Release preparation/feature work was already underway before the18:43:08UTC timing
+marker: the exact instruction-to-completion elapsed time was not captured and is
+not claimed. From that marker to reopening was41m07s, including remaining feature
+qualification, real CLI corrections, artifact build and installation rehearsal;
+maintenance is reported separately above. This was a matched feature release, not
+an already-prepared UI-only cutover.
+
+Private deployment state/artifacts:
+
+- Web stage: `/var/tmp/ssh-exam-review-countdown-20261106-c62f0cc-12c6f172-web` on marco.
+- Web state: `/data/ssh-exam-review-countdown-20261106-c62f0cc-12c6f172-state`, phase ONLINE.
+- Native stage: `/var/tmp/ssh-exam-review-countdown-20261106-c62f0cc-12c6f172-native`, phase VERIFIED.
+
+Recovery preserves CURRENT data and the matched candidate; never restore an old
+snapshot over subsequent authority or reopen older writers. Use the existing
+qualified controller resume/current-data forward repair if needed. No pending
+release action or policy question remains. Original dirty screenshots are preserved.

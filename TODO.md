@@ -1,21 +1,15 @@
-# Current follow-up — pause countdown during instructor review IN PROGRESS
+# Current follow-up — exam-wide review pause and automatic countdown resume DEPLOYED
 
-November6: add exam-wide setting, default off, with matching UI/examctl. Enabled
-review holds use the existing pause/resume-on-work clock workflow; preserve
-manual overrides, original intervals, history, holds and monitoring. Implement,
-test, PUSH and DEPLOY this and0fd1289 under the existing safe release process.
-Plan/acceptance: docs/todo-current-checkpoint.md. Production unchanged so far.
-
-# Current follow-up — automatic countdown resume IMPLEMENTED/TESTED LOCALLY
-
-November6: Pause countdown for a stopped student offers automatic countdown
-resume when Resume exam succeeds. Manual pause remains the default. Sign-in,
-approval and failed restoration/input acknowledgement do not start it. Exact
-pause/causal-event binding, restart, pending time edits and manual override are
-covered. CLI: web clocks pause-timer --resume-on-work. Full application829pass /
-3existing opt-in skips; CLI/core clock races, build/types and3desktop/mobile
-browser workflows pass. Details: docs/attempt-clock-management.md. Committed
-locally; not pushed or deployed. Production remains on the baseline below.
+November6: **Pause countdown while instructor review is needed** in Exam settings,
+off by default, with matching examctl --pause-on-review on|off. Eligible real review
+holds use existing signed pause/resume-on-work; manual overrides, technical recovery,
+history, original intervals, account holds and monitoring remain protected. Prior
+optional automatic resume is included. Runtimec62f0cc/imageConfig2ff55a02 deployed
+19:24:15UTC. Full840pass/1existing opt-in skip, actual CLI/TLS, native races, nine
+browsers, exact-image startup/current-data recovery and guarded installer pass.
+Public/loaded-role/41-contract preservation acceptance pass; site ONLINE, no
+student setting changed. Maintenance184.05s; recordings reused with zero media
+copies. Details: docs/review-countdown-policy.md and current checkpoint.
 
 # Current follow-up — timer controls and sixty-second timeouts DEPLOYED
 

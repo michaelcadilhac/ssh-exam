@@ -1,81 +1,38 @@
-# Current milestone — exam-wide review countdown policy
+# Current checkpoint — review countdown policy DEPLOYED AND ONLINE
 
-November6: user explicitly authorizes implementation, PUSH and DEPLOY of the
-new exam-wide setting plus prior local automatic-resume commit0fd1289. Admin-only
-sessions do not block an otherwise safe drain. Production has not changed yet.
-Preserve original screenshots, protected history, deadlines and account holds.
+November6,13:24:15Chicago /19:24:15UTC. User-authorized push/deploy completed.
+Runtimec62f0cc includes prior local0fd1289 automatic countdown resume. Image Config
+2ff55a02b9618001e3254c0da5d6335ebf523d43ee5860da1875ad8702cacf84/schema37.
+No new production migration/student setting change. Existing exam policies stay off.
 
-Bounded plan: (1) shared exam-definition setting, separate from immutable grant
-settings/hash; UI wording Pause countdown while instructor review is needed,
-default off; CLI create/update/show support. (2) Gateway/native-observed review
-holds queue the existing audited pause+resume-on-work clock intent; manual pause
-and resume remain explicit overrides, repeated holds/restart do not duplicate.
-No new native execution mechanism, schema or automatic reopening. (3) focused
-HTTP/signed-callback/CLI/restart/manual-override regressions, native clock/CLI
-races, build/types/browser; full application once sources frozen. (4) freeze exact
-web/CLI and qualify existing guarded matched deployment/startup/current-data
-recovery before fencing; reuse proven backups, deploy and accept, then close.
+**Exam settings → Pause countdown while instructor review is needed** queues an
+existing signed native-confirmed timer pause, resuming only on successful student
+Resume exam. Current eligible holds are handled from enable time, without refunds.
+Manual clock choices and technical-only recovery are preserved. CLI: web exams
+show/update --pause-on-review on|off; optional manual pause uses --resume-on-work.
+No new native execution mechanism or schema. Details: review-countdown-policy.md.
 
-Enabling handles currently stopped eligible attempts from now (no backdated
-refund); disabling prevents new automatic pauses and leaves committed pauses
-until normal work resumption/manual clock action. Native confirmation remains
-authoritative; unavailable/delayed delivery remains pending, never permission.
-Local implementation is qualified: focused33, actual opt-in root-mapped CLI/TLS,
-full CLI/affected native clock races, nine current-asset browsers, types/build,
-47 matched-controller and five historical proof-repair tests pass. Previous skipped
-CLI run is not counted. Runtime sources are frozen for full suite/image/native
-installation/startup qualification. Details: review-countdown-policy.md.
-Evidence: var/collection-tests/review-countdown.20261106/.
+Verification: full840app pass/1existing opt-in skip, actual compiled root CLI/TLS,
+full CLI/affected native-clock races, nine current-asset browser workflows, types/
+build; matched-controller47 and historical proof-repair5 pass. Exact image smoke,
+real delayed startup/current-data recovery and guarded actual four-binary install
+pass. Guest independently inactive/MainPID0/exit0/no owned processes, host/base/
+authority unchanged. Public TLS/eight assets, ready/notifications, installed/loaded
+roles, signed CLI/help and all41pre-reopening preservation contracts pass. Original
+snapshots retained. Video pause RELEASED. SSH/relay remained running, relay PID910635.
 
---- Previous local milestone and deployed recovery baseline ---
+Evidence: var/collection-tests/review-countdown.20261106/ (release.json,
+locations.json, operator-freeze.json, image-export.json, phase receipts, acceptance).
+Web stage /var/tmp/ssh-exam-review-countdown-20261106-c62f0cc-12c6f172-web
+on marco; state /data/ssh-exam-review-countdown-20261106-c62f0cc-12c6f172-state,
+phase ONLINE. Native stage /var/tmp/ssh-exam-review-countdown-20261106-c62f0cc-12c6f172-native
+on csc-sys, VERIFIED. Fresh current private native backup retained there.
+Previous timer release/recovery baseline is in docs/timer-controls-followup.md and
+var/collection-tests/timer-controls.20261105a/; do not replace either original snapshot.
 
-# Current checkpoint — automatic countdown resume COMPLETE LOCALLY
-
-November6. The requested option is implemented/tested and committed locally;
-no open design choice or blocker remains. Not pushed/deployed; no new production
-authorization was given. Deployed baseline remains5ed57ca/Config1942b7f9,
-pushed through d800db8 before this new request. Original screenshots preserved.
-
-## Delivered workflow and verification
-
-For a stopped student's Pause countdown action, the optional checkbox starts the
-saved countdown only after successful Resume exam/input agreement. Off by default;
-working students keep direct manual pause. CLI pause-timer --resume-on-work uses
-the same audited policy. Sign-in/approval/failures/older events cannot trigger it.
-Exact pause identity plus a causal audit boundary protects same-timestamp cases.
-Retries, restart, queued time edits and manual override preserve the original
-successful-resumption instant; completion cannot reopen. Monitoring/holds and
-original interval remain unchanged. No schema/native execution change.
-
-Evidence: var/collection-tests/timer-resume-on-work.20261106/.
-- application-final.log:829pass/3existing opt-in skips,414.29s, including actual
-  compiled root-mapped CLI/TLS workflow. Prior828pass/1ordinary Begin timeout is
-  retained; unchanged isolated case passes6.11s and clean full retry passes.
-- focused-final.log:22pass, including real student Continue and failed native /
-  browser acknowledgement. Native restoration/input acknowledgements simulated.
-- cli-race.log, clock-core-race.log:fullCLI / affected native clock races pass.
-- browser-final.log:3desktop/mobile flows pass; build/types pass.
-No fresh privileged automatic-resume/release-installation claim. Existing native
-execution is unchanged. Details/policy/inspection/recovery: attempt-clock-management.md.
-The final delivery-comment correction changes no tested runtime behavior.
-
-Next only upon explicit instruction: push and/or prepare a qualified matched web/
-CLI release with existing safe installation/recovery procedures. No deployment
-was attempted for this follow-up. The site remains on its prior verified release.
-
-## Prior production recovery baseline
-
-
-Evidence: var/collection-tests/timer-controls.20261105a/; release.json,
-locations.json, operator-freeze.json, proof-repair-stage.json, per-phase receipts,
-public/native/web-acceptance.json. Runtime/image/native bytes remain frozen.
-Web stage /var/tmp/ssh-exam-timers-20261106-5ed57ca-b891904a-web on marco;
-state /data/ssh-exam-timers-20261106-5ed57ca-b891904a-state, phase ONLINE.
-Separate repair /var/tmp/ssh-exam-timers-proof-repair.7to602ug preserves original
-controller/proof and retains repair-receipt.json. Native stage on csc-sys:
-/var/tmp/ssh-exam-timers-20261106-5ed57ca-b891904a-native, VERIFIED.
-Original private backups retained. Recovery is compatible forward repair using
-CURRENT data and the matched cohort, never historical DB restore/old writers.
-
-Ten pre-existing dirty docs/screenshots files remain untouched/uncommitted.
-No optional production cleanup or additional feature work is part of this task.
+Maintenance184.05s, no unexpected cutover failure. Online preparation10.35s reused
+1.05GB recording recovery coverage with zero new media copies. Exact total since
+instruction was not captured; the18:43:08UTC marker was late,41m07s before reopening.
+Recovery: CURRENT data plus matched candidate, qualified forward resume; no older
+writer reopening or historical DB restore. No pending deployment task or decision.
+Ten original dirty docs/screenshots files remain untouched/uncommitted.
