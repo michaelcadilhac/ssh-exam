@@ -303,3 +303,61 @@ it("contains an exception in a proxy event listener and clears teardown even whe
     await h.close();
   }
 });
+
+it("isolated browser diagnostics survive the actual IPC whitelist and a failed reporting sink", async () => {
+  const h = await hosts({ mfaDelayMs: 10 });
+  h.control.command = async (op, body) =>
+    op === "register"
+      ? {}
+      : op === "health"
+        ? { ready: true }
+        : h.agent.call(op, body);
+  const config: any = {
+    mode: "development",
+    jump: h.jump,
+    class: h.class,
+    agent: h.agentConfig,
+  };
+  const c = new IsolatedConnection(
+    "student",
+    "e",
+    config,
+    new Agent(config.agent),
+  );
+  try {
+    await c.connect(async (_h, _t, p) => p.map(() => "shared-password"));
+    const messages: any[] = [];
+    const post = vi.spyOn(c, "post").mockImplementation((v) => {
+      messages.push(v);
+    });
+    expect(
+      c.receive({
+        type: "browser-diagnostic",
+        diagnostic: { stage: "relay-ready", cause: "timeout" },
+      }),
+    ).toBe(true);
+    expect(messages.at(-1)?.message.type).toBe("browser-diagnostic");
+    post.mockRestore();
+    const diagnostic = {
+      stage: "connect",
+      cause: "started",
+      relay_reference: "a".repeat(24),
+    };
+    c.onTransportDiagnostic = () => {
+      throw Error("private sink failure");
+    };
+    expect(() =>
+      (c as any).receiveWorker({
+        kind: "transport-diagnostic",
+        observation: diagnostic,
+      }),
+    ).not.toThrow();
+    expect(c.diagnosticRelayReference).toBe("a".repeat(24));
+    expect(c.alive).toBe(true);
+    expect(await c.command("health")).toBeTruthy();
+  } finally {
+    c.close();
+    await exited(c);
+    await h.close();
+  }
+});

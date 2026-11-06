@@ -63,21 +63,28 @@ func handle(r request) (any, error) {
 			sshClient.Close()
 		}
 		sshClient = client.New(emit)
-		ctx, end := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, end := context.WithTimeout(context.Background(), client.OperationTimeout)
 		defer end()
 		ws, _, err := websocket.Dial(ctx, a.URL, nil)
 		if err != nil {
+			emit(map[string]any{"type": "transport-diagnostic", "diagnostic": map[string]string{"stage": "relay-dial", "cause": client.FailureCause(err)}})
 			return nil, errors.New("SSH relay unavailable")
 		}
 		ws.SetReadLimit(256 * 1024)
 		if err = ws.Write(ctx, websocket.MessageText, a.Ticket); err != nil {
+			emit(map[string]any{"type": "transport-diagnostic", "diagnostic": map[string]string{"stage": "relay-ticket", "cause": client.FailureCause(err)}})
 			ws.CloseNow()
-			return nil, err
+			return nil, errors.New("SSH relay ticket transfer failed")
 		}
 		clear(a.Ticket)
 		a.Ticket = nil
 		kind, data, err := ws.Read(ctx)
 		if err != nil || kind != websocket.MessageText || string(data) != `{"ready":true}` {
+			cause := client.FailureCause(err)
+			if err == nil {
+				cause = "operation-rejected"
+			}
+			emit(map[string]any{"type": "transport-diagnostic", "diagnostic": map[string]string{"stage": "relay-ready", "cause": cause}})
 			ws.CloseNow()
 			return nil, errors.New("SSH relay ticket rejected")
 		}
@@ -200,7 +207,7 @@ func main() {
 			defer clear(r.Args)
 			result, err := handle(r)
 			if err != nil {
-				emit(map[string]any{"type": "rpc-result", "id": r.ID, "error": err.Error()})
+				emit(map[string]any{"type": "rpc-result", "id": r.ID, "error": err.Error(), "diagnostic": map[string]string{"stage": r.Op, "cause": client.FailureCause(err)}})
 			} else {
 				emit(map[string]any{"type": "rpc-result", "id": r.ID, "result": result})
 			}

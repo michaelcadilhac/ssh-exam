@@ -1,3 +1,15 @@
+# Disconnect follow-up — IMPLEMENTED LOCALLY, qualification in progress
+
+November6: user authorizes implementation, PUSH and DEPLOY. Remaining WASM relay
+bootstrap budget corrected to60s. Correlated bounded relay/browser/pane failure
+categories and native hold authority facts are implemented without new execution
+or misconduct decisions. Last real events cannot be causally reconstructed from
+missing historical logs. Focused privacy/input/relay/client races and actual native
+23s gap/expiry/SSH-recovery checks pass across focused/corrected receipts. Final
+browser/full suites and exact matched release qualification remain pending.
+Plan/evidence: docs/disconnect-diagnostics.md and current checkpoint. No production
+change has occurred yet; site stays on the acceptedc62f0cc release.
+
 # Disconnect review — investigated; two follow-ups remain OPEN
 
 November6 read-only production/source review: recovery/clock fixes are deployed,

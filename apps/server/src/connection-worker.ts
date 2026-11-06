@@ -128,6 +128,8 @@ process.on("message", async (m: any) => {
     connection.onLoss = () => send({ kind: "loss" });
     connection.onDiagnostic = (host, detail) =>
       send({ kind: "diagnostic", host, detail });
+    connection.onTransportDiagnostic = (observation) =>
+      send({ kind: "transport-diagnostic", observation });
   } else if (m.kind === "authority-reply") {
     const pending = authorizations.get(m.id);
     if (!pending) return;

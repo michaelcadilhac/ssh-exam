@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/coder/websocket"
 	"io"
 	"net"
 	"strings"
@@ -573,7 +574,7 @@ func (c *Client) ClosePane(pane string) {
 // Watchers from the retired bootstrap transport must not close its replacement.
 func (c *Client) watchClass(k *ssh.Client) {
 	current := func() bool { c.mu.Lock(); defer c.mu.Unlock(); return c.class == k }
-	fail := func() {
+	fail := func(stage string, err error) {
 		c.mu.Lock()
 		if c.class != k {
 			c.mu.Unlock()
@@ -583,9 +584,13 @@ func (c *Client) watchClass(k *ssh.Client) {
 		c.mu.Unlock()
 		k.Close()
 		c.Close()
-		c.Emit(map[string]any{"type": "loss"})
+		diagnostic := map[string]any{"stage": stage, "cause": FailureCause(err)}
+		if code := int(websocket.CloseStatus(err)); code >= 1000 && code <= 4999 {
+			diagnostic["close_code"] = code
+		}
+		c.Emit(map[string]any{"type": "loss", "diagnostic": diagnostic})
 	}
-	go func() { k.Wait(); fail() }()
+	go func() { err := k.Wait(); fail("ssh-wait", err) }()
 	go func() {
 		t := time.NewTicker(5 * time.Second)
 		defer t.Stop()
@@ -598,7 +603,7 @@ func (c *Client) watchClass(k *ssh.Client) {
 					return
 				}
 				if _, _, err := k.SendRequest("keepalive@openssh.com", true, nil); err != nil {
-					fail()
+					fail("ssh-keepalive", err)
 					return
 				}
 			}

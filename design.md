@@ -5,6 +5,16 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November6 local follow-up: explain disconnects without changing authority
+
+The browser relay bootstrap uses60seconds. Correlated sanitized relay/browser/
+gateway diagnostics retain close direction and fixed failure categories. Existing
+native hold audit/journal retains observed authority cutoff/sequence and unknown
+state explicitly; gateway arrivals remain separate metadata. Diagnostics cannot
+create execution permission, policy violations or clock changes. Historical fault
+initiators remain unproved where prior logs discarded them. Scope, qualification
+and matched release: [disconnect diagnostics](docs/disconnect-diagnostics.md).
+
 ## November 6 deployed follow-up: pause countdown during instructor review
 
 Exam settings offers **Pause countdown while instructor review is needed**, off by

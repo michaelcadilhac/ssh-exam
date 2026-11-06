@@ -1,3 +1,31 @@
+# Current milestone — disconnect diagnostics and remaining timeout
+
+November6: explicit implementation, PUSH and DEPLOY authorization. Production stays
+on c62f0cc until qualification/drain. Preserve original dirty screenshots.
+
+Bounded plan: (1) student SSH sign-in/terminal failure: correct real WASM relay
+bootstrap to60s; correlate sanitized browser/gateway/relay close and pane failures,
+without credentials or new authority. Acceptance: actual >15s delayed relay startup,
+60s expiry, positive close, retired-owner and privacy/rate-limit regressions.
+(2) Existing native monitoring hold: record last verified authority sequence/cutoff
+and fixed cause categories in existing audit/journal, with no enforcement change.
+Acceptance: short23s stalls retain work; real cutoff/SSH loss preserves clocks,
+holds/files and emits correct cause. (3) coherent source freeze; affected/full
+app, browser, native races/build; exact image and existing guarded matched native/
+relay installation/current-data startup recovery. Then push, guarded deploy with
+admin-only signout authorized, public/read-only acceptance and concise checkpoint.
+Focused/current browser flows now pass: real16.5s startup delay, real60s expiry
+(including parent-supervisor timeout/reference) and real-WASM close/IPC privacy;
+relay real23s pong/read stall passes. Native real23s evidence gap/expiry and
+SSH-clock recovery are covered, with unavailable facts explicit. Helper/IPC
+fixture corrections are retained in evidence. Operator scope tests20+60+11 pass.
+Next: coherent commit/frozen artifacts and full milestone qualification.
+No new policy choice or feature expansion. Historical incident causes remain
+unknown where missing logs cannot be recovered. Evidence:
+var/collection-tests/disconnect-diagnostics.20261106/.
+
+--- Previous accepted release and review ---
+
 # Current checkpoint — review countdown policy DEPLOYED AND ONLINE
 
 November6,13:24:15Chicago /19:24:15UTC. User-authorized push/deploy completed.

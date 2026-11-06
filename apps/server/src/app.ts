@@ -366,6 +366,45 @@ export async function createApp(
   };
   life.onPaused = (a) => {
     clocks.pauseForReview(a.id);
+    // Metadata only. Gateway arrivals are not proof of native execution authority.
+    // Diagnostic failure must never undo or delay the existing hold workflow.
+    try {
+      if (
+        !store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE target=? AND action='monitoring-hold-observation' AND json_extract(detail,'$.generation')=? LIMIT 1",
+          )
+          .get(a.id, a.generation)
+      ) {
+        const observation = {
+          generation: a.generation,
+          clock_revision: a.clock_revision,
+          monitoring_mode: a.monitoring_mode,
+          hold_kind: a.monitoring_hold_kind,
+          gateway_contact_at: a.last_contact,
+          captures: ["screen", "webcam"].map((source) => ({
+            source,
+            ...(store.db
+              .prepare(
+                "SELECT received AS last_received,captured AS last_captured,seq AS last_sequence FROM frames WHERE attempt=? AND source=? ORDER BY received DESC,rowid DESC LIMIT 1",
+              )
+              .get(a.id, source) || {}),
+          })),
+        };
+        store.audit(
+          "gateway",
+          "monitoring-hold-observation",
+          a.id,
+          JSON.stringify(observation),
+        );
+        app.log.warn(
+          { attempt: a.id, ...observation },
+          "Monitoring hold observation",
+        );
+      }
+    } catch {
+      app.log.warn({ attempt: a.id }, "Monitoring hold diagnostic unavailable");
+    }
     const retained = retainedConnection(a);
     const c = attemptConnections.get(a.id);
     if (c && !retained) {
@@ -400,7 +439,13 @@ export async function createApp(
             )
             .get(exam, username) as Attempt | undefined);
       const event = randomUUID();
-      const detail = JSON.stringify({ event, ...failure });
+      const detail = JSON.stringify({
+        event,
+        username,
+        exam,
+        relay_reference: isolated.diagnosticRelayReference,
+        ...failure,
+      });
       const retained = isolated.retainedControlObserved;
       store.audit(
         "supervisor",
@@ -414,6 +459,7 @@ export async function createApp(
           exam: exam,
           attempt: context?.id,
           event,
+          relay_reference: isolated.diagnosticRelayReference,
           ...failure,
         },
         "Attempt connection process failed",
@@ -469,6 +515,29 @@ export async function createApp(
     isolated.onLoss = () => {
       const owned = [...attemptConnections].find(([, c]) => c === isolated);
       if (owned) void life.lock(owned[0], "SSH transport lost").catch(() => {});
+    };
+    isolated.onTransportDiagnostic = (observation) => {
+      if (!store.db.open) return;
+      const owned = [...attemptConnections].find(([, c]) => c === isolated);
+      const context = {
+        username,
+        exam,
+        attempt: owned?.[0],
+        source: "browser-observation",
+        ...observation,
+      };
+      try {
+        store.audit(
+          "gateway",
+          "ssh-transport-diagnostic",
+          owned?.[0] || `${exam}:${username}`,
+          JSON.stringify(context),
+        );
+      } catch {
+        /* Metadata I/O cannot turn a diagnostic into a lost connection. */
+      }
+      app.log.warn(context, "SSH transport diagnostic");
+      // This untrusted hint cannot lock, unlock, authorize or notify a violation.
     };
     options.onConnection?.(isolated);
     isolated.onDiagnostic = (host, detail) => {

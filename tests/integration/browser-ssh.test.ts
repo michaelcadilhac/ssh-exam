@@ -146,3 +146,83 @@ it("accepts only agent-signed SSH identity/results with exact nonce, account and
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+it("browser failure diagnostics preserve stage/correlation but cannot mutate authority or copy raw errors", async () => {
+  const socket = Object.assign(new EventEmitter(), {
+    readyState: 1,
+    send: (_s: string) => {},
+    close: () => {},
+  });
+  const c = new BrowserConnection(
+    "synthetic",
+    "exam",
+    {} as any,
+    new Agent({} as any),
+    socket as any,
+  );
+  c.alive = true;
+  const observations: any[] = [];
+  let losses = 0;
+  c.onTransportDiagnostic = (v) => observations.push(v);
+  c.onLoss = () => {
+    losses++;
+  };
+  c.receive({
+    type: "browser-diagnostic",
+    diagnostic: {
+      stage: "ssh-keepalive",
+      cause: "timeout",
+      password: "PRIVATE",
+    },
+  });
+  expect(observations).toEqual([]);
+  expect(losses).toBe(0);
+  expect(c.alive).toBe(true);
+  c.receive({
+    type: "browser-diagnostic",
+    diagnostic: { stage: "ssh-keepalive", cause: "timeout" },
+  });
+  expect(observations).toEqual([{ stage: "ssh-keepalive", cause: "timeout" }]);
+  expect(c.alive).toBe(true);
+  for (let i = 0; i < 100; i++)
+    c.receive({
+      type: "browser-diagnostic",
+      diagnostic: { stage: "ssh-keepalive", cause: "timeout" },
+    });
+  expect(observations).toHaveLength(1);
+  (c as any).relayReference = "b".repeat(24);
+  socket.send = (raw) => {
+    const m = JSON.parse(raw);
+    c.receive({
+      type: "browser-result",
+      id: m.id,
+      error: "PRIVATE",
+      diagnostic: { stage: "open", cause: "remote-exit" },
+    });
+  };
+  await expect(
+    (c as any).request("open", {
+      pane: "11111111-1111-4111-8111-111111111111",
+    }),
+  ).rejects.toThrow("open/remote-exit");
+  expect(observations.at(-1)).toEqual({
+    stage: "open",
+    cause: "remote-exit",
+    relay_reference: "b".repeat(24),
+    pane: "11111111-1111-4111-8111-111111111111",
+  });
+  expect(losses).toBe(0);
+  expect(JSON.stringify(observations)).not.toContain("PRIVATE");
+  // A diagnostics sink failure cannot turn a healthy connection into a loss.
+  c.onTransportDiagnostic = () => {
+    throw Error("disk unavailable");
+  };
+  expect(() =>
+    c.receive({
+      type: "browser-diagnostic",
+      diagnostic: { stage: "relay-ready", cause: "timeout" },
+    }),
+  ).not.toThrow();
+  expect(c.alive).toBe(true);
+  c.close();
+});

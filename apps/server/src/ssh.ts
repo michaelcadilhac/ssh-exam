@@ -1,4 +1,5 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import type { SSHObservation } from "../../../packages/protocol/ssh-diagnostics.js";
 import ssh2 from "ssh2";
 import type { Client as SSHClient, ClientChannel, ConnectConfig } from "ssh2";
 const { Client } = ssh2;
@@ -73,6 +74,7 @@ export class Connection {
   alive = false;
   onLoss = () => {};
   onDiagnostic = (host: string, detail: string) => {};
+  onTransportDiagnostic?: (observation: SSHObservation) => void;
   constructor(
     public username: string,
     private config: Config,

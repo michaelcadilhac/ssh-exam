@@ -2,7 +2,7 @@
 """Guarded, forward-only installation of a frozen native cohort.
 
 Run only after the matched web controller has stopped the drained gateway.
-The exact monitoring-timeouts-v2 scope also replaces the relay and its timeout
+The exact monitoring-timeouts-v2 and disconnect-diagnostics-v1 scopes replace the relay and its timeout
 snippet, preserving its existing trust/configuration/service files. Other scopes
 retain the original four binaries and untouched relay. This never cancels an
 attempt, restores data or restarts SSH.
@@ -117,7 +117,7 @@ class Native:
         self.release = read_json(self.stage / "release.json")
         self.update = self.release["native_update"]
         assert self.release["schema"] == 37
-        self.relay_update = self.release["fast_ui"].get("reviewed_scope") == "monitoring-timeouts-v2"
+        self.relay_update = self.release["fast_ui"].get("reviewed_scope") in ("monitoring-timeouts-v2", "disconnect-diagnostics-v1")
         self.targets = dict(TARGETS)
         self.stop_units, self.start_units = list(STOP), list(START)
         if self.relay_update:

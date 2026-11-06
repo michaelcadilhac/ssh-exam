@@ -67,13 +67,15 @@ var examPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 var noncePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{16,64}$`)
 
 type relay struct {
-	config config
-	key    ed25519.PublicKey
-	mu     sync.Mutex
-	used   map[string]int64
-	users  map[string]int
-	slots  chan struct{}
-	dial   func(context.Context) (net.Conn, error)
+	config                 config
+	key                    ed25519.PublicKey
+	mu                     sync.Mutex
+	used                   map[string]int64
+	users                  map[string]int
+	slots                  chan struct{}
+	dial                   func(context.Context) (net.Conn, error)
+	report                 func(relayDiagnostic)
+	pingEvery, pingTimeout time.Duration
 }
 
 func load(c config) (*relay, error) {
@@ -123,6 +125,8 @@ func load(c config) (*relay, error) {
 	}
 	r := &relay{config: c, key: key, used: map[string]int64{}, users: map[string]int{}, slots: make(chan struct{}, 200)}
 	r.dial = r.dialJump
+	r.pingEvery, r.pingTimeout = 25*time.Second, 60*time.Second
+	r.report = func(value relayDiagnostic) { b, _ := json.Marshal(value); log.Print(string(b)) }
 	return r, nil
 }
 
@@ -319,6 +323,10 @@ func (r *relay) serve(ctx context.Context, w http.ResponseWriter, req *http.Requ
 		return
 	}
 	user, err := r.consume(packet, time.Now().UnixMilli())
+	reference := ""
+	if err == nil {
+		reference = ticketReference(packet)
+	}
 	clear(packet)
 	if err != nil {
 		c.Close(websocket.StatusPolicyViolation, "Ticket rejected")
@@ -332,16 +340,22 @@ func (r *relay) serve(ctx context.Context, w http.ResponseWriter, req *http.Requ
 		}
 		r.mu.Unlock()
 	}()
+	started := time.Now()
+	report := func(trigger string, err error, toJump, toBrowser int64) {
+		r.diagnostic(relayDiagnostic{Event: "ssh-relay-closed", Reference: reference, Trigger: trigger, Cause: transportCause(err), ElapsedMS: time.Since(started).Milliseconds(), ToJump: toJump, ToBrowser: toBrowser, CloseCode: int(websocket.CloseStatus(err))})
+	}
 	dialCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	upstream, err := r.dial(dialCtx)
 	cancel()
 	if err != nil {
+		report("jump-dial", err, 0, 0)
 		c.Close(websocket.StatusTryAgainLater, "Jump host unavailable")
 		return
 	}
 	defer upstream.Close()
 	// Readiness is a text frame. All subsequent frames carry binary SSH packets.
-	if c.Write(ctx, websocket.MessageText, []byte(`{"ready":true}`)) != nil {
+	if err := c.Write(ctx, websocket.MessageText, []byte(`{"ready":true}`)); err != nil {
+		report("relay-ready", err, 0, 0)
 		return
 	}
 	c.SetReadLimit(256 * 1024)
@@ -349,41 +363,66 @@ func (r *relay) serve(ctx context.Context, w http.ResponseWriter, req *http.Requ
 	defer cancel()
 	stream := websocket.NetConn(streamCtx, c, websocket.MessageBinary)
 	defer stream.Close()
-	done := make(chan struct{}, 2)
-	go func() { io.Copy(upstream, stream); done <- struct{}{} }()
-	go func() { io.Copy(stream, upstream); done <- struct{}{} }()
+	type outcome struct {
+		direction string
+		bytes     int64
+		err       error
+	}
+	done := make(chan outcome, 3)
+	go func() { n, err := io.Copy(upstream, stream); done <- outcome{"browser-to-jump", n, err} }()
+	go func() { n, err := io.Copy(stream, upstream); done <- outcome{"jump-to-browser", n, err} }()
+	pingDone := make(chan struct{})
 	go func() {
-		ticker := time.NewTicker(25 * time.Second)
+		defer close(pingDone)
+		ticker := time.NewTicker(r.pingEvery)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-streamCtx.Done():
 				return
 			case <-ticker.C:
-				pingCtx, end := context.WithTimeout(streamCtx, 60*time.Second)
+				pingCtx, end := context.WithTimeout(streamCtx, r.pingTimeout)
 				err := c.Ping(pingCtx)
 				end()
 				if err != nil {
-					cancel()
+					done <- outcome{direction: "websocket-ping", err: err}
 					return
 				}
 			}
 		}
 	}()
+	var first outcome
 	left := 2
+	var toJump, toBrowser int64
+	collect := func(value outcome) {
+		if value.direction == "browser-to-jump" {
+			toJump = value.bytes
+			left--
+		}
+		if value.direction == "jump-to-browser" {
+			toBrowser = value.bytes
+			left--
+		}
+	}
 	select {
-	case <-done:
-		left--
+	case first = <-done:
+		collect(first)
 	case <-streamCtx.Done():
+		first = outcome{direction: "relay-lifetime", err: streamCtx.Err()}
+		if ctx.Err() != nil {
+			first.direction = "relay-shutdown"
+		}
 	}
 	cancel()
 	upstream.Close()
 	c.CloseNow()
 	// Join both copiers, including the one that may already have signaled done.
 	// Closing the transport unblocks any pending read/write.
-	for ; left > 0; left-- {
-		<-done
+	for left > 0 {
+		collect(<-done)
 	}
+	<-pingDone
+	report(first.direction, first.err, toJump, toBrowser)
 }
 
 func main() {

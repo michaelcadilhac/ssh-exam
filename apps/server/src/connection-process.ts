@@ -1,4 +1,8 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import {
+  sshObservation,
+  type SSHObservation,
+} from "../../../packages/protocol/ssh-diagnostics.js";
 import { fork, type ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
@@ -21,6 +25,7 @@ export type ConnectionHandle = Pick<
   | "alive"
   | "onLoss"
   | "onDiagnostic"
+  | "onTransportDiagnostic"
   | "supportsAutomaticHandoff"
   | "connect"
   | "secureAccess"
@@ -32,6 +37,7 @@ export type ConnectionHandle = Pick<
 >;
 
 export type ConnectionFailure = {
+  operation?: "connect" | "command" | "open" | "operation";
   cause:
     | "exit"
     | "ipc"
@@ -124,6 +130,11 @@ export class IsolatedConnection implements ConnectionHandle {
   transport = "";
   onLoss = () => {};
   onDiagnostic = (_host: string, _detail: string) => {};
+  onTransportDiagnostic?: (observation: SSHObservation) => void;
+  private relayDiagnosticReference?: string;
+  get diagnosticRelayReference() {
+    return this.relayDiagnosticReference;
+  }
   onFailure?: (failure: ConnectionFailure) => void;
   private child: ChildProcess;
   private stopped = false;
@@ -273,6 +284,7 @@ export class IsolatedConnection implements ConnectionHandle {
       ![
         "browser-host-key-mismatch",
         "browser-loss",
+        "browser-diagnostic",
         "browser-pane-closed",
         "browser-result",
       ].includes(message?.type)
@@ -315,7 +327,19 @@ export class IsolatedConnection implements ConnectionHandle {
       const id = ++this.sequence;
       const timer = setTimeout(
         () =>
-          this.fail({ cause: "operation-timeout", code: null, signal: null }),
+          this.fail({
+            cause: "operation-timeout",
+            code: null,
+            signal: null,
+            operation:
+              op === "connect"
+                ? "connect"
+                : op === "command"
+                  ? "command"
+                  : op === "open"
+                    ? "open"
+                    : "operation",
+          }),
         OPERATION_TIMEOUT_MS,
       );
       this.replies.set(id, { resolve, reject, timer });
@@ -414,6 +438,17 @@ export class IsolatedConnection implements ConnectionHandle {
         pane.emit("data", Buffer.from(m.data));
     } else if (m.kind === "diagnostic") {
       this.onDiagnostic(m.host, m.detail);
+    } else if (m.kind === "transport-diagnostic") {
+      const parsed = sshObservation.safeParse(m.observation);
+      if (parsed.success) {
+        if (parsed.data.relay_reference)
+          this.relayDiagnosticReference = parsed.data.relay_reference;
+        try {
+          this.onTransportDiagnostic?.(parsed.data);
+        } catch {
+          /* Diagnostic sinks cannot fail a connection. */
+        }
+      }
     } else if (m.kind === "loss") {
       this.close();
       this.onLoss();

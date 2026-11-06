@@ -1,4 +1,5 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import { safeSSHDiagnostic } from "../../../packages/protocol/ssh-diagnostics.js";
 import { effectiveDeadline } from "../../../packages/protocol/timer.js";
 import { EventEmitter } from "node:events";
 import { randomUUID, sign, createHash } from "node:crypto";
@@ -313,6 +314,30 @@ export class BrowserConnection extends Connection {
   private detachment?: NodeJS.Timeout;
   private detachedAt: number | null = null;
   private closed = false;
+  private relayReference?: string;
+  private diagnosticKeys = new Set<string>();
+  private observe(value: unknown, pane?: string, terminal = false) {
+    const diagnostic = safeSSHDiagnostic(value);
+    if (!diagnostic) return;
+    const key = `${diagnostic.stage}:${diagnostic.cause}:${pane || ""}`;
+    if (
+      this.diagnosticKeys.has(key) ||
+      (!terminal && this.diagnosticKeys.size >= 32)
+    )
+      return;
+    this.diagnosticKeys.add(key);
+    try {
+      this.onTransportDiagnostic?.({
+        ...diagnostic,
+        ...(this.relayReference
+          ? { relay_reference: this.relayReference }
+          : {}),
+        ...(pane && /^[a-f0-9-]{36}$/.test(pane) ? { pane } : {}),
+      });
+    } catch {
+      /* Diagnostics cannot interrupt SSH or native acknowledgement. */
+    }
+  }
   private opening = new Map<string, { closed: boolean; inputEpoch?: string }>();
   constructor(
     user: string,
@@ -346,14 +371,20 @@ export class BrowserConnection extends Connection {
     const previous = this.socket;
     this.socket = ws;
     if (previous && previous !== ws) previous.close(1000, "Control replaced");
-    ws.on("close", () => {
+    ws.on("close", (code: number) => {
       if (this.socket !== ws) return;
+      this.observe({
+        stage: "control-close",
+        cause: "peer-close",
+        ...(code >= 1000 && code <= 4999 ? { close_code: code } : {}),
+      });
       this.socket = undefined;
       if (!this.alive) this.close();
       else {
         this.detachedAt = performance.now();
         this.detachment = setTimeout(() => {
           if (this.hasRetainedTransport()) return;
+          this.observe({ stage: "control-grace-expired", cause: "timeout" });
           this.alive = false;
           this.onLoss();
           this.close();
@@ -399,9 +430,20 @@ export class BrowserConnection extends Connection {
       return true;
     }
     if (m.type === "browser-loss") {
+      if (this.closed) return true;
+      this.observe(
+        m.diagnostic || { stage: "ssh-wait", cause: "unknown" },
+        undefined,
+        true,
+      );
       this.alive = false;
       this.onLoss();
       this.close();
+      return true;
+    }
+    if (m.type === "browser-diagnostic") {
+      if (this.closed) return true;
+      this.observe(m.diagnostic);
       return true;
     }
     if (m.type === "browser-pane-closed") {
@@ -422,9 +464,18 @@ export class BrowserConnection extends Connection {
     if (!p) return true;
     this.pending.delete(m.id);
     clearTimeout(p.timer);
-    m.error
-      ? p.reject(Error("Browser SSH operation failed"))
-      : p.resolve(m.result);
+    if (m.error) {
+      const diagnostic = safeSSHDiagnostic(m.diagnostic) || {
+        stage: "operation",
+        cause: "unknown",
+      };
+      this.observe(diagnostic, p.args?.pane);
+      p.reject(
+        Error(
+          `Browser SSH operation failed (${diagnostic.stage}/${diagnostic.cause})`,
+        ),
+      );
+    } else p.resolve(m.result);
     return true;
   }
   private request(
@@ -442,6 +493,21 @@ export class BrowserConnection extends Connection {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
+        this.observe(
+          {
+            stage: [
+              "open",
+              "command",
+              "connect",
+              "handoff",
+              "change-input-epoch",
+            ].includes(op)
+              ? op
+              : "operation",
+            cause: "timeout",
+          },
+          args?.pane,
+        );
         reject(Error(`Browser SSH operation timed out: ${op}`));
       }, timeout);
       this.pending.set(id, { op, args, resolve, reject, timer });
@@ -564,6 +630,11 @@ export class BrowserConnection extends Connection {
         readFileSync(this.settings.agent.signingKey),
       ).toString("base64"),
     };
+    this.relayReference = createHash("sha256")
+      .update(ticket.payload)
+      .digest("hex")
+      .slice(0, 24);
+    this.observe({ stage: "connect", cause: "started" });
     let sshAuthenticated = false;
     try {
       const connected = await this.request("connect", {

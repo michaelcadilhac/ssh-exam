@@ -17,12 +17,13 @@ type terminalCutoffWatch struct {
 func (w *terminalCutoffWatch) close() { w.slot.close(); w.peer.close() }
 
 type terminalCutoffFact struct {
-	owner       monitoringOwner
-	view        *monitoringAuthorityView
-	held        bool
-	sshExited   bool
-	exitedOwner *monitoringOwner
-	error       error
+	owner            monitoringOwner
+	view             *monitoringAuthorityView
+	held             bool
+	sshExited        bool
+	exitedOwner      *monitoringOwner
+	error            error
+	observationStage string
 }
 
 func (e *Engine) terminalCutoffFor(a *Attempt) (*terminalCutoffWatch, error) {
@@ -112,18 +113,21 @@ func (e *Engine) observeTerminalSharedCutoffs() (map[string]terminalCutoffFact, 
 		go func(a *Attempt) {
 			defer workers.Done()
 			defer func() { <-slots }()
-			fact := terminalCutoffFact{owner: *a.RegisteredOwner}
+			fact := terminalCutoffFact{owner: *a.RegisteredOwner, observationStage: "existing-hold"}
 			var err error
 			var watch *terminalCutoffWatch
 			if a.State == "ACTIVE" {
+				fact.observationStage = "cutoff-open"
 				watch, err = e.terminalCutoffFor(a)
 			}
 			if err == nil && watch != nil {
+				fact.observationStage = "clock-read"
 				var now int64
 				now, err = monitoringBootMillis()
 				if err == nil {
 					_, revoked := watch.slot.expire(now)
 					if revoked {
+						fact.observationStage = "authority-expiry"
 						reply, holdErr := e.callTerminalAuthority(terminalAuthorityRequest{Op: "expire", Attempt: a.ID, Owner: fact.owner}, nil, false)
 						err, fact.view = holdErr, reply.View
 						fact.held = holdErr == nil && reply.Hold != nil && reply.Hold.Phase == "held"

@@ -46,8 +46,8 @@ class FreshCohort(unittest.TestCase):
         self.assertEqual(read_current(self.root,'before',self.now)['worker_cli_sha256'],'9'*64)
         self.assertTrue(read_current(self.root,'after',self.now)['policy_supported'])
 
-    def test_exact_timeout_scope_binds_new_relay_hash_and_pid_to_transition(self):
-        self.release['fast_ui']={'reviewed_scope':'monitoring-timeouts-v2'}
+    def test_exact_timeout_scope_binds_new_relay_hash_and_pid_to_transition(self, scope='monitoring-timeouts-v2'):
+        self.release['fast_ui']={'reviewed_scope':scope}
         self.release['native_update']['before']['binary_sha256']['exam-ssh-relay']=self.release['relay_sha256']
         self.release['native_update']['after']['binary_sha256']['exam-ssh-relay']='b'*64
         self.transition['binary_sha256']=self.release['native_update']['after']['binary_sha256']
@@ -61,6 +61,9 @@ class FreshCohort(unittest.TestCase):
         for field,old in [('relay_sha256',self.release['relay_sha256']),('relay_pid',4)]:
             with self.subTest(field=field),self.assertRaises(ValueError):
                 self.wrap('after',{**value,field:old});read_current(self.root,'after',self.now)
+    def test_exact_disconnect_scope_binds_new_relay_hash_and_pid_to_transition(self):
+        self.test_exact_timeout_scope_binds_new_relay_hash_and_pid_to_transition('disconnect-diagnostics-v1')
+
     def test_expired_nonce_phase_binary_and_relay_failures_refuse(self):
         for field,value in [('at',(self.now-datetime.timedelta(seconds=91)).isoformat()),('nonce','other'),('phase','before-native'),('binary_sha256',{}),('relay_pid',10),('relay_sha256','0'*64)]:
             with self.subTest(field=field),self.assertRaises(ValueError):

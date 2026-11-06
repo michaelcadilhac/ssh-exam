@@ -255,4 +255,17 @@ class MonitoringTimeouts(MatchedNative):
         self.assertFalse(f.stopped_calls())
 
 
+class DisconnectDiagnostics(MonitoringTimeouts):
+    def setUp(self):
+        super().setUp()
+        self.f.release['fast_ui']['reviewed_scope']='disconnect-diagnostics-v1'
+        (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+
+    def test_scope_name_must_match_exactly_before_any_fence(self):
+        self.f.release['fast_ui']['reviewed_scope']='disconnect-diagnostics-v1-extra'
+        (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+        self.f.cli('prepare',expect=1)
+        self.assertFalse(self.f.stopped_calls())
+
+
 if __name__=='__main__': unittest.main()

@@ -821,7 +821,7 @@ func (e *Engine) Tick() error {
 					if fact.held {
 						a.RetainedHold, a.ResumeTransport = "held", a.Transport
 					}
-					e.Audit("native-monitoring-hold", a.ID, a.Reason)
+					e.auditMonitoringHold(a, fact)
 				}
 				if a.State == "LOCKED" && a.RetainedHold != "held" {
 					retainedPauses = append(retainedPauses, a.ID)

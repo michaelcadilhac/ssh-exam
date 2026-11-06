@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "timer-pause", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume", "files-resume-clock", "files-resume-unlimited", "files-resume-paused"} {
+	for _, mode := range []string{"current", "short-stall", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "timer-pause", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume", "files-resume-clock", "files-resume-unlimited", "files-resume-paused"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -126,6 +126,9 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 			captured := make(chan grantBeginReply, 1)
 			initialGrantServer(t, e, key, func(reply grantBeginReply) (grantBeginReply, int) {
 				calls.Add(1)
+				if mode == "short-stall" {
+					reply.CaptureValidFor = operationTimeoutMS
+				}
 				if stopRole != nil {
 					stopRole()
 				}
@@ -486,6 +489,33 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 						if !found {
 							t.Fatal("positive exit never reached the durable authenticated callback outbox")
 						}
+						journal, auditErr := os.ReadFile(filepath.Join(e.Config.State, "audit.ndjson"))
+						if auditErr != nil {
+							t.Fatal(auditErr)
+						}
+						observedDiagnostic := false
+						for _, line := range strings.Split(string(journal), "\n") {
+							var event map[string]any
+							if json.Unmarshal([]byte(line), &event) != nil || event["action"] != "native-monitoring-hold" || event["attempt"] != a.ID {
+								continue
+							}
+							d, ok := event["diagnostic"].(map[string]any)
+							if !ok || event["generation"] == nil || d["observed_boot_ms"] == nil {
+								t.Fatal("actual Tick lost hold provenance", event)
+							}
+							if d["observation"] == "available" {
+								if d["sequence"] == nil || d["authority_until_boot_ms"] == nil {
+									t.Fatal("available authority lost its facts", event)
+								}
+							} else if d["observation"] != "unavailable" || (d["error_class"] == nil && d["ssh_exited"] != true) {
+								t.Fatal("unknown authority was not explained by the actual failed observation", event)
+							}
+							observedDiagnostic = true
+						}
+						if !observedDiagnostic {
+							t.Fatal("actual SSH exit/hold has no diagnostic audit")
+						}
+
 						if mode == "files-resume-clock" && (!ended.ClockHandoverPending || ended.SSHExitedOwner.ClockRevision != a.ClockRevision) {
 							t.Fatal("pending clock/actual exit provenance lost", ended)
 						}
@@ -954,6 +984,32 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	beforeMemory, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
 	if err != nil {
 		t.Fatal("verified live authority did not admit actual shell input", err)
+	}
+	if mode == "short-stall" {
+		e.stopTerminalMonitoring() // End only this synthetic evidence producer.
+		prior, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		now, clockErr := monitoringBootMillis()
+		if err != nil || clockErr != nil || prior.View == nil || !prior.View.ExecutionAuthorized || prior.View.AuthorityUntilMS-now < 30000 {
+			t.Fatal("fixture missed a fresh sixty-second authority", prior, err)
+		}
+		time.Sleep(23 * time.Second) // Reproduce the observed gap using the real clock/kernel.
+		if err := e.Tick(); err != nil {
+			t.Fatal(err)
+		}
+		after, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "view", Attempt: a.ID, Owner: *a.RegisteredOwner}, nil, false)
+		if err != nil || after.View == nil || !after.View.ExecutionAuthorized || after.View.Sequence != prior.View.Sequence || after.View.AuthorityUntilMS != prior.View.AuthorityUntilMS {
+			t.Fatal("short gap fabricated a hold or monitoring renewal", after, err)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil || state.Attempts[a.ID].State != "ACTIVE" || state.Attempts[a.ID].Start != a.Start || state.Attempts[a.ID].Deadline != a.Deadline || state.Attempts[a.ID].Generation != a.Generation {
+			t.Fatal("short gap changed original work/clock", err)
+		}
+		write(2, 0, []byte("check\n"))
+		memory, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
+		if err != nil || !strings.Contains(memory, "synthetic-buffer-not-on-disk") {
+			t.Fatal("short stall lost input/editor memory", memory, err)
+		}
+		return
 	}
 	if mode == "timer-pause" || mode == "files-resume-paused" {
 		testActualTimerPause(t, e, key, a, fd, write)

@@ -35,6 +35,11 @@ const capacityAccounts = Object.fromEntries(
 // Independent identities prevent other specs' unfinished sandbox runs from
 // turning cleanup tests' fresh sign-in into an unrelated recovery flow.
 const cleanupAccounts = { cleanup01: 10013, cleanup02: 10014 };
+const diagnosticAccounts = {
+  relaydiag01: 10047,
+  relaydiag02: 10048,
+  relaydiag03: 10049,
+};
 // Fault-isolation intentionally leaves paused accounts held. Never reuse those
 // identities in another spec's fresh sandbox preflight.
 const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
@@ -88,6 +93,9 @@ const browserMode = process.env.EXAM_BROWSER_SSH === "1";
 const relay = browserMode
   ? new WebSocketServer({ port: 3101, host: "127.0.0.1" })
   : null;
+const relayObservations = new Map<string, number>();
+const relayReferences = new Map<string, string>();
+const closeDiagnosticRelays = new Map<string, () => void>();
 if (relay) {
   relay.on("connection", (ws, req) => {
     if (req.headers.origin !== "http://localhost:3100") {
@@ -111,9 +119,28 @@ if (relay) {
         ws.close(1008);
         return;
       }
-      const upstream = net.connect(h.jump.port, h.jump.host, () =>
-        ws.send('{"ready":true}'),
-      );
+      let released = false;
+      let delay: ReturnType<typeof setTimeout> | undefined;
+      const waiting: Buffer[] = [];
+      const release = () => {
+        if (ws.readyState !== 1) return;
+        released = true;
+        ws.send('{"ready":true}');
+        for (const bytes of waiting.splice(0)) ws.send(bytes, { binary: true });
+      };
+      const upstream = net.connect(h.jump.port, h.jump.host, () => {
+        if (Object.hasOwn(diagnosticAccounts, t.username)) {
+          relayObservations.set(t.username, Date.now());
+          relayReferences.set(t.username, hash(f.payload).slice(0, 24));
+        }
+        if (t.username === "relaydiag01") delay = setTimeout(release, 16500);
+        else if (t.username !== "relaydiag02") release();
+      });
+      if (Object.hasOwn(diagnosticAccounts, t.username))
+        closeDiagnosticRelays.set(t.username, () => {
+          ws.close(4001, "PRIVATE-close-reason");
+          upstream.destroy();
+        });
       ws.on("message", (bytes, binary) => {
         if (!binary) {
           ws.close(1008);
@@ -121,9 +148,23 @@ if (relay) {
         }
         upstream.write(bytes as Buffer);
       });
-      upstream.on("data", (bytes) => ws.send(bytes, { binary: true }));
+      upstream.on("data", (bytes) => {
+        const packet = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+        if (released) ws.send(packet, { binary: true });
+        else if (
+          waiting.reduce((n, b) => n + b.length, 0) + packet.length <=
+          256 * 1024
+        )
+          waiting.push(packet);
+        else ws.close(1009);
+      });
       upstream.on("error", () => ws.close());
-      ws.on("close", () => upstream.destroy());
+      ws.on("close", () => {
+        clearTimeout(delay);
+        waiting.length = 0;
+        closeDiagnosticRelays.delete(t.username);
+        upstream.destroy();
+      });
       upstream.on("close", () => ws.close());
     });
   });
@@ -243,6 +284,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...timezoneAccounts,
       ...capacityAccounts,
       ...cleanupAccounts,
+      ...diagnosticAccounts,
       ...isolationAccounts,
       ...closureAccounts,
       ...monitoringAccounts,
@@ -765,6 +807,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...timezoneAccounts,
       ...capacityAccounts,
       ...cleanupAccounts,
+      ...diagnosticAccounts,
       ...isolationAccounts,
       ...closureAccounts,
       policytest01: 12001,
@@ -1415,6 +1458,30 @@ store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("temporary-access", "policytest01", null, null, null, 12001);
 // Disposable browser-test instrumentation only; never part of the production app.
+app.post("/api/fixture/diagnostic-relay-close", async (req) => {
+  const username = (req.body as any).username;
+  if (
+    !Object.hasOwn(diagnosticAccounts, username) ||
+    !closeDiagnosticRelays.has(username)
+  )
+    throw Error("No owned diagnostic relay");
+  closeDiagnosticRelays.get(username)!();
+  return { closed: true };
+});
+app.get("/api/fixture/transport-diagnostics", async () => ({
+  relayReadyAt: Object.fromEntries(relayObservations),
+  relayReferences: Object.fromEntries(relayReferences),
+  observations: store.db
+    .prepare(
+      "SELECT action,target,detail FROM audit WHERE action IN ('ssh-transport-diagnostic','attempt-worker-failed','attempt-control-proxy-failed') ORDER BY rowid DESC LIMIT 100",
+    )
+    .all(),
+  attempts: store.db
+    .prepare(
+      "SELECT username,state,start,deadline FROM attempts WHERE username IN ('relaydiag01','relaydiag02')",
+    )
+    .all(),
+}));
 app.get("/api/fixture/runtime", async () => ({
   recoveryCompatibility: {
     missing: recoveryRoleMissing,

@@ -32,7 +32,7 @@ def validate(release,value,phase,transition=None,observed=None):
         raise ValueError('Native guard belongs to another transition/cohort')
     for field,target in [('history_sha256','native_history_sha256'),('config_sha256','native_config_sha256'),('cli_config_sha256','cli_config_sha256')]:
         if value.get(field)!=release[target]: raise ValueError('Native authority/configuration/relay changed: '+field)
-    relay_update=release.get('fast_ui',{}).get('reviewed_scope')=='monitoring-timeouts-v2'
+    relay_update=release.get('fast_ui',{}).get('reviewed_scope') in ('monitoring-timeouts-v2','disconnect-diagnostics-v1')
     expected_relay=cohort['binary_sha256'].get('exam-ssh-relay',release['relay_sha256'])
     if value.get('relay_sha256')!=expected_relay: raise ValueError('Loaded relay differs from this cohort')
     if value.get('installed_cli_sha256')!=cohort['binary_sha256']['examctl'] or value.get('worker_cli_sha256')!=cohort['worker_cli_sha256']:

@@ -142,7 +142,7 @@ def main():
         (stage / 'native' / name).chmod(0o700)
     original_pids = pids()
     assert all(pid > 1 for pid in original_pids.values())
-    release['fast_ui']['reviewed_scope'] = 'monitoring-timeouts-v2'
+    release['fast_ui']['reviewed_scope'] = 'disconnect-diagnostics-v1'
     release['fast_ui']['state'] = str(stage / 'synthetic-web-state')
     release['relay_sha256'] = before['exam-ssh-relay']
     release['native_update'].update(

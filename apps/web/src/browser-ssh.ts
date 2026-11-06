@@ -1,4 +1,5 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import { safeSSHDiagnostic } from "../../../packages/protocol/ssh-diagnostics.js";
 import { terminalInputChunks } from "./terminal-input.js";
 import { socket } from "./api.js";
 import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
@@ -140,7 +141,14 @@ export class BrowserSSH {
       if (m.type === "rpc-result") {
         const p = this.callbacks.get(m.id);
         this.callbacks.delete(m.id);
-        if (p) m.error ? p.reject(Error(m.error)) : p.resolve(m.result);
+        if (p)
+          m.error
+            ? p.reject(
+                Object.assign(Error(m.error), {
+                  diagnostic: safeSSHDiagnostic(m.diagnostic),
+                }),
+              )
+            : p.resolve(m.result);
         return;
       }
       if (m.type === "challenge" || m.type === "notice") {
@@ -156,8 +164,18 @@ export class BrowserSSH {
         });
         return;
       }
+      if (m.type === "transport-diagnostic") {
+        const diagnostic = safeSSHDiagnostic(m.diagnostic);
+        if (diagnostic)
+          this.sendControl({ v: 1, type: "browser-diagnostic", diagnostic });
+        return;
+      }
       if (m.type === "loss" || m.type === "fatal") {
-        this.sendControl({ v: 1, type: "browser-loss" });
+        this.sendControl({
+          v: 1,
+          type: "browser-loss",
+          diagnostic: safeSSHDiagnostic(m.diagnostic),
+        });
         this.emit({ type: "loss" });
         this.close();
         return;
@@ -199,6 +217,11 @@ export class BrowserSSH {
         this.stopped
       )
         return;
+      this.sendControl({
+        v: 1,
+        type: "browser-diagnostic",
+        diagnostic: { stage: "worker-error", cause: "worker-error" },
+      });
       this.emit({ type: "loss" });
       this.close();
     };
@@ -363,7 +386,7 @@ export class BrowserSSH {
           }
           this.sendControl({ v: 1, type: "browser-result", id: m.id, result });
         },
-        () => {
+        (error: unknown) => {
           if (
             this.lifecycle !== lifecycle ||
             this.stopped ||
@@ -375,6 +398,7 @@ export class BrowserSSH {
             type: "browser-result",
             id: m.id,
             error: true,
+            diagnostic: safeSSHDiagnostic((error as any)?.diagnostic),
           });
         },
       );

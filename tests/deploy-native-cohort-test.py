@@ -137,7 +137,7 @@ class OperatorWorkflow(unittest.TestCase):
         self.cli("stop")
         return self.cli("backup")
 
-    def relay_setup(self):
+    def relay_setup(self, scope="monitoring-timeouts-v2"):
         relay = self.root / "exam-ssh-relay"
         relay.write_bytes(b"old relay fixture"); relay.chmod(0o755)
         candidate = self.stage / "native/exam-ssh-relay"
@@ -146,7 +146,7 @@ class OperatorWorkflow(unittest.TestCase):
         for path in preserve: path.write_bytes(b"existing trust and local configuration")
         nginx = self.config_dir / "relay-nginx.conf"; nginx.write_bytes(b"old proxy"); nginx.chmod(0o644)
         source = self.stage / "relay-nginx.conf"; source.write_bytes(b"new sixty-second proxy"); source.chmod(0o600)
-        self.release["fast_ui"]["reviewed_scope"] = "monitoring-timeouts-v2"
+        self.release["fast_ui"]["reviewed_scope"] = scope
         self.release["relay_sha256"] = native.digest(relay)
         update = self.release["native_update"]
         update["before"]["binary_sha256"]["exam-ssh-relay"] = native.digest(relay)
@@ -160,6 +160,16 @@ class OperatorWorkflow(unittest.TestCase):
             patcher.start(); self.patchers.append(patcher)
         self.write_release(); self.write_web()
         return relay, nginx, preserve
+
+    def test_disconnect_diagnostic_scope_installs_exact_five_binary_cohort(self):
+        relay, nginx, preserve = self.relay_setup("disconnect-diagnostics-v1")
+        original = {p:p.read_bytes() for p in preserve}
+        self.stopped_backup()
+        self.cli("install"); self.cli("start")
+        proof = self.cli("verify"); after = self.cli("guard-after")
+        self.assertEqual(after["relay_sha256"], native.digest(relay))
+        self.assertEqual(proof["binary_sha256"], self.release["native_update"]["after"]["binary_sha256"])
+        self.assertEqual({p:p.read_bytes() for p in preserve}, original)
 
     def test_five_binary_upgrade_keeps_relay_trust_and_retries_proxy_refusal_while_stopped(self):
         relay, nginx, preserve = self.relay_setup()

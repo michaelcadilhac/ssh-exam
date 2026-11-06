@@ -118,10 +118,10 @@ class Rollout:
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
-            relay_update = self.settings.get('reviewed_scope') == 'monitoring-timeouts-v2'
+            relay_update = self.settings.get('reviewed_scope') in ('monitoring-timeouts-v2', 'disconnect-diagnostics-v1')
             if relay_update:
                 names.add('exam-ssh-relay')
-            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2', 'review-countdown-policy-v1')
+            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2', 'review-countdown-policy-v1', 'disconnect-diagnostics-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or self.settings.get('previous_reader_policy_compatible') is not False
@@ -275,7 +275,7 @@ class Rollout:
                     ('history_sha256', 'native_history_sha256'), ('config_sha256', 'native_config_sha256'), ('cli_config_sha256', 'cli_config_sha256')))
                 or set(receipt.get('service_pids', {})) != set(self.release['service_pids'])
                 or any(type(pid) is not int or pid <= 0 for pid in receipt['service_pids'].values())
-                or (self.settings.get('reviewed_scope') != 'monitoring-timeouts-v2' and receipt['service_pids']['exam-ssh-relay.service'] != self.release['service_pids']['exam-ssh-relay.service'])
+                or (self.settings.get('reviewed_scope') not in ('monitoring-timeouts-v2', 'disconnect-diagnostics-v1') and receipt['service_pids']['exam-ssh-relay.service'] != self.release['service_pids']['exam-ssh-relay.service'])
                 or (self.record.get('native_transition_sha256') and checksum != self.record['native_transition_sha256'])):
             raise ValueError('Native transition does not prove this candidate and preserved CURRENT authority')
         return receipt, checksum
