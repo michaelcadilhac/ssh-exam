@@ -11,17 +11,40 @@ export async function api(
   page?: string,
   signal?: AbortSignal,
 ) {
+  return request(
+    url,
+    body === undefined ? undefined : JSON.stringify(body),
+    page,
+    signal,
+    "application/json",
+  );
+}
+export async function apiBinary(
+  url: string,
+  body: Uint8Array<ArrayBuffer>,
+  page: string,
+  signal?: AbortSignal,
+) {
+  return request(url, body, page, signal, "application/vnd.ssh-exam-capture");
+}
+async function request(
+  url: string,
+  body: BodyInit | undefined,
+  page: string | undefined,
+  signal: AbortSignal | undefined,
+  contentType: string,
+) {
   const res = await fetch("/api" + url, {
     method: body === undefined ? "GET" : "POST",
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(OPERATION_TIMEOUT_MS)])
       : AbortSignal.timeout(OPERATION_TIMEOUT_MS),
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": contentType,
       "X-CSRF-Token": csrf,
       ...(page ? { "X-Page-Instance": page } : {}),
     },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body,
   });
   const result = await res.json();
   if (!res.ok)

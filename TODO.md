@@ -1,4 +1,9 @@
-# Upload bandwidth — INVESTIGATED; implementation proposed
+# Upload bandwidth — IMPLEMENTATION AUTHORIZED, local work in progress
+
+Binary JPEG negotiation/upload implemented locally with exact-byte/retry/freshness/
+ownership/size checks:19focused tests, types/build and3built WASM browser workflows
+pass. No deployment yet. Browser VP9 and full release qualification remain open.
+Current implementation plan: docs/capture-upload-implementation.md.
 
 November6: synthetic browser measurements confirm binary JPEG25% payload savings
 (20.8→15.6kB/s) without quality change. Browser VP9 five-second samples measured

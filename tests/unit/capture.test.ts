@@ -1,8 +1,12 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { api } from "../../apps/web/src/api.js";
+import { api, apiBinary } from "../../apps/web/src/api.js";
+import { decodeCaptureUpload } from "../../packages/protocol/capture-upload.js";
 import { Capture } from "../../apps/web/src/capture.js";
 
-vi.mock("../../apps/web/src/api.js", () => ({ api: vi.fn() }));
+vi.mock("../../apps/web/src/api.js", () => ({
+  api: vi.fn(),
+  apiBinary: vi.fn(),
+}));
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -64,6 +68,42 @@ it("an unacknowledged local policy report withholds positive samples without des
       "page",
       expect.any(AbortSignal),
     );
+  } finally {
+    capture.stop();
+  }
+});
+
+it("negotiated binary JPEG samples preserve the exact bytes and challenge-before-draw boundary", async () => {
+  const { capture, create, draw, encode } = fixture();
+  const bytes = new Uint8Array(64).fill(17),
+    challenge = "00000000-0000-4000-8000-000000000001";
+  create.mockImplementation(() => ({
+    getContext: () => ({ drawImage: draw }),
+    toDataURL: encode,
+    toBlob: (reply: (blob: Blob) => void) =>
+      reply(new Blob([bytes], { type: "image/jpeg" })),
+  }));
+  vi.mocked(api).mockImplementationOnce(async () => {
+    expect(draw).not.toHaveBeenCalled();
+    return { challenge, after_sequence: 7, upload: { binary: "jpeg-v1" } };
+  });
+  vi.mocked(apiBinary).mockResolvedValue({});
+  try {
+    await capture.sample("screen");
+    expect(encode).not.toHaveBeenCalled();
+    expect(apiBinary).toHaveBeenCalledTimes(1);
+    const [url, body, page, signal] = vi.mocked(apiBinary).mock.calls[0];
+    const parsed = decodeCaptureUpload(body);
+    expect(parsed.image).toEqual(bytes);
+    expect(parsed.metadata).toMatchObject({
+      challenge,
+      source: "screen",
+      seq: 8,
+      readiness: ready,
+    });
+    expect(url).toBe("/student/attempts/synthetic/frames/binary");
+    expect(page).toBe("page");
+    expect(signal?.aborted).toBe(false);
   } finally {
     capture.stop();
   }

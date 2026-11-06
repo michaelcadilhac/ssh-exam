@@ -63,6 +63,12 @@ import {
 import { wipeAuthPacket } from "./login-password.js";
 import { Monitoring } from "./monitoring.js";
 import { MonitoringChallengeError } from "./monitoring-readiness.js";
+import {
+  CAPTURE_UPLOAD_TYPE,
+  CAPTURE_IMAGE_LIMIT,
+  CAPTURE_METADATA_LIMIT,
+  decodeCaptureUpload,
+} from "../../../packages/protocol/capture-upload.js";
 import { MonitoringMedia, MonitoringMediaError } from "./monitoring-media.js";
 import {
   MonitoringVideoJobs,
@@ -971,6 +977,11 @@ export async function createApp(
   );
   app.addContentTypeParser(
     "application/vnd.ssh-exam-event",
+    { parseAs: "buffer" },
+    (_req, body, done) => done(null, body),
+  );
+  app.addContentTypeParser(
+    CAPTURE_UPLOAD_TYPE,
     { parseAs: "buffer" },
     (_req, body, done) => done(null, body),
   );
@@ -2363,7 +2374,10 @@ export async function createApp(
         .object({ source: z.enum(["screen", "webcam"]) })
         .strict()
         .parse(req.body);
-      return monitoring.captureChallenge(a, a.page_hash!, source);
+      return {
+        ...monitoring.captureChallenge(a, a.page_hash!, source),
+        upload: { binary: "jpeg-v1" },
+      };
     },
   );
   app.get("/api/student/attempts/:id/monitoring-readiness", async (req) => {
@@ -2371,6 +2385,30 @@ export async function createApp(
     page(req, a);
     return monitoring.captureReadiness(a, a.page_hash!);
   });
+  app.post(
+    "/api/student/attempts/:id/frames/binary",
+    {
+      bodyLimit: 4 + CAPTURE_METADATA_LIMIT + CAPTURE_IMAGE_LIMIT,
+      config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+    },
+    async (req) => {
+      const a = studentAttempt(req);
+      page(req, a);
+      if (authenticationGap(a.id))
+        throw Error("Capture suspended for authorized authentication gap");
+      if (!Buffer.isBuffer(req.body)) throw Error("Binary capture required");
+      const { metadata, image } = decodeCaptureUpload(req.body);
+      const { version, encoding, ...input } = metadata;
+      return monitoring.challengedFrame(
+        a,
+        {
+          ...input,
+          data: Buffer.from(image.buffer, image.byteOffset, image.byteLength),
+        },
+        a.page_hash!,
+      );
+    },
+  );
   app.post(
     "/api/student/attempts/:id/frames/challenged",
     { config: { rateLimit: { max: 60, timeWindow: "1 minute" } } },

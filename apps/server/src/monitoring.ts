@@ -914,13 +914,13 @@ export class Monitoring {
       Math.abs(captured - now()) > 120000 ||
       !Number.isFinite(monotonic) ||
       monotonic < 0 ||
-      typeof data !== "string" ||
-      data.length > 2100000
+      (!Buffer.isBuffer(data) && typeof data !== "string") ||
+      data.length > (Buffer.isBuffer(data) ? 1500000 : 2100000)
     )
       throw Error("Invalid image metadata");
     if (source === "webcam" && !JSON.parse(a.settings).webcam)
       throw Error("Webcam not requested");
-    const bytes = Buffer.from(data, "base64");
+    const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data, "base64");
     if (bytes.length > 1500000 || bytes.length < 32)
       throw Error("Image size invalid");
     const image = sharp(bytes, { limitInputPixels: 12000000 });

@@ -1,4 +1,5 @@
-import { api } from "./api.js";
+import { api, apiBinary } from "./api.js";
+import { encodeCaptureUpload } from "../../../packages/protocol/capture-upload.js";
 
 // Keep each five-second observation independently verifiable as an ordinary
 // JPEG. Browser stream constraints are hints; the canvas also bounds actual
@@ -127,15 +128,51 @@ export class Capture {
     canvas
       .getContext("2d")!
       .drawImage(video, 0, 0, canvas.width, canvas.height);
-    const data = canvas.toDataURL("image/jpeg", profile.quality).split(",")[1];
     const seq =
       Math.max(this.seq.get(source) || 0, challenge?.after_sequence ?? 0) + 1;
     this.seq.set(source, seq);
+    const captured = Date.now(),
+      monotonic = performance.now();
+    if (challenge?.upload?.binary === "jpeg-v1") {
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (value) =>
+            value?.type === "image/jpeg"
+              ? resolve(value)
+              : reject(Error("JPEG capture unavailable")),
+          "image/jpeg",
+          profile.quality,
+        ),
+      );
+      if (this.stopped || !this.sampleAllowed()) return false;
+      const image = new Uint8Array(await blob.arrayBuffer());
+      if (this.stopped || !this.sampleAllowed()) return false;
+      await apiBinary(
+        `/student/attempts/${this.id}/frames/binary`,
+        encodeCaptureUpload(
+          {
+            version: 1,
+            encoding: "jpeg",
+            source: source as "screen" | "webcam",
+            seq,
+            captured,
+            monotonic,
+            challenge: challenge.challenge,
+            readiness: this.readiness() as any,
+          },
+          image,
+        ),
+        this.page,
+        this.abort.signal,
+      );
+      return true;
+    }
+    const data = canvas.toDataURL("image/jpeg", profile.quality).split(",")[1];
     const frame = {
       source,
       seq,
-      captured: Date.now(),
-      monotonic: performance.now(),
+      captured,
+      monotonic,
       data,
     };
     if (challenge) {

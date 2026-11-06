@@ -1,4 +1,13 @@
-# Current investigation — reducing upload bandwidth
+# Current implementation — reducing upload bandwidth
+
+November6 explicit implement/push/deploy authorization. Binary JPEG capture is
+implemented locally:19focused HTTP/client checks, types/build and3actual built
+WASM browser workflows pass. No production changes yet. Next: bounded browser
+VP9 ingress/recovery and receipt preservation, then full frozen release gates.
+Plan and boundaries: docs/capture-upload-implementation.md. Existing production
+remains the last accepted95c7798 release; prior deployment evidence below.
+
+# Prior investigation — reducing upload bandwidth
 
 November6: local investigation complete; no runtime/production change. Measured
 binary JPEG15.6–15.9kB/s versus20.8–21.2current; browser VP9 samples3.4–5.1kB/s,
