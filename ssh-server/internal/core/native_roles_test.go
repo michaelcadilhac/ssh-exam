@@ -176,9 +176,13 @@ func TestNativeRoleLifetimeChild(t *testing.T) {
 	os.Exit(0)
 }
 
-func testNativeRoleLifetime(t *testing.T) (*monitoringProcessGuard, func()) {
+func testNativeRoleLifetime(t *testing.T, lifetime ...time.Duration) (*monitoringProcessGuard, func()) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	duration := 20 * time.Second
+	if len(lifetime) > 0 {
+		duration = lifetime[0]
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestNativeRoleLifetimeChild$")
 	command.Env = append(os.Environ(), "EXAM_NATIVE_ROLE_LIFETIME_CHILD=1", "GORACE=atexit_sleep_ms=0", "GOMAXPROCS=2")
 	stdin, err := command.StdinPipe()

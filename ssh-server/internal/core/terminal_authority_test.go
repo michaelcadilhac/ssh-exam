@@ -46,7 +46,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 	if os.Getenv("EXAM_COLLECTION_USER_SYSTEMD") != "1" || os.Getuid() < 1000 {
 		t.Skip("requires explicit owned user-systemd qualification and a synthetic student UID")
 	}
-	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume", "files-resume-clock"} {
+	for _, mode := range []string{"current", "current-release", "watchdog-mirror", "roles-unavailable", "roles-exited", "clock-live", "timer-pause", "recording-fault", "clock-recording-fault", "recording-fault-replacement", "partial-thaw", "partial-continue", "resume-ack-loss", "delayed-manager", "revoked-before-exec", "revoked-after-save", "pending-resume-cancel", "expired-pending-resume", "native-live-expiry", "ssh-pin-refused", "wrong-bootstrap", "old-gateway", "old-policy-gateway", "ssh-exited", "files-resume", "files-resume-clock", "files-resume-unlimited", "files-resume-paused"} {
 		t.Run(mode, func(t *testing.T) {
 			previous := terminalAuthorityReadiness
 			terminalAuthorityReadiness = func() error { return nil }
@@ -54,12 +54,20 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				terminalAuthorityReadiness = qualifiedReleaseReadiness
 			}
 			t.Cleanup(func() { terminalAuthorityReadiness = previous })
-			e, key, r := initialGrantUnpreparedFixture(t)
+			e, key, r := initialGrantUnpreparedFixture(t, func(settings *Settings) {
+				if mode == "timer-pause" || mode == "files-resume-paused" {
+					settings.Duration = 60
+				}
+			})
 			e.nativeRolesProbe = func() (*nativeRoleGuard, error) { return &nativeRoleGuard{}, nil } // Desktop role/group seam; real root profile uses production probing.
 			var stopRole func()
 			var stopSSH func()
 			if mode == "ssh-exited" || strings.HasPrefix(mode, "files-resume") {
-				guard, stop := testNativeRoleLifetime(t)
+				lifetime := 20 * time.Second
+				if mode == "files-resume-paused" {
+					lifetime = 2 * time.Minute // Cross the real one-minute countdown before deliberately losing SSH.
+				}
+				guard, stop := testNativeRoleLifetime(t, lifetime)
 				stopSSH = stop
 				t.Setenv("EXAM_TEST_SSH_PEER_PID", fmt.Sprint(guard.identity.pid))
 				if strings.HasPrefix(mode, "files-resume") {
@@ -379,7 +387,9 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 					t.Fatal(err)
 				}
 			}
-			testActualSharedCutoffWatch(t, e, a)
+			if mode != "timer-pause" && mode != "files-resume-paused" {
+				testActualSharedCutoffWatch(t, e, a)
+			} // A one-minute exam already caps its first 60s proof at the deadline; its cutoff cannot grow before pause.
 			if mode == "clock-live" || mode == "clock-recording-fault" {
 				// The public signed clock operation must use actual live authority,
 				// not the deliberately stale durable lease verified just above.
@@ -403,12 +413,23 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 				}
 				a = next
 			}
-			testActualMonitoredPaneInput(t, e, key, a, mode, func(mode int32) {
-				if mode != 0 && (resumeMode.Load() == 0 || (mode == 4 && resumeMode.Load() != 4)) {
-					approvalUntil.Store(Millis() + 300000) // Ordinary reviewed approval outlives one evidence window.
+			testActualMonitoredPaneInput(t, e, key, a, mode, func(controlMode int32) {
+				if controlMode != 0 && (resumeMode.Load() == 0 || (controlMode == 4 && resumeMode.Load() != 4)) {
+					if mode == "files-resume-unlimited" {
+						approvalUntil.Store(9007199254740991)
+					} else {
+						approvalUntil.Store(Millis() + 300000)
+					} // Ordinary reviewed approval outlives one evidence window.
 				}
-				resumeMode.Store(mode)
+				resumeMode.Store(controlMode)
 			})
+			if mode == "files-resume-paused" {
+				current, err := readStateSnapshot(e.Config.State)
+				if err != nil {
+					t.Fatal(err)
+				}
+				a = current.Attempts[a.ID]
+			}
 			if mode == "ssh-exited" || strings.HasPrefix(mode, "files-resume") {
 				observed, err := ObserveTerminalSupervisor(e.Config.State, a.ID)
 				if err != nil || observed.SSHPeer != "pinned-live" {
@@ -446,10 +467,14 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 					ended := state.Attempts[a.ID]
 					if ended.SSHExitedOwner != nil {
 						expectedDeadline := a.Deadline
+						expectedKind := "technical"
+						if mode == "files-resume-paused" {
+							expectedKind = "policy"
+						} // SSH loss cannot erase the recording hold.
 						if mode == "files-resume-clock" {
 							expectedDeadline += 60000
 						}
-						if ended.RegisteredOwner == nil || !sameExitedLifetime(*ended.SSHExitedOwner, *ended.RegisteredOwner) || ended.State != "LOCKED" || (mode != "files-resume-clock" && ended.RetainedHold != "held") || ended.MonitoringHoldKind != "technical" || ended.Start != a.Start || ended.Deadline != expectedDeadline || ended.OriginalDeadline != a.OriginalDeadline {
+						if ended.RegisteredOwner == nil || !sameExitedLifetime(*ended.SSHExitedOwner, *ended.RegisteredOwner) || ended.State != "LOCKED" || (mode != "files-resume-clock" && ended.RetainedHold != "held") || ended.MonitoringHoldKind != expectedKind || ended.Start != a.Start || ended.Deadline != expectedDeadline || ended.OriginalDeadline != a.OriginalDeadline {
 							t.Fatal("positive SSH exit lost exact ownership/hold/original time", ended)
 						}
 						found := false
@@ -465,7 +490,11 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 							t.Fatal("pending clock/actual exit provenance lost", ended)
 						}
 						if strings.HasPrefix(mode, "files-resume") {
-							testActualFilesResume(t, e, key, ended, original, &approvalUntil, &resumeMode)
+							var expiry []int64
+							if mode == "files-resume-unlimited" || mode == "files-resume-paused" {
+								expiry = []int64{9007199254740991}
+							}
+							testActualFilesResume(t, e, key, ended, original, &approvalUntil, &resumeMode, expiry...)
 							completed, err := readStateSnapshot(e.Config.State)
 							if err != nil || completed.Attempts[a.ID].ClockHandoverPending {
 								t.Fatal("fresh verified files authority did not acknowledge its current clock", err)
@@ -925,6 +954,10 @@ func testActualMonitoredPaneInput(t *testing.T, e *Engine, key ed25519.PrivateKe
 	beforeMemory, err := supervisionReadUntil(fd, "BUFFER:synthetic-buffer-not-on-disk:", time.Second)
 	if err != nil {
 		t.Fatal("verified live authority did not admit actual shell input", err)
+	}
+	if mode == "timer-pause" || mode == "files-resume-paused" {
+		testActualTimerPause(t, e, key, a, fd, write)
+		return
 	}
 	if mode == "clock-live" || mode == "clock-recording-fault" {
 		// Stop only this fixture's producer so the transfer oracle cannot mistake

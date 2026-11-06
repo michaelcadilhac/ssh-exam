@@ -64,7 +64,12 @@ test("retained coordination timeout requests one fresh bind without a policy inc
   };
   try {
     await page.clock.install();
-    await page.clock.runFor(15100);
+    await page.clock.runFor(16000);
+    await expect(
+      page.getByRole("heading", { name: "Reconnecting", exact: true }),
+    ).toHaveCount(0);
+    expect(f.model.messages.filter((m) => m.type === "incident")).toEqual([]);
+    await page.clock.runFor(44100);
     const reconnecting = page.getByText("Reconnecting · input blocked", {
       exact: true,
     });
@@ -172,6 +177,13 @@ test("an open but unacknowledged reconnect cannot outlive recovery grace or repl
     await type(page, "blocked");
     await page.clock.runFor(16000);
     await expect(
+      page.getByText("Reconnecting · input blocked", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Work paused" }),
+    ).toHaveCount(0);
+    await page.clock.runFor(45000);
+    await expect(
       page.getByRole("heading", { name: "Work paused" }),
     ).toBeVisible();
     ack.release();
@@ -216,6 +228,10 @@ test("a silent open connection with no heartbeat acknowledgments expires without
   await page.clock.install();
   await resetScreens(page);
   await page.clock.runFor(15250);
+  await expect(page.getByRole("heading", { name: "Work paused" })).toHaveCount(
+    0,
+  );
+  await page.clock.runFor(45000);
   await expect(
     page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();

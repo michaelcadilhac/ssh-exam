@@ -1,4 +1,5 @@
 import { InterruptionHistory } from "./interruptions.js";
+import { timerState } from "../../../packages/protocol/timer.js";
 import Database from "better-sqlite3";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomUUID, createHash, randomBytes } from "node:crypto";
@@ -20,6 +21,8 @@ export interface Attempt {
   original_deadline: number | null;
   clock_revision: number;
   clock_resets: string;
+  timer_paused_at?: number;
+  timer_remaining_ms?: number;
   ended: number | null;
   generation: number;
   continuation_revision: number;
@@ -250,7 +253,7 @@ export class Store {
       | Attempt
       | undefined;
     if (!a) throw Error("Attempt not found");
-    return a;
+    return Object.assign(a, timerState(a));
   }
   transition(id: string, from: State[], to: State, reason?: string) {
     const a = this.attempt(id);

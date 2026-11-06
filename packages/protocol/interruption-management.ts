@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { attemptReference } from "./clock-management.js";
 
+// SQLite/JSON store safe integers, not Infinity. This explicit sentinel records
+// approval validity only; actual Continue still requires an unfinished exam.
+export const NO_RESUME_EXPIRY = Number.MAX_SAFE_INTEGER;
+
 export const interruptionShow = z.object({ id: attemptReference }).strict();
 export const interruptionReview = interruptionShow
   .extend({
@@ -18,4 +22,5 @@ export const interruptionAuthorize = interruptionShow.extend({
   revision: z.number().int().nonnegative(),
   requestID: z.string().uuid(),
   reason: z.string().trim().min(8).max(1000),
+  validForMinutes: z.number().int().min(1).max(525600).nullable().optional(),
 });

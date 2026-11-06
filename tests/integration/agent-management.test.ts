@@ -2328,8 +2328,8 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
       );
       expect(
         f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-        "Management must retain exactly the nine explicitly authored synthetic histories, including both saved sources and both cancelled grant preparations",
-      ).toEqual({ n: 9 });
+        "Management must retain exactly the ten explicitly authored synthetic histories, including both saved sources, both cancelled grant preparations and the countdown-control attempt",
+      ).toEqual({ n: 10 });
       await qualifyNativeRetirementCLI(
         f,
         binary,

@@ -36,7 +36,7 @@ CLI_CONFIG = Path("/etc/exam-agent/examctl.json")
 RELAY = Path("/usr/local/libexec/exam-ssh-relay")
 RELAY_PRESERVE = [Path("/etc/exam-relay/config.json"), Path("/etc/exam-relay/gateway.pub"), Path("/etc/systemd/system/exam-ssh-relay.service")]
 RELAY_NGINX = Path("/etc/nginx/snippets/exam-ssh-relay.conf")
-GUARD_SHA256 = "3a49907d8b99b6994f2646d1b5cf066d608c55c0398cd63417e7de0ef6f6ff56"
+GUARD_SHA256 = "4901c08846075d209b517d529f0f69a4b275c3b25287567fd06f29f925131545"
 DIGEST = re.compile(r"^[a-f0-9]{64}$")
 OWNER_UID = 0
 

@@ -1,9 +1,11 @@
 import { hash, now, type Store } from "./db.js";
+import { effectiveDeadline } from "../../../packages/protocol/timer.js";
 import { needsFilesOnlyResume } from "./native-monitoring-state.js";
 import {
   interruptionShow,
   interruptionReview,
   interruptionAuthorize,
+  NO_RESUME_EXPIRY,
 } from "../../../packages/protocol/interruption-management.js";
 
 const refuse = (message: string, statusCode = 409): never => {
@@ -173,10 +175,14 @@ export class InterruptionManagement {
         a.ended ||
         a.protected ||
         !a.deadline ||
-        a.deadline <= at
+        effectiveDeadline(a) <= at
       )
         return refuse(`Attempt cannot continue. ${guidance}`);
-      const expires = Math.min(a.deadline, at + 300000);
+      const validity = b.validForMinutes === undefined ? 5 : b.validForMinutes;
+      const expires =
+        validity === null
+          ? NO_RESUME_EXPIRY
+          : Math.min(effectiveDeadline(a), at + validity * 60000);
       this.store.db
         .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
         .run(a.id, a.generation, expires);
@@ -205,6 +211,7 @@ export class InterruptionManagement {
         generation: a.generation,
         requestID: b.requestID,
         expires,
+        ...(validity === null ? { noExpiry: true } : {}),
         status: "authorized",
         execution: false,
         note: "Approval does not resume work. Existing fresh SSH, current page/monitoring and native Continue checks still apply. Inspect fresh status; a cached reply is not a current permission.",

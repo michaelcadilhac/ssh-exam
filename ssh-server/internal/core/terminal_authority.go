@@ -301,6 +301,9 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 	s.mu.Unlock()
 	current, err := rootCaller.live()
 	files := p.previous != nil
+	if !validAuthorityClockSnapshot(q) {
+		return monitoringAuthorityView{}, errMonitoringScope
+	}
 	if err != nil || !current || q.Frame == nil || q.State != "ACTIVE" || q.Start <= 0 || q.Deadline <= q.Start || q.OriginalDeadline <= 0 || (!files && q.OriginalDeadline != q.Deadline) || files != (q.Op == "commit-files") || (files && (q.PreviousOwner == nil || *q.PreviousOwner != *p.previous)) || q.DeadlineBootMS <= 0 || q.Owner.Boot != boot() {
 		return monitoringAuthorityView{}, errMonitoringAuthority
 	}
@@ -331,7 +334,7 @@ func (s *terminalSupervisor) commitAuthority(q terminalAuthorityRequest, caller 
 	if err != nil || now < p.begin.IssuedBootMS || now >= until {
 		return monitoringAuthorityView{}, errMonitoringAuthority
 	}
-	r := &terminalAuthorityRuntime{owner: q.Owner, beginNonce: q.Nonce, key: append(ed25519.PublicKey(nil), p.key...), peer: ssh, claim: claim, launches: map[string]PaneInstance{}, start: q.Start, deadline: q.Deadline, originalDeadline: q.OriginalDeadline, deadlineBootMS: q.DeadlineBootMS}
+	r := &terminalAuthorityRuntime{owner: q.Owner, beginNonce: q.Nonce, key: append(ed25519.PublicKey(nil), p.key...), peer: ssh, claim: claim, launches: map[string]PaneInstance{}, clockReset: q.Clock, start: q.Start, deadline: q.Deadline, originalDeadline: q.OriginalDeadline, deadlineBootMS: q.DeadlineBootMS}
 	r.filesPreviousOwner = p.previous
 	r.live.Store(true)
 	if cutoff == nil || cutoff.initialize(until, q.DeadlineBootMS) != nil {
@@ -826,13 +829,13 @@ func (e *Engine) commitTerminalAuthority(p *terminalAuthorityBegin, a *Attempt, 
 	if p == nil || a == nil || a.State != "ACTIVE" || a.RegisteredOwner == nil || *a.RegisteredOwner != p.Owner || verified.bootstrap == nil {
 		return errMonitoringScope
 	}
-	reply, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit", Attempt: p.Attempt, Owner: p.Owner, Nonce: p.Nonce, Frame: &verified.frame, State: a.State, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, DeadlineBootMS: int64(a.UptimeDeadline * 1000), VerifiedUntilBootMS: verified.until}, nil, false)
+	reply, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit", Attempt: p.Attempt, Owner: p.Owner, Nonce: p.Nonce, Frame: &verified.frame, State: a.State, Start: a.Start, Deadline: a.Deadline, OriginalDeadline: a.OriginalDeadline, DeadlineBootMS: workDeadlineBootMS(a), VerifiedUntilBootMS: verified.until}, nil, false)
 	if err != nil {
 		return err
 	}
 	if reply.View == nil || !reply.View.ExecutionAuthorized {
 		return fmt.Errorf("%w: bootstrap not live", errMonitoringAuthority)
 	}
-	e.registerTerminalMonitoring(p.Attempt, p.Owner, int64(a.UptimeDeadline*1000))
+	e.registerTerminalMonitoring(p.Attempt, p.Owner, workDeadlineBootMS(a))
 	return nil
 }

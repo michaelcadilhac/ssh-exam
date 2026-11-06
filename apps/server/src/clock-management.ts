@@ -10,13 +10,18 @@ import {
 } from "../../../packages/protocol/clock-management.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 
-export function assertClockCapabilities(health: any, extend: boolean) {
+export function assertClockCapabilities(
+  health: any,
+  extend: boolean,
+  timer = false,
+) {
   if (
     !health?.fixture &&
     ![
       "clock-reset",
       "deadline-timing-check",
       ...(extend ? ["clock-extend"] : []),
+      ...(timer ? ["timer-clock-controls-v1"] : []),
     ].every((c) => health?.capabilities?.includes(c))
   )
     throw Error(
@@ -43,15 +48,18 @@ export class ClockManagement {
   }
   single(input: unknown, actor: string, extend = false) {
     const b = clockSingle.parse(input);
+    if (extend && b.timerAction)
+      throw Error("Use clocks.reset authorization for timer controls");
     try {
       return this.store.db.transaction(() => {
         this.clocks.stage(
           b.id,
-          b.minutes,
+          b.minutes ?? 0,
           actor,
           b.revision,
           b.requestID,
           extend,
+          b.timerAction,
         );
         return this.describe(b.id, b.requestID);
       })();
@@ -70,13 +78,14 @@ export class ClockManagement {
   describe(id: string, requestID: string) {
     const intent = this.store.db
       .prepare(
-        "SELECT status FROM clock_reset_requests WHERE id=? AND attempt=?",
+        "SELECT status,body FROM clock_reset_requests WHERE id=? AND attempt=?",
       )
-      .get(requestID, id) as { status: string } | undefined;
+      .get(requestID, id) as { status: string; body: string } | undefined;
     return {
       confirmed: intent?.status === "applied",
       status: intent?.status || "unknown",
       requestID,
+      intent: intent ? clockIntentMetadata(JSON.parse(intent.body)) : null,
       attempt: this.attempts.show(id).attempt,
       pending: clockIntentMetadata(this.clocks.pending(id)),
     };

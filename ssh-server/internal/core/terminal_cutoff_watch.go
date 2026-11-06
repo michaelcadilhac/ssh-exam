@@ -32,7 +32,7 @@ func (e *Engine) terminalCutoffFor(a *Attempt) (*terminalCutoffWatch, error) {
 	b := &e.terminalMonitoring
 	b.watchMu.Lock()
 	previous := b.watched[a.ID]
-	if previous != nil && previous.slot.owner == *a.RegisteredOwner && previous.slot.deadline == int64(a.UptimeDeadline*1000) {
+	if previous != nil && previous.slot.owner == *a.RegisteredOwner && previous.slot.deadline == workDeadlineBootMS(a) {
 		live, err := previous.peer.live()
 		if err == nil && live {
 			b.watchMu.Unlock()
@@ -73,7 +73,7 @@ func (e *Engine) openTerminalCutoff(a *Attempt) (*terminalCutoffWatch, error) {
 	if err != nil {
 		return nil, err
 	}
-	if response.cutoffFile == nil || response.cutoffPeer == nil || response.Cutoff == nil || response.Cutoff.Owner != *a.RegisteredOwner || response.Cutoff.DeadlineBootMS != int64(a.UptimeDeadline*1000) {
+	if response.cutoffFile == nil || response.cutoffPeer == nil || response.Cutoff == nil || response.Cutoff.Owner != *a.RegisteredOwner || response.Cutoff.DeadlineBootMS != workDeadlineBootMS(a) {
 		if response.cutoffFile != nil {
 			response.cutoffFile.Close()
 		}

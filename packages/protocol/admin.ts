@@ -1,3 +1,4 @@
+import { effectiveDeadline } from "./timer.js";
 // Presentation only. Authorization and clock changes remain server-controlled.
 export const dashboardViews = [
   "",
@@ -69,21 +70,27 @@ export function attemptStatus(a: any): { label: string; tone: string } {
     return { label: "Setting up server access", tone: "neutral" };
   if (a.state === "ACTIVE")
     return {
-      label: a.working === true
-        ? "Working"
-        : a.connected === true
-          ? "Status updating"
-          : "Connection unconfirmed",
+      label:
+        a.working === true
+          ? "Working"
+          : a.connected === true
+            ? "Status updating"
+            : "Connection unconfirmed",
       tone: a.working === true ? "good" : "warning",
     };
   if (a.state === "LOCKED") return { label: "Work paused", tone: "warning" };
   if (a.state === "COLLECTION_FAILED")
-    return { label: hasProtectedFiles(a)
+    return {
+      label: hasProtectedFiles(a)
         ? "Files saved; cleanup needs attention"
-        : "File collection needs attention", tone: "danger" };
+        : "File collection needs attention",
+      tone: "danger",
+    };
   if (a.state === "COMPLETED")
     return {
-      label: hasProtectedFiles(a) ? "Files saved" : "File protection unconfirmed",
+      label: hasProtectedFiles(a)
+        ? "Files saved"
+        : "File protection unconfirmed",
       tone: hasProtectedFiles(a) ? "good" : "warning",
     };
   return {
@@ -102,13 +109,13 @@ export function attemptStatus(a: any): { label: string; tone: string } {
 export function clockEditable(a: any, now: number): boolean {
   return (
     ["ACTIVE", "LOCKED"].includes(a.state) &&
-    a.deadline > now &&
+    effectiveDeadline(a) > now &&
     !a.protected &&
     !a.pendingClockReset
   );
 }
 
-// Exam elapsed time includes pauses because the clock continues. Never keep a
+// Wall elapsed time includes countdown pauses. Never keep a
 // finished attempt ticking, or count an unstarted preflight as exam time.
 export function attemptElapsed(a: any, now: number): number | null {
   if (
@@ -116,7 +123,7 @@ export function attemptElapsed(a: any, now: number): number | null {
     (["COMPLETED", "CANCELLED_BEFORE_START"].includes(a.state) && !a.ended)
   )
     return null;
-  const end = a.ended || Math.min(now, a.deadline || now);
+  const end = a.ended || Math.min(now, effectiveDeadline(a) || now);
   return Math.max(0, (end - a.start) / 1000);
 }
 export function preflightElapsed(a: any, now: number): number | null {

@@ -632,6 +632,7 @@ export function registerAgentManagement(
                     assertClockCapabilities(
                       agent.configurationHealth(),
                       extend,
+                      !!b.timerAction,
                     );
                     value = clockManagement.single(b, actor, extend);
                     break;

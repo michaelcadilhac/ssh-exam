@@ -64,6 +64,11 @@ type Settings struct {
 	CollectionTotalMiB int64  `json:"collection_total_mib,omitempty"`
 }
 type ClockReset struct {
+	PauseTimer       bool   `json:"pause_timer,omitempty"`
+	ResumeTimer      bool   `json:"resume_timer,omitempty"`
+	TimerPausedAt    int64  `json:"timer_paused_at,omitempty"`
+	TimerRemainingMS int64  `json:"timer_remaining_ms,omitempty"`
+	AppliedBootMS    int64  `json:"applied_boot_ms,omitempty"`
 	ExtendSeconds    int64  `json:"extend_seconds,omitempty"`
 	ID               string `json:"id"`
 	Actor            string `json:"actor"`
@@ -116,6 +121,8 @@ type Attempt struct {
 	OriginalDeadline            int64                      `json:"original_deadline,omitempty"`
 	OriginalUptimeDeadline      float64                    `json:"original_uptime_deadline,omitempty"`
 	ClockRevision               int                        `json:"clock_revision,omitempty"`
+	TimerPausedAt               int64                      `json:"timer_paused_at,omitempty"`
+	TimerRemainingMS            int64                      `json:"timer_remaining_ms,omitempty"`
 	ClockHandoverPending        bool                       `json:"clock_handover_pending,omitempty"`
 	ClockResets                 []ClockReset               `json:"clock_resets,omitempty"`
 	BrowserSSH                  bool                       `json:"browser_ssh,omitempty"`

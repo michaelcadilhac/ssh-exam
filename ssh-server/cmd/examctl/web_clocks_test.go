@@ -25,6 +25,8 @@ func TestClockAndAttemptHelpSyntaxAndDeterministicChildIntents(t *testing.T) {
 		{"web", "clocks", "extend", id, "--minutes", "5", "--revision", "-1"},
 		{"web", "clocks", "reset", id, "--minutes", "5", "--revision", strings.Repeat("a", 64)},
 		{"web", "clocks", "show", id, "--minutes", "5"},
+		{"web", "clocks", "pause-timer", id, "--minutes", "5", "--revision", "0"},
+		{"web", "clocks", "resume-timer", id},
 		{"web", "clocks", "add", "exam", "--minutes", "5", "--target", "bad"},
 		{"web", "clocks", "add", "exam", "--minutes", "5", "--target", id + ":0", "--target", id + ":0"},
 		{"web", "clocks", "reset-default", "exam", "--target", id + ":0", "--minutes", "90"},
@@ -39,6 +41,25 @@ func TestClockAndAttemptHelpSyntaxAndDeterministicChildIntents(t *testing.T) {
 	first := clockChildID(parent, id)
 	if !managementUUID.MatchString(first) || first != clockChildID(parent, id) || first == clockChildID(id, parent) || first == clockChildID(parent, parent) {
 		t.Fatal("child request IDs are invalid, unstable or not scoped")
+	}
+}
+
+func TestTimerReplyMustCarryTheRequestedAction(t *testing.T) {
+	for _, action := range []string{"pause", "resume"} {
+		body := map[string]any{"id": "a", "requestID": "intent", "timerAction": action}
+		intent := map[string]any{action + "_timer": true}
+		value := map[string]any{"requestID": "intent", "status": "pending", "confirmed": false, "attempt": map[string]any{"id": "a"}, "intent": intent}
+		raw, _ := json.Marshal(value)
+		if err := validateClockResult("clocks.reset", body, raw); err != nil {
+			t.Fatal(err)
+		}
+		for _, wrong := range []any{nil, map[string]any{"pause_timer": true, "resume_timer": true}, map[string]any{}} {
+			value["intent"] = wrong
+			raw, _ = json.Marshal(value)
+			if validateClockResult("clocks.reset", body, raw) == nil {
+				t.Fatal("accepted wrong timer action", action, wrong)
+			}
+		}
 	}
 }
 

@@ -68,8 +68,7 @@ func (s *terminalSupervisor) changeAuthorityClock(q terminalAuthorityRequest) (m
 	}
 	// Both clocks describe the SAME adjustment. Float serialization of the
 	// existing uptime field can round by one millisecond, never by an allowance.
-	drift := (q.DeadlineBootMS - r.deadlineBootMS) - (q.Deadline - r.deadline)
-	if drift < -1 || drift > 1 {
+	if !validClockHandover(q, r) {
 		return monitoringAuthorityView{}, errMonitoringScope
 	}
 	if r.hold != nil {
@@ -179,7 +178,7 @@ func (e *Engine) terminalClockRequest(a *Attempt, change ClockReset) (terminalAu
 	next.ClockRevision = change.Revision
 	previous := next
 	previous.ClockRevision--
-	return terminalAuthorityRequest{Op: "check-clock", Attempt: a.ID, Owner: previous, NextOwner: &next, Clock: &change, State: a.State, Start: a.Start, Deadline: change.Deadline, OriginalDeadline: a.OriginalDeadline, DeadlineBootMS: int64(a.UptimeDeadline * 1000)}, nil
+	return terminalAuthorityRequest{Op: "check-clock", Attempt: a.ID, Owner: previous, NextOwner: &next, Clock: &change, State: a.State, Start: a.Start, Deadline: change.Deadline, OriginalDeadline: a.OriginalDeadline, DeadlineBootMS: workDeadlineBootMS(a)}, nil
 }
 
 func (e *Engine) commitTerminalClock(a *Attempt, change ClockReset) error {

@@ -93,6 +93,7 @@ func filesResumeFence(current, snapshot *Attempt) bool {
 		reflect.DeepEqual(current.SSHExitedOwner, snapshot.SSHExitedOwner) &&
 		current.Transport == snapshot.Transport && current.Generation == snapshot.Generation &&
 		current.Authorization == snapshot.Authorization && current.Authorization > Millis() &&
+		current.TimerPausedAt == snapshot.TimerPausedAt && current.TimerRemainingMS == snapshot.TimerRemainingMS &&
 		current.Start == snapshot.Start && current.Deadline == snapshot.Deadline &&
 		current.OriginalDeadline == snapshot.OriginalDeadline && current.ClockRevision == snapshot.ClockRevision &&
 		current.Boot == snapshot.Boot && current.UptimeDeadline == snapshot.UptimeDeadline &&
@@ -194,13 +195,13 @@ func (e *Engine) resumeFiles(snapshot *Attempt, request Request, original *net.U
 		if err := check(); err != nil {
 			return snapshot, err
 		}
-		committed, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit-files", Attempt: snapshot.ID, Owner: p.Owner, PreviousOwner: &previous, Nonce: p.Nonce, Frame: &frame, State: "ACTIVE", Start: snapshot.Start, Deadline: snapshot.Deadline, OriginalDeadline: snapshot.OriginalDeadline, DeadlineBootMS: int64(snapshot.UptimeDeadline * 1000), VerifiedUntilBootMS: p.IssuedBootMS + proof.CaptureValidFor}, nil, false)
+		committed, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit-files", Attempt: snapshot.ID, Owner: p.Owner, PreviousOwner: &previous, Nonce: p.Nonce, Frame: &frame, Clock: clockSnapshot(snapshot), State: "ACTIVE", Start: snapshot.Start, Deadline: snapshot.Deadline, OriginalDeadline: snapshot.OriginalDeadline, DeadlineBootMS: workDeadlineBootMS(snapshot), VerifiedUntilBootMS: p.IssuedBootMS + proof.CaptureValidFor}, nil, false)
 		if err != nil {
 			return snapshot, err
 		}
 		view = committed.View
 	}
-	if view == nil || !view.ExecutionAuthorized || view.DeadlineUptimeMS != int64(snapshot.UptimeDeadline*1000) || !roles.current() {
+	if view == nil || !view.ExecutionAuthorized || view.DeadlineUptimeMS != workDeadlineBootMS(snapshot) || !roles.current() {
 		return snapshot, errMonitoringAuthority
 	}
 	if terminalResumeTransitionCheckpoint != nil {
@@ -243,7 +244,7 @@ func (e *Engine) resumeFiles(snapshot *Attempt, request Request, original *net.U
 		_, _ = e.callTerminalAuthority(terminalAuthorityRequest{Op: "revoke", Attempt: snapshot.ID, Owner: p.Owner, Cause: "resume-unverified"}, nil, false)
 		return snapshot, err
 	}
-	e.registerTerminalMonitoring(result.ID, p.Owner, int64(result.UptimeDeadline*1000))
+	e.registerTerminalMonitoring(result.ID, p.Owner, workDeadlineBootMS(result))
 	// State sync can outlive the verified sample window. Re-read actual live
 	// authority before reporting success; the saved outcome itself is no permit.
 	fresh, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "files-result", Attempt: result.ID, Owner: p.Owner, Nonce: p.Nonce}, nil, false)

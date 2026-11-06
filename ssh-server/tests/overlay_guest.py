@@ -819,6 +819,8 @@ def main():
         return run_guest(config, prepare_retained_roles, native_role_snapshot)
     if settings.get('profile') == 'native-install':
         qualify_native_install(config)
+        if settings.get('native_relay'):
+            subprocess.run(['/usr/bin/python3', str(INPUT / 'qualify_relay_install.py')], check=True, timeout=240)
         qualify_execution_policy_roles(config)
         profiles = (['--execution-policy'],)
     elif settings.get('profile') == 'execution-policy':

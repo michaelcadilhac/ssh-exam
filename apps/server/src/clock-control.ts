@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { Store, now } from "./db.js";
 import { Agent } from "./agent.js";
 import { Lifecycle } from "./lifecycle.js";
+import {
+  effectiveDeadline,
+  timerPaused,
+} from "../../../packages/protocol/timer.js";
 
 export class ClockControl {
   constructor(
@@ -49,8 +53,13 @@ export class ClockControl {
     revision: number,
     requestID: string = randomUUID(),
     extend = false,
+    timerAction?: "pause" | "resume",
   ) {
-    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 360)
+    if (
+      timerAction
+        ? minutes !== 0 || extend
+        : !Number.isInteger(minutes) || minutes < 1 || minutes > 360
+    )
       throw Error("Enter 1–360 minutes remaining");
     return this.store.db.transaction(() => {
       const a = this.store.attempt(id);
@@ -68,6 +77,8 @@ export class ClockControl {
           body.actor !== actor ||
           body.remaining_seconds !== (extend ? 0 : minutes * 60) ||
           (body.extend_seconds || 0) !== (extend ? minutes * 60 : 0) ||
+          !!body.pause_timer !== (timerAction === "pause") ||
+          !!body.resume_timer !== (timerAction === "resume") ||
           body.clock_revision !== revision
         )
           throw Error("Conflicting clock reset retry");
@@ -81,7 +92,7 @@ export class ClockControl {
         !["ACTIVE", "LOCKED"].includes(a.state) ||
         !a.start ||
         !a.deadline ||
-        a.deadline <= requestedAt ||
+        effectiveDeadline(a) <= requestedAt ||
         a.protected
       )
         throw Error(
@@ -89,6 +100,14 @@ export class ClockControl {
         );
       if ((a.clock_revision || 0) !== revision)
         throw Error("Clock changed; refresh before resetting");
+      if (
+        timerAction &&
+        (a.monitoring_mode !== "v1" ||
+          timerPaused(a) !== (timerAction === "resume"))
+      )
+        throw Error(
+          "Timer state or native roles changed; refresh before pausing or resuming the countdown",
+        );
       if (this.pending(id))
         throw Error("A clock reset is already awaiting agent confirmation");
       if (this.life.isBusy(id))
@@ -100,6 +119,8 @@ export class ClockControl {
         requested_at: requestedAt,
         remaining_seconds: extend ? 0 : minutes * 60,
         ...(extend ? { extend_seconds: minutes * 60 } : {}),
+        ...(timerAction === "pause" ? { pause_timer: true } : {}),
+        ...(timerAction === "resume" ? { resume_timer: true } : {}),
         deadline: a.deadline,
         clock_revision: revision,
       };
@@ -132,8 +153,9 @@ export class ClockControl {
     requestID: string = randomUUID(),
     deferDelivery = false,
     extend = false,
+    timerAction?: "pause" | "resume",
   ) {
-    this.stage(id, minutes, actor, revision, requestID, extend);
+    this.stage(id, minutes, actor, revision, requestID, extend, timerAction);
     // Delivery failure is explicitly pending. The root agent will obtain this
     // durable request during its outbound check before deadline collection.
     if (

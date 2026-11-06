@@ -1,7 +1,11 @@
+import {
+  effectiveDeadline,
+  timerPaused,
+} from "../../../packages/protocol/timer.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
-import { api, chicago, remaining } from "./api.js";
+import { api, chicago, attemptRemaining } from "./api.js";
 import { InterruptionHistory } from "./interruption-history.js";
 import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
@@ -250,6 +254,7 @@ export function AdminReview({
     revision: number;
     requestID: string;
     reason: string;
+    validForMinutes: string | null;
   } | null>(null);
   const authorizeButton = useRef<HTMLButtonElement>(null);
   const positions = useRef(new Map<string, number>());
@@ -408,7 +413,8 @@ export function AdminReview({
           </span>
           {["ACTIVE", "LOCKED"].includes(a.state) && (
             <strong className="review-clock">
-              {remaining(a.deadline, clock)} remaining
+              {attemptRemaining(a, clock)} remaining
+              {timerPaused(a) ? " · countdown paused" : ""}
             </strong>
           )}
         </div>
@@ -421,7 +427,7 @@ export function AdminReview({
                 busy ||
                 stale ||
                 !!authorization ||
-                a.deadline <= clock ||
+                effectiveDeadline(a) <= clock ||
                 !!a.protected ||
                 !Number.isSafeInteger(a.continuation_revision)
               }
@@ -432,6 +438,7 @@ export function AdminReview({
                   revision: a.continuation_revision,
                   requestID: crypto.randomUUID(),
                   reason: "Allow exam to resume",
+                  validForMinutes: "5",
                 })
               }
             >
@@ -462,12 +469,45 @@ export function AdminReview({
         >
           <legend>Allow {a.username} to resume?</legend>
           <p>
-            Approval lasts up to five minutes, or until the deadline. The clock
-            keeps running.{" "}
+            {timerPaused(a)
+              ? "The countdown is paused."
+              : "The exam clock keeps running."}{" "}
             {a.monitoring_mode === "v1"
               ? "The student restores the checks and chooses Resume exam. After a lost session, they sign in again and reopen saved files in new terminals. The deadline stays the same."
               : "The student must sign in again and restore the checks."}
           </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={authorization.validForMinutes === null}
+              onChange={(event) =>
+                setAuthorization({
+                  ...authorization,
+                  validForMinutes: event.target.checked ? null : "5",
+                })
+              }
+            />
+            No approval expiry
+          </label>
+          {authorization.validForMinutes !== null && (
+            <label>
+              Resume within (minutes)
+              <input
+                type="number"
+                min="1"
+                max="525600"
+                step="1"
+                value={authorization.validForMinutes}
+                onChange={(event) =>
+                  setAuthorization({
+                    ...authorization,
+                    validForMinutes: event.target.value,
+                  })
+                }
+              />
+            </label>
+          )}
+          <p>Approval ends if the attempt ends or you revoke it.</p>
           <details>
             <summary>Technical details</summary>
             <p>
@@ -484,17 +524,25 @@ export function AdminReview({
             <button
               autoFocus
               className="primary"
-              disabled={stale || a.deadline <= clock}
+              disabled={
+                stale ||
+                effectiveDeadline(a) <= clock ||
+                (authorization.validForMinutes !== null &&
+                  (!Number.isInteger(Number(authorization.validForMinutes)) ||
+                    Number(authorization.validForMinutes) < 1 ||
+                    Number(authorization.validForMinutes) > 525600))
+              }
               onClick={() =>
                 void run(async () => {
-                  const { id, ...body } = authorization;
-                  const result = await api(
-                    `/admin/attempts/${id}/authorize`,
-                    body,
-                  );
+                  const { id, validForMinutes, ...body } = authorization;
+                  const result = await api(`/admin/attempts/${id}/authorize`, {
+                    ...body,
+                    validForMinutes:
+                      validForMinutes === null ? null : Number(validForMinutes),
+                  });
                   setAuthorization(null);
                   await onChanged();
-                  return `Resume allowed until ${chicago(result.expires)}. ${
+                  return `${result.noExpiry ? "Resume allowed without approval expiry" : `Resume allowed until ${chicago(result.expires)}`}. ${
                     a.monitoring_mode === "v1"
                       ? "The student restores the checks and chooses Resume exam. After a lost session, they sign in again. The deadline stays the same."
                       : "The student must sign in again and restore the checks."
@@ -558,7 +606,7 @@ export function AdminReview({
         </div>
         <div>
           <dt>Deadline</dt>
-          <dd>{chicago(a.deadline)}</dd>
+          <dd>{timerPaused(a) ? "Countdown paused" : chicago(a.deadline)}</dd>
         </div>
         <div>
           <dt>Connection</dt>
@@ -613,14 +661,20 @@ export function AdminReview({
             {clockChanges.map((change, i) => (
               <li key={change.id || i}>
                 <strong>
-                  {change.extend_seconds
-                    ? `Extended by ${formatDuration(change.extend_seconds)}`
-                    : `Reset to ${formatDuration(change.remaining_seconds)}`}
+                  {change.pause_timer
+                    ? "Countdown paused"
+                    : change.resume_timer
+                      ? "Countdown resumed"
+                      : change.extend_seconds
+                        ? `Extended by ${formatDuration(change.extend_seconds)}`
+                        : `Reset to ${formatDuration(change.remaining_seconds)}`}
                 </strong>
                 <span>
                   Requested {chicago(change.requested_at)} by {change.actor};
-                  confirmed {chicago(change.applied_at)}. Deadline{" "}
-                  {chicago(change.deadline)}.
+                  confirmed {chicago(change.applied_at)}.{" "}
+                  {change.timer_paused_at
+                    ? `${formatDuration(change.timer_remaining_ms / 1000)} remaining; countdown paused.`
+                    : `Deadline ${chicago(change.deadline)}.`}
                 </span>
               </li>
             ))}
@@ -635,8 +689,7 @@ export function AdminReview({
       </details>
       {a.pendingClockReset && (
         <p className="warn" role="status">
-          Time change awaiting server confirmation. The displayed deadline still
-          applies.
+          Waiting for the exam server to confirm the time change.
         </p>
       )}
       {stale && (

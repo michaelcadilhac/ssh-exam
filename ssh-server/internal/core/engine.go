@@ -31,6 +31,8 @@ type Request struct {
 	PublicKey               string   `json:"public_key"`
 	Handoff                 string   `json:"handoff"`
 	ExtendSeconds           int64    `json:"extend_seconds,omitempty"`
+	PauseTimer              bool     `json:"pause_timer,omitempty"`
+	ResumeTimer             bool     `json:"resume_timer,omitempty"`
 	ResetID                 string   `json:"reset_id,omitempty"`
 	Actor                   string   `json:"actor,omitempty"`
 	RequestedAt             int64    `json:"requested_at,omitempty"`
@@ -390,7 +392,10 @@ func (e *Engine) callLocked(op string, r Request) (any, error) {
 			a.Lease = Millis() + operationTimeoutMS
 			result = a
 		case "authorize-continuation":
-			if a.State != "LOCKED" || (len(a.Units) > 0 && !(a.MonitoringMode == "v1" && a.RetainedHold == "held")) || expired(a) || r.Generation != a.Generation || r.Expires > Millis()+300000 || r.Expires > a.Deadline {
+			// Approval validity is instructor-selected metadata, not an execution
+			// lease. No expiry still requires an unfinished attempt, fresh signed
+			// registration/Continue and current monitoring before any work.
+			if a.State != "LOCKED" || (len(a.Units) > 0 && !(a.MonitoringMode == "v1" && a.RetainedHold == "held")) || expired(a) || r.Generation != a.Generation || r.Expires <= Millis() || r.Expires > 9007199254740991 || (r.Expires != 9007199254740991 && r.Expires > workDeadlineWallMS(a)) {
 				return errors.New("stale continuation")
 			}
 			a.Authorization = r.Expires
@@ -998,6 +1003,9 @@ func (e *Engine) Watch() {
 	}
 }
 func expired(a *Attempt) bool {
+	if timerPaused(a) {
+		return false
+	}
 	return Millis() >= a.Deadline || (a.Boot == boot() && uptime() >= a.UptimeDeadline)
 }
 

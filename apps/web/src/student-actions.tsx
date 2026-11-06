@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { api, remaining } from "./api.js";
+import { api, attemptRemaining } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { timeLimit } from "./local-date-time.js";
@@ -113,8 +113,8 @@ export function StudentActions({
               <strong>{a.username}</strong>
               {!settings && (
                 <span>
-                  Attempt {a.attempt_number || 1} ·{" "}
-                  {remaining(a.deadline, clock)} remaining
+                  Attempt {a.attempt_number || 1} · {attemptRemaining(a, clock)}{" "}
+                  remaining
                   {op.kind === "reset"
                     ? ` → ${timeLimit(a.allowance * 60)}`
                     : ""}

@@ -127,6 +127,7 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
     expect(store.db.prepare("SELECT * FROM continuations").all()).toEqual([]);
     const approvedIntent = {
       ...selected,
+      validForMinutes: 15,
       revision: store.attempt(id).continuation_revision,
       requestID: randomUUID(),
     };
@@ -137,6 +138,7 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
       payload: approvedIntent,
     });
     expect(approval.statusCode).toBe(200);
+    expect(approval.json().expires).toBe(store.attempt(id).deadline); // Fifteen minutes exceeds this ten-minute attempt.
     expect(
       (
         await app.inject({
@@ -186,11 +188,16 @@ it("dashboard exposes only the selected exam's interruption approvals, and appro
       headers,
       payload: {
         ...approvedIntent,
+        validForMinutes: null,
         revision: current.revision,
         requestID: randomUUID(),
       },
     });
     expect(renewed.statusCode, renewed.body).toBe(200);
+    expect(renewed.json()).toMatchObject({
+      noExpiry: true,
+      expires: Number.MAX_SAFE_INTEGER,
+    });
     expect(
       store.db.prepare("SELECT * FROM continuations WHERE attempt=?").get(id),
     ).toMatchObject({

@@ -1,6 +1,12 @@
 import { expect } from "vitest";
 import { randomUUID } from "node:crypto";
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { managementOperations } from "../../packages/protocol/management.js";
 
 // Real zsh -> compiled root-mapped CLI -> real signed gateway, real protected
@@ -192,12 +198,21 @@ export async function qualifyScriptingCLI(
     );
   const directory = f.dir + "/scripting-run";
   loseSourceReply("preview");
-  await expect(
-    executeScript("prepare", directory, [earliest, latest]),
-  ).rejects.toMatchObject({
+  const preparation = await executeScript("prepare", directory, [
+    earliest,
+    latest,
+  ]).then(
+    () => null,
+    (error: any) => error,
+  );
+  expect(preparation).toMatchObject({
     code: 1,
     stderr: expect.not.stringContaining("no started attempt"),
   });
+  expect(
+    existsSync(directory + "/sources.csv"),
+    `Preparation failed before source selection: ${preparation?.stderr}`,
+  ).toBe(true);
   const preparedSelection = readFileSync(directory + "/sources.csv", "utf8");
   await expect(executeScript("apply", directory)).rejects.toMatchObject({
     code: 1,

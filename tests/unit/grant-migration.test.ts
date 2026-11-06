@@ -134,9 +134,13 @@ it.each([false, true])(
           monitoring_hold_kind,
           native_resume_kind,
           native_resume_nonce,
+          timer_paused_at,
+          timer_remaining_ms,
           ...kept
         } = store.attempt(attempt);
         expect(kept).toEqual(old);
+        expect(timer_paused_at).toBe(0);
+        expect(timer_remaining_ms).toBe(0);
         expect(grant_kind).toBeNull();
         expect(grant_issued_order).toBeNull();
         expect(grant_initial).toBeNull();

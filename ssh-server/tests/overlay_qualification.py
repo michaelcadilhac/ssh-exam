@@ -130,14 +130,18 @@ def ensure_guest_idle(guest):
             raise RuntimeError('Guest base has active mounts; qualification refused')
 
 
-def profile_files(profile):
+def profile_files(profile, native_relay=False):
     files = dict(FILES)
     if profile == 'native-install':
         files['deploy-native-cohort'] = (None, 0o700)
+    if native_relay:
+        assert profile == 'native-install'
+        files.update({'exam-ssh-relay': (None, 0o755), 'relay-nginx.conf': (None, 0o600),
+                      'qualify_relay_install.py': (None, 0o600)})
     return files
 
 
-def candidate_command(unit, guest, inputs, output, students=1, storage=None, profile='enforcement'):
+def candidate_command(unit, guest, inputs, output, students=1, storage=None, profile='enforcement', native_relay=False):
     assert students in (1, 16)
     command = [
         'systemd-run', '--quiet', '--wait', '--pipe', '--collect',
@@ -163,7 +167,7 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
             assert Path(target).is_absolute() and '..' not in Path(target).parts
             assert (name == 'work' and str(target).startswith('/srv/exam-workspace/')) or (name == 'state' and str(target) == '/var/lib/exam-agent')
             command.append('--bind=' + str(output / name) + ':' + str(target))
-    for name, (target, _) in profile_files(profile).items():
+    for name, (target, _) in profile_files(profile, native_relay).items():
         if target and not (profile == 'native-install' and name in NATIVE_BINARIES):
             command.append('--bind-ro=' + str(inputs / name) + ':' + target)
     if profile == 'native-install':
@@ -171,6 +175,9 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
         command.append('--bind-ro=' + str(inputs / 'native-bootstrap.service') + ':/etc/systemd/system/' + NATIVE_BOOTSTRAP)
         for service in NATIVE_SERVICES:
             command.append('--bind-ro=' + str(inputs / 'native-bootstrap.conf') + ':/etc/systemd/system/' + service + '.d/00-private-qualification-bootstrap.conf')
+    if native_relay:
+        assert profile == 'native-install'
+        command.append('--bind-ro=' + str(inputs / 'nginx-runtime') + ':/run/ssh-exam-nginx-runtime')
     command.append('--bind-ro=' + str(inputs / 'test.service') + ':/etc/systemd/system/' + SERVICE)
     return command
 
@@ -220,6 +227,8 @@ def start_guest_check(unit, inputs):
 
 def run_locked(args):
     assert os.getuid() == os.geteuid() == 0, 'Root required'
+    native_relay = getattr(args, 'native_relay', False)
+    assert not native_relay or args.profile == 'native-install'
     for command in ('systemd-nspawn', 'systemd-run', 'systemctl', 'nsenter'):
         if not shutil.which(command):
             print('COMMAND_NOT_FOUND: ' + command, flush=True)
@@ -236,7 +245,7 @@ def run_locked(args):
     assert not guest_config.get('functional_test_account')
     assert guest_config.get('temporary_account_policy')
     ensure_guest_idle(guest)
-    files = profile_files(args.profile)
+    files = profile_files(args.profile, native_relay)
     if args.profile == 'native-install':
         assert args.username == 'examq' and getattr(args, 'browser_students', 1) == 1
         assert not getattr(args, 'browser_gateway_public_key', None) and not getattr(args, 'cleanup_peer', False)
@@ -256,6 +265,25 @@ def run_locked(args):
     host_paths = [Path('/etc/exam-agent/agent.json'),
                   Path('/usr/local/sbin/exam-agent'), Path('/usr/local/sbin/examctl'),
                   Path('/usr/local/libexec/exam-login'), Path('/usr/local/bin/exam-info')]
+    nginx_runtime = {}
+    if native_relay:
+        # Reuse installed executable code read-only; never install packages or
+        # alter the prepared guest to obtain nginx for this disposable test.
+        nginx_runtime['nginx'] = Path('/usr/sbin/nginx')
+        dependencies = subprocess.run(['/usr/bin/ldd', '/usr/sbin/nginx'], check=True, capture_output=True, text=True, timeout=10).stdout
+        for value in re.findall(r'(?:=>\s+)?(/[^\s()]+)', dependencies):
+            path = Path(value)
+            name = 'ld.so' if path.name.startswith('ld-linux-') else path.name
+            assert re.fullmatch(r'[a-zA-Z0-9_.+-]+', name)
+            nginx_runtime[name] = path.resolve(strict=True)
+        assert 'ld.so' in nginx_runtime and 'libc.so.6' in nginx_runtime
+        assert sum(path.stat().st_size for path in nginx_runtime.values()) < 32 * 1024**2
+        for path in nginx_runtime.values():
+            info = path.stat()
+            assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and not info.st_mode & 0o022
+        host_paths.extend(nginx_runtime.values())
+        host_paths.extend(Path(path) for path in ('/usr/local/libexec/exam-ssh-relay', '/etc/exam-relay/config.json',
+                          '/etc/exam-relay/gateway.pub', '/etc/systemd/system/exam-ssh-relay.service', '/etc/nginx/snippets/exam-ssh-relay.conf'))
     guest_paths = [guest / relative for relative in (
         'etc/exam-agent/agent.json', 'var/lib/exam-agent/state.json',
         'etc/passwd', 'etc/group', 'etc/shadow', 'etc/ssh/sshd_config',
@@ -273,6 +301,17 @@ def run_locked(args):
             target.write_bytes(source_bytes[name])
             target.chmod(mode)
         marker = {'username': args.username, 'unit': unit, 'profile': args.profile}
+        if native_relay:
+            marker['native_relay'] = True
+            marker['relay_sha256'] = manifest['exam-ssh-relay']
+            runtime = inputs / 'nginx-runtime'
+            runtime.mkdir(mode=0o700)
+            marker['nginx_runtime_sha256'] = {}
+            for name, path in nginx_runtime.items():
+                data = path.read_bytes()
+                (runtime / name).write_bytes(data)
+                (runtime / name).chmod(0o755)
+                marker['nginx_runtime_sha256'][name] = hashlib.sha256(data).hexdigest()
         if getattr(args, 'cleanup_peer', False):
             assert args.profile == 'retained-policy' and args.username == 'examq'
             assert not getattr(args, 'browser_gateway_public_key', None)
@@ -328,7 +367,7 @@ def run_locked(args):
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
         (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=840') if students == 16 else UNIT)
-        command = candidate_command(unit, guest, inputs, output, students, storage, args.profile)
+        command = candidate_command(unit, guest, inputs, output, students, storage, args.profile, native_relay)
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
@@ -405,6 +444,7 @@ if __name__ == '__main__':
                         help='Private browser capacity target; sixteen uses only owned disk binds and bounded3GiB/2CPU/2048tasks')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
+    parser.add_argument('--native-relay', action='store_true', help='Native-install only: also rehearse the matched relay/proxy update using isolated installed nginx code')
     parser.add_argument('--cleanup-peer', action='store_true', help='Private retained-policy fixture: current monitored Begin, framed input and a healthy peer during manual workspace cleanup')
     parser.add_argument('--profile', choices=('native-install', 'execution-policy', 'loaded-roles', 'enforcement', 'worker-isolation', 'timed-owner', 'framed-owner', 'retained-policy', 'monitoring-owner', 'monitoring-freeze', 'monitoring-async-io', 'monitoring-async-io-stopped', 'monitoring-editor', 'template-catalog', 'collection-pool', 'writer-threads', 'monitoring-thread-tty', 'pane-ack'), default='enforcement')
     arguments = parser.parse_args()

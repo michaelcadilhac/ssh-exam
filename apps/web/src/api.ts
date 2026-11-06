@@ -1,5 +1,6 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { formatCountdown } from "../../../packages/protocol/time.js";
+import { countdownMS } from "../../../packages/protocol/timer.js";
 export let csrf = "";
 export function setCsrf(v: string) {
   csrf = v;
@@ -49,3 +50,5 @@ export const remaining = (deadline: number | null, serverNow = Date.now()) => {
   if (!deadline) return "Not started";
   return formatCountdown((deadline - serverNow) / 1000);
 };
+export const attemptRemaining = (a: any, serverNow = Date.now()) =>
+  a.start ? formatCountdown(countdownMS(a, serverNow) / 1000) : "Not started";

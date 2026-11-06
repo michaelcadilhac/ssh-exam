@@ -1,4 +1,8 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import {
+  effectiveDeadline,
+  timerState,
+} from "../../../packages/protocol/timer.js";
 import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
 import { AttemptGrants } from "./attempt-grants.js";
 import { monitoringOwner } from "../../../packages/protocol/monitoring-evidence.js";
@@ -388,7 +392,7 @@ export class Lifecycle {
         a.state !== "LOCKED" ||
         a.generation !== generation ||
         !a.deadline ||
-        a.deadline <= at ||
+        effectiveDeadline(a) <= at ||
         !grant ||
         grant.generation !== generation ||
         ((grant.consumed || grant.expires <= at) &&
@@ -473,9 +477,16 @@ export class Lifecycle {
         const resets = remote.clock_resets;
         if (!Array.isArray(resets) || resets.length !== revision)
           throw Error("Clock reset history required");
-        let deadline = original;
+        let deadline = original,
+          pausedAt = 0,
+          remainingMS = 0;
         for (let i = 0; i < resets.length; i++) {
-          const reset = resets[i];
+          const reset = resets[i],
+            pause = reset.pause_timer === true,
+            resume = reset.resume_timer === true;
+          const nextPausedAt = reset.timer_paused_at ?? 0,
+            nextRemaining = reset.timer_remaining_ms ?? 0,
+            appliedBoot = reset.applied_boot_ms ?? 0;
           if (
             reset.revision !== i + 1 ||
             reset.previous_deadline !== deadline ||
@@ -485,26 +496,80 @@ export class Lifecycle {
             reset.applied_at < a.start ||
             !Number.isSafeInteger(reset.requested_at) ||
             reset.requested_at < a.start ||
-            reset.requested_at >= reset.previous_deadline ||
+            (!pausedAt && reset.requested_at >= deadline) ||
             reset.requested_at > reset.applied_at + 1000 ||
             !Number.isSafeInteger(reset.remaining_seconds) ||
-            (reset.extend_seconds
-              ? !Number.isSafeInteger(reset.extend_seconds) ||
-                reset.extend_seconds < 60 ||
-                reset.extend_seconds > 21600 ||
-                reset.extend_seconds % 60 !== 0 ||
-                reset.remaining_seconds !== 0 ||
-                reset.deadline !==
-                  reset.previous_deadline + reset.extend_seconds * 1000
-              : reset.remaining_seconds < 60 ||
-                reset.remaining_seconds > 21600 ||
-                reset.remaining_seconds % 60 !== 0 ||
-                reset.deadline !==
-                  reset.requested_at + reset.remaining_seconds * 1000)
+            (reset.pause_timer !== undefined &&
+              typeof reset.pause_timer !== "boolean") ||
+            (reset.resume_timer !== undefined &&
+              typeof reset.resume_timer !== "boolean") ||
+            (pause && resume) ||
+            !Number.isSafeInteger(nextPausedAt) ||
+            nextPausedAt < 0 ||
+            !Number.isSafeInteger(nextRemaining) ||
+            nextRemaining < 0 ||
+            !Number.isSafeInteger(appliedBoot) ||
+            appliedBoot < 0 ||
+            ((pause || resume) &&
+              (remote.monitoring_mode !== "v1" ||
+                remote.browser_ssh !== true ||
+                remote.terminal_supervised !== true))
           )
             throw Error("Invalid clock reset history");
-          deadline = reset.deadline;
+          const extra = reset.extend_seconds ?? 0;
+          if (pause || resume) {
+            if (
+              extra !== 0 ||
+              reset.remaining_seconds !== 0 ||
+              (pause ? !!pausedAt : !pausedAt)
+            )
+              throw Error("Invalid timer state transition");
+            if (pause) {
+              pausedAt = reset.requested_at;
+              remainingMS = deadline - pausedAt;
+            } else {
+              if (appliedBoot <= 0)
+                throw Error("Missing native timer-resume clock binding");
+              deadline = reset.requested_at + remainingMS;
+              pausedAt = 0;
+              remainingMS = 0;
+            }
+          } else if (extra) {
+            if (
+              !Number.isSafeInteger(extra) ||
+              extra < 60 ||
+              extra > 21600 ||
+              extra % 60 !== 0 ||
+              reset.remaining_seconds !== 0
+            )
+              throw Error("Invalid clock extension history");
+            deadline += extra * 1000;
+            if (pausedAt) remainingMS += extra * 1000;
+          } else {
+            if (
+              reset.remaining_seconds < 60 ||
+              reset.remaining_seconds > 21600 ||
+              reset.remaining_seconds % 60 !== 0
+            )
+              throw Error("Invalid clock reset history");
+            deadline =
+              (pausedAt || reset.requested_at) + reset.remaining_seconds * 1000;
+            if (pausedAt) remainingMS = reset.remaining_seconds * 1000;
+          }
+          if (
+            !Number.isSafeInteger(deadline) ||
+            reset.deadline !== deadline ||
+            nextPausedAt !== pausedAt ||
+            nextRemaining !== remainingMS ||
+            (!resume && appliedBoot !== 0)
+          )
+            throw Error("Conflicting timer snapshot/history");
         }
+        if (
+          (remote.timer_paused_at ?? 0) !== pausedAt ||
+          (remote.timer_remaining_ms ?? 0) !== remainingMS
+        )
+          throw Error("Native timer snapshot does not match clock history");
         const prior = JSON.parse(a.clock_resets || "[]");
         if (
           !isDeepStrictEqual(resets.slice(0, currentRevision), prior) ||
@@ -558,6 +623,12 @@ export class Lifecycle {
       const recorded = JSON.parse(this.store.attempt(id).clock_resets || "[]");
       if (!isDeepStrictEqual(recorded, remote.clock_resets))
         throw Error("Conflicting clock reset history");
+      const timer = timerState(this.store.attempt(id));
+      if (
+        (remote.timer_paused_at ?? 0) !== timer.timer_paused_at ||
+        (remote.timer_remaining_ms ?? 0) !== timer.timer_remaining_ms
+      )
+        throw Error("Conflicting native timer snapshot");
       for (const reset of recorded) {
         if (remote.clock_handover_pending && reset.revision === revision)
           continue;
@@ -1173,7 +1244,7 @@ export class Lifecycle {
     if (
       !["ACTIVE", "LOCKED"].includes(a.state) ||
       !a.deadline ||
-      now() < a.deadline
+      now() < effectiveDeadline(a)
     )
       return false;
     this.store.db
@@ -1358,7 +1429,7 @@ export class Lifecycle {
       .prepare("SELECT * FROM attempts WHERE state IN ('ACTIVE','LOCKED')")
       .all() as Attempt[];
     for (const a of rows) {
-      if (a.deadline && now() >= a.deadline) {
+      if (a.deadline && now() >= effectiveDeadline(a)) {
         this.expireDeadline(a.id);
       } else if (
         a.state === "ACTIVE" &&

@@ -34,7 +34,7 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	}
 	for _, previous := range a.ClockResets {
 		if previous.ID == r.ResetID {
-			if previous.Actor != r.Actor || previous.RequestedAt != r.RequestedAt || previous.RemainingSeconds != r.RemainingSeconds || previous.ExtendSeconds != r.ExtendSeconds || previous.Revision != r.ClockRevision+1 || previous.PreviousDeadline != r.Deadline {
+			if previous.Actor != r.Actor || previous.RequestedAt != r.RequestedAt || previous.RemainingSeconds != r.RemainingSeconds || previous.ExtendSeconds != r.ExtendSeconds || previous.PauseTimer != r.PauseTimer || previous.ResumeTimer != r.ResumeTimer || previous.Revision != r.ClockRevision+1 || previous.PreviousDeadline != r.Deadline {
 				return errors.New("conflicting clock reset retry")
 			}
 			if a.MonitoringMode == "v1" && previous.Revision == a.ClockRevision && !a.Protected && (a.State == "ACTIVE" || a.State == "LOCKED") {
@@ -50,7 +50,14 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	if a.ClockRevision != r.ClockRevision || a.Deadline != r.Deadline {
 		return errors.New("clock changed; refresh before resetting")
 	}
-	if r.RequestedAt < a.Start || r.RequestedAt >= a.Deadline || r.RequestedAt > now+1000 {
+	wasPaused := timerPaused(a)
+	if (r.PauseTimer || r.ResumeTimer) && a.MonitoringMode != "v1" {
+		return errors.New("timer controls require matching retained-monitoring roles; no clock changed")
+	}
+	if (r.PauseTimer && wasPaused) || (r.ResumeTimer && !wasPaused) {
+		return errors.New("timer state changed; refresh before pausing or resuming the countdown")
+	}
+	if r.RequestedAt < a.Start || (!wasPaused && r.RequestedAt >= a.Deadline) || r.RequestedAt > now+1000 {
 		return errors.New("clock reset request expired")
 	}
 	// Build the proposed interval without publishing it. Retained mode checks
@@ -66,12 +73,31 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 		a.Boot = boot()
 	}
 	previous := a.Deadline
-	if r.ExtendSeconds > 0 {
+	appliedBoot := int64(0)
+	if r.PauseTimer {
+		a.TimerPausedAt, a.TimerRemainingMS = r.RequestedAt, previous-r.RequestedAt
+	} else if r.ResumeTimer {
+		a.Deadline = r.RequestedAt + a.TimerRemainingMS
+		a.TimerPausedAt, a.TimerRemainingMS = 0, 0
+		appliedBoot, err = monitoringBootMillis()
+		if err != nil {
+			return err
+		}
+	} else if wasPaused {
+		if r.ExtendSeconds > 0 {
+			a.TimerRemainingMS += r.ExtendSeconds * 1000
+		} else {
+			a.TimerRemainingMS = r.RemainingSeconds * 1000
+		}
+		a.Deadline = a.TimerPausedAt + a.TimerRemainingMS
+	} else if r.ExtendSeconds > 0 {
 		a.Deadline = previous + r.ExtendSeconds*1000
 	} else {
 		a.Deadline = r.RequestedAt + r.RemainingSeconds*1000
 	}
-	if a.MonitoringMode == "v1" {
+	if r.ResumeTimer {
+		a.UptimeDeadline = float64(appliedBoot+a.Deadline-now) / 1000
+	} else if a.MonitoringMode == "v1" {
 		a.UptimeDeadline += float64(a.Deadline-previous) / 1000
 	} else {
 		a.UptimeDeadline = uptime() + float64(a.Deadline-now)/1000
@@ -82,7 +108,8 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 	a.TimingVerifiedDeadline = 0
 	a.ClockRevision++
 	refreshRegisteredOwnerClock(a)
-	change := ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision}
+	change := ClockReset{ID: r.ResetID, Actor: r.Actor, RequestedAt: r.RequestedAt, AppliedAt: now, PreviousDeadline: previous, Deadline: a.Deadline, RemainingSeconds: r.RemainingSeconds, ExtendSeconds: r.ExtendSeconds, Revision: a.ClockRevision, PauseTimer: r.PauseTimer, ResumeTimer: r.ResumeTimer, TimerPausedAt: a.TimerPausedAt, TimerRemainingMS: a.TimerRemainingMS, AppliedBootMS: appliedBoot}
+	a.ClockResets = append(append([]ClockReset(nil), a.ClockResets...), change)
 	a.ClockHandoverPending = a.MonitoringMode == "v1" && !clockWithoutRetainedWork(a)
 	if a.ClockHandoverPending {
 		q, err := e.terminalClockRequest(a, change)
@@ -93,7 +120,6 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 			return err
 		}
 	}
-	a.ClockResets = append(append([]ClockReset(nil), a.ClockResets...), change)
 	// Preserve the caller's canonical object/result while publishing only after
 	// the nonpermitting check. A failed live check cannot consume the clock intent.
 	*e.state.Attempts[a.ID] = *a
@@ -112,6 +138,9 @@ func (e *Engine) resetClock(a *Attempt, r Request, offline bool) error {
 }
 
 func validClockAdjustment(r Request) bool {
+	if r.PauseTimer || r.ResumeTimer {
+		return r.PauseTimer != r.ResumeTimer && r.RemainingSeconds == 0 && r.ExtendSeconds == 0
+	}
 	if r.ExtendSeconds != 0 {
 		return r.RemainingSeconds == 0 && r.ExtendSeconds >= 60 && r.ExtendSeconds <= 21600 && r.ExtendSeconds%60 == 0
 	}

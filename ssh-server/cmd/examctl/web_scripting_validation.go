@@ -21,7 +21,7 @@ func validateScriptListRows(operation string, body map[string]any, rows []map[st
 	} // Existing typed grant/exam validators run first.
 	allowed := "exam username webcam duration uid attempt recovery_allowance_edit"
 	if operation == "attempts.list" {
-		allowed = "id exam username uid state settings preflight_started_at start deadline original_deadline clock_revision ended generation last_contact reason work_path export_status checksum protected completed_at collected_at secured_at policy_state policy_expires policy_error access_state access_held_at access_released_at access_override access_checked_at access_error functional_test grant_id grant_revision grant_hash attempt_number connected working terminalCount grantContext pendingClockReset"
+		allowed = "id exam username uid state settings preflight_started_at start deadline original_deadline clock_revision timer_paused_at timer_remaining_ms monitoring_mode ended generation last_contact reason work_path export_status checksum protected completed_at collected_at secured_at policy_state policy_expires policy_error access_state access_held_at access_released_at access_override access_checked_at access_error functional_test grant_id grant_revision grant_hash attempt_number connected working terminalCount grantContext pendingClockReset"
 	}
 	fields := map[string]bool{}
 	for _, key := range strings.Fields(allowed) {
@@ -60,6 +60,27 @@ func validateScriptListRows(operation string, body map[string]any, rows []map[st
 				if err != nil || n < 0 || n > catalogSafeInteger {
 					return errors.New("attempt timing/identity is out of bounds")
 				}
+			}
+			timer := map[string]int64{}
+			for _, key := range []string{"timer_paused_at", "timer_remaining_ms"} {
+				if value, exists := row[key]; exists {
+					number, ok := value.(json.Number)
+					if !ok {
+						return errors.New("timer metadata is not an integer")
+					}
+					n, err := number.Int64()
+					if err != nil || n < 0 || n > catalogSafeInteger {
+						return errors.New("timer metadata is out of bounds")
+					}
+					timer[key] = n
+				}
+			}
+			mode := row["monitoring_mode"]
+			if mode != nil && mode != "v1" && mode != "legacy" {
+				return errors.New("unknown monitoring metadata mode")
+			}
+			if (timer["timer_paused_at"] > 0) != (timer["timer_remaining_ms"] > 0) || (timer["timer_paused_at"] > 0 && mode != "v1") {
+				return errors.New("inconsistent paused timer metadata")
 			}
 		} else {
 			// The legacy roster API includes its full dashboard attempt. Scripting

@@ -1,6 +1,7 @@
 import React from "react";
 import { chicago } from "./api.js";
 import { formatDuration } from "../../../packages/protocol/time.js";
+import { NO_RESUME_EXPIRY } from "../../../packages/protocol/interruption-management.js";
 import {
   interruptionSeconds,
   authorizationStatus,
@@ -97,9 +98,11 @@ export function InterruptionHistory({
                               ? ` · ${chicago(grant.revoked_at)}`
                               : grant.replaced_at
                                 ? ` · ${chicago(grant.replaced_at)}`
-                                : grant.expires && !grant.historical
-                                  ? ` · expires ${chicago(grant.expires)}`
-                                  : ""}
+                                : grant.expires === NO_RESUME_EXPIRY
+                                  ? " · no approval expiry"
+                                  : grant.expires && !grant.historical
+                                    ? ` · expires ${chicago(grant.expires)}`
+                                    : ""}
                         </small>
                       </li>
                     ))}

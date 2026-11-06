@@ -95,13 +95,14 @@ export async function fixture(
   initial = "NONE",
   role = "student",
   exam = "sandbox",
+  duration = 300,
 ) {
   await observeScreens(page);
   await simulatedMedia(page);
   const settings = {
     id: exam,
     name: "Transition fixture",
-    duration: 300,
+    duration,
     webcam: false,
     terminals: 4,
     template: "sample-exam",
@@ -156,7 +157,8 @@ export async function fixture(
       state: initial === "NONE" ? "PREPARING" : initial,
       generation: initial === "LOCKED" ? 1 : 0,
       start: initial === "LOCKED" ? now : (null as number | null),
-      deadline: initial === "LOCKED" ? now + 300000 : (null as number | null),
+      deadline:
+        initial === "LOCKED" ? now + duration * 1000 : (null as number | null),
       protected: false,
       work_path: "/work",
       reason: "Paused for testing",
@@ -327,7 +329,7 @@ export async function fixture(
       model.state = "ACTIVE";
       model.attempt.state = "ACTIVE";
       model.attempt.start ||= Date.now();
-      model.attempt.deadline ||= Date.now() + 300000;
+      model.attempt.deadline ||= Date.now() + duration * 1000;
       return route.fulfill({ json: snapshot() });
     }
     if (path.endsWith("/finish")) {

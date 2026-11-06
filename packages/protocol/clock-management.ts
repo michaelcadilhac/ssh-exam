@@ -16,11 +16,16 @@ export const attemptShow = z.object({ id: attemptReference }).strict();
 export const clockSingle = z
   .object({
     id: attemptReference,
-    minutes: z.number().int().min(1).max(360),
+    minutes: z.number().int().min(1).max(360).optional(),
+    timerAction: z.enum(["pause", "resume"]).optional(),
     revision: z.number().int().nonnegative(),
     requestID: z.string().uuid(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (b) => (b.timerAction ? b.minutes === undefined : b.minutes !== undefined),
+    "Choose timerAction or minutes, not both",
+  );
 export const clockBatchBody = z
   .object({
     action: z.enum(["reset", "extend"]),
@@ -71,6 +76,8 @@ export function clockIntentMetadata(body: any) {
       "requested_at",
       "remaining_seconds",
       "extend_seconds",
+      "pause_timer",
+      "resume_timer",
       "deadline",
       "clock_revision",
     ]

@@ -18,7 +18,11 @@ type clockReplyItem struct {
 	RequestID string `json:"requestID"`
 	Status    string `json:"status"`
 	Confirmed *bool  `json:"confirmed"`
-	Attempt   struct {
+	Intent    *struct {
+		PauseTimer  bool `json:"pause_timer"`
+		ResumeTimer bool `json:"resume_timer"`
+	} `json:"intent"`
+	Attempt struct {
 		ID string `json:"id"`
 	} `json:"attempt"`
 }
@@ -40,9 +44,10 @@ func validateClockResult(operation string, body any, raw json.RawMessage) error 
 		return err
 	}
 	var input struct {
-		ID        string           `json:"id"`
-		RequestID string           `json:"requestID"`
-		Targets   []clockReplyItem `json:"targets"`
+		ID          string           `json:"id"`
+		RequestID   string           `json:"requestID"`
+		Targets     []clockReplyItem `json:"targets"`
+		TimerAction string           `json:"timerAction"`
 	}
 	if json.Unmarshal(b, &input) != nil {
 		return errors.New("invalid clock request scope")
@@ -54,6 +59,9 @@ func validateClockResult(operation string, body any, raw json.RawMessage) error 
 		var value clockReplyItem
 		if json.Unmarshal(raw, &value) != nil || !validStatus(value, "applied") || (operation != "clocks.show" && (value.RequestID != input.RequestID || value.Attempt.ID != input.ID || value.Status == "closed")) || (operation == "clocks.show" && value.RequestID != input.ID) {
 			return errors.New("clock reply lacks matching target/intent and explicit native pending/applied status; inspect fresh clock/attempt state before retrying")
+		}
+		if input.TimerAction != "" && (value.Intent == nil || value.Intent.PauseTimer != (input.TimerAction == "pause") || value.Intent.ResumeTimer != (input.TimerAction == "resume")) {
+			return errors.New("clock reply did not confirm the requested timer action; inspect the original request and retry its same intent")
 		}
 		return nil
 	}
@@ -101,6 +109,8 @@ func webClocksHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl web clocks show CLOCK_REQUEST_UUID
        sudo examctl web clocks reset ATTEMPT --minutes N --revision N [--intent CLOCK_REQUEST_UUID]
        sudo examctl web clocks extend ATTEMPT --minutes N --revision N [--intent CLOCK_REQUEST_UUID]
+       sudo examctl web clocks pause-timer ATTEMPT --revision N [--intent CLOCK_REQUEST_UUID]
+       sudo examctl web clocks resume-timer ATTEMPT --revision N [--intent CLOCK_REQUEST_UUID]
        sudo examctl web clocks preview EXAM --target ATTEMPT:REV [--target ...]
        sudo examctl web clocks reset-default EXAM --target ATTEMPT:REV:SECONDS[:INTENT] [--target ...]
        sudo examctl web clocks add EXAM --minutes N --target ATTEMPT:REV[:INTENT] [--target ...]
@@ -108,6 +118,11 @@ func webClocksHelp(out io.Writer) {
 Existing root-agent signed HTTPS workflow, explicit clocks.show/preview/reset/extend/batch
 managementOperations, same browser/native validation/audit. Requires matching
 clock-reset/deadline-timing-check capabilities; extend/add also needs clock-extend.
+pause-timer/resume-timer use the same explicit clocks.reset authorization and
+require timer-clock-controls-v1. Pause stops only the countdown: monitored work
+continues. Resume starts the saved remainder, without another attempt or grant.
+Time changes while paused update its saved remainder and keep it paused. A held
+attempt stays held; timer changes do not approve student access or thaw work.
 Offline native info/list inspect state; there is no unsynchronized clock editor.
 
 Minutes: whole 1..360. reset sets remaining time FROM GATEWAY REQUEST ACCEPTANCE,
@@ -180,7 +195,7 @@ func webClocksMain(args []string) int {
 		return 0
 	}
 	if len(w) != 3 || w[0] != "clocks" {
-		return usage("choose show/reset/extend/reset-default/add and its target")
+		return usage("choose show/reset/extend/pause-timer/resume-timer/reset-default/add and its target")
 	}
 	if (*request != "" && !managementUUID.MatchString(*request)) || (*intent != "" && !managementUUID.MatchString(*intent)) {
 		return usage("request/intent must be UUIDs")
@@ -193,6 +208,20 @@ func webClocksMain(args []string) int {
 	operation := "clocks." + w[1]
 	b := map[string]any{}
 	switch w[1] {
+	case "pause-timer", "resume-timer":
+		rev, err := strconv.Atoi(*revision)
+		if !managementUUID.MatchString(w[2]) || err != nil || rev < 0 || seen["minutes"] || len(targets) > 0 {
+			return usage("pause-timer/resume-timer requires ATTEMPT UUID and --revision integer >=0, without --minutes/--target")
+		}
+		if *intent == "" {
+			*intent = *request
+		}
+		action := "pause"
+		if w[1] == "resume-timer" {
+			action = "resume"
+		}
+		b["id"], b["revision"], b["requestID"], b["timerAction"] = w[2], rev, *intent, action
+		operation = "clocks.reset" // Same explicit clock-management authority, with distinct audited intent fields.
 	case "show":
 		if !managementUUID.MatchString(w[2]) || seen["minutes"] || seen["revision"] || seen["intent"] || len(targets) > 0 {
 			return usage("show needs only a CLOCK_REQUEST_UUID, without mutation flags")

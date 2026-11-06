@@ -5,6 +5,38 @@ todo-progress.md. **Not deployed.** All tests use synthetic local records/keys.
 
 ## Supported CLI workflow
 
+November 6 follow-up, implemented/tested locally; deployment qualification is in
+progress. The instructor explicitly approved pausing only the countdown while
+the student continues working under normal monitoring. Monitoring loss still
+holds work; countdown pause neither thaws a hold nor authorizes SSH recovery.
+
+```sh
+sudo examctl web attempts show ATTEMPT
+sudo examctl web clocks pause-timer ATTEMPT --revision CURRENT_REVISION
+sudo examctl web clocks resume-timer ATTEMPT --revision CURRENT_REVISION
+sudo examctl web interruptions authorize ATTEMPT --help
+```
+
+The admin attempt menu offers **Pause countdown** / **Resume countdown** directly.
+The student sees **Countdown paused** and a fixed remaining time. Time changes
+while paused change that saved remainder; countdown resume uses the original
+request instant and native wall/boot binding, so retries never add time twice.
+Original start/deadline and every clock revision remain in history. A completed
+submission cannot be reopened. The ordinary current-deadline restriction below
+uses this saved timer state for explicitly paused attempts.
+
+**Allow resume** separately accepts **Resume within (minutes)** or **No approval
+expiry**. The CLI accepts `--minutes N` or `--no-expiry`; omitting both retains
+five minutes. No-expiry approval is represented internally as an exact bounded
+integer, never as an execution lease or a new-attempt start window. Fresh SSH,
+ownership, capture and native verification remain required; revocation and
+completion invalidate the approval. Fresh files-only continuation preserves an
+already-paused countdown until a separate explicit countdown-resume command.
+
+Both timer commands use existing `clocks.reset` authorization; resume approval
+uses existing interruption authorization. No installation permission/configuration
+change is required. Native `timer-clock-controls-v1` capability is mandatory.
+
 ```sh
 examctl web attempts help
 examctl web clocks help

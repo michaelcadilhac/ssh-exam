@@ -3,6 +3,65 @@ import { EventEmitter } from "node:events";
 import { BrowserConnection } from "../../apps/server/src/browser-ssh.js";
 
 afterEach(() => vi.useRealTimers());
+it("restores the same retained SSH while its countdown is paused beyond the old deadline, but refuses an elapsed unpaused timer", async () => {
+  const { conn, command, authority } = await setup();
+  authority.confirmRegisteredPaneOwner.mockClear();
+  const owner = {
+    attempt: "22222222-1234-4234-8234-123456789abc",
+    exam: "sandbox",
+    username: "student",
+    uid: 1001,
+    transport_hash: "a".repeat(64),
+    boot: "33333333-1234-4234-8234-123456789abc",
+    page_epoch: "b".repeat(64),
+    input_epoch: "c".repeat(64),
+    generation: 0,
+    clock_revision: 1,
+  };
+  const remote = {
+    ...owner,
+    id: owner.attempt,
+    registered_owner: owner,
+    transport: owner.transport_hash,
+    state: "ACTIVE",
+    start: Date.now() - 120000,
+    deadline: Date.now() - 1000,
+    monitoring_mode: "v1",
+    browser_ssh: true,
+    terminal_supervised: true,
+    timer_paused_at: Date.now() - 60000,
+    timer_remaining_ms: 59000,
+  };
+  vi.spyOn(conn as any, "request").mockResolvedValue({
+    retained_control: "v1",
+    framed_input: true,
+    loaded_pane_input: "v1",
+    pane_epoch_change: true,
+    loaded_pane_epoch_change: "v1",
+    loaded_control_retention: "v1",
+    loaded_control_restore: "v1",
+    loaded_policy_reports: "v1",
+    panes: [],
+  });
+  command.mockResolvedValue(remote);
+  try {
+    await expect(conn.restoreRetained(owner)).resolves.toMatchObject({
+      attempt: remote,
+    });
+    expect(authority.confirmRegisteredPaneOwner).toHaveBeenCalledOnce();
+    command.mockResolvedValue({
+      ...remote,
+      timer_paused_at: 0,
+      timer_remaining_ms: 0,
+    });
+    await expect(conn.restoreRetained(owner)).rejects.toThrow(
+      "Current native retained owner differs",
+    );
+    expect(authority.confirmRegisteredPaneOwner).toHaveBeenCalledOnce();
+  } finally {
+    conn.close();
+  }
+});
 async function setup(epoch?: string) {
   const messages: any[] = [];
   const socket = Object.assign(new EventEmitter(), {

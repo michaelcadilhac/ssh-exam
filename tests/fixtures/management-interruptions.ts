@@ -92,9 +92,12 @@ export async function qualifyInterruptionCLI(
       String(shown.revision),
       "--reason",
       "Reviewed synthetic interruption",
+      "--minutes",
+      "15",
       "--request",
       intent,
     ];
+  const acceptedAfter = Date.now();
   const result = await run(args);
   expect(result).toMatchObject({
     id,
@@ -107,6 +110,9 @@ export async function qualifyInterruptionCLI(
     .prepare("SELECT * FROM continuations WHERE attempt=?")
     .get(id);
   expect(grant.expires).toBeLessThanOrEqual(before.deadline);
+  expect(grant.expires).toBeGreaterThanOrEqual(
+    Math.min(before.deadline, acceptedAfter + 900000),
+  );
   await f.restart();
   expect(await run(args)).toEqual(result);
   expect(
@@ -165,7 +171,7 @@ export async function qualifyInterruptionCLI(
     .run(id);
   const lostSession = await run(["show", id]);
   expect(lostSession.filesOnlyResume).toBe(true);
-  const recoveryApproval = await run([
+  const recoveryArgs = [
     "authorize",
     id,
     "--generation",
@@ -174,8 +180,18 @@ export async function qualifyInterruptionCLI(
     String(lostSession.revision),
     "--reason",
     "Approve files-only resume on the original deadline",
-  ]);
+    "--no-expiry",
+    "--request",
+    randomUUID(),
+  ];
+  const recoveryApproval = await run(recoveryArgs);
   expect(recoveryApproval.status).toBe("authorized");
+  expect(recoveryApproval).toMatchObject({
+    noExpiry: true,
+    expires: Number.MAX_SAFE_INTEGER,
+  });
+  await f.restart();
+  expect(await run(recoveryArgs)).toEqual(recoveryApproval);
   expect(
     f.current.store.db
       .prepare("SELECT * FROM continuations WHERE attempt=?")

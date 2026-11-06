@@ -1,4 +1,5 @@
 import type { Attempt, Store } from "./db.js";
+import { effectiveDeadline } from "../../../packages/protocol/timer.js";
 import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
 import {
   continuationStatus,
@@ -29,11 +30,11 @@ export function studentContinuationStatus(
     a.ended ||
     a.protected ||
     !a.deadline ||
-    a.deadline <= at
+    effectiveDeadline(a) <= at
   ) {
     state = "unavailable";
   } else if (current) {
-    expires = Math.min(current.expires, a.deadline!);
+    expires = Math.min(current.expires, effectiveDeadline(a));
     state =
       current.generation !== a.generation
         ? "superseded"

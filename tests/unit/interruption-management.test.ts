@@ -49,6 +49,49 @@ function fixture() {
   };
 }
 
+it.each([15, null])(
+  "approval validity %s survives restart and exact retry without changing the clock",
+  (validForMinutes) => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(100000);
+    const f = fixture();
+    try {
+      const before = f.store.attempt("a");
+      const body = { ...f.body(), validForMinutes };
+      const result = f.management.authorize(body, "teacher");
+      const expected =
+        validForMinutes === null ? Number.MAX_SAFE_INTEGER : 900000;
+      expect(result.expires).toBe(expected);
+      expect(result.noExpiry).toBe(validForMinutes === null ? true : undefined);
+      f.restart();
+      clock.mockReturnValue(500000);
+      expect(f.management.authorize(body, "teacher")).toEqual(result);
+      expect(f.management.show({ id: "a" }).authorization.expires).toBe(
+        expected,
+      );
+      expect(f.store.attempt("a")).toMatchObject({
+        start: before.start,
+        deadline: before.deadline,
+        original_deadline: before.original_deadline,
+        generation: before.generation,
+        access_state: "HELD",
+      });
+      expect(() =>
+        f.management.authorize({ ...body, validForMinutes: 1 }, "teacher"),
+      ).toThrow(/conflicts/);
+      clock.mockReturnValue(900001);
+      expect(() =>
+        f.management.authorize(
+          { ...f.body(), validForMinutes: null },
+          "teacher",
+        ),
+      ).toThrow(/cannot continue/);
+    } finally {
+      f.close();
+      clock.mockRestore();
+    }
+  },
+);
+
 it.each(["legacy", "v1"])(
   "%s approvals allow reconnection without resetting the original interval",
   (mode) => {

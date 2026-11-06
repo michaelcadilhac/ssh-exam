@@ -11,7 +11,9 @@ import { AttemptGrants } from "./attempt-grants.js";
 // Read bounded current metadata, not page hashes, sessions, interruption/student
 // text, media or unbounded reset history into permanent management outcomes.
 const columns = `id,exam,username,uid,state,substr(settings,1,16385) settings,
-preflight_started_at,start,deadline,original_deadline,clock_revision,ended,generation,
+preflight_started_at,start,deadline,original_deadline,clock_revision,ended,generation,monitoring_mode,
+CASE WHEN json_valid(clock_resets) THEN CASE WHEN json_extract(clock_resets,'$[#-1].revision')=clock_revision THEN coalesce(json_extract(clock_resets,'$[#-1].timer_paused_at'),0) ELSE 0 END ELSE 0 END timer_paused_at,
+CASE WHEN json_valid(clock_resets) THEN CASE WHEN json_extract(clock_resets,'$[#-1].revision')=clock_revision THEN coalesce(json_extract(clock_resets,'$[#-1].timer_remaining_ms'),0) ELSE 0 END ELSE 0 END timer_remaining_ms,
 last_contact,substr(reason,1,1000) reason,work_path,export_status,checksum,protected,
 completed_at,collected_at,secured_at,policy_state,policy_expires,
 substr(policy_error,1,1500) policy_error,access_state,access_held_at,

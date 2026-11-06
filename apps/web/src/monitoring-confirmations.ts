@@ -1,7 +1,8 @@
 // Socket liveness is independent of the ordering of exam-state snapshots. A
 // one-use echo proves a recent round trip on this connection; stale state, HTTP
 // replies and replayed/late socket messages cannot manufacture confirmation.
-export const MONITORING_TIMEOUT_MS = 15_000;
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+export const MONITORING_TIMEOUT_MS = OPERATION_TIMEOUT_MS;
 export class MonitoringConfirmations {
   private pending = new Map<string, number>();
   constructor(private now = () => performance.now()) {}
@@ -10,7 +11,7 @@ export class MonitoringConfirmations {
     for (const [key, at] of this.pending)
       if (time - at >= MONITORING_TIMEOUT_MS) this.pending.delete(key);
     this.pending.set(id, time);
-    if (this.pending.size > 16)
+    if (this.pending.size > 64)
       this.pending.delete(this.pending.keys().next().value!);
     return id;
   }

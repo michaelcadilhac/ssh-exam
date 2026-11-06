@@ -14,20 +14,28 @@ it("rejects late and retired-connection acknowledgments without relying on wall-
   let time = 0;
   const c = new MonitoringConfirmations(() => time);
   c.issue("late");
-  time = 15000;
+  time = 60000;
   expect(c.confirm("late")).toBe(false);
   c.issue("old-socket");
   c.clear();
   expect(c.confirm("old-socket")).toBe(false);
   c.issue("new-socket");
-  time += 14999;
+  time += 59999;
   expect(c.confirm("new-socket")).toBe(true);
 });
 it("bounds outstanding requests on a silent connection", () => {
   const c = new MonitoringConfirmations(() => 0);
   for (let i = 0; i < 100; i++) c.issue(String(i));
   expect(c.confirm("0")).toBe(false);
-  expect(c.confirm("83")).toBe(false);
-  expect(c.confirm("84")).toBe(true);
+  expect(c.confirm("35")).toBe(false);
+  expect(c.confirm("36")).toBe(true);
   expect(c.confirm("99")).toBe(true);
+});
+it("accepts delayed confirmations beyond fifteen seconds without evicting the full one-minute heartbeat window", () => {
+  let time = 0;
+  const c = new MonitoringConfirmations(() => time);
+  c.issue("delayed");
+  for (time = 2000; time < 60000; time += 2000) c.issue(String(time));
+  time = 59999;
+  expect(c.confirm("delayed")).toBe(true);
 });

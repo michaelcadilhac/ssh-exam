@@ -17,9 +17,14 @@ Durable clock changes remain pending until the live supervisor confirms handover
 Verified SSH-exit evidence may span only a clock revision of the same immutable
 connection lifetime; it is negative evidence and cannot authorize execution.
 Fresh saved-file continuation adopts the confirmed current clock without a new
-attempt, grant or allowance. This follow-up is local only. The instructor approved pausing only the countdown
-while monitored work continues, and customizable Allow resume validity including
-no expiry. Those controls and exact release qualification remain unfinished.
+attempt, grant or allowance. This follow-up is local only. Explicit countdown
+pause permits untimed work under normal monitoring until the instructor resumes
+the saved remainder. This intentionally changes the prior always-running timer
+policy. Durable clock history records pause, adjustments and resume; original
+deadlines remain historical facts. Allow resume approval accepts custom minutes
+or no expiry, independently of countdown pause; completion/revocation still
+apply. Both controls have matching web/examctl workflows and are locally tested.
+Exact release qualification remains unfinished.
 See docs/timer-controls-followup.md for acceptance and verification.
 
 November2 status-copy follow-up, DEPLOYED at17:34:57 Chicago: saved-

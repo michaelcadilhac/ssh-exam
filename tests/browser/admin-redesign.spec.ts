@@ -462,7 +462,14 @@ async function fixture(
         const result = {
           id: a.id,
           generation: a.generation,
-          expires: Math.min(a.deadline, Date.now() + 300000),
+          expires:
+            body.validForMinutes === null
+              ? Number.MAX_SAFE_INTEGER
+              : Math.min(
+                  a.deadline,
+                  Date.now() + (body.validForMinutes ?? 5) * 60000,
+                ),
+          ...(body.validForMinutes === null ? { noExpiry: true } : {}),
           execution: false,
           status: "authorized",
         };
@@ -473,6 +480,45 @@ async function fixture(
           return route.abort("failed");
         }
         return json(result);
+      }
+      if (path.endsWith("/timer")) {
+        const a = state.rows
+          .flatMap((s) => s.attempts)
+          .find((a) => path.includes(a.id));
+        if (!a || a.clock_revision !== body.revision)
+          return json({ error: "Clock changed; refresh" }, 409);
+        const at = Date.now(),
+          paused = body.timerAction === "pause";
+        const history = JSON.parse(a.clock_resets || "[]");
+        const previous = a.deadline;
+        if (paused) {
+          a.timer_paused_at = at;
+          a.timer_remaining_ms = a.deadline - at;
+        } else {
+          a.deadline = at + a.timer_remaining_ms;
+          a.timer_paused_at = 0;
+          a.timer_remaining_ms = 0;
+        }
+        a.clock_revision++;
+        history.push({
+          id: body.requestID,
+          actor: "fixture-instructor",
+          requested_at: at,
+          applied_at: at,
+          previous_deadline: previous,
+          deadline: a.deadline,
+          remaining_seconds: 0,
+          revision: a.clock_revision,
+          ...(paused
+            ? {
+                pause_timer: true,
+                timer_paused_at: a.timer_paused_at,
+                timer_remaining_ms: a.timer_remaining_ms,
+              }
+            : { resume_timer: true, applied_boot_ms: 10000 }),
+        });
+        a.clock_resets = JSON.stringify(history);
+        return json({ confirmed: true, attempt: a, pending: null });
       }
       if (next && path.endsWith("/grants/change")) {
         if (state.failSettings)
@@ -974,6 +1020,47 @@ test("student plus and delete controls work from the keyboard without a row menu
   await expect(remove).toBeFocused();
 });
 
+test("countdown pause and resume are direct actions with a steady displayed remainder", async ({
+  page,
+}) => {
+  const s = await fixture(page, false, false, true);
+  const group = page.getByRole("rowgroup", { name: "bob", exact: true });
+  const original = s.rows.find((s) => s.username === "bob")!.attempts[0]
+    .original_deadline;
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Pause countdown", exact: true })
+    .click();
+  await expect(group.locator(".attempt-clock")).toContainText(
+    "Countdown paused",
+  );
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const shown = await group.locator(".attempt-clock time").textContent();
+  await page.clock.install();
+  await page.clock.runFor(16000);
+  await expect(group.locator(".attempt-clock time")).toHaveText(shown!);
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Resume countdown", exact: true })
+    .click();
+  await expect(group.locator(".attempt-clock")).not.toContainText(
+    "Countdown paused",
+  );
+  expect(
+    s.calls
+      .filter((c) => c.path.endsWith("/timer"))
+      .map((c) => c.body.timerAction),
+  ).toEqual(["pause", "resume"]);
+  expect(s.rows.find((s) => s.username === "bob")!.attempts[0]).toMatchObject({
+    original_deadline: original,
+    state: "LOCKED",
+  });
+});
+
 test("ended retained sessions offer same-deadline files-only resume approval", async ({
   page,
 }) => {
@@ -1040,6 +1127,51 @@ test("retained instructor authorization preserves the original page and SSH rath
   );
   await expect(dialog).not.toContainText("must reconnect");
 });
+
+for (const validity of [15, null])
+  test(`instructor selects resume approval validity ${validity ?? "without expiry"}`, async ({
+    page,
+  }) => {
+    const s = await fixture(page, false, false, true);
+    await page
+      .getByRole("rowgroup", { name: "bob", exact: true })
+      .getByRole("button", { name: "Review", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "bob · Attempt 1",
+      exact: true,
+    });
+    await dialog
+      .getByRole("button", { name: "Allow resume", exact: true })
+      .click();
+    const approval = dialog.getByRole("group", {
+      name: "Confirm resume approval",
+      exact: true,
+    });
+    await expect(
+      approval.getByRole("spinbutton", { name: "Resume within (minutes)" }),
+    ).toHaveValue("5");
+    if (validity === null) {
+      await approval
+        .getByRole("checkbox", { name: "No approval expiry" })
+        .check();
+      await expect(approval.getByRole("spinbutton")).toHaveCount(0);
+    } else await approval.getByRole("spinbutton").fill(String(validity));
+    await approval
+      .getByRole("button", { name: "Allow resume", exact: true })
+      .click();
+    await expect(dialog).toContainText(
+      validity === null
+        ? "Resume allowed without approval expiry"
+        : "Resume allowed until",
+    );
+    expect(s.calls.filter((c) => c.path.endsWith("/authorize"))).toHaveLength(
+      1,
+    );
+    expect(
+      s.calls.find((c) => c.path.endsWith("/authorize"))!.body.validForMinutes,
+    ).toBe(validity);
+  });
 
 test("review keeps recovery deliberate, shows incidents and does not call an unverified submission secured", async ({
   page,

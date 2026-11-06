@@ -6,7 +6,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import WinBox from "winbox/src/js/winbox.js";
-import { api, socket, remaining, chicago } from "./api.js";
+import { api, socket, attemptRemaining, chicago } from "./api.js";
+import {
+  effectiveDeadline,
+  timerPaused,
+} from "../../../packages/protocol/timer.js";
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { Capture } from "./capture.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
@@ -160,7 +165,7 @@ export function Workspace({
     if (!attempt.clock_revision) return;
     warnings.current.clear();
     const left =
-      (attempt.deadline || Infinity) -
+      (effectiveDeadline(attempt) || Infinity) -
       (serverClock.current.now + performance.now() - serverClock.current.at);
     for (const seconds of [600, 300, 60])
       if (left <= seconds * 1000) warnings.current.add(seconds);
@@ -383,9 +388,9 @@ export function Workspace({
     bound.current &&
     online.current &&
     controlReady.current &&
-    performance.now() - lastAck.current < 15000 &&
+    performance.now() - lastAck.current < OPERATION_TIMEOUT_MS &&
     (networkLossAt.current === null ||
-      performance.now() - networkLossAt.current < 15000) &&
+      performance.now() - networkLossAt.current < OPERATION_TIMEOUT_MS) &&
     focusLostAt.current === null &&
     ws.current?.readyState === WebSocket.OPEN &&
     ["ACTIVE", "PREPARING"].includes(attemptRef.current.state);
@@ -837,7 +842,11 @@ export function Workspace({
       // fresh page bind; the native supervisor independently bounds execution
       // with verified monitoring. Let each unbound retry receive a reply within
       // the confirmation's existing lifetime, then obtain a new nonce/socket.
-      if (!bound.current && performance.now() - bindingIssuedAt < 15000) return;
+      if (
+        !bound.current &&
+        performance.now() - bindingIssuedAt < OPERATION_TIMEOUT_MS
+      )
+        return;
       if (ws.current?.readyState !== WebSocket.OPEN) return;
       interrupt();
       ws.current.close();
@@ -902,9 +911,10 @@ export function Workspace({
           ) {
             if (
               attemptRef.current.monitoring_mode !== "v1" &&
-              (performance.now() - lastAck.current >= 15000 ||
+              (performance.now() - lastAck.current >= OPERATION_TIMEOUT_MS ||
                 (networkLossAt.current !== null &&
-                  performance.now() - networkLossAt.current >= 15000)) &&
+                  performance.now() - networkLossAt.current >=
+                    OPERATION_TIMEOUT_MS)) &&
               (m.attempt.state === "ACTIVE" ||
                 attemptRef.current.state === "ACTIVE")
             ) {
@@ -1030,7 +1040,7 @@ export function Workspace({
         interrupt();
         if (
           attemptRef.current.monitoring_mode !== "v1" &&
-          performance.now() - lastAck.current > 15000
+          performance.now() - lastAck.current > OPERATION_TIMEOUT_MS
         ) {
           setRecoveryExpired(true);
           if (attemptRef.current.state === "ACTIVE")
@@ -1093,7 +1103,7 @@ export function Workspace({
       if (
         attemptRef.current.monitoring_mode !== "v1" &&
         networkLossAt.current !== null &&
-        performance.now() - networkLossAt.current >= 15000 &&
+        performance.now() - networkLossAt.current >= OPERATION_TIMEOUT_MS &&
         attemptRef.current.state === "ACTIVE" &&
         !localLocked.current
       ) {
@@ -1120,12 +1130,12 @@ export function Workspace({
         (armed.current ||
           (attemptRef.current.monitoring_mode === "v1" &&
             attemptRef.current.state === "LOCKED")) &&
-        performance.now() - lastAck.current > 15000
+        performance.now() - lastAck.current > OPERATION_TIMEOUT_MS
       )
         contactExpired();
       if (
         attemptRef.current.state === "PREPARING" &&
-        performance.now() - lastAck.current > 15000
+        performance.now() - lastAck.current > OPERATION_TIMEOUT_MS
       ) {
         setConnected(false);
         setRecoveryExpired(true);
@@ -1134,7 +1144,10 @@ export function Workspace({
       }
     }, 2000);
     const timer = setInterval(() => {
-      if (armed.current && performance.now() - lastAck.current >= 15000)
+      if (
+        armed.current &&
+        performance.now() - lastAck.current >= OPERATION_TIMEOUT_MS
+      )
         contactExpired();
       if (focusLostAt.current !== null) {
         if (
@@ -1157,6 +1170,7 @@ export function Workspace({
       if (
         ["ACTIVE", "LOCKED"].includes(attemptRef.current.state) &&
         attemptRef.current.deadline &&
+        !timerPaused(attemptRef.current) &&
         serverClock.current.now + performance.now() - serverClock.current.at >=
           attemptRef.current.deadline
       ) {
@@ -1171,7 +1185,7 @@ export function Workspace({
         setMessage("Time is up. Saving your files…");
       }
       const left =
-        (attemptRef.current.deadline || Infinity) -
+        (effectiveDeadline(attemptRef.current) || Infinity) -
         (serverClock.current.now + performance.now() - serverClock.current.at);
       for (const seconds of [600, 300, 60])
         if (
@@ -1355,7 +1369,7 @@ export function Workspace({
     if (!bound.current) failures.push("monitoring connection not confirmed");
     if (!online.current) failures.push("browser offline");
     if (!controlReady.current) failures.push("SSH control disconnected");
-    if (performance.now() - lastAck.current >= 15000)
+    if (performance.now() - lastAck.current >= OPERATION_TIMEOUT_MS)
       failures.push("monitoring confirmation expired");
     for (const [key, label] of [
       ["fullscreen", "fullscreen lost"],
@@ -1449,9 +1463,9 @@ export function Workspace({
     bound.current &&
     online.current &&
     controlReady.current &&
-    performance.now() - lastAck.current < 15000 &&
+    performance.now() - lastAck.current < OPERATION_TIMEOUT_MS &&
     !readinessMessage(conditions(), settings.webcam) &&
-    (attemptRef.current.deadline || 0) >
+    effectiveDeadline(attemptRef.current) >
       serverClock.current.now + performance.now() - serverClock.current.at;
   const continueExam = async (automaticTechnical = false) => {
     const epoch = activationEpoch.current;
@@ -1612,8 +1626,10 @@ export function Workspace({
           </small>
         </div>
         <div className="time" hidden={!attempt.start}>
-          <span>Time remaining</span>
-          <b>{remaining(attempt.deadline, clock)}</b>
+          <span>
+            {timerPaused(attempt) ? "Countdown paused" : "Time remaining"}
+          </span>
+          <b>{attemptRemaining(attempt, clock)}</b>
         </div>
         <button
           onClick={open}
@@ -1837,8 +1853,10 @@ export function Workspace({
                   : "Reconnecting. Terminal input is paused."}
               </p>
               <b>
-                {remaining(attempt.deadline, clock)} remaining · time keeps
-                running
+                {attemptRemaining(attempt, clock)} remaining ·{" "}
+                {timerPaused(attempt)
+                  ? "countdown paused"
+                  : "time keeps running"}
               </b>
 
               {locked && (

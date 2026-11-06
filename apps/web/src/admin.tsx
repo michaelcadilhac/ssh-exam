@@ -1,11 +1,13 @@
 import "./admin.css";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { api, chicago, remaining } from "./api.js";
+import { api, chicago, attemptRemaining } from "./api.js";
+import { timerPaused } from "../../../packages/protocol/timer.js";
 import { Modal } from "./modal.js";
 import { CreateAdministrator } from "./create-administrator.js";
 import { ExamSettings } from "./exam-settings.js";
 import { ExamRetirement, type RetirementAction } from "./exam-retirement.js";
 import { StudentImport } from "./student-import.js";
+import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import {
   AttemptGrantsDialog,
   pendingAttemptChanges,
@@ -119,6 +121,13 @@ export function Admin({
     [addingStudent, setAddingStudent] = useState(false),
     [alerts, setAlerts] = useState(false);
   const [selection, setSelection] = useState(new Set<string>());
+  const [timerBusy, setTimerBusy] = useState<string | null>(null);
+  const timerRequests = useRef(
+    new Map<
+      string,
+      { revision: number; timerAction: "pause" | "resume"; requestID: string }
+    >(),
+  );
   const [operation, setOperation] = useState<StudentAction | null>(null),
     [removing, setRemoving] = useState<string | null>(null),
     [removingBusy, setRemovingBusy] = useState(false),
@@ -272,7 +281,7 @@ export function Admin({
     if (
       data &&
       lastUpdate.current &&
-      performance.now() - lastUpdate.current > 15000
+      performance.now() - lastUpdate.current > OPERATION_TIMEOUT_MS
     )
       setStale(true);
   }, [clock, data]);
@@ -467,6 +476,37 @@ export function Admin({
     } catch (e) {
       setSigningOut(false);
       onError((e as Error).message);
+    }
+  };
+  const changeTimer = async (a: any) => {
+    const timerAction = timerPaused(a) ? "resume" : "pause";
+    let body = timerRequests.current.get(a.id);
+    if (
+      !body ||
+      body.revision !== a.clock_revision ||
+      body.timerAction !== timerAction
+    ) {
+      body = {
+        timerAction,
+        revision: a.clock_revision || 0,
+        requestID: crypto.randomUUID(),
+      };
+      timerRequests.current.set(a.id, body);
+    }
+    setTimerBusy(a.id);
+    try {
+      const result = await api(`/admin/attempts/${a.id}/timer`, body);
+      setNotice(
+        result.confirmed
+          ? `Countdown ${timerAction === "pause" ? "paused" : "resumed"}.`
+          : `${timerAction === "pause" ? "Pausing" : "Resuming"} countdown…`,
+      );
+      timerRequests.current.delete(a.id);
+      await refresh();
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setTimerBusy(null);
     }
   };
   return (
@@ -1362,18 +1402,24 @@ export function Admin({
                                     >
                                       <time
                                         title={
-                                          a.deadline
-                                            ? `Deadline: ${chicago(a.deadline)}`
-                                            : undefined
+                                          timerPaused(a)
+                                            ? "Countdown paused; monitored work may continue"
+                                            : a.deadline
+                                              ? `Deadline: ${chicago(a.deadline)}`
+                                              : undefined
                                         }
                                       >
                                         {["ACTIVE", "LOCKED"].includes(a.state)
-                                          ? remaining(a.deadline, clock)
+                                          ? attemptRemaining(a, clock)
                                           : a.ended &&
                                               attemptElapsed(a, clock) !== null
                                             ? `${formatDuration(attemptElapsed(a, clock)!)} used`
                                             : "—"}
                                       </time>
+                                      {["ACTIVE", "LOCKED"].includes(a.state) &&
+                                        timerPaused(a) && (
+                                          <span>Countdown paused</span>
+                                        )}
                                       {![
                                         "COMPLETED",
                                         "CANCELLED_BEFORE_START",
@@ -1457,6 +1503,20 @@ export function Admin({
                                           label={`Actions for ${s.username} attempt ${a.attempt_number}`}
                                           children="More"
                                           actions={[
+                                            ...(a.monitoring_mode === "v1"
+                                              ? [
+                                                  {
+                                                    label: timerPaused(a)
+                                                      ? "Resume countdown"
+                                                      : "Pause countdown",
+                                                    disabled:
+                                                      !editable || !!timerBusy,
+                                                    onSelect: () => {
+                                                      void changeTimer(a);
+                                                    },
+                                                  },
+                                                ]
+                                              : []),
                                             {
                                               label: "Reset time remaining",
                                               disabled: !editable,

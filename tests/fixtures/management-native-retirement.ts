@@ -401,5 +401,5 @@ export async function qualifyNativeRetirementCLI(
   ).toEqual(expected);
   expect(
     f.current.store.db.prepare("SELECT count(*) n FROM attempts").get(),
-  ).toEqual({ n: 9 });
+  ).toEqual({ n: 10 }); // Includes the explicitly authored countdown-control history.
 }

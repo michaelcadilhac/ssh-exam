@@ -132,7 +132,7 @@ func TestSignedFilesResumeRejectsStaleOrUnsafeScopeBeforeWorkloadCleanup(t *test
 // Called from the actual monitored Begin/pane/pidfd-exit fixture. The owned
 // user-systemd scopes, supervisor IPC, fresh TLS proof and lifetime handles are
 // real. Root SSH ancestry and the gateway's capture ledger are explicit seams.
-func testActualFilesResume(t *testing.T, e *Engine, key ed25519.PrivateKey, old *Attempt, original *net.UnixConn, approval *atomic.Int64, mode *atomic.Int32) {
+func testActualFilesResume(t *testing.T, e *Engine, key ed25519.PrivateKey, old *Attempt, original *net.UnixConn, approval *atomic.Int64, mode *atomic.Int32, approvalExpiry ...int64) {
 	t.Helper()
 	newPeer, stop := testNativeRoleLifetime(t)
 	defer stop()
@@ -141,6 +141,9 @@ func testActualFilesResume(t *testing.T, e *Engine, key ed25519.PrivateKey, old 
 	}
 	freshTransport := strings.Repeat("e", 64)
 	until := Millis() + 60000
+	if len(approvalExpiry) > 0 {
+		until = approvalExpiry[0]
+	}
 	approval.Store(until)
 	registration := Command{Audience: e.Config.AgentID, Nonce: Token(), Expires: Millis() + 20000, Op: "register", Username: old.Username, Body: Request{Continuation: &Request{ID: old.ID, Generation: old.Generation, Expires: until}}}
 	if _, err := e.command(signedCommand(key, registration), old.Username, freshTransport, 0, original); err != nil {
@@ -188,6 +191,9 @@ func testActualFilesResume(t *testing.T, e *Engine, key ed25519.PrivateKey, old 
 		t.Fatal("same original approval did not retry files-only Resume", err)
 	}
 	resumed := result.(map[string]any)["attempt"].(*Attempt)
+	if resumed.TimerPausedAt != old.TimerPausedAt || resumed.TimerRemainingMS != old.TimerRemainingMS {
+		t.Fatal("files-only continuation changed the paused countdown", resumed)
+	}
 	if resumed.State != "ACTIVE" || resumed.Transport != freshTransport || !currentRegisteredOwner(resumed) || resumed.RegisteredOwner.PageEpoch != cmd.Body.PageEpoch || resumed.RegisteredOwner.InputEpoch == old.RegisteredOwner.InputEpoch || resumed.RegisteredOwner.Generation != old.Generation || resumed.MonitoringResumeKind != "reviewed" || resumed.Authorization != 0 || resumed.AccessState != "HELD" || len(resumed.Units) != 0 || !sameGrant(resumed.Grant, old.Grant) {
 		t.Fatal("inconsistent same-attempt fresh ownership", resumed)
 	}
@@ -211,5 +217,23 @@ func testActualFilesResume(t *testing.T, e *Engine, key ed25519.PrivateKey, old 
 	newPane.Body.Transport = freshTransport
 	if _, err := e.Command(signedCommand(key, newPane), old.Username, freshTransport); err != nil {
 		t.Fatal("fresh live files-only owner cannot request a fresh terminal", err)
+	}
+	if timerPaused(old) {
+		// Files-only continuation must preserve the pause. Only this separate,
+		// explicit instructor command may restart the saved countdown.
+		r := resetRequest(resumed)
+		r.ResetID, r.RemainingSeconds, r.ResumeTimer = ManagementID(), 0, true
+		control := Command{Audience: e.Config.AgentID, Nonce: Token(), Expires: Millis() + operationTimeoutMS, Op: "reset-clock", Username: resumed.Username, Transport: freshTransport, Body: r}
+		if _, err := e.Command(signedCommand(key, control), resumed.Username, freshTransport); err != nil {
+			t.Fatal("fresh files-only authority could not explicitly resume paused countdown", err)
+		}
+		state, err := readStateSnapshot(e.Config.State)
+		if err != nil {
+			t.Fatal(err)
+		}
+		a := state.Attempts[old.ID]
+		if a.TimerPausedAt != 0 || a.TimerRemainingMS != 0 || a.Deadline != r.RequestedAt+old.TimerRemainingMS || a.OriginalDeadline != old.OriginalDeadline || a.Start != old.Start || a.AccessState != "HELD" || a.ClockHandoverPending {
+			t.Fatal("explicit countdown resume lost saved allowance, original interval or live acknowledgement", a)
+		}
 	}
 }

@@ -124,9 +124,9 @@ func (e *Engine) signedRenewalReceipt(cmd Command, username, transport string) (
 	if !found || clockErr != nil || cmd.Expires <= now || lease.Nonces[cmd.Body.RenewalNonce] <= now || receipt.Exam != a.Exam || receipt.UID != a.UID || receipt.Start != a.Start || receipt.Deadline != a.Deadline || receipt.OriginalDeadline != a.OriginalDeadline || receipt.Issued <= 0 || receipt.IssuedBoot < 0 || receipt.Until <= receipt.Issued || receipt.Until-receipt.Issued != operationTimeoutMS || receipt.UntilBoot <= receipt.IssuedBoot || receipt.UntilBoot-receipt.IssuedBoot != operationTimeoutMS || nowBoot < receipt.IssuedBoot || receipt.Until > lease.Until {
 		return nil, errExecutionRenewalReceipt
 	}
-	remaining := min(receipt.Until-now, receipt.UntilBoot-nowBoot, a.Lease-now, a.Deadline-now)
+	remaining := min(receipt.Until-now, receipt.UntilBoot-nowBoot, a.Lease-now, workDeadlineWallMS(a)-now)
 	if a.UptimeDeadline > 0 {
-		remaining = min(remaining, int64(a.UptimeDeadline*1000)-nowBoot)
+		remaining = min(remaining, workDeadlineBootMS(a)-nowBoot)
 	}
 	if remaining <= 0 || remaining > operationTimeoutMS || !e.executionRenewalConfirmed(a.ID, Hash(data), nowBoot) {
 		return nil, errExecutionRenewalReceipt

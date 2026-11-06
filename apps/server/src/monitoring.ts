@@ -1,3 +1,4 @@
+import { effectiveDeadline } from "../../../packages/protocol/timer.js";
 import {
   constants,
   mkdirSync,
@@ -155,7 +156,7 @@ export class Monitoring {
       a.grant_hash !== pending.a.grant_hash ||
       a.grant_begin_intent !== pending.a.grant_begin_intent ||
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       a.deadline !== pending.a.deadline ||
       monitoringBootTimeMS() - pending.started >= MONITORING_CHALLENGE_WINDOW_MS
     )
@@ -513,7 +514,7 @@ export class Monitoring {
       a.state !== "LOCKED" ||
       !a.start ||
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       !a.original_deadline ||
       a.protected ||
       a.checksum ||
@@ -594,7 +595,7 @@ export class Monitoring {
       !["LOCKED", "ACTIVE"].includes(a.state) ||
       !a.start ||
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       !a.original_deadline ||
       a.protected ||
       a.checksum ||
@@ -693,7 +694,7 @@ export class Monitoring {
     let authorization = this.continuationIdentity(a, false);
     if (!authorization) {
       const expires = Math.min(
-        a.deadline,
+        effectiveDeadline(a),
         now() + MONITORING_CHALLENGE_WINDOW_MS,
       );
       this.store.db.transaction(() => {
@@ -742,7 +743,7 @@ export class Monitoring {
       grant: a.grant_hash,
       intent: a.grant_begin_intent,
       until: clock + evidence.remainingMS,
-      deadline: a.deadline,
+      deadline: effectiveDeadline(a),
       reply,
     });
     return reply;

@@ -1,5 +1,6 @@
 import { expect } from "vitest";
 import { randomUUID, sign } from "node:crypto";
+import { monitoringOwner } from "../../packages/protocol/monitoring-evidence.js";
 
 // Real compiled root-mapped CLI -> HTTPS -> gateway; only the already-running
 // native records and signed native reports below are synthetic test fixtures.
@@ -97,7 +98,12 @@ export async function qualifyClockCLI(
     sequence: ++sequence,
     health: {
       ready: true,
-      capabilities: ["clock-reset", "clock-extend", "deadline-timing-check"],
+      capabilities: [
+        "clock-reset",
+        "clock-extend",
+        "timer-clock-controls-v1",
+        "deadline-timing-check",
+      ],
     },
     accounts: {
       clock01: 20001,
@@ -358,4 +364,198 @@ export async function qualifyClockCLI(
         .all(),
     ),
   ).not.toContain("PRIVATE-UNRECOGNIZED-SETTINGS");
+
+  // Dedicated already-started synthetic owner: real root CLI and gateway,
+  // signed native outcomes; actual monitored work is qualified in Go/nspawn.
+  const timerID = randomUUID(),
+    timerExam = "clock-timer-controls",
+    timerStart = Date.now() - 60000,
+    timerDeadline = Date.now() + 3600000;
+  await run("exams", [
+    "create",
+    timerExam,
+    "--template",
+    "v1",
+    "--earliest",
+    new Date(Date.now() - 60000).toISOString(),
+    "--latest",
+    new Date(Date.now() + 3600000).toISOString(),
+  ]);
+  const timerOwner = monitoringOwner.parse({
+    attempt: timerID,
+    exam: timerExam,
+    username: "clock_timer",
+    uid: 21000,
+    transport_hash: "a".repeat(64),
+    boot: randomUUID(),
+    page_epoch: "b".repeat(64),
+    input_epoch: "c".repeat(64),
+    generation: 0,
+    clock_revision: 0,
+  });
+  f.current.store.db
+    .prepare(
+      "INSERT INTO enrollments(exam,username,uid) VALUES(?,'clock_timer',21000)",
+    )
+    .run(timerExam);
+  f.current.store.db
+    .prepare(
+      `INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,
+    access_state,generation,monitoring_mode,registered_owner,retained_hold) VALUES(?,?,'clock_timer',21000,'LOCKED',?,?,?,?,'HELD',1,'v1',?,'held')`,
+    )
+    .run(
+      timerID,
+      timerExam,
+      JSON.stringify({ ...settings, id: timerExam }),
+      timerStart,
+      timerDeadline,
+      timerDeadline,
+      JSON.stringify(timerOwner),
+    );
+  const pauseArgs = [
+    "pause-timer",
+    timerID,
+    "--revision",
+    "0",
+    "--request",
+    randomUUID(),
+  ];
+  const pause = (await run("clocks", pauseArgs)).result;
+  expect(pause).toMatchObject({
+    status: "pending",
+    intent: { pause_timer: true },
+    attempt: { id: timerID },
+  });
+  const pauseIntent = pause.intent,
+    timerHistory: any[] = [
+      {
+        id: pause.requestID,
+        actor: pauseIntent.actor,
+        requested_at: pauseIntent.requested_at,
+        applied_at: Date.now(),
+        previous_deadline: timerDeadline,
+        deadline: timerDeadline,
+        remaining_seconds: 0,
+        revision: 1,
+        pause_timer: true,
+        timer_paused_at: pauseIntent.requested_at,
+        timer_remaining_ms: timerDeadline - pauseIntent.requested_at,
+      },
+    ];
+  let timerNative: any = {
+    id: timerID,
+    exam: timerExam,
+    username: "clock_timer",
+    uid: 21000,
+    state: "LOCKED",
+    generation: 1,
+    start: timerStart,
+    deadline: timerDeadline,
+    original_deadline: timerDeadline,
+    clock_revision: 1,
+    clock_resets: timerHistory,
+    registered_owner: { ...timerOwner, clock_revision: 1 },
+    boot: timerOwner.boot,
+    browser_ssh: true,
+    terminal_supervised: true,
+    monitoring_mode: "v1",
+    retained_hold: "held",
+    monitoring_hold_kind: "policy",
+    access_state: "HELD",
+    timer_paused_at: pauseIntent.requested_at,
+    timer_remaining_ms: timerHistory[0].timer_remaining_ms,
+  };
+  const timerReport = () =>
+    postSigned("/api/agent/events", {
+      agent: "class",
+      sequence: ++sequence,
+      at: Date.now(),
+      attempt: timerNative,
+    });
+  await timerReport();
+  await f.restart();
+  const shownPause = (await run("clocks", ["show", pause.requestID])).result;
+  expect(shownPause).toMatchObject({
+    confirmed: true,
+    attempt: {
+      timer_paused_at: pauseIntent.requested_at,
+      timer_remaining_ms: timerNative.timer_remaining_ms,
+    },
+  });
+  const extra = (
+    await run("clocks", [
+      "extend",
+      timerID,
+      "--minutes",
+      "1",
+      "--revision",
+      "1",
+    ])
+  ).result;
+  timerNative = {
+    ...timerNative,
+    deadline: timerDeadline + 60000,
+    clock_revision: 2,
+    registered_owner: { ...timerOwner, clock_revision: 2 },
+    timer_remaining_ms: timerNative.timer_remaining_ms + 60000,
+  };
+  timerHistory.push({
+    id: extra.requestID,
+    actor: extra.intent.actor,
+    requested_at: extra.intent.requested_at,
+    applied_at: Date.now(),
+    previous_deadline: timerDeadline,
+    deadline: timerNative.deadline,
+    remaining_seconds: 0,
+    extend_seconds: 60,
+    revision: 2,
+    timer_paused_at: pauseIntent.requested_at,
+    timer_remaining_ms: timerNative.timer_remaining_ms,
+  });
+  await timerReport();
+  const resume = (
+    await run("clocks", ["resume-timer", timerID, "--revision", "2"])
+  ).result;
+  expect(resume.intent.resume_timer).toBe(true);
+  const resumedDeadline =
+    resume.intent.requested_at + timerNative.timer_remaining_ms;
+  timerHistory.push({
+    id: resume.requestID,
+    actor: resume.intent.actor,
+    requested_at: resume.intent.requested_at,
+    applied_at: Date.now(),
+    previous_deadline: timerNative.deadline,
+    deadline: resumedDeadline,
+    remaining_seconds: 0,
+    revision: 3,
+    resume_timer: true,
+    applied_boot_ms: 100000,
+  });
+  timerNative = {
+    ...timerNative,
+    deadline: resumedDeadline,
+    clock_revision: 3,
+    registered_owner: { ...timerOwner, clock_revision: 3 },
+    timer_paused_at: 0,
+    timer_remaining_ms: 0,
+  };
+  await timerReport();
+  expect(
+    (await run("clocks", ["show", resume.requestID])).result,
+  ).toMatchObject({
+    confirmed: true,
+    attempt: {
+      clock_revision: 3,
+      timer_paused_at: 0,
+      timer_remaining_ms: 0,
+      original_deadline: timerDeadline,
+      start: timerStart,
+    },
+  });
+  expect((await run("clocks", pauseArgs)).result).toEqual(pause); // Original cached receipt, not a second pause.
+  expect(f.current.store.attempt(timerID)).toMatchObject({
+    clock_revision: 3,
+    timer_paused_at: 0,
+    deadline: resumedDeadline,
+  });
 }

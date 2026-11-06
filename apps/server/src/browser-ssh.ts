@@ -1,4 +1,5 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import { effectiveDeadline } from "../../../packages/protocol/timer.js";
 import { EventEmitter } from "node:events";
 import { randomUUID, sign, createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -182,7 +183,7 @@ export class BrowserConnection extends Connection {
       remote.boot !== owner.boot ||
       remote.protected ||
       remote.checksum ||
-      remote.deadline <= Date.now() ||
+      effectiveDeadline(remote) <= Date.now() ||
       (remote.clock_revision || 0) !== owner.clock_revision
     )
       throw Error(

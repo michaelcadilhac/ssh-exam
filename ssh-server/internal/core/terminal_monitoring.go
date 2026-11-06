@@ -118,7 +118,7 @@ func (e *Engine) syncTerminalMonitoringTargets() error {
 		if a == nil || a.ID != id || a.State != "ACTIVE" || a.MonitoringMode != "v1" || a.RetainedHold != "" || a.Start <= 0 || !currentRegisteredOwner(a) || expired(a) {
 			continue
 		}
-		wanted[id] = terminalMonitoringTarget{owner: *a.RegisteredOwner, deadlineBootMS: int64(a.UptimeDeadline * 1000)}
+		wanted[id] = terminalMonitoringTarget{owner: *a.RegisteredOwner, deadlineBootMS: workDeadlineBootMS(a)}
 	}
 	if len(wanted) > 0 {
 		if err := e.prepareTerminalMonitoring(); err != nil {

@@ -11,10 +11,13 @@ acceptance and delivery investigation: docs/timer-controls-followup.md.
 Sixty-second operational timeouts and authenticated prompt clock delivery are
 implemented and tested locally. Failed live clock handover stays retryable;
 verified SSH loss across a clock-only revision supports saved-file recovery on
-the same attempt without adding time. Final regression/release qualification is
-in progress. Timer pause and resume-expiry controls are next, using the approved
-semantics. Nothing from
-this follow-up is deployed.
+the same attempt without adding time. Countdown-only pause, explicit countdown
+resume, custom Allow resume approval validity/no expiry, admin controls and
+matching examctl commands are implemented/tested locally. Paused attempts keep
+normal monitoring and account holds; Finish protects their saved work. Full
+native races and all 28 actual supervisor scenarios pass. Final browser and
+matched installation/image/current-data recovery qualification remain in
+progress. Nothing from this follow-up is deployed.
 
 # Previous follow-up — pending-clock SSH recovery fixes DEPLOYED
 

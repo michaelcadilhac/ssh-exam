@@ -83,6 +83,10 @@ import {
   monitoringPurges,
 } from "../../../packages/protocol/monitoring-management.js";
 import { ClockControl } from "./clock-control.js";
+import {
+  effectiveDeadline,
+  timerState,
+} from "../../../packages/protocol/timer.js";
 import { AttemptManagement } from "./attempt-management.js";
 import { InterruptionManagement } from "./interruption-management.js";
 import { studentContinuationStatus } from "./continuation-status.js";
@@ -292,7 +296,8 @@ export async function createApp(
       await life.lock(id, "Sandbox reconnection");
       a = store.attempt(id);
     }
-    if (a.state !== "LOCKED" || !a.deadline || a.deadline <= now()) return;
+    if (a.state !== "LOCKED" || !a.deadline || effectiveDeadline(a) <= now())
+      return;
     const grant = store.db
       .prepare("SELECT * FROM continuations WHERE attempt=?")
       .get(id) as any;
@@ -302,7 +307,7 @@ export async function createApp(
       grant.generation !== a.generation ||
       grant.expires <= now()
     ) {
-      const expires = Math.min(a.deadline, now() + 300000);
+      const expires = Math.min(effectiveDeadline(a), now() + 300000);
       store.db.transaction(() => {
         store.db
           .prepare("INSERT OR REPLACE INTO continuations VALUES(?,?,?,0)")
@@ -566,7 +571,7 @@ export async function createApp(
       a.generation === claim.generation &&
       a.registered_owner === claim.previousOwner &&
       a.deadline &&
-      a.deadline > now() &&
+      effectiveDeadline(a) > now() &&
       auth &&
       !auth.consumed &&
       auth.generation === a.generation &&
@@ -645,7 +650,7 @@ export async function createApp(
       !a.registered_owner ||
       !a.start ||
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       a.protected ||
       a.checksum ||
       !["ACTIVE", "LOCKED"].includes(a.state) ||
@@ -1054,7 +1059,7 @@ export async function createApp(
         expires: now() + OPERATION_TIMEOUT_MS,
         deadline: a.deadline,
         clock_revision: a.clock_revision,
-        collect: !reset && !!a.deadline && now() >= a.deadline,
+        collect: !reset && !!a.deadline && now() >= effectiveDeadline(a),
         ...(reset ? { reset } : {}),
       });
     },
@@ -2397,7 +2402,7 @@ export async function createApp(
       a.protected ||
       a.ended ||
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       !auth ||
       auth.consumed ||
       auth.generation !== a.generation ||
@@ -2428,7 +2433,7 @@ export async function createApp(
       a.protected ||
       a.ended ||
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       !auth ||
       auth.consumed ||
       auth.generation !== a.generation ||
@@ -2477,7 +2482,7 @@ export async function createApp(
       current.clock_revision !== a.clock_revision ||
       current.settings !== a.settings ||
       !current.deadline ||
-      current.deadline <= now() ||
+      effectiveDeadline(current) <= now() ||
       current.ended ||
       current.protected ||
       !conn.alive ||
@@ -2533,7 +2538,7 @@ export async function createApp(
       );
     if (
       !a.deadline ||
-      a.deadline <= now() ||
+      effectiveDeadline(a) <= now() ||
       ["COMPLETED", "FINALIZING", "COLLECTION_FAILED"].includes(a.state)
     )
       throw Error("Your exam has ended. This attempt cannot resume.");
@@ -2791,10 +2796,12 @@ export async function createApp(
       now() - (a.last_contact || 0) <= OPERATION_TIMEOUT_MS;
     return {
       ...a,
+      ...timerState(a),
       pendingClockReset: clocks.pending(a.id),
       filesOnlyResume: needsFilesOnlyResume(store, a),
       connected,
-      working: a.state === "ACTIVE" && connected && a.deadline > now(),
+      working:
+        a.state === "ACTIVE" && connected && effectiveDeadline(a) > now(),
       terminalCount: conn?.alive ? conn.panes.size : 0,
     };
   };
@@ -3050,14 +3057,36 @@ export async function createApp(
         requestID: z.string().uuid(),
       })
       .parse(req.body);
-    const health = await agent.call("health");
-    assertClockCapabilities(health, false);
+    assertClockCapabilities(agent.configurationHealth(), false);
     return clocks.reset(
       req.params.id,
       body.minutes,
       s.username,
       body.revision,
       body.requestID,
+      true, // The independent authenticated root poll delivers without a student SSH wait.
+    );
+  });
+  app.post("/api/admin/attempts/:id/timer", async (req: any) => {
+    const s = principal(req, "admin");
+    const body = z
+      .object({
+        timerAction: z.enum(["pause", "resume"]),
+        revision: z.number().int().nonnegative(),
+        requestID: z.string().uuid(),
+      })
+      .strict()
+      .parse(req.body);
+    assertClockCapabilities(agent.configurationHealth(), false, true);
+    return clocks.reset(
+      req.params.id,
+      0,
+      s.username,
+      body.revision,
+      body.requestID,
+      true,
+      false,
+      body.timerAction,
     );
   });
   app.post("/api/admin/attempts/:id/authorize", async (req: any) => {
@@ -4061,7 +4090,7 @@ export async function createApp(
           !["ACTIVE", "PREPARING"].includes(a.state) ||
           (a.state === "ACTIVE" &&
             (!a.deadline ||
-              a.deadline <= now() ||
+              effectiveDeadline(a) <= now() ||
               now() - (a.last_contact || 0) > OPERATION_TIMEOUT_MS)) ||
           !conn?.alive
         ) {

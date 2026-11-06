@@ -61,7 +61,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   page,
   request,
 }) => {
-  test.setTimeout(90000);
+  test.setTimeout(150000);
   let uploads = 0;
   let controlConnections = 0,
     delayAfterConnection = 0,
@@ -282,6 +282,10 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   // close a viable transport, or replay blocked input after the old15s limit.
   await page.waitForTimeout(17500);
   await expect(reconnecting).toBeVisible();
+  expect(
+    heldBindings.filter((p) => p.connection < controlConnections),
+  ).toHaveLength(0);
+  await page.waitForTimeout(46000);
   expect(
     heldBindings.filter((p) => p.connection < controlConnections).length,
   ).toBeGreaterThan(0);

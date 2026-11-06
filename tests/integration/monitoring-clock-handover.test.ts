@@ -194,10 +194,19 @@ it("accepted clock-only native revision preserves challenged HTTP evidence while
     expect(before.statusCode, before.body).toBe(200);
     const facts = decode(before);
     expect(facts.age_ms).toBe(0);
-    vi.spyOn(Agent.prototype, "call").mockImplementation(async (op) => {
-      if (op !== "health") throw Error("Unexpected native call " + op);
-      return { capabilities: ["clock-reset", "deadline-timing-check"] };
+    const configuration = await signed("/api/agent/events", {
+      agent: "class",
+      sequence: 1,
+      at: Date.now(),
+      health: {
+        ready: true,
+        capabilities: ["clock-reset", "deadline-timing-check"],
+      },
     });
+    expect(configuration.statusCode, configuration.body).toBe(200);
+    const ssh = vi
+      .spyOn(Agent.prototype, "call")
+      .mockRejectedValue(Error("Clock staging must not wait for student SSH"));
     const intent = randomUUID(),
       accepted = await app.inject({
         method: "POST",
@@ -210,6 +219,8 @@ it("accepted clock-only native revision preserves challenged HTTP evidence while
         payload: { minutes: 60, revision: 0, requestID: intent },
       });
     expect(accepted.statusCode, accepted.body).toBe(200);
+    expect(accepted.json().confirmed).toBe(false);
+    expect(ssh).not.toHaveBeenCalled();
     const row = store.db
         .prepare("SELECT body FROM clock_reset_requests WHERE id=?")
         .get(intent) as { body: string },
@@ -229,7 +240,7 @@ it("accepted clock-only native revision preserves challenged HTTP evidence while
     clock.now += 4000;
     const outcome = await signed("/api/agent/events", {
       agent: "class",
-      sequence: 1,
+      sequence: 2,
       at: Date.now(),
       attempt: {
         id,

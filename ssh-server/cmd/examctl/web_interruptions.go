@@ -16,7 +16,7 @@ import (
 func webInterruptionsHelp(out io.Writer) {
 	fmt.Fprintln(out, `Usage: sudo examctl web interruptions show ATTEMPT
        sudo examctl web interruptions review ATTEMPT [--section history|requests --limit N --after ENTRY --revision N]
-       sudo examctl web interruptions authorize ATTEMPT --generation N --revision N --reason TEXT [--intent UUID]
+       sudo examctl web interruptions authorize ATTEMPT --generation N --revision N --reason TEXT [--minutes N | --no-expiry] [--intent UUID]
 
 Root-agent signed outbound HTTPS, explicit interruptions.show/review/authorize
 managementOperations and shared web validation/audit. No native control listener.
@@ -37,7 +37,9 @@ Stale review refuses: inspect/review anew and issue a NEW intent deliberately.
 Only started LOCKED, unfinished, unprotected attempts before current deadline.
 An exact retry never replaces/extends approval. A new deliberately reviewed intent
 can renew an unused approval under existing rules, retaining its history. Approval
-expires at the earlier of five minutes from gateway acceptance or the current deadline.
+defaults to five minutes. --minutes accepts 1..525600 minutes; --no-expiry keeps
+approval valid until consumed, revoked, superseded or the attempt ends. A finite
+approval cannot outlive the current deadline. Neither option changes exam time.
 It does NOT resume execution, thaw work, stop/reset time, release account holds,
 reopen completed work or bypass current page, authenticated ownership and monitoring.
 Retained attempts keep viable SSH and editor buffers: restore checks and choose
@@ -87,6 +89,8 @@ func webInterruptionsMain(args []string) int {
 	generation := flags.String("generation", "", "reviewed generation")
 	revision := flags.String("revision", "", "reviewed interruption counter")
 	reason := flags.String("reason", "", "audited reason")
+	minutes := flags.Int("minutes", 5, "approval validity in minutes (1..525600)")
+	noExpiry := flags.Bool("no-expiry", false, "no approval expiry; exam clock still applies")
 	section := flags.String("section", "history", "history or requests")
 	limit := flags.Int("limit", 20, "page size")
 	after := flags.String("after", "", "exclusive entry ID")
@@ -117,7 +121,7 @@ func webInterruptionsMain(args []string) int {
 	}
 	switch w[1] {
 	case "show", "review":
-		if seen["generation"] || seen["reason"] || seen["intent"] {
+		if seen["generation"] || seen["reason"] || seen["intent"] || seen["minutes"] || seen["no-expiry"] {
 			return usage("read workflow forbids authorization flags")
 		}
 		if w[1] == "show" && (seen["section"] || seen["limit"] || seen["after"] || seen["revision"]) {
@@ -140,6 +144,9 @@ func webInterruptionsMain(args []string) int {
 			}
 		}
 	case "authorize":
+		if (seen["minutes"] && seen["no-expiry"]) || *minutes < 1 || *minutes > 525600 {
+			return usage("choose --minutes 1..525600 or --no-expiry, not both")
+		}
 		gen, e1 := strconv.ParseInt(*generation, 10, 64)
 		rev, e2 := strconv.ParseInt(*revision, 10, 64)
 		why := strings.TrimSpace(*reason)
@@ -150,6 +157,11 @@ func webInterruptionsMain(args []string) int {
 			*intent = *request
 		}
 		b["generation"], b["revision"], b["reason"], b["requestID"] = gen, rev, why, *intent
+		if *noExpiry {
+			b["validForMinutes"] = nil
+		} else if seen["minutes"] {
+			b["validForMinutes"] = *minutes
+		}
 	default:
 		return usage("unknown interruption workflow")
 	}
@@ -171,6 +183,7 @@ func validateInterruptionResult(operation string, body any, raw json.RawMessage)
 		Generation int64  `json:"generation"`
 		RequestID  string `json:"requestID"`
 		Expires    int64  `json:"expires"`
+		NoExpiry   bool   `json:"noExpiry"`
 		Execution  *bool  `json:"execution"`
 		Status     string `json:"status"`
 		Current    struct {
@@ -181,6 +194,14 @@ func validateInterruptionResult(operation string, body any, raw json.RawMessage)
 		return errors.New("invalid interruption reply; inspect fresh status")
 	}
 	if operation == "interruptions.authorize" {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(encoded, &fields) != nil {
+			return errors.New("invalid authorization arguments")
+		}
+		noExpiry := string(fields["validForMinutes"]) == "null"
+		if result.NoExpiry != noExpiry || (noExpiry && result.Expires != 9007199254740991) || result.Expires > 9007199254740991 {
+			return errors.New("gateway did not confirm the requested approval expiry; inspect fresh interruption status; do not repeat as a new intent")
+		}
 		if result.ID != input.ID || result.Generation != input.Generation || result.RequestID != input.RequestID || result.Status != "authorized" || result.Execution == nil || *result.Execution || result.Expires <= 0 {
 			return errors.New("interruption reply lacks exact authorization scope and explicit non-execution status; inspect fresh status before retrying")
 		}

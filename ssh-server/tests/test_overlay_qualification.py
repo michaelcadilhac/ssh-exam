@@ -66,6 +66,24 @@ class OverlayTests(unittest.TestCase):
             with self.assertRaises(AssertionError): guest.bootstrap_native_install()
             mutation.assert_not_called(); service.assert_not_called()
 
+    def test_relay_install_is_explicit_and_confined_to_native_install(self):
+        selected = overlay.profile_files('native-install', native_relay=True)
+        self.assertEqual(set(selected) - set(overlay.profile_files('native-install')),
+                         {'exam-ssh-relay', 'relay-nginx.conf', 'qualify_relay_install.py'})
+        command = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'),
+                                            profile='native-install', native_relay=True)
+        self.assertIn('--bind-ro=/input/nginx-runtime:/run/ssh-exam-nginx-runtime', command)
+        self.assertNotIn('--bind-ro=/input/exam-ssh-relay:/usr/local/libexec/exam-ssh-relay', command)
+        for profile in ('enforcement', 'retained-policy', 'execution-policy'):
+            with self.subTest(profile=profile), self.assertRaises(AssertionError):
+                overlay.profile_files(profile, native_relay=True)
+        module = ast.parse(Path(__file__).with_name('qualify_relay_install.py').read_text())
+        strings = {node.targets[0].id: ast.literal_eval(node.value) for node in module.body
+                   if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name)
+                   and node.targets[0].id in ('GUARD', 'NGINX_WRAPPER')}
+        self.assertEqual(set(strings), {'GUARD', 'NGINX_WRAPPER'})
+        for source in strings.values(): ast.parse(source)
+
     def test_native_bootstrap_refuses_loaded_role_before_replacing_any_binary(self):
         (self.root / 'state.json').write_text(json.dumps({'attempts': {}}))
         with mock.patch.object(guest, 'native_install_context', return_value=({}, {'state':str(self.root)})), \

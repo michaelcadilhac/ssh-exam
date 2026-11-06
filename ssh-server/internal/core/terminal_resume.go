@@ -274,7 +274,7 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 	// keep the prepared nonce/owner/epochs immutable for concurrent replies.
 	resumed := *p
 	resumed.InputEpochs = epochs
-	next := &terminalAuthorityRuntime{owner: p.Owner, beginNonce: r.beginNonce, key: r.key, peer: r.peer, claim: r.claim, hold: h, launches: map[string]PaneInstance{}, resume: &resumed, resumeNonce: p.Nonce, start: r.start, deadline: r.deadline, originalDeadline: r.originalDeadline, deadlineBootMS: r.deadlineBootMS}
+	next := &terminalAuthorityRuntime{owner: p.Owner, beginNonce: r.beginNonce, key: r.key, peer: r.peer, claim: r.claim, hold: h, launches: map[string]PaneInstance{}, clockReset: r.clockReset, resume: &resumed, resumeNonce: p.Nonce, start: r.start, deadline: r.deadline, originalDeadline: r.originalDeadline, deadlineBootMS: r.deadlineBootMS}
 	next.resumeKind = "reviewed"
 	if technical {
 		next.resumeKind = "technical"
@@ -406,7 +406,7 @@ func (s *terminalSupervisor) commitAuthorityResume(q terminalAuthorityRequest) (
 // canonical metadata and reconnect the coordinator's live renewal bridge. This
 // accepts only the current supervisor's verified result, never saved permission.
 func (e *Engine) finishMonitoredResume(expected *Attempt, owner monitoringOwner, nonce string, result terminalAuthorityReply) (any, error) {
-	if expected == nil || expected.RegisteredOwner == nil || *expected.RegisteredOwner != owner || expected.MonitoringResumeNonce != nonce || nonce == "" || result.View == nil || !result.View.ExecutionAuthorized || result.View.DeadlineUptimeMS != int64(expected.UptimeDeadline*1000) {
+	if expected == nil || expected.RegisteredOwner == nil || *expected.RegisteredOwner != owner || expected.MonitoringResumeNonce != nonce || nonce == "" || result.View == nil || !result.View.ExecutionAuthorized || result.View.DeadlineUptimeMS != workDeadlineBootMS(expected) {
 		return expected, errMonitoringAuthority
 	}
 	if err := e.prepareTerminalMonitoring(); err != nil {
@@ -430,7 +430,7 @@ func (e *Engine) finishMonitoredResume(expected *Attempt, owner monitoringOwner,
 	if err != nil {
 		return expected, err
 	}
-	e.registerTerminalMonitoring(committed.ID, owner, int64(committed.UptimeDeadline*1000))
+	e.registerTerminalMonitoring(committed.ID, owner, workDeadlineBootMS(committed))
 	// Metadata fsync can outlive the live permit. Obtain a fresh actual result
 	// before exposing any epochs, including after a lost command acknowledgement.
 	fresh, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "resume-result", Attempt: committed.ID, Owner: owner, NextOwner: &owner, Nonce: nonce}, nil, false)
@@ -519,7 +519,7 @@ func (e *Engine) resumeMonitoredPurpose(a *Attempt, request Request, technical b
 		return a, errMonitoringEvidence
 	}
 	now, err := monitoringBootMillis()
-	if err != nil || now < p.IssuedBootMS || now >= min(p.IssuedBootMS+proof.CaptureValidFor, int64(a.UptimeDeadline*1000)) {
+	if err != nil || now < p.IssuedBootMS || now >= min(p.IssuedBootMS+proof.CaptureValidFor, workDeadlineBootMS(a)) {
 		return a, errMonitoringAuthority
 	}
 	if technical {
@@ -534,7 +534,7 @@ func (e *Engine) resumeMonitoredPurpose(a *Attempt, request Request, technical b
 			return err
 		}
 		at, clockErr := monitoringBootMillis()
-		if current.State != a.State || current.Generation != a.Generation || current.RegisteredOwner == nil || *current.RegisteredOwner != *a.RegisteredOwner || current.RetainedHold != a.RetainedHold || current.MonitoringResumeNonce != a.MonitoringResumeNonce || current.ResumeTransport != a.Transport || current.Start != a.Start || current.Deadline != a.Deadline || current.OriginalDeadline != a.OriginalDeadline || current.ClockRevision != a.ClockRevision || !reflect.DeepEqual(current.Units, a.Units) || expired(current) || (!technical && proof.AuthorizationExpires <= Millis()) || clockErr != nil || at < p.IssuedBootMS || at >= min(p.IssuedBootMS+proof.CaptureValidFor, int64(current.UptimeDeadline*1000)) || (technical && (current.MonitoringHoldKind != a.MonitoringHoldKind || current.MonitoringResumeKind != a.MonitoringResumeKind)) {
+		if current.State != a.State || current.Generation != a.Generation || current.RegisteredOwner == nil || *current.RegisteredOwner != *a.RegisteredOwner || current.RetainedHold != a.RetainedHold || current.MonitoringResumeNonce != a.MonitoringResumeNonce || current.ResumeTransport != a.Transport || current.Start != a.Start || current.Deadline != a.Deadline || current.OriginalDeadline != a.OriginalDeadline || current.ClockRevision != a.ClockRevision || !reflect.DeepEqual(current.Units, a.Units) || expired(current) || (!technical && proof.AuthorizationExpires <= Millis()) || clockErr != nil || at < p.IssuedBootMS || at >= min(p.IssuedBootMS+proof.CaptureValidFor, workDeadlineBootMS(current)) || (technical && (current.MonitoringHoldKind != a.MonitoringHoldKind || current.MonitoringResumeKind != a.MonitoringResumeKind)) {
 			return errMonitoringScope
 		}
 		// Keep the immutable recorder/report identity. Only the reviewed,
@@ -582,7 +582,7 @@ func (e *Engine) resumeMonitoredPurpose(a *Attempt, request Request, technical b
 	if err != nil {
 		return a, err
 	}
-	result, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit-resume", Attempt: a.ID, Owner: *prepared.HeldOwner, NextOwner: &p.Owner, Nonce: p.Nonce, Frame: &frame, State: committed.State, Start: committed.Start, Deadline: committed.Deadline, OriginalDeadline: committed.OriginalDeadline, DeadlineBootMS: int64(committed.UptimeDeadline * 1000)}, nil, false)
+	result, err := e.callTerminalAuthority(terminalAuthorityRequest{Op: "commit-resume", Attempt: a.ID, Owner: *prepared.HeldOwner, NextOwner: &p.Owner, Nonce: p.Nonce, Frame: &frame, State: committed.State, Start: committed.Start, Deadline: committed.Deadline, OriginalDeadline: committed.OriginalDeadline, DeadlineBootMS: workDeadlineBootMS(committed)}, nil, false)
 	if err != nil || result.View == nil || !result.View.ExecutionAuthorized {
 		return committed, errors.Join(errMonitoringAuthority, err)
 	}
