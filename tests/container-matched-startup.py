@@ -34,7 +34,7 @@ p.add_argument('--image-receipt',required=True,type=Path)
 p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
 p.add_argument('--proof-repair',action='store_true',help='Qualify proof-only recovery with the ORIGINAL frozen controller/proof, corrected nonce verifier and no service replacement')
-p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2'),default='live-exam-execution-policy-v1')
+p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'
 assert a.docker_host in ('unix:///var/run/docker.sock',f'unix:///run/user/{os.getuid()}/docker.sock')
@@ -67,7 +67,8 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-matched-startup-') as director
         spec=importlib.util.spec_from_loader(loader.name,loader);proof_repair=importlib.util.module_from_spec(spec);loader.exec_module(proof_repair)
         frozen=root/'frozen/scripts';(frozen/'web-ui-ops').mkdir(parents=True,mode=0o700)
         for relative in ('deploy-web-ui','shared_backup.py','deployment_pause.py','public_reopen_readiness.py','web-ui-ops/inventory-web.py','web-ui-ops/qualify-old-workers.py'):
-            target=frozen/relative;target.write_bytes((ROOT/'scripts'/relative).read_bytes());target.chmod(0o600)
+            data=subprocess.check_output(['git','show','5ed57ca:scripts/'+relative],cwd=ROOT) if relative=='deploy-web-ui' else (ROOT/'scripts'/relative).read_bytes()
+            target=frozen/relative;target.write_bytes(data);target.chmod(0o600)
         original=run(['git','show','5ed57ca:scripts/web-ui-ops/preservation.py'])
         # git's trailing newline is part of the frozen source identity.
         (frozen/'web-ui-ops/preservation.py').write_text(original+'\n')

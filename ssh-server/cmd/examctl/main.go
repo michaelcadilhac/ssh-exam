@@ -18,6 +18,9 @@ import (
 // Accept global flags before or after the subcommand.
 func takesValue(arg string) bool {
 	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
+	if name == "pause-on-review" {
+		return strings.HasPrefix(arg, "-")
+	}
 	switch name {
 	case "worker-state", "format", "fields", "receipt", "from-receipt", "definition-from", "error-format", "input", "saved-sources", "work", "work-template", "work-template-version", "work-attempt", "work-checksum", "definition-revision", "before", "config", "state", "reason", "exam", "username", "output", "request", "limit", "after", "name", "template", "template-version", "duration-seconds", "duration-minutes", "webcam", "terminals", "earliest", "latest", "revision", "file", "mode", "confirm", "collection-file-mib", "collection-total-mib", "status", "view", "q", "minutes", "target", "intent", "generation", "section", "through", "offset", "expected", "file-mib", "total-mib", "action", "review", "lifecycle", "out", "evidence":
 		return strings.HasPrefix(arg, "-")

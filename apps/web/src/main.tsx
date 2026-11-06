@@ -1,5 +1,6 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { hasProtectedFiles } from "../../../packages/protocol/admin.js";
+import { timerPaused } from "../../../packages/protocol/timer.js";
 import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { api, setCsrf, socket } from "./api.js";
@@ -576,7 +577,10 @@ function App() {
                       <>
                         <p className="warn">
                           {info.attempt.monitoring_mode === "v1"
-                            ? "Ask your instructor to approve resuming, then sign in again. Saved files reopen in new terminals; programs and unsaved changes are lost. The clock keeps running."
+                            ? "Ask your instructor to approve resuming, then sign in again. Saved files reopen in new terminals; programs and unsaved changes are lost. " +
+                              (timerPaused(info.attempt)
+                                ? "The countdown is paused."
+                                : "The countdown is running.")
                             : isSandbox(info.exam.id)
                               ? "Resume this practice attempt. The clock keeps running."
                               : "Resuming after a reload needs instructor approval. The clock keeps running."}

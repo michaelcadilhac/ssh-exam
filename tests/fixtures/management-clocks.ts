@@ -421,6 +421,23 @@ export async function qualifyClockCLI(
     "--request",
     randomUUID(),
   ];
+  const priorDefinition = (await run("exams", ["show", timerExam])).result;
+  const frozenBefore = f.current.store.attempt(timerID).settings;
+  const policy = (
+    await run("exams", [
+      "update",
+      timerExam,
+      "--revision",
+      priorDefinition.revision,
+      "--pause-on-review",
+      "on",
+    ])
+  ).result;
+  expect(policy.exam.pause_on_review).toBe(true);
+  expect(f.current.store.attempt(timerID).settings).toBe(frozenBefore);
+  expect(
+    (await run("exams", ["show", timerExam])).result.exam.pause_on_review,
+  ).toBe(true);
   const pause = (await run("clocks", pauseArgs)).result;
   expect(pause).toMatchObject({
     status: "pending",
@@ -560,4 +577,16 @@ export async function qualifyClockCLI(
     timer_paused_at: 0,
     deadline: resumedDeadline,
   });
+  const disabled = (
+    await run("exams", [
+      "update",
+      timerExam,
+      "--revision",
+      policy.revision,
+      "--pause-on-review",
+      "off",
+    ])
+  ).result;
+  expect(disabled.exam.pause_on_review).toBe(false);
+  expect(f.current.store.attempt(timerID).deadline).toBe(resumedDeadline);
 }

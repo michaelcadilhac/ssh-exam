@@ -10,24 +10,7 @@ import {
 } from "../../../packages/protocol/clock-management.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 
-export function assertClockCapabilities(
-  health: any,
-  extend: boolean,
-  timer = false,
-) {
-  if (
-    !health?.fixture &&
-    ![
-      "clock-reset",
-      "deadline-timing-check",
-      ...(extend ? ["clock-extend"] : []),
-      ...(timer ? ["timer-clock-controls-v1"] : []),
-    ].every((c) => health?.capabilities?.includes(c))
-  )
-    throw Error(
-      "Update the class-server agent before changing clocks; inspect examctl health",
-    );
-}
+export { assertClockCapabilities } from "./clock-capabilities.js";
 
 // Same synchronous validation/staging for root and browser. Delivery remains
 // outside transactions through existing authenticated SSH/timing reconciliation.

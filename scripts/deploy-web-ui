@@ -121,7 +121,7 @@ class Rollout:
             relay_update = self.settings.get('reviewed_scope') == 'monitoring-timeouts-v2'
             if relay_update:
                 names.add('exam-ssh-relay')
-            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2')
+            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2', 'review-countdown-policy-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or self.settings.get('previous_reader_policy_compatible') is not False

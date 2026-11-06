@@ -52,7 +52,18 @@ async function fixture() {
     generation: 0,
     clock_revision: 0,
   };
-  f.store.db.prepare("INSERT INTO exams VALUES('auto','{}')").run();
+  f.store.db.prepare("INSERT INTO exams VALUES('auto',?)").run(
+    JSON.stringify({
+      id: "auto",
+      name: "Auto timer",
+      template: "sample-exam",
+      duration: 5400,
+      webcam: false,
+      terminals: 4,
+      earliest: Date.now() - 60000,
+      latest: Date.now() + 3600000,
+    }),
+  );
   f.store.db
     .prepare(
       `INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,generation,monitoring_mode,registered_owner,retained_hold,access_state)
@@ -144,7 +155,8 @@ async function fixture() {
       remaining = 0;
     } else {
       remaining = request.remaining_seconds * 1000;
-      remote.deadline = paused + remaining;
+      remote.deadline = (paused || request.requested_at) + remaining;
+      if (!paused) remaining = 0;
     }
     const revision = remote.clock_revision + 1;
     const record = {
@@ -188,6 +200,30 @@ async function fixture() {
     poll,
     apply,
     current: () => f,
+    async policy(enabled: boolean) {
+      const exams = await f.app.inject({ url: "/api/admin/exams", headers });
+      const exam = exams.json().find((e: any) => e.id === "auto");
+      return f.app.inject({
+        method: "POST",
+        url: "/api/admin/exams",
+        headers,
+        payload: {
+          id: "auto",
+          revision: exam.revision,
+          requestID: randomUUID(),
+          pause_on_review: enabled,
+        },
+      });
+    },
+    async report(patch: any) {
+      remote = { ...remote, ...patch };
+      return signed("/api/agent/events", {
+        agent: "class",
+        sequence: ++sequence,
+        at: Date.now(),
+        attempt: remote,
+      });
+    },
     getRemote: () => remote,
     async restart() {
       await f.app.close();
@@ -201,6 +237,143 @@ async function fixture() {
     },
   };
 }
+
+it("exam policy pauses native review once, preserves manual override and handles the next review independently", async () => {
+  const t = await fixture();
+  try {
+    const original = t.current().store.attempt(t.id);
+    t.current()
+      .store.db.prepare("UPDATE attempts SET state='ACTIVE' WHERE id=?")
+      .run(t.id);
+    expect((await t.policy(true)).statusCode).toBe(200);
+    expect(await t.poll()).toEqual([]); // no pause of working students
+    const held = await t.report({
+      state: "LOCKED",
+      generation: 1,
+      retained_hold: "held",
+    });
+    expect(held.statusCode, held.body).toBe(200);
+    const [pause] = await t.poll();
+    expect(pause).toMatchObject({
+      pause_timer: true,
+      actor: "exam-policy:auto",
+      clock_revision: 0,
+    });
+    expect((await t.poll())[0]).toEqual(pause);
+    expect(t.current().store.attempt(t.id).deadline).toBe(original.deadline);
+    await t.apply(pause);
+    const student = t.current().store.session("student", "alice", "auto");
+    const requestedReview = await t
+      .current()
+      .app.inject({
+        method: "POST",
+        url: `/api/student/attempts/${t.id}/review-request`,
+        headers: {
+          origin: "http://localhost:3000",
+          cookie: `session=${student.token}`,
+          "x-csrf-token": student.csrf,
+        },
+        payload: { message: "Ready to resume" },
+      });
+    expect(requestedReview.statusCode, requestedReview.body).toBe(200);
+    expect(await t.poll()).toEqual([]); // requesting review is not resuming work
+    await t.restart();
+    expect(await t.poll()).toEqual([]);
+    expect(t.current().store.attempt(t.id)).toMatchObject({
+      state: "LOCKED",
+      start: original.start,
+      original_deadline: original.original_deadline,
+      settings: original.settings,
+    });
+    expect(
+      (
+        await t.send({
+          timerAction: "resume",
+          revision: 1,
+          requestID: randomUUID(),
+        })
+      ).statusCode,
+    ).toBe(200);
+    await t.apply((await t.poll())[0]);
+    expect(await t.poll()).toEqual([]); // deliberate manual override sticks
+    await t.report({ state: "LOCKED", generation: 2 });
+    const [next] = await t.poll();
+    expect(next).toMatchObject({ pause_timer: true, clock_revision: 2 });
+    expect(next.reset_id).not.toBe(pause.reset_id);
+    await t.apply(next);
+    expect((await t.policy(false)).statusCode).toBe(200); // never restarts a stopped student's timer
+    expect(t.current().store.attempt(t.id).timer_paused_at).toBeGreaterThan(0);
+    expect(await t.poll()).toEqual([]);
+  } finally {
+    await t.close();
+  }
+});
+
+it.each(["off", "technical", "manual", "pending", "completed"])(
+  "review policy preserves existing boundaries: %s",
+  async (mode) => {
+    const t = await fixture();
+    try {
+      if (mode !== "off") expect((await t.policy(true)).statusCode).toBe(200);
+      if (mode === "technical")
+        t.current()
+          .store.db.prepare(
+            "UPDATE attempts SET monitoring_hold_kind='technical' WHERE id=?",
+          )
+          .run(t.id);
+      if (mode === "completed")
+        t.current()
+          .store.db.prepare(
+            "UPDATE attempts SET state='COMPLETED',protected=1 WHERE id=?",
+          )
+          .run(t.id);
+      if (mode === "manual") {
+        expect(
+          (
+            await t.send({
+              timerAction: "pause",
+              revision: 0,
+              requestID: randomUUID(),
+            })
+          ).statusCode,
+        ).toBe(200);
+        await t.apply((await t.poll())[0]);
+        expect(await t.poll()).toEqual([]);
+        expect(
+          (
+            await t.send({
+              timerAction: "resume",
+              revision: 1,
+              requestID: randomUUID(),
+            })
+          ).statusCode,
+        ).toBe(200);
+        await t.apply((await t.poll())[0]);
+      }
+      if (mode === "pending") {
+        expect(
+          (
+            await t.send(
+              { minutes: 10, revision: 0, requestID: randomUUID() },
+              "reset-clock",
+            )
+          ).statusCode,
+        ).toBe(200);
+        const [edit] = await t.poll();
+        expect(edit.remaining_seconds).toBe(600);
+        await t.apply(edit);
+        const [pause] = await t.poll();
+        expect(pause).toMatchObject({ pause_timer: true, clock_revision: 1 });
+        await t.apply(pause);
+      }
+      expect(await t.poll()).toEqual([]);
+      await t.restart();
+      expect(await t.poll()).toEqual([]);
+    } finally {
+      await t.close();
+    }
+  },
+);
 
 it.each([false, true])(
   "automatic countdown resume survives restart and delayed delivery (pending time edit: %s)",

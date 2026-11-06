@@ -38,6 +38,7 @@ export function ExamSettings({
     duration: 5400,
     webcam: true,
     terminals: 4,
+    pause_on_review: false,
     collection_file_mib: DEFAULT_COLLECTION_FILE_MIB,
     collection_total_mib: DEFAULT_COLLECTION_TOTAL_MIB,
     earliest: Date.now() - 60000,
@@ -154,6 +155,21 @@ export function ExamSettings({
               setForm({ ...form, template, template_version })
             }
           />
+          <label>
+            <input
+              type="checkbox"
+              checked={form.pause_on_review}
+              disabled={busy}
+              onChange={(event) =>
+                setForm({ ...form, pause_on_review: event.target.checked })
+              }
+            />
+            Pause countdown while instructor review is needed
+          </label>
+          <small>
+            The countdown restarts when the student resumes work. Existing
+            manual pauses stay paused.
+          </small>
           <label>
             Terminal limit
             <input

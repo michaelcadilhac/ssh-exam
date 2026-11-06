@@ -68,6 +68,18 @@ export const examSchema = examConfiguration
     "Collection total must be at least the per-file limit",
   );
 export type Exam = z.infer<typeof examSchema>;
+// Exam-wide behavior is intentionally outside immutable grant/attempt settings.
+// Adding a default to examConfiguration would change existing grant hashes.
+export const examDefinitionConfiguration = examConfiguration.extend({
+  pause_on_review: z.boolean().optional(),
+});
+export const examDefinitionSchema = examDefinitionConfiguration
+  .refine((e) => e.latest > e.earliest, "Invalid start window")
+  .refine(
+    (e) => e.collection_total_mib >= e.collection_file_mib,
+    "Collection total must be at least the per-file limit",
+  );
+export type ExamDefinition = z.infer<typeof examDefinitionSchema>;
 export type AccessState = "UNKNOWN" | "HELD" | "RELEASED" | "OVERRIDDEN";
 export type State =
   | "PREPARING"

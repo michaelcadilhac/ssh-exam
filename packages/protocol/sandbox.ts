@@ -1,4 +1,4 @@
-import type { Exam } from "./index.js";
+import type { Exam, ExamDefinition } from "./index.js";
 import { collectionSettings } from "./collection-limits.js";
 export const SANDBOX_EXAM_ID = "sandbox";
 export const SANDBOX_DURATION_SECONDS = 300;
@@ -15,8 +15,13 @@ export function hasSandboxWindow(settings: Pick<Exam, "earliest" | "latest">) {
 export function sandboxExam(
   template = "sample-exam",
   limits: Parameters<typeof collectionSettings>[0] &
-    Partial<Pick<Exam, "earliest" | "latest" | "template_version">> = {},
-): Exam {
+    Partial<
+      Pick<
+        ExamDefinition,
+        "earliest" | "latest" | "template_version" | "pause_on_review"
+      >
+    > = {},
+): ExamDefinition {
   return {
     id: SANDBOX_EXAM_ID,
     name: "sandbox",
@@ -28,6 +33,9 @@ export function sandboxExam(
     webcam: false,
     terminals: 4,
     template,
+    ...(limits.pause_on_review !== undefined
+      ? { pause_on_review: limits.pause_on_review }
+      : {}),
     ...(limits.template_version
       ? { template_version: limits.template_version }
       : {}),

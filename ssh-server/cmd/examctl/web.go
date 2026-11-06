@@ -93,6 +93,7 @@ Settings (no ad hoc database/JSON editing required):
 --duration-seconds N     60..21600; creation default 5400 (90 minutes)
 --webcam required|off     creation default required; off never offers/captures webcam
 --terminals N            1..4; creation default 4
+--pause-on-review on|off  pause countdown during instructor review; default off
 --collection-file-mib N   1..4096 MiB logical bytes/file; creation default 128
 --collection-total-mib N  1..16384 MiB logical bytes total; creation default 512
                         total must be at least per-file; 1 MiB = 1048576 bytes
@@ -102,6 +103,10 @@ Settings (no ad hoc database/JSON editing required):
 --reason TEXT            optional audited reason, 8..1000 characters
 
 The old webcam value optional remains a compatibility alias for off.
+Automatic review pause is an exam-wide policy, outside saved grant settings.
+It uses the existing signed timer controls and resumes only when work resumes.
+Manual timer choices remain explicit overrides for that interruption. Turning
+the policy off prevents new automatic pauses; already-paused timers stay paused.
 
 Create never overwrites an existing ID. Update changes ONLY named settings and
 refuses a stale revision; reload/show, review differences, then use a new intent.
@@ -237,6 +242,7 @@ func webMain(args []string) int {
 	duration := flags.Int64("duration-seconds", 5400, "future attempt seconds")
 	webcam := flags.String("webcam", "required", "required or off (optional is a compatibility alias for off)")
 	terminals := flags.Int("terminals", 4, "terminal count")
+	pauseOnReview := flags.String("pause-on-review", "off", "on or off: pause countdown during instructor review")
 	collectionFile := flags.Int64("collection-file-mib", 128, "per-file logical MiB")
 	collectionTotal := flags.Int64("collection-total-mib", 512, "total logical MiB")
 	earliest := flags.String("earliest", "", "earliest Begin RFC3339")
@@ -270,7 +276,7 @@ func webMain(args []string) int {
 		return usage("--out/--evidence apply only to native-review/reconcile-native")
 	}
 	mutatingFlag := false
-	for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
+	for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "pause-on-review", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
 		mutatingFlag = mutatingFlag || visited[key]
 	}
 	switch words[1] {
@@ -353,7 +359,7 @@ func webMain(args []string) int {
 		if len(words) != 3 || !id.MatchString(words[2]) || visited["limit"] || visited["after"] || visited["lifecycle"] {
 			return usage("retirement takes one exam ID, without list filters")
 		}
-		for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "earliest", "latest", "collection-file-mib", "collection-total-mib"} {
+		for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "pause-on-review", "earliest", "latest", "collection-file-mib", "collection-total-mib"} {
 			if visited[key] {
 				return usage("retirement never changes exam settings")
 			}
@@ -389,6 +395,9 @@ func webMain(args []string) int {
 		if *duration < 60 || *duration > 21600 || *terminals < 1 || *terminals > 4 || !validWebcamSetting(*webcam) || (visited["reason"] && (len(strings.TrimSpace(*reason)) < 8 || len(*reason) > 1000)) {
 			return usage("invalid duration/terminal/webcam/reason; see documented ranges")
 		}
+		if *pauseOnReview != "on" && *pauseOnReview != "off" {
+			return usage("--pause-on-review requires on or off")
+		}
 		if *collectionFile < 1 || *collectionFile > 4096 || *collectionTotal < 1 || *collectionTotal > 16384 || ((create || (visited["collection-file-mib"] && visited["collection-total-mib"])) && *collectionTotal < *collectionFile) {
 			return usage("collection limits require file 1..4096 MiB, total 1..16384 MiB and total at least per-file; units are logical MiB")
 		}
@@ -400,11 +409,14 @@ func webMain(args []string) int {
 				if key == "duration-seconds" {
 					field = "duration"
 				}
-				if key == "collection-file-mib" || key == "collection-total-mib" {
+				if key == "collection-file-mib" || key == "collection-total-mib" || key == "pause-on-review" {
 					field = strings.ReplaceAll(key, "-", "_")
 				}
 				settings[field] = value
 			}
+		}
+		if visited["pause-on-review"] {
+			settings["pause_on_review"] = *pauseOnReview == "on"
 		}
 		if visited["template-version"] {
 			value := *templateVersion

@@ -17,7 +17,8 @@ class ProofRepair(unittest.TestCase):
         self.root=Path(self.temp.name);self.scripts=self.root/'code/scripts';(self.scripts/'web-ui-ops').mkdir(parents=True)
         self.proof=self.root/'repair';self.proof.mkdir(mode=0o700)
         for relative in ('deploy-web-ui','shared_backup.py','deployment_pause.py','public_reopen_readiness.py'):
-            (self.scripts/relative).write_bytes((ROOT/'scripts'/relative).read_bytes())
+            data = subprocess.check_output(['git','show','5ed57ca:scripts/'+relative],cwd=ROOT) if relative == 'deploy-web-ui' else (ROOT/'scripts'/relative).read_bytes()
+            (self.scripts/relative).write_bytes(data)
         self.original=self.scripts/'web-ui-ops/preservation.py'
         self.original.write_bytes(subprocess.check_output(['git','show','5ed57ca:scripts/web-ui-ops/preservation.py'],cwd=ROOT))
         self.corrected=self.proof/'preservation-60.py';self.corrected.write_bytes((ROOT/'scripts/web-ui-ops/preservation.py').read_bytes())

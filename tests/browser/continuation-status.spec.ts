@@ -102,39 +102,66 @@ test("retained SSH loss offers fresh sign-in only after approval and preserves t
   expect(replacementRequests).toEqual([]);
 });
 
-test("a reloaded retained attempt explains saved files, lost programs and the unchanged clock", async ({
-  page,
-}) => {
-  const f = await fixture(page, "LOCKED", "student", "retained-new-attempt");
-  Object.assign(f.model.attempt, { monitoring_mode: "v1" });
-  const requests: { path: string; body: any }[] = [];
-  page.on("request", (request) => {
-    const path = new URL(request.url()).pathname;
-    if (/\/(reauth|claim|continue|review-request)$/.test(path))
-      requests.push({ path, body: request.postDataJSON() });
-  });
-  await page.goto("/");
-  await expect(
-    page.getByText(/Saved files reopen in new terminals/),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /Reconnect SSH|Resume exam/ }),
-  ).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Ask your instructor to review", exact: true })
-    .click();
-  await expect
-    .poll(() => requests)
-    .toEqual([
-      {
-        path: `/api/student/attempts/${f.model.attempt.id}/review-request`,
-        body: {
-          message:
-            "Requesting approval to resume after connection or page loss",
+for (const timerIsPaused of [false, true])
+  test(`a reloaded retained attempt explains saved files, lost programs and the current countdown (paused: ${timerIsPaused})`, async ({
+    page,
+  }) => {
+    const f = await fixture(
+      page,
+      "LOCKED",
+      "student",
+      `retained-new-attempt-${timerIsPaused}`,
+    );
+    Object.assign(f.model.attempt, { monitoring_mode: "v1" });
+    if (timerIsPaused) {
+      const at = Date.now();
+      Object.assign(f.model.attempt, {
+        clock_revision: 1,
+        timer_paused_at: at,
+        timer_remaining_ms: 60000,
+        clock_resets: JSON.stringify([
+          { revision: 1, timer_paused_at: at, timer_remaining_ms: 60000 },
+        ]),
+      });
+    }
+    const requests: { path: string; body: any }[] = [];
+    page.on("request", (request) => {
+      const path = new URL(request.url()).pathname;
+      if (/\/(reauth|claim|continue|review-request)$/.test(path))
+        requests.push({ path, body: request.postDataJSON() });
+    });
+    await page.goto("/");
+    await expect(
+      page.getByText(/Saved files reopen in new terminals/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        timerIsPaused
+          ? /The countdown is paused\./
+          : /The countdown is running\./,
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Reconnect SSH|Resume exam/ }),
+    ).toHaveCount(1);
+    await page
+      .getByRole("button", {
+        name: "Ask your instructor to review",
+        exact: true,
+      })
+      .click();
+    await expect
+      .poll(() => requests)
+      .toEqual([
+        {
+          path: `/api/student/attempts/${f.model.attempt.id}/review-request`,
+          body: {
+            message:
+              "Requesting approval to resume after connection or page loss",
+          },
         },
-      },
-    ]);
-});
+      ]);
+  });
 
 test("retained Continue keeps editor output visible while blocked and adopts fresh input only after the response", async ({
   page,
@@ -350,7 +377,7 @@ for (const width of [1280, 430])
           .click();
         await expect(page.locator(".lock-overlay")).toHaveCount(0);
         await expect(
-          page.getByText("Exam resumed. The clock continues.", { exact: true }),
+          page.getByText("Exam resumed.", { exact: true }),
         ).toBeVisible();
         expect(
           requests.filter((url) => url.endsWith("/continue")),

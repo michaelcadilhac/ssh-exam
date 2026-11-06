@@ -1,3 +1,11 @@
+# Current follow-up — pause countdown during instructor review IN PROGRESS
+
+November6: add exam-wide setting, default off, with matching UI/examctl. Enabled
+review holds use the existing pause/resume-on-work clock workflow; preserve
+manual overrides, original intervals, history, holds and monitoring. Implement,
+test, PUSH and DEPLOY this and0fd1289 under the existing safe release process.
+Plan/acceptance: docs/todo-current-checkpoint.md. Production unchanged so far.
+
 # Current follow-up — automatic countdown resume IMPLEMENTED/TESTED LOCALLY
 
 November6: Pause countdown for a stopped student offers automatic countdown

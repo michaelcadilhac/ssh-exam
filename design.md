@@ -5,6 +5,18 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 6 local follow-up: pause countdown during instructor review
+
+Exam settings offers **Pause countdown while instructor review is needed**, off by
+default. The live exam policy is separate from immutable grant settings/hash. A
+real eligible review hold queues the existing signed countdown pause with resume
+on successful student work; technical-only recovery, expired/completed attempts
+and manual overrides are preserved. Native confirmation remains authoritative.
+Enable handles current holds from now, without a backdated refund; disable stops
+future automatic pauses without silently restarting current pauses. No schema or
+native execution mechanism changes. UI/CLI, policy and release evidence:
+[review countdown policy](docs/review-countdown-policy.md).
+
 ## November 6 local follow-up: countdown resumes with student work
 
 A stopped student's Pause countdown action may opt into automatic countdown

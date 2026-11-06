@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Store, now } from "./db.js";
 import { Agent } from "./agent.js";
 import { Lifecycle } from "./lifecycle.js";
+import { assertClockCapabilities } from "./clock-capabilities.js";
 import {
   effectiveDeadline,
   timerPaused,
@@ -10,6 +11,7 @@ import {
 
 export class ClockControl {
   private autoResumeAfter = "";
+  private reviewPauseAfter = "";
   constructor(
     private store: Store,
     private agent: Agent,
@@ -51,6 +53,105 @@ export class ClockControl {
            WHERE json_extract(h.value,'$.pause_timer')=1 ORDER BY CAST(h.key AS INTEGER) DESC LIMIT 1)`,
       )
       .get(a.id, timerState(a).timer_paused_at);
+  }
+  private reviewPolicy(a: any): boolean {
+    const row = this.store.db
+      .prepare("SELECT config FROM exams WHERE id=?")
+      .get(a.exam) as { config: string } | undefined;
+    return !!row && JSON.parse(row.config).pause_on_review === true;
+  }
+  private reviewHandled(a: any): boolean {
+    return !!this.store.db
+      .prepare(
+        "SELECT 1 FROM audit WHERE target=? AND action='review-countdown-handled' AND json_extract(detail,'$.generation')=? LIMIT 1",
+      )
+      .get(a.id, a.generation);
+  }
+  private handleReview(a: any, outcome: string, request?: string) {
+    this.store.audit(
+      "exam-policy",
+      "review-countdown-handled",
+      a.id,
+      JSON.stringify({
+        generation: a.generation,
+        outcome,
+        ...(request ? { request } : {}),
+      }),
+    );
+  }
+  // Runtime callers: an actual review hold and the existing authenticated root
+  // poll. No contact timeout/status read can fabricate a review hold here.
+  pauseForReview(id: string) {
+    const a = this.store.attempt(id);
+    if (
+      a.state !== "LOCKED" ||
+      a.monitoring_mode !== "v1" ||
+      !a.start ||
+      a.ended ||
+      a.protected ||
+      !this.reviewPolicy(a) ||
+      this.life.monitoring.technicalCandidate(a) ||
+      this.reviewHandled(a)
+    )
+      return;
+    if (timerPaused(a)) {
+      if (!this.resumeOnWorkEnabled(a))
+        this.handleReview(a, "manual-pause-preserved");
+      return;
+    }
+    const pending = this.pending(id);
+    if (pending || this.life.isBusy(id) || effectiveDeadline(a) <= now())
+      return;
+    try {
+      assertClockCapabilities(this.agent.configurationHealth(), false, true);
+      this.store.db.transaction(() => {
+        const request = this.stage(
+          id,
+          0,
+          `exam-policy:${a.exam}`,
+          a.clock_revision,
+          randomUUID(),
+          false,
+          "pause",
+          true,
+          now(),
+        );
+        this.handleReview(a, "automatic-pause", request.reset_id);
+      })();
+    } catch {
+      // Losing the clock operation must NEVER roll back the access/monitoring
+      // hold. Retry via the same existing root poll; preserve the old deadline.
+      if (
+        !this.store.db
+          .prepare(
+            "SELECT 1 FROM audit WHERE target=? AND action='review-countdown-deferred' AND json_extract(detail,'$.generation')=? LIMIT 1",
+          )
+          .get(id, a.generation)
+      )
+        this.store.audit(
+          "exam-policy",
+          "review-countdown-deferred",
+          id,
+          JSON.stringify({
+            generation: a.generation,
+            clock_revision: a.clock_revision,
+          }),
+        );
+    }
+  }
+  private pauseReadyReviews() {
+    const rows = this.store.db
+      .prepare(
+        `SELECT a.id FROM attempts a JOIN exams e ON e.id=a.exam
+      WHERE a.state='LOCKED' AND a.monitoring_mode='v1' AND a.start IS NOT NULL AND a.protected=0
+      AND json_extract(e.config,'$.pause_on_review')=1
+      AND coalesce(json_extract(a.clock_resets,'$[#-1].timer_paused_at'),0)=0
+      AND NOT EXISTS(SELECT 1 FROM audit v WHERE v.target=a.id AND v.action='review-countdown-handled' AND json_extract(v.detail,'$.generation')=a.generation)
+      AND a.id>? ORDER BY a.id LIMIT 100`,
+      )
+      .all(this.reviewPauseAfter) as { id: string }[];
+    this.reviewPauseAfter = rows.length === 100 ? rows.at(-1)!.id : "";
+    for (const row of rows) this.pauseForReview(row.id);
   }
   // Runtime callers: successful student Continue and the existing root clock
   // poll (including restart recovery). Only the durable successful continuation
@@ -113,6 +214,7 @@ export class ClockControl {
   // web or examctl. Paging keeps one unapplicable request from starving later
   // students; delivery creates no execution permission or account reservation.
   dispatch(after: string) {
+    this.pauseReadyReviews();
     this.resumeReadyTimers();
     const rows = this.store.db
       .prepare(
@@ -251,6 +353,14 @@ export class ClockControl {
         id,
         JSON.stringify(body),
       );
+      if (
+        timerAction &&
+        acceptedAt === undefined &&
+        a.state === "LOCKED" &&
+        this.reviewPolicy(a) &&
+        !this.reviewHandled(a)
+      )
+        this.handleReview(a, "manual-clock-choice", requestID);
       return body;
     })();
   }

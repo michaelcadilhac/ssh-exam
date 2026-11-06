@@ -1394,9 +1394,7 @@ export function Workspace({
       );
       armed.current = true;
       incident(reason);
-      throw Error(
-        `${reason}. Reconnect and request instructor authorization. The exam clock continues.`,
-      );
+      throw Error(`${reason}. Reconnect and request instructor authorization.`);
     }
     focusChanged(r.focus);
   };
@@ -1708,7 +1706,7 @@ export function Workspace({
         !covered &&
         resumedGeneration === attempt.generation && (
           <div className="continuation-resumed status" role="status">
-            Exam resumed. The clock continues.
+            Exam resumed.
           </div>
         )}
       {focusSeconds !== null && attempt.state === "ACTIVE" && !locked && (

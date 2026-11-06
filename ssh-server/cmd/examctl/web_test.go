@@ -45,6 +45,34 @@ func TestWebCLIHelpAndSyntaxBeforeRootOrConfig(t *testing.T) {
 	}
 }
 
+func TestWebReviewCountdownHelpAndSyntax(t *testing.T) {
+	out, code := cliProcess(t, "web", "exams", "update", "--help")
+	for _, text := range []string{"--pause-on-review on|off", "Manual timer choices", "already-paused timers stay paused"} {
+		if code != 0 || !strings.Contains(out, text) {
+			t.Fatal("Missing review policy help", text, code, out)
+		}
+	}
+	for _, args := range [][]string{
+		{"web", "exams", "show", "exam", "--pause-on-review", "on"},
+		{"web", "exams", "list", "--pause-on-review", "on"},
+		{"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--pause-on-review", "maybe"},
+	} {
+		out, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(out, "web help") {
+			t.Fatal("Invalid policy syntax reached authority", code, out)
+		}
+	}
+	for _, args := range [][]string{
+		{"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--pause-on-review", "on", "--config", "/missing"},
+		{"--pause-on-review", "off", "web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--config", "/missing"},
+	} {
+		out, code := cliProcess(t, args...)
+		if code != 1 {
+			t.Fatal("Valid setting never reached root/config verification", code, out)
+		}
+	}
+}
+
 func TestWebCollectionLimitsHelpAndSyntax(t *testing.T) {
 	output, code := cliProcess(t, "web", "exams", "update", "--help")
 	for _, required := range []string{"--collection-file-mib", "--collection-total-mib", "128", "512", "logical", "ALL", "unstarted, setup and running attempts", "freshly verified current file", "Protected submissions keep"} {

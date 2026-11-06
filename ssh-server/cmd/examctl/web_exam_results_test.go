@@ -10,6 +10,20 @@ import (
 func examReplyFixture() map[string]any {
 	return map[string]any{"exam": map[string]any{"id": "midterm", "name": "Midterm", "template": "v1", "duration": 5400, "webcam": true, "terminals": 4, "earliest": 0, "latest": 8640000000000000}, "revision": strings.Repeat("a", 64)}
 }
+func TestExamReviewCountdownReplyMustConfirmTheRequestedPolicy(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		body := map[string]any{"id": "midterm", "revision": strings.Repeat("a", 64), "changes": map[string]any{"pause_on_review": enabled}}
+		for _, value := range []any{enabled, !enabled, nil, "true"} {
+			r := examReplyFixture()
+			r["exam"].(map[string]any)["pause_on_review"] = value
+			raw, _ := json.Marshal(r)
+			err := validateExamResult("exams.update", body, raw)
+			if (err == nil) != (value == enabled) {
+				t.Fatal("Mismatched automatic review pause policy", enabled, value, err)
+			}
+		}
+	}
+}
 func TestExamResultScopeSchemaPagesAndIntentBeforeOutput(t *testing.T) {
 	encode := func(v any) json.RawMessage {
 		b, err := json.Marshal(v)

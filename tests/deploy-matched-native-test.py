@@ -218,6 +218,24 @@ class FilesOnlyResume(MatchedNative):
                 self.assertEqual(f.stopped_calls(),[])
 
 
+class ReviewCountdown(MatchedNative):
+    """Gateway clock policy uses the unchanged matched four-role workflow."""
+    def setUp(self):
+        super().setUp()
+        self.f.release['fast_ui']['reviewed_scope']='review-countdown-policy-v1'
+        (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+
+    def test_review_scope_is_exact_and_rejects_old_writer_compatibility(self):
+        original=json.loads(json.dumps(self.f.release))
+        for number,(key,value) in enumerate([('reviewed_scope','review-countdown-policy-v2'),('reviewed_scope','review-countdown-policy-v1-extra'),('previous_reader_policy_compatible',True)]):
+            with self.subTest(field=key,value=value):
+                self.f.state=self.f.root/('invalid-review-scope-'+str(number))
+                self.f.release=json.loads(json.dumps(original));self.f.release['fast_ui'][key]=value
+                (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+                self.f.cli('prepare',expect=1)
+                self.assertEqual(self.f.stopped_calls(),[])
+
+
 class MonitoringTimeouts(MatchedNative):
     """The matched relay is part of this exact forward-only scope."""
     def setUp(self):

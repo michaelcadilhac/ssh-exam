@@ -476,9 +476,7 @@ test("a new server pause clears feedback from a successful continuation and keep
   await expect(
     page.getByRole("button", { name: "Reconnect SSH", exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Exam resumed. The clock continues.", { exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByText("Exam resumed.", { exact: true })).toHaveCount(0);
   await expect(page.locator(".recovery-feedback")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
-  examSchema,
-  examConfiguration,
+  examDefinitionSchema,
+  examDefinitionConfiguration,
 } from "../../../packages/protocol/index.js";
 import {
   isSandbox,
@@ -11,6 +11,7 @@ import {
 import { hash, now, type Store } from "./db.js";
 import { TemplateCatalog } from "./template-catalog.js";
 import { ExamExecutionPolicies } from "./exam-execution-policy.js";
+import { assertClockCapabilities } from "./clock-capabilities.js";
 import {
   examNativeEvidence,
   examNativeReconcileRequest,
@@ -635,7 +636,7 @@ export class ExamDefinitions {
     const raw = z.record(z.string(), z.unknown()).parse(changes);
     if (!Object.keys(raw).length)
       return failure("Choose at least one exam setting to update", 400);
-    const parsed = examConfiguration
+    const parsed = examDefinitionConfiguration
       .omit({ id: true })
       .strict()
       .partial()
@@ -666,7 +667,7 @@ export class ExamDefinitions {
     actor: string,
     reason?: string,
   ) {
-    const parsed = examSchema.parse(input);
+    const parsed = examDefinitionSchema.parse(input);
     if (isSandbox(parsed.id) && !hasSandboxWindow(parsed))
       return failure(
         "Sandbox requires an explicit finite Begin window; use Exam settings or examctl web exams show sandbox, then update sandbox --revision HASH --earliest RFC3339 --latest RFC3339. Existing attempts are unchanged.",
@@ -691,6 +692,28 @@ export class ExamDefinitions {
     const why = reasonSchema.parse(reason ?? "Exam definition configuration");
     return this.store.db.transaction(() => {
       const prior = this.record(exam.id);
+      if (
+        exam.pause_on_review &&
+        !JSON.parse(prior?.config ?? "{}").pause_on_review
+      ) {
+        const snapshot = this.store.db
+          .prepare("SELECT payload FROM agent_snapshot WHERE agent=?")
+          .get(this.agent) as { payload: string } | undefined;
+        assertClockCapabilities(
+          snapshot ? JSON.parse(snapshot.payload).health : null,
+          false,
+          true,
+        );
+        const incompatible = this.store.db
+          .prepare(
+            "SELECT 1 FROM attempts WHERE exam=? AND state IN ('ACTIVE','LOCKED') AND start IS NOT NULL AND (monitoring_mode IS NULL OR monitoring_mode<>'v1') LIMIT 1",
+          )
+          .get(exam.id);
+        if (incompatible)
+          throw Error(
+            "Finish the older active attempts before enabling automatic countdown pause; their original clocks remain unchanged",
+          );
+      }
       if (expected === null && prior)
         return failure(
           "Exam definition already exists; reload its settings/current revision, or use web exams show followed by update --revision HASH",

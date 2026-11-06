@@ -85,6 +85,7 @@ import {
 import { ClockControl } from "./clock-control.js";
 import {
   effectiveDeadline,
+  timerPaused,
   timerState,
 } from "../../../packages/protocol/timer.js";
 import { AttemptManagement } from "./attempt-management.js";
@@ -364,6 +365,7 @@ export async function createApp(
     attemptConnections.delete(a.id);
   };
   life.onPaused = (a) => {
+    clocks.pauseForReview(a.id);
     const retained = retainedConnection(a);
     const c = attemptConnections.get(a.id);
     if (c && !retained) {
@@ -2352,7 +2354,7 @@ export async function createApp(
           a,
           `review-request:${hash(message.trim())}`,
           `Review requested: ${a.username}`,
-          `Student message: ${JSON.stringify(message)}\nClock continues. Open the authenticated dashboard.`,
+          `Student message: ${JSON.stringify(message)}\n${timerPaused(a) ? "Countdown paused." : "Countdown is running."} Open the authenticated dashboard.`,
           message.trim(),
         );
       })();

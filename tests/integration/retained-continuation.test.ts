@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { randomUUID, sign } from "node:crypto";
+import { randomUUID, randomBytes, sign } from "node:crypto";
 import { hash } from "../../apps/server/src/db.js";
 import {
   liveMonitoring,
@@ -10,7 +10,7 @@ import {
 // Native freeze/commit and browser epoch acknowledgement are simulated here;
 // separate Go/JS tests exercise their actual public entries. This is not root
 // all-writer or combined browser qualification.
-it.each([false, true])(
+it.each([false, true, "exam-policy"])(
   "same-page retained pause keeps SSH; failed native Continue retries approval before input agreement (automatic countdown: %s)",
   async (automaticCountdown) => {
     const f = await liveMonitoring({ ownedAttempt: true });
@@ -111,24 +111,71 @@ it.each([false, true])(
           },
         });
         expect(reported.statusCode, reported.body).toBe(200);
-        const paused = await f.app.inject({
-          method: "POST",
-          url: `/api/admin/attempts/${f.id}/timer`,
-          headers: {
+        let request: any;
+        if (automaticCountdown === "exam-policy") {
+          const headers = {
             origin: f.headers.origin,
             cookie: `session=${admin.token}`,
             "x-csrf-token": admin.csrf,
-          },
-          payload: {
-            timerAction: "pause",
-            resumeOnWork: true,
-            revision: 0,
-            requestID: randomUUID(),
-          },
-        });
-        expect(paused.statusCode, paused.body).toBe(200);
-        const request = paused.json().pending,
-          at = request.requested_at;
+          };
+          const list = await f.app.inject({ url: "/api/admin/exams", headers });
+          const exam = list.json().find((e: any) => e.id === original.exam);
+          const configured = await f.app.inject({
+            method: "POST",
+            url: "/api/admin/exams",
+            headers,
+            payload: {
+              id: exam.id,
+              revision: exam.revision,
+              requestID: randomUUID(),
+              pause_on_review: true,
+            },
+          });
+          expect(configured.statusCode, configured.body).toBe(200);
+          const payload = Buffer.from(
+            JSON.stringify({
+              agent: "class",
+              nonce: randomBytes(32).toString("hex"),
+              at: Date.now(),
+              after: "",
+            }),
+          );
+          const polled = await f.app.inject({
+            method: "POST",
+            url: "/api/agent/clock-changes",
+            payload,
+            headers: {
+              "content-type": "application/vnd.ssh-exam-event",
+              "x-exam-signature": sign(null, payload, f.h.callbackKey).toString(
+                "base64",
+              ),
+            },
+          });
+          expect(polled.statusCode, polled.body).toBe(200);
+          [request] = JSON.parse(
+            Buffer.from(polled.json().payload, "base64").toString(),
+          ).requests;
+          expect(request.pause_timer).toBe(true);
+        } else {
+          const paused = await f.app.inject({
+            method: "POST",
+            url: `/api/admin/attempts/${f.id}/timer`,
+            headers: {
+              origin: f.headers.origin,
+              cookie: `session=${admin.token}`,
+              "x-csrf-token": admin.csrf,
+            },
+            payload: {
+              timerAction: "pause",
+              resumeOnWork: true,
+              revision: 0,
+              requestID: randomUUID(),
+            },
+          });
+          expect(paused.statusCode, paused.body).toBe(200);
+          request = paused.json().pending;
+        }
+        const at = request.requested_at;
         next.clock_revision = 1;
         timerSnapshot = {
           clock_revision: 1,

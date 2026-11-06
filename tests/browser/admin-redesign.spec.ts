@@ -106,6 +106,7 @@ async function fixture(
     dashboards: 0,
     failDashboard: false,
     failSettings: false,
+    pauseOnReview: false,
     nextGrant: null as any,
     failReview: false,
     failedClock: "",
@@ -282,6 +283,7 @@ async function fixture(
           duration: 5400,
           webcam: false,
           terminals: 4,
+          pause_on_review: state.pauseOnReview,
           template: "sample-exam",
           template_version: "a".repeat(64),
           revision: 1,
@@ -387,6 +389,10 @@ async function fixture(
     if (route.request().method() === "POST") {
       const body = route.request().postDataJSON();
       state.calls.push({ path, body });
+      if (path === "/api/admin/exams/versioned") {
+        state.pauseOnReview = !!body.pause_on_review;
+        return json({ ...body, revision: "updated-fixture-definition" });
+      }
       if (path.endsWith("/monitoring/optimization")) {
         if (state.refuseOptimization) {
           state.media.optimization = optimizationStatus("ineligible");
@@ -797,6 +803,41 @@ test("saved attempt settings show exact short durations without exposing technic
     }),
   ).not.toBeVisible();
 });
+test("exam-wide review countdown setting is clear, saved and prefilled on mobile", async ({
+  page,
+}) => {
+  page.setDefaultTimeout(5000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const state = await fixture(page, false, true);
+  const open = () =>
+    page.getByRole("button", { name: "Exam settings", exact: true }).click();
+  await open();
+  let dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
+  const name = "Pause countdown while instructor review is needed";
+  await expect(
+    dialog.getByRole("checkbox", { name, exact: true }),
+  ).not.toBeChecked();
+  await dialog.getByRole("checkbox", { name, exact: true }).check();
+  expect(await dialog.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(
+    true,
+  );
+  await dialog
+    .getByRole("button", { name: "Save settings", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0);
+  expect(
+    state.calls.find((c) => c.path === "/api/admin/exams/versioned")?.body
+      .pause_on_review,
+  ).toBe(true);
+  await page.reload();
+  await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
+  await open();
+  dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
+  await expect(
+    dialog.getByRole("checkbox", { name, exact: true }),
+  ).toBeChecked();
+});
+
 test("ordinary timing and date controls keep technical references out of the useful view", async ({
   page,
 }) => {
