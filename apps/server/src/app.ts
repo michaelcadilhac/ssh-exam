@@ -2433,7 +2433,10 @@ export async function createApp(
       });
     }
     attemptConnections.set(a.id, conn);
-    await clocks.deliver(a.id);
+    // Retained recovery transfers ownership only after fresh capture and the
+    // signed continuation. Clock delivery still belongs to the old SSH owner
+    // here; sending it over this replacement connection prevents page claim.
+    if (a.monitoring_mode !== "v1") await clocks.deliver(a.id);
     const current = store.attempt(a.id),
       authorization = store.db
         .prepare(
