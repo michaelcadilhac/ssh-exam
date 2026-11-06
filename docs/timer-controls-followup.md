@@ -1,10 +1,10 @@
 # Timer controls and sixty-second operational timeouts
 
-Requested November 5, 2026. Development in progress. The timeout/delivery code and focused regressions are
-implemented locally; final integration/recovery qualification is unfinished.
-Nothing from this follow-up is deployed. Preserve the existing urgent-repair release and all
-student history. Deployment may retain instructor sessions; it must preserve
-student work and use a qualified recovery path.
+Requested November 5, 2026. The matched web/native release is installed but
+remains fenced after a preservation-check refusal. Preserve the current candidate,
+original snapshots and student history. The qualified recovery below changes
+only the verifier's expected request lifetime; it never replaces running services,
+the prepared controller or current data.
 
 ## Dependency-ordered milestones
 
@@ -234,3 +234,27 @@ again. Native roles/relay and web must be installed together; rollback is
 forward-only using the matched candidate with CURRENT data, never an old writer
 or historical database restore. Unexpected post-fence errors get one30s read-only
 diagnosis and qualified recovery, preserving the fence if unresolved.
+
+## Held cutover and qualified proof-only recovery — November 6
+
+The native cohort verified successfully; web startup then refused a legitimate
+60-second signed request because the preservation verifier still expected at
+most 30 seconds plus its one-second clock tolerance. The synthetic startup
+producer had also retained its old 30-second default. This qualification gap
+extended maintenance; it was not a student violation or an authority mutation.
+
+The corrected verifier follows the real producer's 60-second bound, retaining
+agent identity, original nonce/history/audit checks and justified pruning.
+The regression fails against the old verifier; all34 preservation tests pass
+with the correction. The unchanged controller's35 tests and five proof-repair
+pin/refusal tests pass. Exact-image startup now uses real signed60-second
+requests:63.06seconds,13polls,41preservation contracts,11mutation refusals,
+and recovery of CURRENT data with no additional start or replaced snapshot.
+
+scripts/deploy-web-ui-proof-repair pins the original controller and proof plus
+the corrected proof in a separate private directory. It permits only status or
+resume of this already-running, matched candidate; service/container replacement
+is blocked. The original prepared inputs and database snapshot remain intact.
+Evidence: proof-repair-image.log, proof-repair-matched-controllers.log,
+proof-repair-focused.log and preservation-60-green.log in the evidence directory.
+This is qualified for forward recovery; reopening is not yet confirmed.

@@ -1,6 +1,11 @@
 import hashlib,json,os,re,stat
 from pathlib import Path
 
+# Authenticated management.go requests and the gateway's admission contract use
+# the approved sixty-second operational window. The existing one-second clock
+# tolerance is separate; nonce identity/history/pruning proof remain unchanged.
+MANAGEMENT_REQUEST_MAX_MS = 60000
+
 def _open_monitoring_root(root, owner):
     """Pin every component without following links, including ancestor links."""
     descriptor=os.open('/',os.O_RDONLY|os.O_DIRECTORY|os.O_CLOEXEC)
@@ -87,7 +92,7 @@ def verify(db, started, observed, agent, monitoring_root=None):
         assert not db.execute('SELECT * FROM previous.' + table + ' EXCEPT SELECT * FROM main.' + table + ' LIMIT 1').fetchall(), 'Prior history changed: ' + table
     removed = db.execute('SELECT * FROM previous.agent_management_nonces EXCEPT SELECT * FROM main.agent_management_nonces').fetchall()
     added = db.execute('SELECT * FROM main.agent_management_nonces EXCEPT SELECT * FROM previous.agent_management_nonces').fetchall()
-    assert all(row[0] == agent and started <= row[2] <= observed + 31000 for row in added), 'Unexpected nonce identity/lifetime'
+    assert all(row[0] == agent and started <= row[2] <= observed + MANAGEMENT_REQUEST_MAX_MS + 1000 for row in added), 'Unexpected nonce identity/lifetime'
     requests = db.execute('SELECT * FROM main.agent_management_requests EXCEPT SELECT * FROM previous.agent_management_requests').fetchall()
     request_ids = set()
     poll_created = {}

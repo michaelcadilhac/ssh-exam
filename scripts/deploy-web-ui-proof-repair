@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Qualified proof-only resume of an already-running matched timer release.
+
+Never replaces the prepared controller/proof, snapshot, image or native roles.
+The replacement verifier only follows the approved 60s management nonce window.
+"""
+import argparse
+import hashlib
+import importlib.util
+from importlib.machinery import SourceFileLoader
+import json
+import os
+from pathlib import Path
+import stat
+import sys
+
+CONTROLLER_SHA256 = 'ffe60fc096e0655d5a40b54b1331b169f7ad18051ec020f4683a780ec7e95597'
+ORIGINAL_PROOF_SHA256 = 'fc97b185de19606645ff03e4b1faeee67f8a90b881b6d16a83720681bb83b577'
+CORRECTED_PROOF_SHA256 = '70466773b8083992153d73dbfd7ba47e46bc789b3e4a7c73e31dd84055d73950'
+
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def checked(path, expected=None, directory=False):
+    assert path.is_absolute() and not any(p.is_symlink() for p in (path, *path.parents)), 'Use a real absolute private repair path'
+    info = path.lstat()
+    assert info.st_uid == os.geteuid() and not info.st_mode & 0o022
+    assert stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+    if expected is not None: assert digest(path) == expected, 'Frozen repair input differs'
+
+
+def no_service_replacement(original):
+    def guarded(arguments, timeout=30):
+        words = [str(word) for word in arguments]
+        if Path(words[0]).name == 'systemctl' and any(word in ('start','stop','restart','try-restart','reload-or-restart') for word in words[1:]):
+            raise ValueError('Proof-only recovery cannot start, stop or restart a service')
+        if Path(words[0]).name == 'docker' and len(words)>1 and words[1] in ('start','stop','restart','run','create','rm','compose'):
+            raise ValueError('Proof-only recovery cannot replace an image or container')
+        return original(arguments, timeout=timeout)
+    return guarded
+
+
+def load_controller(controller, repair):
+    """Runtime caller: main; also used by the isolated real-image recovery test."""
+    checked(controller, CONTROLLER_SHA256)
+    checked(controller.parent, directory=True)
+    checked(repair, directory=True)
+    old = controller.parent/'web-ui-ops/preservation.py'
+    corrected = repair/'preservation-60.py'
+    checked(old, ORIGINAL_PROOF_SHA256)
+    checked(corrected, CORRECTED_PROOF_SHA256)
+    sys.path.insert(0, str(controller.parent))
+    loader = SourceFileLoader('frozen_timer_recovery_controller', str(controller))
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    module = importlib.util.module_from_spec(spec); loader.exec_module(module)
+    spec = importlib.util.spec_from_file_location('qualified_sixty_second_proof', corrected)
+    proof = importlib.util.module_from_spec(spec); spec.loader.exec_module(proof)
+    assert proof.MANAGEMENT_REQUEST_MAX_MS == 60000
+    module.preservation = proof
+    module.command = no_service_replacement(module.command)
+    return module
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--controller', type=Path, required=True)
+    parser.add_argument('--repair', type=Path, required=True)
+    parser.add_argument('--state', type=Path, required=True)
+    parser.add_argument('action', choices=('resume','status'))
+    args = parser.parse_args(argv)
+    assert os.geteuid() == 0, 'Run the qualified repair as root'
+    checked(args.state, directory=True)
+    checked(args.repair/'repair.json')
+    manifest = json.loads((args.repair/'repair.json').read_text())
+    assert manifest['purpose'] == 'ssh-exam-60s-nonce-proof/v1' and manifest['state'] == str(args.state)
+    checked(args.state/'release.json', manifest['release_sha256'])
+    release = json.loads((args.state/'release.json').read_text())
+    assert release['schema'] == 37 and release['fast_ui']['reviewed_scope'] == 'monitoring-timeouts-v2'
+    assert release['image_config_id'] == manifest['image_config_id']
+    module = load_controller(args.controller, args.repair)
+    status = json.loads((args.state/'status.json').read_text())
+    if args.action == 'resume':
+        assert status['phase'] in ('NATIVE_UPDATED','RUNNING_GATED','VERIFIED_GATED'), 'No held matched candidate to recover'
+        assert 'latest_start_ms' in status and status.get('native_transition_sha256')
+        container = json.loads(module.command(['/usr/bin/docker','inspect','ssh-exam-app-1']))[0]
+        assert container['State']['Running'] and container['Image'] == release['image_config_id'], 'Preserve an unknown or stopped candidate'
+        started = container['State']['StartedAt']
+        snapshot = args.state/'snapshot/metadata.sqlite'
+        checked(snapshot)
+        snapshot_identity = (snapshot.stat().st_ino, snapshot.stat().st_size, snapshot.stat().st_mtime_ns, digest(snapshot))
+    previous = sys.argv
+    try:
+        sys.argv = [str(args.controller), args.action, '--state', str(args.state)]
+        module.main()
+    finally:
+        sys.argv = previous
+    if args.action == 'resume':
+        after = json.loads(module.command(['/usr/bin/docker','inspect','ssh-exam-app-1']))[0]
+        assert after['State']['StartedAt'] == started and after['Image'] == release['image_config_id'], 'Candidate changed during proof-only recovery'
+        assert (snapshot.stat().st_ino, snapshot.stat().st_size, snapshot.stat().st_mtime_ns, digest(snapshot)) == snapshot_identity, 'Original snapshot changed'
+        module.atomic_json(args.repair/'repair-receipt.json', {'purpose':manifest['purpose'],'state':str(args.state),'phase':json.loads((args.state/'status.json').read_text())['phase'],
+            'original_controller_sha256':CONTROLLER_SHA256,'original_proof_sha256':ORIGINAL_PROOF_SHA256,'corrected_proof_sha256':CORRECTED_PROOF_SHA256,
+            'image_config_id':release['image_config_id'],'container_started_at_unchanged':True,'snapshot_sha256':snapshot_identity[3],'snapshot_unchanged':True})
+
+
+if __name__ == '__main__':
+    main()

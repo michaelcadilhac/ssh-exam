@@ -33,6 +33,7 @@ p.add_argument('--image',required=True)
 p.add_argument('--image-receipt',required=True,type=Path)
 p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
+p.add_argument('--proof-repair',action='store_true',help='Qualify proof-only recovery with the ORIGINAL frozen controller/proof, corrected nonce verifier and no service replacement')
 p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'
@@ -60,6 +61,19 @@ nonce=uuid.uuid4().hex;name='ssh-exam-startup-'+nonce;label='ssh-exam.private-ma
 container=None;thread=None;failures=[];events={};polls=[];stop=threading.Event()
 with tempfile.TemporaryDirectory(prefix='ssh-exam-matched-startup-') as directory:
     root=Path(directory);root.chmod(0o700)
+    proof_repair=None
+    if a.proof_repair:
+        loader=SourceFileLoader('qualified_proof_repair',str(ROOT/'scripts/deploy-web-ui-proof-repair'))
+        spec=importlib.util.spec_from_loader(loader.name,loader);proof_repair=importlib.util.module_from_spec(spec);loader.exec_module(proof_repair)
+        frozen=root/'frozen/scripts';(frozen/'web-ui-ops').mkdir(parents=True,mode=0o700)
+        for relative in ('deploy-web-ui','shared_backup.py','deployment_pause.py','public_reopen_readiness.py','web-ui-ops/inventory-web.py','web-ui-ops/qualify-old-workers.py'):
+            target=frozen/relative;target.write_bytes((ROOT/'scripts'/relative).read_bytes());target.chmod(0o600)
+        original=run(['git','show','5ed57ca:scripts/web-ui-ops/preservation.py'])
+        # git's trailing newline is part of the frozen source identity.
+        (frozen/'web-ui-ops/preservation.py').write_text(original+'\n')
+        repair=root/'proof-repair';repair.mkdir(mode=0o700)
+        (repair/'preservation-60.py').write_bytes((ROOT/'scripts/web-ui-ops/preservation.py').read_bytes())
+        deploy=proof_repair.load_controller(frozen/'deploy-web-ui',repair)
     data=root/'data';data.mkdir();data.chmod(0o2770)
     fixture=root/'fixture';fixture.mkdir(mode=0o750)
     project=root/'project';(project/'deploy/config').mkdir(parents=True)
@@ -200,7 +214,7 @@ else:
                 'observed':now-(120001 if policy=='expired' else 0),'roles':['agent','watchdog','source-worker'],'issues':[]}
         reply=http('/api/agent/events',{'agent':config['agent']['id'],'sequence':sequence,'at':now,'health':value},'application/vnd.ssh-exam-event')
         assert reply['status']==200,reply
-    def poll(lifetime=30000):
+    def poll(lifetime=60000):
         now=int(time.time()*1000);request={'version':1,'purpose':'ssh-exam-management/v1','audience':config['origin'],'agent':config['agent']['id'],'actor':'agent-root',
             'request':str(uuid.uuid4()),'nonce':secrets.token_hex(32),'issued':now,'expires':now+lifetime,'operation':'grants.source-next','body':{}}
         reply=http('/api/agent/management',request,'application/vnd.ssh-exam-management');assert reply['status']==200,reply
@@ -323,7 +337,7 @@ else:
         rollout.public=public;rollout.install_site=lambda value:rollout.site.write_bytes(value)
         rollout.release_background=lambda: None # The owned pause remains untouched.
         starts_before=events['starts'];running_before=json.loads(run(docker+['inspect',container]))[0]['State']['StartedAt']
-        with patch.object(deploy,'command',command):rollout.resume()
+        with patch.object(deploy,'command',proof_repair.no_service_replacement(command) if proof_repair else command):rollout.resume()
         assert rollout.record['phase']=='ONLINE'
         assert events['starts']==starts_before==1
         assert json.loads(run(docker+['inspect',container]))[0]['State']['StartedAt']==running_before
@@ -334,7 +348,7 @@ else:
         inspection=json.loads(run(docker+['inspect',container]))[0]
         assert inspection['Image']==base['Id'] and inspection['Config']['User']=='10001:10001'
         assert inspection['HostConfig']['ReadonlyRootfs'] and inspection['HostConfig']['NetworkMode']=='none' and inspection['HostConfig']['CapDrop']==['ALL']
-        print(json.dumps({'status':'PASS','reviewed_scope':a.reviewed_scope,'base_image':base['Id'],'qualified_export_config':qualified['config_id'],'rootfs_layers_match':True,
+        print(json.dumps({'status':'PASS','reviewed_scope':a.reviewed_scope,'base_image':base['Id'],'qualified_export_config':qualified['config_id'],'rootfs_layers_match':True,'proof_only_repair':bool(proof_repair),'signed_poll_lifetime_ms':60000,
             'actual_startup_wait_seconds':elapsed,'publisher_interval_seconds':a.fresh_after_seconds,
             'old_ready_blocked':events['old_ready_blocked'],'expired_policy_blocked':events['expired_support_blocked'],'nonce_live_at_start':True,
             'real_signed_polls':len(polls),'production_wait_predicate':True,'preservation':result,

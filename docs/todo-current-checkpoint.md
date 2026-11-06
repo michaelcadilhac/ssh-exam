@@ -1,113 +1,152 @@
-# Current milestone — timer controls and sixty-second timeouts
+# PRODUCTION HELD — nonce lifetime preservation refusal
 
-November 6, 2026. Development/testing/deployment authorized, including with an
-admin signed in. No new push instruction. Production remains ONLINE and unchanged.
-Started November 6 04:54:44 UTC. Preserve the ten pre-existing modified
-`docs/screenshots` images; never stage or overwrite them.
+CURRENT November6 ~09:21UTC: site FENCED / maintenance. Qualified native/relay
+cohort installed and VERIFIED (PIDs910600 agent,910596 watchdog,910598 source,
+910635 relay). Corrected web Config1942b7f9 is already RUNNING. Controller phase
+NATIVE_UPDATED; web resume failed at preservation with Unexpected nonce
+identity/lifetime. ZERO unfinished attempts. No new student/exam records changed.
+Video pause remains OWNED. DO NOT reopen, restore old data, or retry blindly.
 
-## Implemented locally
+The single bounded read-only diagnosis is COMPLETE. Nonce table has only agent,
+nonce,expires (no issued column; first diagnostic query failed on that guessed
+field, corrected status capture confirms fence/phase). Existing preservation.py
+line90 caps added expires at observed+31000. New approved native management
+requests use60s. This was missed because startup fixture's default poll still
+used30s. This cutover attempt is STOPPED, safely held. User informed immediately.
 
-- Operational network/SSH/browser/relay/monitoring budgets are sixty seconds;
-  poll cadence, exam durations, preflight15min and kernel/resource bounds differ.
-  Evidence/bootstrap v2 reject old15s interpretations. The browser confirmation
-  helper now also shares60s and retains64 outstanding one-use acknowledgements.
-- Existing native watchdog polls signed authorized clock intents once per second.
-  Fast admin/CLI staging no longer waits on student SSH. Durable requests remain
-  pending until the live supervisor acknowledges; exact retries add no time twice.
-- Verified negative SSH-exit evidence may span an older clock revision of the
-  EXACT same immutable connection lifetime. Files-only recovery adopts current
-  clock without granting new time, attempt or permission.
-- Pause countdown permits untimed MONITORED work; original interval stays in
-  history. Explicit resume starts the saved remainder. Adjustments while paused
-  affect that saved remainder. Normal monitoring/recording holds still apply.
-  Finish after the old deadline protects files and records the actual end time;
-  completed protected attempts cannot reopen, including after restart.
-- Admin menu and root examctl pause-timer/resume-timer, existing clocks.reset
-  authorization, revision/audit/idempotence and new native capability fence.
-  Allow resume supports custom1..525600minutes or --no-expiry, default5min.
-  Completion/revocation/countdown still apply; new grant Start windows stay finite.
-- Full CLI/root-TLS/restart and scripting workflows pass. Strict metadata readers
-  accept only the new bounded timer fields; private/unknown fields still refuse.
-- Exact monitoring-timeouts-v2 installer supports five binaries plus the relay
-  timeout snippet, preserving configuration/trust/service bytes. Production guard
-  producer checksum retained; an unmocked regression binds it to the actual
-  native-rollout-guard.py, not the similarly named read-only bridge.
+NEXT LOCAL MILESTONE: reproduce exact60s producer against preservation, fix bound
+without waiving identity/history/nonce/audit checks, qualify a controlled operator
+repair and CURRENT-data resume of the already-running candidate WITHOUT snapshot
+replacement or restart. Inspect the prior November1 preservation/current-data
+repair workflow before inventing a new controller. No more production diagnosis
+or mutation until a compatible repair is fully frozen/qualified. Existing task
+explicitly authorizes testing/deploying any change; do not ask routine permission.
 
-## Verified
+Production recovery evidence/base paths/qualified artifacts and all prior steps
+are retained below. Current logs: web-resume-completion.json (55.06s refusal),
+resume-refusal-diagnosis.stderr, native-{stop,backup,install,start,verify} receipts.
+Native backup: classstage/backup/native-before-948e8606c1734d7e9f462daca16d7103.tar,
+230666240bytes, SHA0a83a75cd5c619858427e9d6886d9ec94b690756c4c758d70990623ea285c456.
+Web current snapshot122945536 DBbytes+343358small bytes;1047562391media reused,
+zero new media. Original snapshots MUST remain unchanged; never old-writer rollback.
 
-Evidence: var/collection-tests/timer-controls.20261105a/.
-- Native full races pass (native-timer-final.log, core273.605s).
-- All28 actual user-systemd/PTYS/supervisor modes pass (356.213s), including
-  real work past a one-minute deadline, monitoring loss while paused, no-expiry
-  fresh files recovery preserving pause, explicit countdown resume and safety
-  holds. Separate paused protected-Finish/restart regressions pass.
-- Final application broad run:822pass/0fail/3opt-in skips. The earlier migration
-  fixture omitted two newly derived zero timer fields. Its corrected focused
-  cases pass while retaining equality of every stored field. Focused final
-  confirmation/timer/migration tests pass8; expiry/retained restoration pass19.
-- Browser broad:82pass/2timing-fixture failures; both corrected cases now pass.
-  Retained WASM verifies no early reconnect and actual60s expiry. Paused input
-  uses one REAL browser/server/socket clock and works past the actual1min
-  deadline; virtual jumps had outrun asynchronous replies. All84 unique selected
-  cases pass across broad/corrected runs. Final application suite complete.
-- Full types and browser/WASM/server builds pass. New joined native/browser
-  timer+no-expiry+SSH recovery scenario is implemented/typechecked, not run yet.
-- Operator tests:19native/35matched-web/10guard pass; overlay safety27 pass.
-  Those service mocks do NOT establish privileged installation qualification.
+--- Prior preparation/checkpoint (superseded by held status above) ---
 
-## Current release qualification / exact next action
+# Current milestone — qualified timer release, staged; deploy next
 
-The real five-binary installation passes in the guarded root overlay, including
-actual nginx invalid-config refusal, stopped roles, same-candidate repair/retry,
-reload and preserved relay trust. All7 real SSH/workspace/collection/deadline
-assertions pass. Independent cleanup confirms inactive unit/MainPID0/no owned
-processes. See native-install-qualified.json and native-install-root-4.log.
-Earlier fixture nginx scratch/log-path refusals are retained. Host nginx/runtime
-were reused read-only; no package install or base/production modification.
+November6,2026. Task started04:54:44UTC. User authorizes testing and deployment,
+including with ONLY an admin signed in. No new push authority. Preserve students,
+all guards and the ten original dirty docs/screenshots files. No service/config/
+student-record changes yet; the qualified release is staged privately on both hosts.
+Production is ONLINE / web controller PREPARED. Online preparation11.27s reused
+1047562391 recording bytes with ZERO new media. Video conversion pause is OWNED
+(nonce24d2a57d-4862-4fbf-b00b-55c8b4829d2c); no service stopped. No missing package
+or policy question remains. Admin signout --run found ALREADY_DRAINED:0admin,
+0student sessions changed. Current fresh guard-before-apply session75099 pending.
 
-Reusable private scripts: prepare-native-bundle.py and run-native-install.py
-under the evidence directory. First upload directory:
-/var/tmp/ssh-exam-timer-test-upload.7mwyFsdu. Candidate binaries compiled once in
-native-release/; Go runtime source has not changed since full races/matrix.
-New test bundle hash/manifest in native-install-bundle-audit.json; current root
-run location appears at the beginning of native-install-root-N.log. Root guard
-requires idle host and verifies unchanged base/live files/authority.
+## Frozen runtime and qualification
 
-397342d is the validated controls commit. First image d3233146 passes actual
-schema37/media/startup/current-data recovery (63s/13signed polls) and real local
-nginx/TLS/maintenance/browser checks. It is NOT deployable: joined timer/files
-recovery found a real no-expiry Date RangeError in student Workspace, unmounting
-the page and stopping capture after the first pre-fullscreen sample. A focused
-browser reproduced it; the UI fix prints Approval does not expire and passes.
-All student continuation browsers are finishing against the correction.
-Installer pin audit also briefly confused producer and bridge; restore original
-3a49907d producer pin and compare its actual source in the unmocked test. No
-native runtime/binary changes; existing native race/matrix/install evidence holds.
+Runtime5ed57ca2b8a79134207d81d32ca99e498e4b8e5d; qualification2926c6f.
+Earlier local commits9537f34 and397342d. All new source committed except this
+checkpoint update. Original dirty screenshots must remain uncommitted.
 
-NEXT: collect continuation browser completion, commit the focused UI/controller
-correction, build/export ONE replacement image. Run the joined shipped-WASM/
-native timer+files recovery using a
-separate standard retained-policy manifest (native-install's extra files cannot
-be passed to its exact-manifest runner). Qualify exact startup
-writers/tombstones/due-purge/signed-poll expiry
-and CURRENT-data forward recovery. Then stage and deploy the rehearsed matched
-web/four-native/relay cohort. No production fencing until ready. Do not ask
-settled timer/approval questions or routine local-commit/upload permission.
+Image tag ssh-exam-release:timer-controls-5ed57ca2b8a7; exported Config
+1942b7f9311561fe6b8da50674abe80a3854673b0575a0e9f371f4f8e159df52.
+Archive295880704bytes, SHA8e45004bf7e47690c01472d781fd9a511a6b485ab8f2cc17840d86d81a23aa46.
+Source engine ID3bab329b differs from exported Config; manifest/rootfs are verified.
+All8 shipped assets pinned in image-assets.json. Native five binaries unchanged
+from qualified native-release/ bytes. Do not rebuild or edit runtime/operators.
 
-## Production / preservation
+Evidence base: var/collection-tests/timer-controls.20261105a/.
+- Final application:822pass/0fail/3existing opt-in skips; full native races pass.
+- All28 actual user-systemd/PTYS/supervisor modes pass, including real work beyond
+  original1min deadline, monitoring hold while countdown paused, paused fresh-files
+  recovery/no-expiry approval and explicit countdown resume. Protected Finish and
+  completed/restart refusal pass. Root compiled CLI/TLS/script workflows pass.
+- All85 unique selected browser scenarios pass across broad/corrected runs;
+  final10 student continuation browsers cover the final rendering change.
+- Exact corrected image schema37/history/media/native-clock smoke passes. Startup/
+  current-data recovery63.07s/13signed polls:41contracts,11mutation refusals,
+  tombstone/due purge, expired nonce/support, no replaced snapshot/extra restart.
+- Actual five-binary native+relay installer passes with real nginx validation/
+  reload, stopped invalid-config refusal/exact retry, preserved trust/config and
+  all7 real SSH/workspace/collection/original-deadline assertions. Independent
+  guest shutdown/MainPID0/no owned processes/unchanged host/base confirmed.
+- Exact SHIPPED WASM+real root native/PAM/cgroups journey50.2s passes: live pause,
+  immediate95min remainder, no-expiry approval, actual SSH loss, fresh files
+  continuation preserving pause/original interval/hold, explicit timer resume,
+  protected Finish. Actual loaded roles use no test readiness override. Synthetic
+  jump/MFA/media remain explicit seams. Independent cleanup JSON/root log saved.
+- Actual local nginx master/worker reload and production reopening predicate:
+  0.220s, current normal/fenced templates; maintenance/browser paths and cleanup
+  pass. Operator tests19native/35web/10bridge; overlay safety27 pass.
+- Types/build/focused continuation units pass. No need to rerun unchanged suites.
 
-Fresh read-only inventory: marco118terminal histories, zero unfinished attempts,
-one admin session, readiness200. csc-sys185terminal histories, zero unfinished.
-Recheck before privileged qualification and cutover. Native history SHA:
-625a8141cbb492f1942f4f1e91b410847bab22df0be59a5d4cf730e854d1709d.
-Web c5f95f7 Config5d9d429e/schema37; marco HOST3001/container3000.
-Native d744e5b four roles; relay PID893011, SHA12f5d0cca4bb9bba93bc6b5fb78894f53be8084d11b0f90b980ba6dd98ef5a76.
-Prior current recovery: /data/ssh-exam-claim-clock-c5f95f7-20261105 (web/shared
-immutable media) and /var/tmp/ssh-exam-clock-repair.r_1nli9m-root (native).
-Verify current coverage, no blind old-snapshot reuse or GB media recopy.
-Use docs/files-only-resume-release.md and its frozen operate.py/manifests as the
-previous matched procedure. New timer JSON is forward-only: no old writer rollback.
-Admin-only sign-out may be atomically audited; preserve zero-student guard.
-Local commits9537f34 and397342d. UI/controller correction and separate release
-qualification scenario remain uncommitted; original dirt is only ten screenshots.
-Nothing pushed/deployed.
+A real no-expiry Date RangeError was caught in joined qualification and fixed;
+first candidate d3233146 is rejected under pre-render-fix/. Final1942b7f9 passed.
+Do not format no-expiry sentinel as Date. Root guard pin is the ORIGINAL3a49907d
+native-rollout-guard.py producer, not4901c088 read-only bridge; unmocked test now
+checks the right source. Image/server/native unchanged by final test-only commit.
+
+## Exact staged deployment
+
+Local release.json, locations.json, stage-audit.json and operator-freeze.json
+bind all artifacts/inputs. Generated manifest passes real controller validation.
+nonce b891904a-00fd-48a3-8a6a-7ed48d1659d9.
+Web stage /var/tmp/ssh-exam-timers-20261106-5ed57ca-b891904a-web
+Web code <web-stage>/code
+Web state /data/ssh-exam-timers-20261106-5ed57ca-b891904a-state (PREPARED)
+Class stage /var/tmp/ssh-exam-timers-20261106-5ed57ca-b891904a-native
+Private staging receipts web-stage.json/native-stage.json pass. Upload roots:
+marco /var/tmp/ssh-exam-timers-release-upload.ujsAvher
+csc-sys /var/tmp/ssh-exam-timers-release-upload.zUOfo9s8
+No installed files touched. stage-release.py syntax-checked/digests verified.
+
+NEXT: collect exec session75099 and read guard-before-apply.log; must PASS.
+Then python3 <base>/operate.py apply web-apply. This is the first maintenance/
+service-stop step and must return WAITING_NATIVE after fresh current snapshot.
+No further development/testing/refactoring during cutover. Exact scripts frozen.
+If failure after fence, report held state immediately, one30s read-only diagnosis,
+only qualified forward recovery. Native operations follow below, each with fresh
+handoff; never advance on an unread/nonzero prerequisite.
+
+Before APPLY: atomically audit/expire ONLY admin sessions under user authority,
+requiring zero student sessions/unfinished attempts; native guard must be fresh.
+Preserve zero-session deployment guard. The previous qualified admin-only signout
+receipt is files-only-resume-release.20261104a/authorized-admin-signout.json.
+No student records, attempts, grants or clocks may be changed by deployment.
+
+Operators (already syntax checked, frozen inputs; unique labels create receipts):
+- python3 <base>/operate.py prepare|apply|status|resume|rollback|reopen|cancel LABEL
+- python3 <base>/native-phase.py stop|backup|install|start|verify|status LABEL
+Native-phase obtains and checks a FRESH stopped-web handoff before each mutation.
+After web APPLY must be WAITING_NATIVE. Then native stop,backup,install,start,
+verify sequentially; read EACH completion. Refresh after guard via
+python3 scripts/refresh_native_cohort_guard.py --release-dir <base> after.
+Then web resume, keeping after guard fresh below90s while startup waits.
+No --fixture in production. Same-schema37/forward-only matched scope is
+monitoring-timeouts-v2. It installs all5 binaries and only the relay timeout
+snippet; existing relay config/key/unit preserved. Reconciler timer included.
+
+Qualified recovery: CURRENT-data forward recovery with SAME matched candidate;
+never old database or old native/web writers. Unexpected failure AFTER fencing:
+report ONLINE/FENCED immediately; only one30s read-only diagnosis and qualified
+compatible recovery. Preserve held state if unresolved. Do not improvise patches,
+clear records, kill unknown processes, or waive student/native guards.
+Announce confirmed reopening immediately, then required assets/roles/signed CLI/
+preservation acceptance and minimal checkpoint. Do not add optional work.
+
+## Production inventory/recovery
+
+marco118terminal histories, no unfinished/student sessions,1admin; schema37,
+current web c5f95f7 Config5d9d429e; hostport3001/container3000.
+Native185terminal histories; all roles remain current d744e5b; relayPID893011.
+HistorySHA625a8141cbb492f1942f4f1e91b410847bab22df0be59a5d4cf730e854d1709d.
+Actual identities/config/trust/unit hashes in native-inventory.json/web-inventory.json.
+Existing current image archive reused/verified: marco
+/var/tmp/ssh-exam-claim-clock-upload.5vu4bqsf/web-image.tar,
+Config5d9d429e, SHA92f4fdb54e936ed2e3c26f6342d50078d266541aabb4a4c962ef0cca5a423627.
+Shared immutable media /data/.ssh-exam-media-objects. Prior current data recovery
+/data/ssh-exam-claim-clock-c5f95f7-20261105; native old backup
+/var/tmp/ssh-exam-clock-repair.r_1nli9m-root. Fresh current snapshots are required
+by the qualified controllers; do not assume older native coverage includes relay.

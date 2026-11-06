@@ -57,6 +57,20 @@ class NoncePreservation(unittest.TestCase):
         self.poll(0,1793582370372);self.remove('live')
         with self.assertRaises(AssertionError):self.verify()
 
+    def test_current_sixty_second_request_nonce_preserves_all_authority(self):
+        self.poll(0,OBSERVED-1)
+        self.db.execute('INSERT INTO agent_management_nonces VALUES(?,?,?)',('class','fresh-60s',OBSERVED+60000))
+        proof=self.verify()
+        self.assertEqual(len(proof['preserved_tables']),41)
+        self.assertEqual(proof['audited_empty_queue_polls'],1)
+
+    def test_new_nonce_wrong_identity_or_outside_sixty_second_clock_tolerance_refuses(self):
+        for agent,expires in (('another-agent',OBSERVED+60000),('class',OBSERVED+61001),('class',STARTED-1)):
+            self.db.execute('SAVEPOINT invalid_nonce')
+            self.db.execute('INSERT INTO agent_management_nonces VALUES(?,?,?)',(agent,'invalid-new',expires))
+            with self.subTest(agent=agent,expires=expires),self.assertRaises(AssertionError):self.verify()
+            self.db.execute('ROLLBACK TO invalid_nonce');self.db.execute('RELEASE invalid_nonce')
+
     def test_expired_removed_without_any_poll_evidence_refuses(self):
         self.remove('expired-0')
         with self.assertRaises(AssertionError):self.verify()
