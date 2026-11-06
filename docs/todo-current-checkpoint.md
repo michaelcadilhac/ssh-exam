@@ -1,3 +1,14 @@
+# Current investigation — reducing upload bandwidth
+
+November6: local investigation complete; no runtime/production change. Measured
+binary JPEG15.6–15.9kB/s versus20.8–21.2current; browser VP9 samples3.4–5.1kB/s,
+not an integrated monitoring qualification.192image/144video samples and23actual
+binary/JSON HTTP comparisons; local browsers/listeners closed. Evidence/plan:
+docs/upload-bandwidth-evaluation.md and var/collection-tests/upload-bandwidth.20261106/.
+Next, if implementing: binary JPEG student workflow first; then independently
+qualify live-video verification/recovery. No new policy choice or deployment
+authorization is implied by the exploration request. Prior deployed checkpoint:
+
 # Current checkpoint — disconnect diagnostics DEPLOYED AND ONLINE
 
 November6,2026,15:21Chicago /21:21UTC. User-authorized push/deploy completed.

@@ -1,3 +1,16 @@
+# Upload bandwidth — INVESTIGATED; implementation proposed
+
+November6: synthetic browser measurements confirm binary JPEG25% payload savings
+(20.8→15.6kB/s) without quality change. Browser VP9 five-second samples measured
+3.4–5.1kB/s combined, with144frames independently decoded; this is an encoder
+experiment, not integrated monitoring qualification. Independent WebP offers
+modest savings at moderate quality and is worse on the noise stress case.
+Plan, limits and acceptance: docs/upload-bandwidth-evaluation.md. No runtime or
+production change. Proposed next increments remain OPEN: binary JPEG capture
+workflow, then capability-negotiated isolated live-video decode/recovery with
+JPEG fallback and unchanged challenged freshness/enforcement. Do not treat
+encoder measurements as completion or deployment of either increment.
+
 # Disconnect follow-up — PUSHED, DEPLOYED AND ONLINE
 
 November6,15:21Chicago: runtime95c7798, image Config623bdc1089c4/schema37.
