@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-## November 6 local follow-up: timeouts and prompt clock delivery
+## November 6 deployed follow-up: timeouts and prompt clock delivery
 
 Operational network waits and monitoring freshness use 60 seconds. This is not a
 change to exam durations, preflight 15 minutes, polling cadence or kernel/resource
@@ -17,15 +17,16 @@ Durable clock changes remain pending until the live supervisor confirms handover
 Verified SSH-exit evidence may span only a clock revision of the same immutable
 connection lifetime; it is negative evidence and cannot authorize execution.
 Fresh saved-file continuation adopts the confirmed current clock without a new
-attempt, grant or allowance. This follow-up is local only. Explicit countdown
+attempt, grant or allowance. Explicit countdown
 pause permits untimed work under normal monitoring until the instructor resumes
 the saved remainder. This intentionally changes the prior always-running timer
 policy. Durable clock history records pause, adjustments and resume; original
 deadlines remain historical facts. Allow resume approval accepts custom minutes
 or no expiry, independently of countdown pause; completion/revocation still
-apply. Both controls have matching web/examctl workflows and are locally tested.
-Exact local release qualification passes for source5ed57ca/imageConfig1942b7f9;
-production preparation/cutover remains pending.
+apply. Both controls have matching web/examctl workflows. Source5ed57ca /
+imageConfig1942b7f9 and the matched native roles deployed November6 at09:36:52UTC.
+Exact-image/native/browser qualification and public/installed/preservation
+acceptance pass; no original snapshot or historical deadline was replaced.
 See docs/timer-controls-followup.md for acceptance and verification.
 
 November2 status-copy follow-up, DEPLOYED at17:34:57 Chicago: saved-

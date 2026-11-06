@@ -1,10 +1,9 @@
 # Timer controls and sixty-second operational timeouts
 
-Requested November 5, 2026. The matched web/native release is installed but
-remains fenced after a preservation-check refusal. Preserve the current candidate,
-original snapshots and student history. The qualified recovery below changes
-only the verifier's expected request lifetime; it never replaces running services,
-the prepared controller or current data.
+Requested November5,2026; deployed November6 at09:36:52UTC. The matched web/native
+release is ONLINE and final acceptance passes. The qualified recovery below
+preserved the running candidate, original snapshots, prepared controller and
+current student history; its separate verifier follows the approved60s lifetime.
 
 ## Dependency-ordered milestones
 
@@ -257,4 +256,27 @@ resume of this already-running, matched candidate; service/container replacement
 is blocked. The original prepared inputs and database snapshot remain intact.
 Evidence: proof-repair-image.log, proof-repair-matched-controllers.log,
 proof-repair-focused.log and preservation-60-green.log in the evidence directory.
-This is qualified for forward recovery; reopening is not yet confirmed.
+The proof-only recovery completed in16.38seconds and reopened the site at
+09:36:52UTC. It preserved the existing container start time, original snapshot
+SHA c73ea206109e415d41e1c4931002c6dd07a89f5b4645a028cd0ccbdc4d42425a,
+all41authority tables, prior audit/management requests and21verified physical-purge
+rechecks. Exact owned video pause is RELEASED. Public TLS/all8asset hashes,
+readiness/notifications, all5installed binaries/4loaded roles, relay trust,
+timer/no-expiry CLI help and an authenticated sandbox-definition read pass.
+No student clock, permission or attempt was changed for acceptance.
+
+Instruction-to-reopening elapsed4h42m08s, including development/qualification;
+maintenance21m23.67s. Online preparation11.27s reused1047562391media bytes with
+zero new media; fresh web snapshot122945536DBbytes+343358small bytes. Native
+backup230666240bytes is retained with its checksum. This was not a fast UI-only
+release. The production refusal exposed a fixture mismatch despite extensive
+feature tests; future qualification must retain the actual60s producer case.
+No unrelated tests or features were added after reopening.
+
+Runtime source5ed57ca; qualification2926c6f; proof repair e9bfe5b. Recovery remains
+forward-only using this matched cohort and CURRENT data. Never restore the
+historical snapshot over newer student records or reopen an older native/web
+writer. Original prepared inputs and proof stay unchanged in their stage;
+separate root-private repair receipt pins all three verifier/controller hashes.
+Evidence: public-acceptance.json, native-acceptance.json, web-acceptance.json,
+proof-repair-resume-completion.json and the per-phase production receipts.

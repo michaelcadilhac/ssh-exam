@@ -1,4 +1,4 @@
-# Current follow-up — timer controls and sixty-second timeouts IN PROGRESS
+# Current follow-up — timer controls and sixty-second timeouts DEPLOYED
 
 November 5: requested operational timeouts of sixty seconds, immediate allowance
 increases, an instructor timer-pause control and configurable resume validity,
@@ -18,8 +18,13 @@ normal monitoring and account holds; Finish protects their saved work. Full
 native races and all 28 actual supervisor scenarios pass. Browser, real matched
 native/relay/nginx installation, exact corrected-image startup/current-data
 recovery and joined shipped-WASM/native timer/files-recovery qualification pass.
-Source5ed57ca/imageConfig1942b7f9 is frozen. Online production preparation and
-guarded cutover are next. Nothing from this follow-up is deployed.
+Source5ed57ca/imageConfig1942b7f9 and the matched five native binaries deployed
+November6 at09:36:52UTC. Public TLS/eight assets, installed/loaded roles, signed
+CLI read, readiness and all41 preservation contracts pass; original snapshots
+and current history remain intact, video pause RELEASED. A preservation verifier
+still expecting30-second requests extended maintenance to21m24s; the qualified
+60-second proof-only repair reopened the running candidate without another
+restart or snapshot replacement. Details: docs/timer-controls-followup.md.
 
 # Previous follow-up — pending-clock SSH recovery fixes DEPLOYED
 
