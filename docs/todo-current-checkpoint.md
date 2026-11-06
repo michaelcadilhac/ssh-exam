@@ -1,29 +1,34 @@
-# Current milestone — urgent page-claim fix DEPLOYED; native clock repair LOCAL
+# Current milestone — urgent SSH/clock fixes DEPLOYED; sixty-minute recovery AVAILABLE
 
-November5,20:31:12 Chicago: web sourcec5f95f7/image5d9d429e is online under the
-instructor's explicit login/broad-test waiver. Replacement-page claim no longer
-delivers a pending clock change before transferring SSH ownership. Native checks
-and services unchanged. Build, readiness/all8 assets, historical rows and original
-deadline preservation pass. Current snapshot:
-/data/ssh-exam-claim-clock-c5f95f7-20261105/snapshot. Private evidence:
-var/incident-reports/jcalvil5-midterm.20261105/urgent-claim-fix/. An incorrect local
-readiness port3000 (actual3001) delayed reopening; the qualified public probe
-reopened the same running candidate without another restart/snapshot replacement.
+November5: webc5f95f7/image5d9d429e online20:31:12 Chicago; natived744e5b installed
+20:54:39 and admissions reopened20:55:21. Explicit urgent login/broad-test waiver;
+native installation separately explicitly authorized after automatic review
+rejected it before execution. No student was working. Web claim defers pending
+clock delivery until SSH ownership transfers. Native clock updates after exact
+SSH-exit proof/LOCKED/HELD/no workloads create no execution authority; other cases
+retain the supervisor handshake. Signed TLS/restart and five unsafe/live refusal
+cases pass races1.118s; broad/root/browser suites were waived, not claimed passed.
+Four installed/loaded role hashes, unchanged config/relay and unrelated native
+histories pass; SSH/relay were not restarted. Original dirty screenshots preserved.
 
-The requested total30-minute extension is NOT APPLIED. The immutable5-minute
-intent remains pending: native handover requires the old supervisor, which is
-gone after SSH exit. Native stays LOCKED/uncollected; web shows FINALIZING.
-Timing choice pending in the dialog: fixed9:00:35PM deadline versus30minutes
-from actual resumption. Do not assume an answer, rewrite an in-flight request,
-refund time, release holds or reopen completed work.
+The old five-minute intent settled through authenticated native timing; the old
+attempt completed/protected with original deadline/history intact and saved files
+verified. Instructor superseded the30-minute-extension request with SIXTY minutes
+from actual resumption. A NEW saved-work grant is AVAILABLE/source READY, duration
+3600/webcam Off/four terminals, using that exact latest protected archive. Start
+window November5,20:57:01–21:27:01 Chicago; the full hour begins only at actual
+Start, not issuance or sign-in. No old attempt reopened, clock consumed by an
+operator or default setting changed. Student must sign out/back into midterm and
+complete preflight. Human Start not performed/claimed by this agent.
 
-Independent native fix is LOCAL: verified SSH-exit identity, modern supervised
-mode, LOCKED/HELD and no workloads/protected work permit only a durable clock
-update, creating no execution authority. Other cases retain the handshake. Real
-signed TLS/restart plus five unsafe/live refusal cases pass native races1.118s;
-first fixture failure retained (original-interval seed corrected). No native
-deployment or broad verification claimed. Preserve ten dirty screenshots. Next:
-resolve the timing choice and complete its supported recovery.
+Private evidence: var/incident-reports/jcalvil5-midterm.20261105/. Web CURRENT
+snapshot: /data/ssh-exam-claim-clock-c5f95f7-20261105/snapshot. Native CURRENT
+backup/candidate: /var/tmp/ssh-exam-clock-repair.r_1nli9m-root. Native backup261.7MB;
+web media1.065GB reused. A wrong local probe port3000 (actual3001) delayed the web
+cutover; qualified public recovery reopened the same candidate/snapshot without
+another restart. No remaining deployment/issuance operation; follow student
+acceptance separately. Relay disconnect causes remain unproved and need bounded
+causal diagnostics; do not blame the student or silently weaken monitoring.
 
 # Previous milestone — files-only SAME-attempt resume DEPLOYED AND ONLINE
 

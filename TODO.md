@@ -1,16 +1,20 @@
-# Current follow-up — pending clock blocks SSH-loss recovery
+# Current follow-up — pending-clock SSH recovery fixes DEPLOYED
 
-Urgent web sourcec5f95f7 deployed November5 at20:31:12 Chicago under explicit
-login/broad-test waiver: skip clock delivery during retained replacement-page
-claim until SSH ownership transfers. Native ownership checks unchanged. Build,
-public assets/readiness and current-data preservation pass; no native restart.
+November5: webc5f95f7/image5d9d429e and natived744e5b deployed under explicit urgent
+authorization/login/broad-test waiver, with separate explicit native-install
+approval. Pending clocks no longer block replacement-page claim. After verified
+SSH exit with LOCKED/HELD/no workloads, a clock change no longer requires a dead
+supervisor and grants no execution authority. Signed TLS/restart and five unsafe/
+live refusal cases pass; builds/public assets/readiness/loaded roles/preservation
+pass. Broad suites waived. SSH/relay unchanged; original histories protected.
 
-Separate confirmed native defect: an authorized clock change can require a
-supervisor lost after SSH exit. Native safely holds work/collection. Narrow local
-clock-only correction preserves LOCKED/HELD and original intervals; signed TLS/
-restart and five unsafe/live refusal regressions pass; NOT DEPLOYED. Requested
-30-minute increase remains unconfirmed. Timing choice pending; do not edit
-immutable intents, refund time or reopen completed work. See current checkpoint.
+Old pending5-minute request settled and saved files were verified/protected.
+Instructor superseded30-minute extension with a NEW sixty-minute saved-work
+attempt: AVAILABLE/source READY, webcam Off, start by21:27 November5 Chicago,
+full60minutes only from actual Start. Student must sign in and complete preflight;
+no operator Start/old-attempt reopening. Details: current checkpoint/private
+incident receipts. Original relay-disconnect cause remains unproved; causal
+logging/keepalive qualification is separate follow-up, not silently fixed here.
 
 # Previous follow-up — files-only SAME-attempt resume DEPLOYED
 

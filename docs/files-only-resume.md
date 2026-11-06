@@ -7,14 +7,21 @@ checks remain intact. Build/readiness/assets and historical/current original
 deadline preservation pass. Broad tests/logins were explicitly waived; no native
 service restart. Current checkpoint records the probe-port correction and receipt.
 
-Separate native clock correction remains LOCAL: after an exact verified old SSH
+The native clock correction was deployed November5 at20:54:39 Chicago under
+separate explicit native-install authorization; admissions reopened20:55:21.
+After an exact verified old SSH
 exit, LOCKED/HELD modern supervision and zero recorded workloads/protected work,
 there is no live cutoff to hand over. Persist the authorized clock adjustment
 without recreating an execution authority or requiring the dead supervisor.
 Active/unknown/mismatched/retained-work cases retain their existing handover.
 Signed HTTPS timing/restart and five unsafe/live refusal cases pass races1.118s.
-No native deployment or broad qualification claimed. A requested live allowance
-is not reported applied while the corresponding native intent remains pending.
+Broad qualification was explicitly waived. Exact loaded roles/configuration/
+unrelated histories pass; SSH and relay remain running. The formerly pending
+clock was applied through authenticated timing, allowing verified collection.
+The instructor then chose a NEW sixty-minute saved-work attempt, READY/AVAILABLE
+with its full allowance at actual Start. No completed attempt was reopened or
+pending body rewritten. A requested live allowance is not reported applied while
+the corresponding native intent remains pending. Current checkpoint has receipts.
 
 November 4, 2026: implemented/tested locally, including joined privileged
 qualification with actual release-native roles. Nothing deployed. The instructor now
