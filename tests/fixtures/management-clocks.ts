@@ -415,6 +415,7 @@ export async function qualifyClockCLI(
   const pauseArgs = [
     "pause-timer",
     timerID,
+    "--resume-on-work",
     "--revision",
     "0",
     "--request",
@@ -423,7 +424,7 @@ export async function qualifyClockCLI(
   const pause = (await run("clocks", pauseArgs)).result;
   expect(pause).toMatchObject({
     status: "pending",
-    intent: { pause_timer: true },
+    intent: { pause_timer: true, resume_on_work: true },
     attempt: { id: timerID },
   });
   const pauseIntent = pause.intent,
@@ -480,6 +481,7 @@ export async function qualifyClockCLI(
     attempt: {
       timer_paused_at: pauseIntent.requested_at,
       timer_remaining_ms: timerNative.timer_remaining_ms,
+      timer_resume_on_work: true,
     },
   });
   const extra = (

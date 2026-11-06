@@ -64,6 +64,7 @@ export class AttemptManagement {
       settings,
       connected: !!described.connected,
       working: !!described.working,
+      timer_resume_on_work: this.clocks.resumeOnWorkEnabled(row),
       terminalCount: Number(described.terminalCount) || 0,
       grantContext: this.grants.forAttempt(row),
       pendingClockReset: clockIntentMetadata(this.clocks.pending(row.id)),

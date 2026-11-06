@@ -1060,7 +1060,7 @@ export async function createApp(
         deadline: a.deadline,
         clock_revision: a.clock_revision,
         collect: !reset && !!a.deadline && now() >= effectiveDeadline(a),
-        ...(reset ? { reset } : {}),
+        ...(reset ? { reset: clocks.nativeIntent(reset) } : {}),
       });
     },
   );
@@ -2691,6 +2691,7 @@ export async function createApp(
       !nativeContinuationOutcomeRecorded(agreed)
     )
       life.confirmContinuation(a.id, a.generation, automaticTechnical);
+    clocks.resumeReadyTimers(a.id);
     return {
       attempt: store.attempt(a.id),
       serverNow: now(),
@@ -2797,6 +2798,7 @@ export async function createApp(
     return {
       ...a,
       ...timerState(a),
+      timer_resume_on_work: clocks.resumeOnWorkEnabled(a),
       pendingClockReset: clocks.pending(a.id),
       filesOnlyResume: needsFilesOnlyResume(store, a),
       connected,
@@ -3072,10 +3074,12 @@ export async function createApp(
     const body = z
       .object({
         timerAction: z.enum(["pause", "resume"]),
+        resumeOnWork: z.boolean().optional(),
         revision: z.number().int().nonnegative(),
         requestID: z.string().uuid(),
       })
       .strict()
+      .refine((b) => b.resumeOnWork === undefined || b.timerAction === "pause")
       .parse(req.body);
     assertClockCapabilities(agent.configurationHealth(), false, true);
     return clocks.reset(
@@ -3087,6 +3091,7 @@ export async function createApp(
       true,
       false,
       body.timerAction,
+      body.resumeOnWork,
     );
   });
   app.post("/api/admin/attempts/:id/authorize", async (req: any) => {
@@ -4051,7 +4056,12 @@ export async function createApp(
                   const reset = clocks.pending(a.id);
                   if (reset) {
                     try {
-                      life.acceptRemote(await agent.call("reset-clock", reset));
+                      life.acceptRemote(
+                        await agent.call(
+                          "reset-clock",
+                          clocks.nativeIntent(reset),
+                        ),
+                      );
                     } catch {
                       /* Remains queued for authenticated timing recovery. */
                     }

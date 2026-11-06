@@ -489,6 +489,7 @@ async function fixture(
           return json({ error: "Clock changed; refresh" }, 409);
         const at = Date.now(),
           paused = body.timerAction === "pause";
+        a.timer_resume_on_work = paused && !!body.resumeOnWork;
         const history = JSON.parse(a.clock_resets || "[]");
         const previous = a.deadline;
         if (paused) {
@@ -1020,7 +1021,7 @@ test("student plus and delete controls work from the keyboard without a row menu
   await expect(remove).toBeFocused();
 });
 
-test("countdown pause and resume are direct actions with a steady displayed remainder", async ({
+test("stopped students can pause countdown manually with a steady displayed remainder", async ({
   page,
 }) => {
   const s = await fixture(page, false, false, true);
@@ -1032,6 +1033,14 @@ test("countdown pause and resume are direct actions with a steady displayed rema
     .click();
   await page
     .getByRole("menuitem", { name: "Pause countdown", exact: true })
+    .click();
+  const pauseDialog = page.getByRole("dialog", {
+    name: "Pause countdown for bob",
+    exact: true,
+  });
+  await expect(pauseDialog.getByRole("checkbox")).not.toBeChecked();
+  await pauseDialog
+    .getByRole("button", { name: "Pause countdown", exact: true })
     .click();
   await expect(group.locator(".attempt-clock")).toContainText(
     "Countdown paused",
@@ -1059,6 +1068,78 @@ test("countdown pause and resume are direct actions with a steady displayed rema
     original_deadline: original,
     state: "LOCKED",
   });
+});
+
+test("stopped countdown can resume automatically with the student and be manually resumed instead", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const s = await fixture(page, false, false, true);
+  const group = page.getByRole("rowgroup", { name: "bob", exact: true });
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Pause countdown", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "Pause countdown for bob",
+    exact: true,
+  });
+  expect(
+    await dialog.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  await dialog
+    .getByRole("checkbox", {
+      name: "Automatically resume countdown when the student resumes work",
+    })
+    .check();
+  await dialog
+    .getByRole("button", { name: "Pause countdown", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(group.locator(".attempt-clock")).toContainText(
+    "Countdown resumes with student",
+  );
+  expect(
+    s.calls.find((c) => c.path.endsWith("/timer"))?.body.resumeOnWork,
+  ).toBe(true);
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Resume countdown", exact: true })
+    .click();
+  await expect(group.locator(".attempt-clock")).not.toContainText(
+    "Countdown resumes with student",
+  );
+});
+
+test("working students keep direct countdown pause without a resume-work dialog", async ({
+  page,
+}) => {
+  page.setDefaultTimeout(5000);
+  const s = await fixture(page, false, false, true);
+  s.rows.find((student) => student.username === "bob")!.attempts[0].state =
+    "ACTIVE";
+  await page.reload();
+  await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
+  const group = page.getByRole("rowgroup", { name: "bob", exact: true });
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Pause countdown", exact: true })
+    .click();
+  await expect(group.locator(".attempt-clock")).toContainText(
+    "Countdown paused",
+  );
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(
+    s.calls.find((call) => call.path.endsWith("/timer"))?.body.resumeOnWork,
+  ).toBeUndefined();
 });
 
 test("ended retained sessions offer same-deadline files-only resume approval", async ({

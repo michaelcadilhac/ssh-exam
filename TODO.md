@@ -1,3 +1,14 @@
+# Current follow-up — automatic countdown resume IMPLEMENTED/TESTED LOCALLY
+
+November6: Pause countdown for a stopped student offers automatic countdown
+resume when Resume exam succeeds. Manual pause remains the default. Sign-in,
+approval and failed restoration/input acknowledgement do not start it. Exact
+pause/causal-event binding, restart, pending time edits and manual override are
+covered. CLI: web clocks pause-timer --resume-on-work. Full application829pass /
+3existing opt-in skips; CLI/core clock races, build/types and3desktop/mobile
+browser workflows pass. Details: docs/attempt-clock-management.md. Committed
+locally; not pushed or deployed. Production remains on the baseline below.
+
 # Current follow-up — timer controls and sixty-second timeouts DEPLOYED
 
 November 5: requested operational timeouts of sixty seconds, immediate allowance

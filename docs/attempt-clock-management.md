@@ -1,23 +1,30 @@
 # Attempt inspection and clock management
 
-October 21, 2026. C1e implemented/tested locally; full evidence is recorded in
-todo-progress.md. **Not deployed.** All tests use synthetic local records/keys.
+Current baseline: timer controls deployed November6 at09:36:52UTC. The optional
+automatic countdown resume described below is implemented/tested locally only.
+Historical C1e evidence remains in todo-progress.md. Tests use synthetic records
+and keys; this follow-up changes no production records or installed services.
 
 ## Supported CLI workflow
 
-November 6 follow-up, implemented/tested locally; deployment qualification is in
-progress. The instructor explicitly approved pausing only the countdown while
+November6 timer controls deployed at09:36:52UTC. The optional automatic
+countdown resume below is a subsequent local change, not deployed. The instructor explicitly approved pausing only the countdown while
 the student continues working under normal monitoring. Monitoring loss still
 holds work; countdown pause neither thaws a hold nor authorizes SSH recovery.
 
 ```sh
 sudo examctl web attempts show ATTEMPT
 sudo examctl web clocks pause-timer ATTEMPT --revision CURRENT_REVISION
+# If the student is stopped, optionally resume their countdown with their work:
+sudo examctl web clocks pause-timer ATTEMPT --revision CURRENT_REVISION --resume-on-work
 sudo examctl web clocks resume-timer ATTEMPT --revision CURRENT_REVISION
 sudo examctl web interruptions authorize ATTEMPT --help
 ```
 
-The admin attempt menu offers **Pause countdown** / **Resume countdown** directly.
+The admin attempt menu offers **Pause countdown** / **Resume countdown**. A
+working student pauses directly. For a stopped student, the small pause dialog
+offers **Automatically resume countdown when the student resumes work**, off by
+default. The row then shows **Countdown resumes with student**.
 The student sees **Countdown paused** and a fixed remaining time. Time changes
 while paused change that saved remainder; countdown resume uses the original
 request instant and native wall/boot binding, so retries never add time twice.
@@ -31,7 +38,8 @@ five minutes. No-expiry approval is represented internally as an exact bounded
 integer, never as an execution lease or a new-attempt start window. Fresh SSH,
 ownership, capture and native verification remain required; revocation and
 completion invalidate the approval. Fresh files-only continuation preserves an
-already-paused countdown until a separate explicit countdown-resume command.
+already-paused countdown until explicit countdown resume, or successful Resume
+exam when automatic countdown resume was selected.
 
 Both timer commands use existing `clocks.reset` authorization; resume approval
 uses existing interruption authorization. No installation permission/configuration
@@ -65,6 +73,53 @@ review text, monitoring payloads and unbounded reset arrays are excluded from
 permanent read caches. Full native reset history remains in examctl info. Current
 presence is an observation, never execution permission. Use a new management
 request ID for a fresh read; reusing one intentionally returns its old snapshot.
+
+## Automatic countdown resume (local follow-up)
+
+The checkbox and `--resume-on-work` require a stopped (`LOCKED`) unfinished
+attempt. They authorize one future clock change for that exact pause; they do
+not allow access or change monitoring requirements. Sign-in, preflight, Allow
+resume, failed native restoration and failed browser input acknowledgement leave
+the countdown paused. The successful existing Resume exam workflow supplies the
+recorded acceptance instant. The normal signed native clock path applies it.
+
+The option stays in the existing durable clock intent. Successful continuation
+is already durably audited. A causal audit cursor, generation and exact pause
+intent exclude older events and superseded pauses, including equal timestamps.
+This is independent of deletable monitoring history. Gateway restart, transport
+failure and pending time edits retry the same resume request and preserve its
+original acceptance instant; a delayed acknowledgement never starts a fresh full
+allowance. No schema or native execution-protocol change is introduced.
+
+Inspection: `web clocks show REQUEST` includes `intent.resume_on_work`;
+`web attempts show ATTEMPT` includes `timer_resume_on_work`. The normal pending
+versus confirmed distinction still applies. Manual **Resume countdown** starts
+the timer immediately and ends the automatic wait. Finish/completion makes the
+option unusable; a later manually paused countdown cannot inherit it. Changing
+time while waiting changes the saved remainder, not the successful-resume time.
+The existing root clock poll provides bounded restart recovery (100 candidates
+per pass with a cursor); no account reservation or execution permission follows
+from this metadata. Use matching updated web/CLI readers for the new metadata.
+
+Local verification (November6): full application829pass/3existing opt-in skips,
+22focused HTTP/Continue/restart/negative checks, full examctl race suite, affected
+native core clock races, build/types and3desktop/mobile countdown browsers pass.
+The CLI integration invokes the compiled root-mapped executable over local TLS.
+The Continue integration uses actual HTTP, worker and SSH; native restoration and
+browser input acknowledgement are explicit synthetic seams. Native execution
+code/protocol is unchanged; its previous privileged qualification still applies.
+No new privileged automatic-resume journey or release installation is claimed.
+
+Evidence: var/collection-tests/timer-resume-on-work.20261106/. The initial full
+run had828passes and one ordinary Begin timeout while browser startup overlapped;
+that unchanged case passes alone in6.11seconds under its original15-second limit.
+The full retry without browser/build competition passes in414.29seconds. Original
+failed receipts are retained. Two focused fixture errors (missing signed health;
+missing exam selection after reload) were corrected without changing enforcement.
+Inspection, cancellation, restart, stale completion and admission were reviewed
+before broad qualification; the option never reserves an account or thaws work.
+The final source edit after qualification only corrects a delivery comment;
+runtime behavior and test inputs remain unchanged.
 
 ## Explicit time changes, not recovery grants
 

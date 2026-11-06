@@ -1,35 +1,39 @@
-# Current checkpoint — timer controls DEPLOYED, site ONLINE
+# Current checkpoint — automatic countdown resume COMPLETE LOCALLY
 
-November6,2026,09:36:52UTC reopening. Current authorized milestone is complete;
-no open policy decision, missing dependency or pending deployment. User approved
-countdown-only pause with monitored work, customizable Allow resume validity/no
-expiry, immediate authenticated time delivery and60-second operational timeouts.
-Deployment with admin sessions was authorized. No push was requested or performed.
+November6. The requested option is implemented/tested and committed locally;
+no open design choice or blocker remains. Not pushed/deployed; no new production
+authorization was given. Deployed baseline remains5ed57ca/Config1942b7f9,
+pushed through d800db8 before this new request. Original screenshots preserved.
 
-## Validated and installed
+## Delivered workflow and verification
 
-Runtime5ed57ca2b8a79134207d81d32ca99e498e4b8e5d; qualification2926c6f;
-proof-only repair e9bfe5b. Web Config1942b7f9311561fe6b8da50674abe80a3854673b0575a0e9f371f4f8e159df52.
-All5native files installed; matching agent/watchdog/source/relay PIDs910600,
-910596,910598,910635. All8public assets/TLS, signed CLI read, installed/loaded
-hashes, relay trust, readiness/notifications and41preservation contracts pass.
-Original snapshot/current history preserved; video pause RELEASED.
+For a stopped student's Pause countdown action, the optional checkbox starts the
+saved countdown only after successful Resume exam/input agreement. Off by default;
+working students keep direct manual pause. CLI pause-timer --resume-on-work uses
+the same audited policy. Sign-in/approval/failures/older events cannot trigger it.
+Exact pause identity plus a causal audit boundary protects same-timestamp cases.
+Retries, restart, queued time edits and manual override preserve the original
+successful-resumption instant; completion cannot reopen. Monitoring/holds and
+original interval remain unchanged. No schema/native execution change.
 
-Local verification:822application passes/3existing opt-in skips; full native
-races;28actual user-systemd/PTYS supervisor scenarios;85unique selected browsers;
-real root installation/relay/nginx; exact shipped-WASM/native pause/time/no-expiry/
-SSH-loss/files-recovery/Finish journey; exact-image current-data recovery. Details
-and explicit synthetic jump/MFA/media seams: docs/timer-controls-followup.md.
+Evidence: var/collection-tests/timer-resume-on-work.20261106/.
+- application-final.log:829pass/3existing opt-in skips,414.29s, including actual
+  compiled root-mapped CLI/TLS workflow. Prior828pass/1ordinary Begin timeout is
+  retained; unchanged isolated case passes6.11s and clean full retry passes.
+- focused-final.log:22pass, including real student Continue and failed native /
+  browser acknowledgement. Native restoration/input acknowledgements simulated.
+- cli-race.log, clock-core-race.log:fullCLI / affected native clock races pass.
+- browser-final.log:3desktop/mobile flows pass; build/types pass.
+No fresh privileged automatic-resume/release-installation claim. Existing native
+execution is unchanged. Details/policy/inspection/recovery: attempt-clock-management.md.
+The final delivery-comment correction changes no tested runtime behavior.
 
-A stale30s nonce-lifetime verifier blocked running-candidate preservation. Its
-startup fixture had also retained30s. Qualified60s proof-only recovery succeeded
-without restart, replaced snapshot or modified prepared inputs.34preservation,
-35controller and5repair tests pass; exact-image63s startup uses real60s signed
-requests and verifies41contracts/11mutation refusals/current-data recovery.
-Maintenance21m23.67s; instruction-to-reopening4h42m08s includes development.
-No student record/clock/grant was changed for production acceptance.
+Next only upon explicit instruction: push and/or prepare a qualified matched web/
+CLI release with existing safe installation/recovery procedures. No deployment
+was attempted for this follow-up. The site remains on its prior verified release.
 
-## Recovery and evidence
+## Prior production recovery baseline
+
 
 Evidence: var/collection-tests/timer-controls.20261105a/; release.json,
 locations.json, operator-freeze.json, proof-repair-stage.json, per-phase receipts,

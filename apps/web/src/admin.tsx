@@ -122,10 +122,18 @@ export function Admin({
     [alerts, setAlerts] = useState(false);
   const [selection, setSelection] = useState(new Set<string>());
   const [timerBusy, setTimerBusy] = useState<string | null>(null);
+  const [pausingTimer, setPausingTimer] = useState<any>(null);
+  const [resumeOnWork, setResumeOnWork] = useState(false);
+  const [timerError, setTimerError] = useState("");
   const timerRequests = useRef(
     new Map<
       string,
-      { revision: number; timerAction: "pause" | "resume"; requestID: string }
+      {
+        revision: number;
+        timerAction: "pause" | "resume";
+        requestID: string;
+        resumeOnWork?: boolean;
+      }
     >(),
   );
   const [operation, setOperation] = useState<StudentAction | null>(null),
@@ -478,22 +486,25 @@ export function Admin({
       onError((e as Error).message);
     }
   };
-  const changeTimer = async (a: any) => {
+  const changeTimer = async (a: any, automatic = false) => {
     const timerAction = timerPaused(a) ? "resume" : "pause";
     let body = timerRequests.current.get(a.id);
     if (
       !body ||
       body.revision !== a.clock_revision ||
-      body.timerAction !== timerAction
+      body.timerAction !== timerAction ||
+      !!body.resumeOnWork !== automatic
     ) {
       body = {
         timerAction,
         revision: a.clock_revision || 0,
         requestID: crypto.randomUUID(),
+        ...(automatic ? { resumeOnWork: true } : {}),
       };
       timerRequests.current.set(a.id, body);
     }
     setTimerBusy(a.id);
+    setTimerError("");
     try {
       const result = await api(`/admin/attempts/${a.id}/timer`, body);
       setNotice(
@@ -502,9 +513,11 @@ export function Admin({
           : `${timerAction === "pause" ? "Pausing" : "Resuming"} countdown…`,
       );
       timerRequests.current.delete(a.id);
+      setPausingTimer(null);
       await refresh();
     } catch (error) {
-      setError((error as Error).message);
+      if (pausingTimer) setTimerError((error as Error).message);
+      else setError((error as Error).message);
     } finally {
       setTimerBusy(null);
     }
@@ -1418,7 +1431,11 @@ export function Admin({
                                       </time>
                                       {["ACTIVE", "LOCKED"].includes(a.state) &&
                                         timerPaused(a) && (
-                                          <span>Countdown paused</span>
+                                          <span>
+                                            {a.timer_resume_on_work
+                                              ? "Countdown resumes with student"
+                                              : "Countdown paused"}
+                                          </span>
                                         )}
                                       {![
                                         "COMPLETED",
@@ -1512,7 +1529,15 @@ export function Admin({
                                                     disabled:
                                                       !editable || !!timerBusy,
                                                     onSelect: () => {
-                                                      void changeTimer(a);
+                                                      if (
+                                                        !timerPaused(a) &&
+                                                        a.state === "LOCKED"
+                                                      ) {
+                                                        setResumeOnWork(false);
+                                                        setTimerError("");
+                                                        setPausingTimer(a);
+                                                      } else
+                                                        void changeTimer(a);
                                                     },
                                                   },
                                                 ]
@@ -1771,6 +1796,44 @@ export function Admin({
               }}
             >
               {removingBusy ? "Deleting…" : "Delete student"}
+            </button>
+          </div>
+        </Modal>
+      )}
+      {pausingTimer && (
+        <Modal
+          title={`Pause countdown for ${pausingTimer.username}`}
+          onClose={() => {
+            if (!timerBusy) setPausingTimer(null);
+          }}
+        >
+          <p>The student's remaining time will stay fixed.</p>
+          <label>
+            <input
+              type="checkbox"
+              checked={resumeOnWork}
+              disabled={!!timerBusy}
+              onChange={(event) => setResumeOnWork(event.target.checked)}
+            />
+            Automatically resume countdown when the student resumes work
+          </label>
+          {timerError && (
+            <p role="alert" className="warn">
+              {timerError}
+            </p>
+          )}
+          <div className="actions">
+            <button
+              disabled={!!timerBusy}
+              onClick={() => setPausingTimer(null)}
+            >
+              Cancel
+            </button>
+            <button
+              disabled={!!timerBusy}
+              onClick={() => void changeTimer(pausingTimer, resumeOnWork)}
+            >
+              {timerBusy ? "Pausing…" : "Pause countdown"}
             </button>
           </div>
         </Modal>

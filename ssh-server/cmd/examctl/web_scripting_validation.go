@@ -21,7 +21,7 @@ func validateScriptListRows(operation string, body map[string]any, rows []map[st
 	} // Existing typed grant/exam validators run first.
 	allowed := "exam username webcam duration uid attempt recovery_allowance_edit"
 	if operation == "attempts.list" {
-		allowed = "id exam username uid state settings preflight_started_at start deadline original_deadline clock_revision timer_paused_at timer_remaining_ms monitoring_mode ended generation last_contact reason work_path export_status checksum protected completed_at collected_at secured_at policy_state policy_expires policy_error access_state access_held_at access_released_at access_override access_checked_at access_error functional_test grant_id grant_revision grant_hash attempt_number connected working terminalCount grantContext pendingClockReset"
+		allowed = "id exam username uid state settings preflight_started_at start deadline original_deadline clock_revision timer_paused_at timer_remaining_ms timer_resume_on_work monitoring_mode ended generation last_contact reason work_path export_status checksum protected completed_at collected_at secured_at policy_state policy_expires policy_error access_state access_held_at access_released_at access_override access_checked_at access_error functional_test grant_id grant_revision grant_hash attempt_number connected working terminalCount grantContext pendingClockReset"
 	}
 	fields := map[string]bool{}
 	for _, key := range strings.Fields(allowed) {
@@ -62,6 +62,11 @@ func validateScriptListRows(operation string, body map[string]any, rows []map[st
 				}
 			}
 			timer := map[string]int64{}
+			if value, exists := row["timer_resume_on_work"]; exists {
+				if _, ok := value.(bool); !ok {
+					return errors.New("automatic timer metadata is not boolean")
+				}
+			}
 			for _, key := range []string{"timer_paused_at", "timer_remaining_ms"} {
 				if value, exists := row[key]; exists {
 					number, ok := value.(json.Number)

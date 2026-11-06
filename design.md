@@ -5,6 +5,19 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 6 local follow-up: countdown resumes with student work
+
+A stopped student's Pause countdown action may opt into automatic countdown
+resume. It remains off by default. Only the existing successful Resume exam
+outcome supplies the start instant; login, approval, pending native restoration
+and unacknowledged browser input do not. The original paused allowance, original
+interval and access/monitoring restrictions remain intact. The durable clock
+intent binds the choice to its exact pause and a causal audit cursor; the normal
+signed clock delivery uses the recorded successful-resumption instant across
+retries, restart and queued time edits. Manual countdown resume/completion ends
+waiting. No native execution mechanism or schema is added. This follow-up is
+local only; see docs/attempt-clock-management.md.
+
 ## November 6 deployed follow-up: timeouts and prompt clock delivery
 
 Operational network waits and monitoring freshness use 60 seconds. This is not a

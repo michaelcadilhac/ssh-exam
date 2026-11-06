@@ -18,12 +18,15 @@ export const clockSingle = z
     id: attemptReference,
     minutes: z.number().int().min(1).max(360).optional(),
     timerAction: z.enum(["pause", "resume"]).optional(),
+    resumeOnWork: z.boolean().optional(),
     revision: z.number().int().nonnegative(),
     requestID: z.string().uuid(),
   })
   .strict()
   .refine(
-    (b) => (b.timerAction ? b.minutes === undefined : b.minutes !== undefined),
+    (b) =>
+      (b.timerAction ? b.minutes === undefined : b.minutes !== undefined) &&
+      (b.resumeOnWork === undefined || b.timerAction === "pause"),
     "Choose timerAction or minutes, not both",
   );
 export const clockBatchBody = z
@@ -78,6 +81,7 @@ export function clockIntentMetadata(body: any) {
       "extend_seconds",
       "pause_timer",
       "resume_timer",
+      "resume_on_work",
       "deadline",
       "clock_revision",
     ]

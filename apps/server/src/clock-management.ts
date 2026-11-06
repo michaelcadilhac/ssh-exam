@@ -60,6 +60,7 @@ export class ClockManagement {
           b.requestID,
           extend,
           b.timerAction,
+          b.resumeOnWork,
         );
         return this.describe(b.id, b.requestID);
       })();
