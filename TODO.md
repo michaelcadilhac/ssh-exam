@@ -1,4 +1,18 @@
-# Current follow-up — files-only SAME-attempt resume DEPLOYED
+# Current follow-up — pending clock blocks SSH-loss recovery
+
+Urgent web sourcec5f95f7 deployed November5 at20:31:12 Chicago under explicit
+login/broad-test waiver: skip clock delivery during retained replacement-page
+claim until SSH ownership transfers. Native ownership checks unchanged. Build,
+public assets/readiness and current-data preservation pass; no native restart.
+
+Separate confirmed native defect: an authorized clock change can require a
+supervisor lost after SSH exit. Native safely holds work/collection. Narrow local
+clock-only correction preserves LOCKED/HELD and original intervals; signed TLS/
+restart and five unsafe/live refusal regressions pass; NOT DEPLOYED. Requested
+30-minute increase remains unconfirmed. Timing choice pending; do not edit
+immutable intents, refund time or reopen completed work. See current checkpoint.
+
+# Previous follow-up — files-only SAME-attempt resume DEPLOYED
 
 November4 at18:38:38 Chicago: frozen matched sourcec7ed0d6/feature0c52b07,
 imageConfig5aced132/schema37 deployed under explicit instruction. Complete drains,

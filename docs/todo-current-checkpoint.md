@@ -1,4 +1,31 @@
-# Current milestone — files-only SAME-attempt resume DEPLOYED AND ONLINE
+# Current milestone — urgent page-claim fix DEPLOYED; native clock repair LOCAL
+
+November5,20:31:12 Chicago: web sourcec5f95f7/image5d9d429e is online under the
+instructor's explicit login/broad-test waiver. Replacement-page claim no longer
+delivers a pending clock change before transferring SSH ownership. Native checks
+and services unchanged. Build, readiness/all8 assets, historical rows and original
+deadline preservation pass. Current snapshot:
+/data/ssh-exam-claim-clock-c5f95f7-20261105/snapshot. Private evidence:
+var/incident-reports/jcalvil5-midterm.20261105/urgent-claim-fix/. An incorrect local
+readiness port3000 (actual3001) delayed reopening; the qualified public probe
+reopened the same running candidate without another restart/snapshot replacement.
+
+The requested total30-minute extension is NOT APPLIED. The immutable5-minute
+intent remains pending: native handover requires the old supervisor, which is
+gone after SSH exit. Native stays LOCKED/uncollected; web shows FINALIZING.
+Timing choice pending in the dialog: fixed9:00:35PM deadline versus30minutes
+from actual resumption. Do not assume an answer, rewrite an in-flight request,
+refund time, release holds or reopen completed work.
+
+Independent native fix is LOCAL: verified SSH-exit identity, modern supervised
+mode, LOCKED/HELD and no workloads/protected work permit only a durable clock
+update, creating no execution authority. Other cases retain the handshake. Real
+signed TLS/restart plus five unsafe/live refusal cases pass native races1.118s;
+first fixture failure retained (original-interval seed corrected). No native
+deployment or broad verification claimed. Preserve ten dirty screenshots. Next:
+resolve the timing choice and complete its supported recovery.
+
+# Previous milestone — files-only SAME-attempt resume DEPLOYED AND ONLINE
 
 November4,18:38:38 Chicago (November5,00:38:38UTC): explicit Deploy completed
 with frozen web/native source c7ed0d6, feature0c52b07, image Config5aced132/schema37

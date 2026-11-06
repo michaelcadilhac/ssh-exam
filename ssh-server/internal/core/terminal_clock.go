@@ -12,6 +12,22 @@ import (
 
 var errTerminalClock = errors.New("retained clock handover is unconfirmed; retry the SAME instructor clock intent and inspect the original attempt/supervisor; no new monitoring freshness or continuation granted")
 
+// An exact recorded SSH exit is negative lifetime evidence, never execution
+// permission. With no retained workloads there is no live cutoff to transfer.
+// Keep the attempt locked and its access hold; a new owner still needs the full
+// authenticated, challenged files-only continuation before any work can start.
+func clockWithoutRetainedWork(a *Attempt) bool {
+	if a == nil || a.MonitoringMode != "v1" || !a.BrowserSSH || !a.TerminalSupervised || a.State != "LOCKED" || a.Start <= 0 ||
+		a.AccessState != "HELD" || a.Protected || a.Checksum != "" || len(a.Units) != 0 ||
+		a.RegisteredOwner == nil || a.SSHExitedOwner == nil {
+		return false
+	}
+	o := a.RegisteredOwner
+	return validMonitoringOwner(*o) && sameExitedLifetime(*a.SSHExitedOwner, *o) &&
+		o.Attempt == a.ID && o.Exam == a.Exam && o.Username == a.Username && o.UID == a.UID &&
+		o.TransportHash == a.Transport && o.Boot == a.Boot && o.ClockRevision == a.ClockRevision
+}
+
 func (s *terminalSupervisor) changeAuthorityClock(q terminalAuthorityRequest) (monitoringAuthorityView, error) {
 	if q.Clock == nil || q.NextOwner == nil || !attemptID.MatchString(q.Clock.ID) || q.Clock.Revision != q.Owner.ClockRevision+1 || q.Clock.Deadline != q.Deadline || q.Clock.AppliedAt <= 0 || q.Clock.Actor == "" || q.DeadlineBootMS <= 0 {
 		return monitoringAuthorityView{}, errMonitoringScope
@@ -167,6 +183,9 @@ func (e *Engine) terminalClockRequest(a *Attempt, change ClockReset) (terminalAu
 }
 
 func (e *Engine) commitTerminalClock(a *Attempt, change ClockReset) error {
+	if clockWithoutRetainedWork(a) {
+		return nil
+	}
 	if err := e.prepareTerminalMonitoring(); err != nil {
 		return fmt.Errorf("%w: %v", errTerminalClock, err)
 	}

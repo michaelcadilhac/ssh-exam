@@ -1,5 +1,21 @@
 # Resume after SSH loss
 
+November5 urgent follow-up: web sourcec5f95f7 is deployed. A pending clock change
+must not be sent over replacement SSH during page claim: the native owner has
+not transferred yet. Retained claims now defer that delivery; native ownership
+checks remain intact. Build/readiness/assets and historical/current original
+deadline preservation pass. Broad tests/logins were explicitly waived; no native
+service restart. Current checkpoint records the probe-port correction and receipt.
+
+Separate native clock correction remains LOCAL: after an exact verified old SSH
+exit, LOCKED/HELD modern supervision and zero recorded workloads/protected work,
+there is no live cutoff to hand over. Persist the authorized clock adjustment
+without recreating an execution authority or requiring the dead supervisor.
+Active/unknown/mismatched/retained-work cases retain their existing handover.
+Signed HTTPS timing/restart and five unsafe/live refusal cases pass races1.118s.
+No native deployment or broad qualification claimed. A requested live allowance
+is not reported applied while the corresponding native intent remains pending.
+
 November 4, 2026: implemented/tested locally, including joined privileged
 qualification with actual release-native roles. Nothing deployed. The instructor now
 explicitly authorizes fresh SSH/MFA and fresh terminals on the SAME unfinished
