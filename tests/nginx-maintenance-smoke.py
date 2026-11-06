@@ -17,6 +17,10 @@ import sys
 import tempfile
 import threading
 import time
+from urllib.error import HTTPError
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+from public_reopen_readiness import run as public_reopen
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -101,20 +105,21 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                 if fenced:
                     command.append('--fence')
                 subprocess.run(command, check=True, capture_output=True, text=True, timeout=10)
-            text = candidate.read_text()
-            text = re.sub(r'^\s*listen \[::\]:[^;]+;\n', '', text, flags=re.M)
-            text = text.replace('listen 80;', f'listen 127.0.0.1:{plain};')
-            text = text.replace('listen 443 ssl;', f'listen 127.0.0.1:{secure} ssl;')
-            text = re.sub(r'127\.0\.0\.1:300[01]\b', f'127.0.0.1:{upstream.server_port}', text)
-            text = re.sub(r'access_log [^;]+;', 'access_log off;', text)
-            text = re.sub(r'ssl_certificate [^;]+;', f'ssl_certificate {root}/cert.pem;', text)
-            text = re.sub(r'ssl_certificate_key [^;]+;', f'ssl_certificate_key {root}/key.pem;', text)
-            text += (f'\nserver {{ listen 127.0.0.1:{secure} ssl; server_name unrelated.test; '
-                     f'ssl_certificate {root}/cert.pem; ssl_certificate_key {root}/key.pem; return 200 "unrelated site"; }}\n')
+            def localize(text):
+                text = re.sub(r'^\s*listen \[::\]:[^;]+;\n', '', text, flags=re.M)
+                text = text.replace('listen 80;', f'listen 127.0.0.1:{plain};')
+                text = text.replace('listen 443 ssl;', f'listen 127.0.0.1:{secure} ssl;')
+                text = re.sub(r'127\.0\.0\.1:300[01]\b', f'127.0.0.1:{upstream.server_port}', text)
+                text = re.sub(r'access_log [^;]+;', 'access_log off;', text)
+                text = re.sub(r'ssl_certificate [^;]+;', f'ssl_certificate {root}/cert.pem;', text)
+                text = re.sub(r'ssl_certificate_key [^;]+;', f'ssl_certificate_key {root}/key.pem;', text)
+                return text + (f'\nserver {{ listen 127.0.0.1:{secure} ssl; server_name unrelated.test; '
+                               f'ssl_certificate {root}/cert.pem; ssl_certificate_key {root}/key.pem; return 200 "unrelated site"; }}\n')
             config = root/'nginx.conf'
-            config.write_text(f'daemon off; master_process off;\npid {root}/pid;\nerror_log {root}/error.log;\nevents {{}}\nhttp {{\naccess_log off;\n'
+            prefix = (f'daemon off; master_process on;\npid {root}/pid;\nerror_log {root}/error.log;\nevents {{}}\nhttp {{\naccess_log off;\n'
                 + ''.join(f'{name}_temp_path {root}/{name};\n' for name in ('client_body', 'proxy', 'fastcgi', 'uwsgi', 'scgi'))
-                + text + '\n}\n')
+            )
+            config.write_text(prefix + localize(candidate.read_text()) + '\n}\n')
             syntax = subprocess.run([nginx, '-t', '-p', str(root), '-c', str(config)], capture_output=True, text=True, timeout=10)
             if syntax.returncode:
                 upstream.shutdown(); upstream.server_close(); thread.join(timeout=5)
@@ -175,6 +180,30 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                     assert status == 503 and headers.get('X-Synthetic-Upstream') == '1' and headers.get('Retry-After') == '5', (path, status, headers, body)
                     assert json.loads(body)['code'] == 'CAPACITY'
                 assert request('/', host='unrelated.test')[0] == 200
+                reload_receipt = None
+                if fenced and not args.baseline and site == 'ssh-exam.cadilhac.name.conf':
+                    normal = root/'reload-normal.conf'
+                    subprocess.run([sys.executable, str(repository/'scripts/render-rollout-nginx'), '--site', str(source), '--output', str(normal)], check=True, capture_output=True, timeout=10)
+                    closed = config.read_bytes()
+                    opened = (prefix + localize(normal.read_text()) + '\n}\n').encode()
+                    config.write_bytes(opened)
+                    subprocess.run([nginx, '-t', '-p', str(root), '-c', str(config)], check=True, capture_output=True, timeout=10)
+                    started = time.monotonic()
+                    subprocess.run([nginx, '-s', 'reload', '-p', str(root), '-c', str(config)], check=True, capture_output=True, timeout=10)
+                    def public_check():
+                        status, headers, body = request('/')
+                        if status != 200: raise HTTPError('https://private-reload.invalid/', status, 'Actual nginx reply', headers, None)
+                        assert body == b'synthetic upstream'
+                        return True
+                    assert public_reopen(public_check, True, lambda: config.read_bytes() == opened)
+                    reload_receipt = {'actual_master_reload': True, 'normal_site_installed': True,
+                                      'public_predicate_seconds': time.monotonic()-started, 'master_pid_preserved': process.poll() is None}
+                    config.write_bytes(closed)
+                    subprocess.run([nginx, '-s', 'reload', '-p', str(root), '-c', str(config)], check=True, capture_output=True, timeout=10)
+                    until = time.monotonic()+5
+                    while request('/')[0] != 503:
+                        assert time.monotonic() < until
+                        time.sleep(.05)
                 upstream.shutdown(); upstream.server_close(); thread.join(timeout=5); stopped = True
                 assert not thread.is_alive()
                 for path in (*paths, '/api/agent/status', '/api/student/attempts/synthetic/status', '/api/student/attempts/synthetic/finish'):
@@ -185,6 +214,7 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                     subprocess.run(['node', str(repository/'tests/nginx-maintenance-browser.mjs'), f'https://127.0.0.1:{secure}', str(args.output/site/str(fenced))], check=True, timeout=60)
                 receipt = {'site': site, 'fenced': fenced, 'healthy_agent_status_finish_preserved': True, 'ordinary_401_preserved': True,
                            'unrelated_site_preserved': True, 'upstream_unavailable': '503 with Retry-After and HTML/JSON', 'syntax': 'PASS'}
+                if reload_receipt: receipt['reload'] = reload_receipt
                 receipts.append(receipt)
                 print(json.dumps(receipt), flush=True)
             finally:

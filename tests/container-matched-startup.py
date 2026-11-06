@@ -33,7 +33,7 @@ p.add_argument('--image',required=True)
 p.add_argument('--image-receipt',required=True,type=Path)
 p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
-p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1'),default='live-exam-execution-policy-v1')
+p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'
 assert a.docker_host in ('unix:///var/run/docker.sock',f'unix:///run/user/{os.getuid()}/docker.sock')

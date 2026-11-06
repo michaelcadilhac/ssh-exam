@@ -193,3 +193,44 @@ joined rerun; the first image is NOT eligible for deployment. Earlier queued
 capture failures were this rendering crash, not missing camera evidence or a
 native timer failure. Temporary timer instrumentation was removed before final
 qualification; bounded response/browser diagnostics remain in the test.
+
+## Frozen corrected release — locally qualified, not deployed
+
+Runtime source5ed57ca2b8a79134207d81d32ca99e498e4b8e5d; image Config
+1942b7f9311561fe6b8da50674abe80a3854673b0575a0e9f371f4f8e159df52.
+Export8e45004bf7e47690c01472d781fd9a511a6b485ab8f2cc17840d86d81a23aa46,
+295880704bytes. The corrected image was built once in25.92s. All eight shipped
+assets, Config bytes and rootfs diff IDs are pinned independently of the source
+engine's manifest identity. Native ELF files are unchanged from their qualified
+build; original dirty documentation screenshots remain untouched.
+
+Final same-schema/history/media smoke passes. Real startup/recovery passes in
+63.07s with13 signed polls,41 preservation contracts,11 mutation refusals and no
+replacement snapshot/additional start. The exact shipped browser/native journey
+passes in50.2s: live pause and immediate95min saved remainder, no-expiry approval,
+actual SSH loss and fresh files continuation preserving that pause, explicit
+countdown resume and protected Finish on the SAME attempt. Real loaded roles
+use no test readiness override. Independent guest checks confirm exact native
+hashes, inactive unit/MainPID0/no owned processes and unchanged host/base.
+See packaged-browser-native-final.log, packaged-browser-native-root.log and
+packaged-browser-native-cleanup.json. The synthetic jump/MFA/media remain explicit
+seams; this is not a new human production exam.
+
+All ten continuation browser cases pass, including the new no-expiry crash
+regression. Native/authority/server sources are unchanged by the rendering fix;
+their822 application/full-race/28actual-supervisor receipts still apply, with
+focused continuation unit/type/build checks covering the final presentation.
+Actual local nginx master/worker reload uses the production reopening predicate
+and current normal/fenced templates: public reopening0.220s, master preserved,
+owned processes and synthetic TLS keys removed. Maintenance/browser/ordinary
+refusal paths also pass. Five-file native installer and current production guard
+producer pins are distinct and correctly frozen.
+
+The generated matched manifest validates against the real controller. Online
+preparation must reuse verified current-image coverage/shared immutable media,
+take fresh current snapshots and retain zero student/unfinished-attempt guards.
+The explicitly authorized admin-only sign-out may be audited without asking
+again. Native roles/relay and web must be installed together; rollback is
+forward-only using the matched candidate with CURRENT data, never an old writer
+or historical database restore. Unexpected post-fence errors get one30s read-only
+diagnosis and qualified recovery, preserving the fence if unresolved.

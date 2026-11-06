@@ -348,12 +348,30 @@ class CoordinatorOutage:
 
 
 def verify_fixture_clock(attempt):
-    """Private browser acceptance: original90min or ONE explicit90min reset."""
+    """Private browser acceptance: exact original/reset or pause/edit/resume."""
     start, original = attempt['start'], attempt['original_deadline']
     assert attempt['access_state'] == 'HELD' and original - start == 5400000
     resets = attempt.get('clock_resets', [])
     if not resets:
         assert attempt.get('clock_revision', 0) == 0 and attempt['deadline'] == original
+        return
+    if len(resets) == 3:
+        pause, edit, resume = resets
+        assert attempt['clock_revision'] == 3
+        assert [r['revision'] for r in resets] == [1, 2, 3]
+        assert len({r['id'] for r in resets}) == 3 and all(r['actor'] == 'instructor' for r in resets)
+        assert all(re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', r['id']) for r in resets)
+        assert pause['pause_timer'] and not pause.get('resume_timer')
+        assert pause['previous_deadline'] == pause['deadline'] == original
+        assert pause['timer_paused_at'] == pause['requested_at'] and start <= pause['requested_at'] < original
+        assert pause['timer_remaining_ms'] == original-pause['requested_at']
+        assert edit['remaining_seconds'] == 5700 and not edit.get('pause_timer') and not edit.get('resume_timer')
+        assert edit['previous_deadline'] == original and edit['timer_paused_at'] == pause['timer_paused_at']
+        assert edit['timer_remaining_ms'] == 5700000 and edit['deadline'] == pause['timer_paused_at']+5700000
+        assert resume['resume_timer'] and not resume.get('pause_timer') and resume['applied_boot_ms'] > 0
+        assert resume['previous_deadline'] == edit['deadline'] and resume.get('timer_paused_at', 0) == resume.get('timer_remaining_ms', 0) == 0
+        assert attempt.get('timer_paused_at', 0) == attempt.get('timer_remaining_ms', 0) == 0
+        assert attempt['deadline'] == resume['deadline'] == resume['requested_at']+5700000
         return
     assert len(resets) == 1 and attempt.get('clock_revision') == 1
     reset = resets[0]

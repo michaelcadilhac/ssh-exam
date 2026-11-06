@@ -24,7 +24,8 @@ policy. Durable clock history records pause, adjustments and resume; original
 deadlines remain historical facts. Allow resume approval accepts custom minutes
 or no expiry, independently of countdown pause; completion/revocation still
 apply. Both controls have matching web/examctl workflows and are locally tested.
-Exact release qualification remains unfinished.
+Exact local release qualification passes for source5ed57ca/imageConfig1942b7f9;
+production preparation/cutover remains pending.
 See docs/timer-controls-followup.md for acceptance and verification.
 
 November2 status-copy follow-up, DEPLOYED at17:34:57 Chicago: saved-

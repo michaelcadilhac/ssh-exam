@@ -15,9 +15,11 @@ the same attempt without adding time. Countdown-only pause, explicit countdown
 resume, custom Allow resume approval validity/no expiry, admin controls and
 matching examctl commands are implemented/tested locally. Paused attempts keep
 normal monitoring and account holds; Finish protects their saved work. Full
-native races and all 28 actual supervisor scenarios pass. Final browser and
-matched installation/image/current-data recovery qualification remain in
-progress. Nothing from this follow-up is deployed.
+native races and all 28 actual supervisor scenarios pass. Browser, real matched
+native/relay/nginx installation, exact corrected-image startup/current-data
+recovery and joined shipped-WASM/native timer/files-recovery qualification pass.
+Source5ed57ca/imageConfig1942b7f9 is frozen. Online production preparation and
+guarded cutover are next. Nothing from this follow-up is deployed.
 
 # Previous follow-up — pending-clock SSH recovery fixes DEPLOYED
 

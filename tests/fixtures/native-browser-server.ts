@@ -160,6 +160,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     capacityRecovery: process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1",
     sshRecovery: process.env.EXAM_BROWSER_NATIVE_SSH_RECOVERY === "1",
     continueClock: process.env.EXAM_BROWSER_NATIVE_CONTINUE_CLOCK === "1",
+    timerControls: process.env.EXAM_BROWSER_NATIVE_TIMER_CONTROLS === "1",
     log: data + "/native-root.log",
   };
 });

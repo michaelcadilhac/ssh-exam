@@ -1,5 +1,6 @@
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 import { z } from "zod";
+import { mkdir, writeFile } from "node:fs/promises";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
 const origin = "https://127.0.0.1:9444";
@@ -18,6 +19,9 @@ const native = z
         original_deadline: z.number().default(0),
         access_state: z.string(),
         checksum: z.string(),
+        clock_revision: z.number().int().default(0),
+        timer_paused_at: z.number().int().default(0),
+        timer_remaining_ms: z.number().int().default(0),
         grant: z.object({ id: z.string().uuid() }).passthrough(),
         registered_owner: z.record(z.string(), z.unknown()).optional(),
         ssh_exited_owner: z.record(z.string(), z.unknown()).optional(),
@@ -57,6 +61,11 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
   });
   expect(login.ok(), await login.text()).toBe(true);
   const headers = { origin, "x-csrf-token": (await login.json()).csrf };
+  const timerControls = process.env.EXAM_BROWSER_NATIVE_TIMER_CONTROLS === "1";
+  if (timerControls) {
+    expect(process.env.EXAM_BROWSER_NATIVE_FILES_RESUME).toBe("1");
+    expect(metadata.timerControls).toBe(true);
+  }
   const inspect = async (id: string) => {
     const response = await request.get("/api/fixture/native-state", {
       params: { attempt: id },
@@ -88,6 +97,47 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
         await request.get("/api/admin/attempts", { params: { q: "examq" } })
       ).json()
     ).attempts as any[];
+  const changeTimer = async (
+    id: string,
+    action: "pause" | "resume" | "increase",
+  ) => {
+    const previous = (await inspect(id)).attempt;
+    const response = await request.post(
+      `/api/admin/attempts/${id}/${action === "increase" ? "reset-clock" : "timer"}`,
+      {
+        headers,
+        data: {
+          revision: previous.clock_revision,
+          requestID: crypto.randomUUID(),
+          ...(action === "increase"
+            ? { minutes: 95 }
+            : { timerAction: action }),
+        },
+        timeout: 10000,
+      },
+    );
+    expect(response.ok(), await response.text()).toBe(true);
+    await expect
+      .poll(
+        async () => {
+          const a = (await inspect(id)).attempt;
+          return (
+            a.clock_revision === previous.clock_revision + 1 &&
+            a.clock_handover_pending !== true
+          );
+        },
+        { timeout: 10000 },
+      )
+      .toBe(true);
+    await expect
+      .poll(
+        async () =>
+          (await publicAttempts()).find((a) => a.id === id)?.clock_revision,
+        { timeout: 10000 },
+      )
+      .toBe(previous.clock_revision + 1);
+    return (await inspect(id)).attempt;
+  };
   const signIn = async (context: BrowserContext) => {
     const page = await context.newPage();
     page.setDefaultTimeout(10000);
@@ -166,12 +216,13 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
     });
   };
   const contexts: BrowserContext[] = [];
+  const captureObservations: unknown[] = [];
   try {
     const first = await browser.newContext({ ignoreHTTPSErrors: true });
     contexts.push(first);
     const old = await preflight(first);
     const started = await begin(old.page);
-    const original = (await inspect(started.id)).attempt;
+    let original = (await inspect(started.id)).attempt;
     expect(original.deadline - original.start).toBe(5400000);
     await command(
       old.page,
@@ -183,6 +234,17 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
       "IFS= read -r saved < /work/recovery-proof.txt; printf 'CONFIRMED:%s\\n' \"$saved\"",
       "CONFIRMED:SAVED-before-genuine-SSH-loss",
     );
+    if (timerControls) {
+      original = await changeTimer(original.id, "pause");
+      expect(original.timer_paused_at).toBeGreaterThan(0);
+      await expect(old.page.locator(".time")).toContainText("Countdown paused");
+      original = await changeTimer(original.id, "increase");
+      expect(original.timer_remaining_ms).toBe(5700000);
+      await command(old.page, "printf 'UNTIMED-%s\\n' WORK", "UNTIMED-WORK");
+      expect((await inspect(original.id)).attempt.timer_remaining_ms).toBe(
+        5700000,
+      );
+    }
     // Actual noncooperative browser/SSH destruction, not a missing heartbeat.
     await first.close();
     await expect
@@ -249,10 +311,16 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
             requestID: crypto.randomUUID(),
             reason:
               "Private instructor approves same-deadline files-only resume",
+            ...(timerControls ? { validForMinutes: null } : {}),
           },
         },
       );
       expect(approval.ok(), await approval.text()).toBe(true);
+      if (timerControls)
+        expect(await approval.json()).toMatchObject({
+          noExpiry: true,
+          expires: Number.MAX_SAFE_INTEGER,
+        });
       const second = await browser.newContext({ ignoreHTTPSErrors: true });
       contexts.push(second);
       const next = await signIn(second);
@@ -261,11 +329,18 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
       next.page.on("response", async (response) => {
         if (
           new URL(response.url()).pathname.endsWith("/frames/challenged") &&
-          response.status() === 200
+          captureObservations.length < 32
         ) {
           try {
+            const value = await response.json();
+            captureObservations.push({
+              status: response.status(),
+              readiness: response.request().postDataJSON()?.readiness,
+              monitoring: value.monitoring,
+              error: value.error,
+            });
             completeCapture =
-              (await response.json()).monitoring?.complete === true;
+              response.status() === 200 && value.monitoring?.complete === true;
           } catch {
             /* Closed response cannot prove capture. */
           }
@@ -291,7 +366,13 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
         await control.click();
         await expect(control).toHaveAttribute("aria-pressed", "true");
       }
-      await expect.poll(() => completeCapture, { timeout: 15000 }).toBe(true);
+      await expect
+        .poll(() => completeCapture, {
+          timeout: 15000,
+          message:
+            "Current complete capture required before actual native files continuation",
+        })
+        .toBe(true);
       const resumeResponse = next.page.waitForResponse(
         (r) => new URL(r.url()).pathname.endsWith("/continue"),
         { timeout: 20000 },
@@ -321,6 +402,13 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
       expect(resumed.registered_owner!.page_epoch).not.toBe(
         original.registered_owner!.page_epoch,
       );
+      if (timerControls) {
+        expect(resumed.timer_paused_at).toBe(original.timer_paused_at);
+        expect(resumed.timer_remaining_ms).toBe(5700000);
+        await expect(next.page.locator(".time")).toContainText(
+          "Countdown paused",
+        );
+      }
       if ((await next.page.locator(".xterm-helper-textarea").count()) === 0)
         await next.page
           .getByRole("button", { name: "New terminal", exact: true })
@@ -338,6 +426,14 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
         "printf 'SAVED-actual-native-END\\n' > /work/browser-proof.txt; printf 'UNSAVED-native-editor\\n' > /work/browser-editor.txt; printf 'FILES-%s\\n' READY",
         "FILES-READY",
       );
+      if (timerControls) {
+        original = await changeTimer(original.id, "resume");
+        expect(original.timer_paused_at).toBe(0);
+        expect(original.timer_remaining_ms).toBe(0);
+        await expect(next.page.locator(".time")).not.toContainText(
+          "Countdown paused",
+        );
+      }
       await next.page
         .getByRole("button", { name: "Finish exam", exact: true })
         .click();
@@ -543,6 +639,12 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
       pages.map(async (page) => {
         try {
           return {
+            text: (await page.locator("body").innerText()).slice(-8000),
+            browser: await page.evaluate(() => ({
+              hidden: document.hidden,
+              focused: document.hasFocus(),
+              fullscreen: !!document.fullscreenElement,
+            })),
             terminal: (await page.locator(".xterm-rows").allTextContents())
               .join("\n")
               .slice(-4096),
@@ -559,8 +661,15 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
         }
       }),
     );
+    await mkdir(test.info().outputDir, { recursive: true });
+    const diagnostic = test.info().outputPath("student-boundary.json");
+    await writeFile(
+      diagnostic,
+      JSON.stringify({ observed, captureObservations }),
+      { mode: 0o600 },
+    );
     await test.info().attach("c7-student-boundary", {
-      body: JSON.stringify(observed),
+      path: diagnostic,
       contentType: "application/json",
     });
     throw error;
