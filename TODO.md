@@ -1,3 +1,17 @@
+# Disconnect review — investigated; two follow-ups remain OPEN
+
+November6 read-only production/source review: recovery/clock fixes are deployed,
+but initiating relay/monitoring failures are not all explained. The replacement
+attempt had two technical holds before confirmed SSH exit, then resumed and
+finished protected; a23.277s screen-arrival gap is consistent with the old15s
+cutoff.60s is a deployed mitigation, not proof of cause or live resolution: no new
+attempt has started since that release. Remaining bounded work: sanitized causal
+relay/browser/pane/authority diagnostics with actual stall regressions; correct the
+shipped15s browser relay bootstrap wait to60s and exercise delayed real startup.
+No production mutation or new fix/deployment is claimed by this review. Details:
+docs/disconnect-failures-review.md. These follow-ups do not invalidate the completed
+recovery workflows or justify reopening older attempts/changing monitoring policy.
+
 # Current follow-up — exam-wide review pause and automatic countdown resume DEPLOYED
 
 November6: **Pause countdown while instructor review is needed** in Exam settings,

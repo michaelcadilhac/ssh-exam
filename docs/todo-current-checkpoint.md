@@ -36,3 +36,15 @@ instruction was not captured; the18:43:08UTC marker was late,41m07s before reope
 Recovery: CURRENT data plus matched candidate, qualified forward resume; no older
 writer reopening or historical DB restore. No pending deployment task or decision.
 Ten original dirty docs/screenshots files remain untouched/uncommitted.
+
+
+## Latest read-only disconnect review — November6
+
+See disconnect-failures-review.md; private evidence in
+var/incident-reports/disconnect-review.20261106/. Production remains ONLINE on the
+accepted release. All six reviewed attempts are completed/protected; no newer
+started attempt since the60s release. Recovery/clock bugs fixed, original close
+initiator and latest technical-hold cause not established. Do not claim those
+root causes fixed. Two new follow-ups are OPEN in TODO.md: sanitized correlated
+transport/authority diagnostics and real-stall qualification; remaining shipped
+15s WASM relay bootstrap budget. This turn changes only local documentation.
