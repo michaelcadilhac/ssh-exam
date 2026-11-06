@@ -3563,3 +3563,14 @@ never silently revived. Stale or failed batches restore no access and consume no
 grant or clock. Authenticated native SSH still owns account/UID verification;
 retention, Begin, timing, monitoring and protected-work policies remain authoritative.
 Implementation and qualification: docs/exam-student-list.md.
+
+### Correlated disconnect observations (November6,2026)
+
+The deployed relay/WASM bootstrap uses the60s operational budget. Relay completion,
+browser/gateway pane failures and native monitoring holds retain bounded fixed
+categories and safe correlation/authority facts through the existing audit/journal
+interfaces. Browser hints are untrusted observations; they cannot authorize work,
+change clocks, trigger misconduct or bypass ownership/freshness checks. Unavailable
+facts remain explicit. No tickets, credentials, MFA answers, SSH payload or raw
+user-controlled errors are recorded. See docs/disconnect-diagnostics.md for the
+operator workflow, actual stall/privacy qualification and deployment evidence.

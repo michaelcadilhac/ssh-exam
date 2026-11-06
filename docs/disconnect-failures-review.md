@@ -69,7 +69,7 @@ checkpoint; full840application checks and affected races/actual supervisor/brows
 and matched installation evidence remain applicable. No unchanged suite was rerun
 for this read-only review.
 
-## Still open; do not claim fixed
+## Follow-ups identified at review time
 
 1. **Root-cause diagnostics and stall qualification.** The relay discards the
    direction/result of both io.Copy operations; its ping timeout cancels the stream
@@ -97,3 +97,12 @@ short monitoring stalls, positive SSH close and retired-owner races through actu
 browser/relay/student entry points. Logs and timeouts must never fabricate a
 violation or weaken execution cutoffs. No new production change is authorized by
 this review alone; any later deployment requires a new explicit instruction.
+
+## Subsequent authorized outcome — November6
+
+Both implementation follow-ups above are now pushed/deployed in95c7798: correlated
+sanitized diagnostics and the remaining60s WASM relay bootstrap correction, with
+actual delay/stall/expiry/SSH-loss qualification. See disconnect-diagnostics.md and
+the current checkpoint. This changes future observations and startup behavior;
+it does not retrospectively establish the original physical fault or prove all
+past disconnect causes fixed. No reviewed historical attempt was changed.

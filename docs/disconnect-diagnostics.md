@@ -1,10 +1,9 @@
 # Disconnect diagnostics and relay startup budget
 
 November6,2026. Explicitly authorized implementation, push and deployment.
-Implemented locally; final qualification and production rollout are pending.
-All three new real-WASM workflows pass83s total:16.5s relay delay, real60s expiry
-with outer-supervisor/reference and actual SSH close/IPC privacy. Current isolated
-whitelist/sink regression passes. Frozen-source full suites/release gates follow.
+Pushed and deployed15:21Chicago /21:21UTC, November6. Runtime95c7798;
+image Config623bdc1089c4ad0ec153d748e069c439f2a1e80be3dccf2adb2551ad426fe94a,
+schema37. Production is ONLINE. Qualification and acceptance are recorded below.
 Historical incidents remain documented in disconnect-failures-review.md: absent
 close/cutoff information cannot be reconstructed by installing this change.
 
@@ -104,3 +103,40 @@ data. Recovery uses the matched candidate and qualified forward resume; older
 writers or historical DB restoration cannot reopen admissions. Public readiness,
 exact assets, loaded roles, diagnostic availability and preserved records gate
 completion. No human live student/MFA acceptance is claimed by synthetic tests.
+
+## Qualified deployment outcome
+
+Frozen95c7798 artifacts passed843application tests/1existing opt-in skip,23actual
+WASM/browser workflows against the image's exact eight assets,29actual native
+supervisor scenarios, full native/CLI races and the focused diagnostic/privacy
+checks. The real16.5s relay delay succeeds; real60s startup expiry retains its
+reference through the outer supervisor. Real23s relay-read/pong and native evidence
+stalls preserve work under the existing budget. Positive SSH exit, actual authority
+expiry, retired owners and unavailable observations remain separately covered.
+
+The exact image passed schema37 preservation and startup delayed beyond a60s signed
+poll lifetime, with existing tombstones, due physical-purge rechecks,41tables and
+11independent mutation-refusal controls. Forward recovery from the already-running
+candidate reached ONLINE without an additional start or replacing its original
+snapshot. The actual guarded disposable-root installation passed five-binary/
+nginx refusal-retry and preservation checks; independent cleanup confirms exit0,
+inactive unit/MainPID0, no owned processes and unchanged host/base authority.
+Synthetic signed kernel/readiness facts and private proxy transports in the image
+fixture are not institutional SSH/MFA; actual installed roles are verified separately.
+
+Production preparation9.98s reused1,047,562,391bytes of recording recovery coverage;
+zero new media copies. Current web/native snapshots were retained, all five binaries
+installed and all four running roles verified. Relay configuration, trust and unit
+were preserved; SSH itself was not restarted. All41preservation contracts passed
+before reopening. Public TLS/readiness/notifications, eight exact assets, signed
+read-only CLI/help, current relay startup journal, released recording pause and
+unchanged original snapshot passed final acceptance. One admin session was expired
+under the instructor's prior authorization; no student sessions were invalidated.
+
+Maintenance174.32s; instruction timing marker20:29:17UTC to observed reopening
+21:21:17UTC52m00s includes implementation/build/qualification. Reopening happened
+before final read-only acceptance and this checkpoint. Detailed private phase,
+release, cleanup and acceptance receipts are in the evidence directory above.
+Recovery retains CURRENT data and the matched candidate using the qualified
+forward-resume controller. Do not reopen an older writer or replace current data
+with the historical snapshot. No new live student/MFA acceptance was performed.

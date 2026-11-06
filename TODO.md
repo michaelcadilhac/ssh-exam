@@ -1,28 +1,22 @@
-# Disconnect follow-up — IMPLEMENTED LOCALLY, qualification in progress
+# Disconnect follow-up — PUSHED, DEPLOYED AND ONLINE
 
-November6: user authorizes implementation, PUSH and DEPLOY. Remaining WASM relay
-bootstrap budget corrected to60s. Correlated bounded relay/browser/pane failure
-categories and native hold authority facts are implemented without new execution
-or misconduct decisions. Last real events cannot be causally reconstructed from
-missing historical logs. Focused privacy/input/relay/client races and actual native
-23s gap/expiry/SSH-recovery checks pass across focused/corrected receipts. Final
-browser/full suites and exact matched release qualification remain pending.
-Plan/evidence: docs/disconnect-diagnostics.md and current checkpoint. No production
-change has occurred yet; site stays on the acceptedc62f0cc release.
+November6,15:21Chicago: runtime95c7798, image Config623bdc1089c4/schema37.
+The remaining WASM relay bootstrap wait is60s. Bounded, sanitized relay/browser/
+pane and native hold diagnostics now preserve correlated failure categories and
+available authority facts. They introduce no execution or misconduct decisions.
+Past initiating failures remain partly unexplained; missing historical logs cannot
+be reconstructed, and synthetic qualification is not live student/MFA acceptance.
 
-# Disconnect review — investigated; two follow-ups remain OPEN
-
-November6 read-only production/source review: recovery/clock fixes are deployed,
-but initiating relay/monitoring failures are not all explained. The replacement
-attempt had two technical holds before confirmed SSH exit, then resumed and
-finished protected; a23.277s screen-arrival gap is consistent with the old15s
-cutoff.60s is a deployed mitigation, not proof of cause or live resolution: no new
-attempt has started since that release. Remaining bounded work: sanitized causal
-relay/browser/pane/authority diagnostics with actual stall regressions; correct the
-shipped15s browser relay bootstrap wait to60s and exercise delayed real startup.
-No production mutation or new fix/deployment is claimed by this review. Details:
-docs/disconnect-failures-review.md. These follow-ups do not invalidate the completed
-recovery workflows or justify reopening older attempts/changing monitoring policy.
+Full843application tests pass/1existing opt-in skip;23exact-image browser tests,
+29actual-supervisor scenarios, full native/CLI races, real23s stalls and60s expiry,
+exact-image delayed startup/current-data recovery and guarded five-binary install
+pass. Public TLS/eight assets, five installed binaries/four loaded roles, signed
+CLI/help and all41preservation contracts pass. Student history/settings and original
+snapshots remain protected. No new media copied; maintenance174.32s. Instruction
+marker through reopening52m00s includes development/build/qualification. Details:
+docs/disconnect-diagnostics.md; current checkpoint and private evidence there.
+The two follow-ups from the earlier disconnect review are implemented/deployed;
+the review's limits on causal conclusions still apply.
 
 # Current follow-up — exam-wide review pause and automatic countdown resume DEPLOYED
 
