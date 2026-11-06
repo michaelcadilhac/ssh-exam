@@ -368,7 +368,7 @@ class OperatorWorkflow(unittest.TestCase):
 
 class ProductionGuardPin(unittest.TestCase):
     def test_installer_pins_the_actual_production_guard_without_fixture_override(self):
-        self.assertEqual(native.GUARD_SHA256, native.digest(ROOT / 'scripts/fresh_native_cohort_guard.py'))
+        self.assertEqual(native.GUARD_SHA256, native.digest(ROOT / 'scripts/native-rollout-guard.py'))
 
 
 if __name__ == "__main__":

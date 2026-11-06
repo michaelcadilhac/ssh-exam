@@ -101,7 +101,7 @@ export function continuationNotice(
   switch (view.state) {
     case "approved":
       return authenticationGap
-        ? "Resume approved. Sign in again, restore the checks, then choose Resume exam. The clock keeps running."
+        ? "Resume approved. Sign in again, restore the checks, then choose Resume exam."
         : "Resume approved. Restore any missing checks, then choose Resume exam.";
     case "completing":
       return "Resume approved. Keep this page open and choose Resume exam to finish reconnecting. Input stays paused until it succeeds.";
@@ -116,12 +116,12 @@ export function continuationNotice(
     case "unknown":
       return "Checking approval… Keep this page open. Ask your instructor if this continues.";
     case "resumed":
-      return "Exam resumed. The clock keeps running.";
+      return "Exam resumed.";
     case "not-paused":
       return "Checking exam status… Input remains paused.";
     case "unavailable":
       return "This attempt cannot resume. Ask your instructor to check its status. Approval cannot reopen it or add time.";
     default:
-      return "Waiting for instructor approval. The clock keeps running.";
+      return "Waiting for instructor approval.";
   }
 }

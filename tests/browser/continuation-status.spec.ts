@@ -58,6 +58,20 @@ async function paused(
   };
 }
 
+test("no-expiry resume approval keeps the student recovery page and its terminal mounted", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const p = await paused(page, false);
+  p.update("approved", Number.MAX_SAFE_INTEGER);
+  await expect(
+    page.locator('[data-continuation-state="approved"]'),
+  ).toContainText("Approval does not expire.", { timeout: 5000 });
+  await expect(page.locator(".winbox")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
 test("retained SSH loss offers fresh sign-in only after approval and preserves the existing deadline", async ({
   page,
 }) => {

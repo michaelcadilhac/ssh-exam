@@ -12,6 +12,7 @@ import {
   timerPaused,
 } from "../../../packages/protocol/timer.js";
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
+import { NO_RESUME_EXPIRY } from "../../../packages/protocol/interruption-management.js";
 import { Capture } from "./capture.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
@@ -1871,9 +1872,13 @@ export function Workspace({
                       data-continuation-state={approval.state}
                     >
                       {continuationNotice(approval, authenticationGap)}
-                      {approval.state === "approved" && approval.expires && (
-                        <> Approval expires {chicago(approval.expires)}.</>
-                      )}
+                      {approval.state === "approved" &&
+                        approval.expires &&
+                        (approval.expires === NO_RESUME_EXPIRY ? (
+                          <> Approval does not expire.</>
+                        ) : (
+                          <> Approval expires {chicago(approval.expires)}.</>
+                        ))}
                     </p>
                   )}
                   {!sandbox &&

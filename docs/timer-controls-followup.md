@@ -151,15 +151,21 @@ reconnect and actual60s recovery; the paused-input test uses ONE real clock for
 browser/server/socket replies and works past its actual one-minute deadline.
 Virtual browser jumps had outrun asynchronous replies and manufactured an
 unrelated coordination loss. All84 unique selected browser scenarios pass across
-the broad/corrected runs. The full application suite is rerunning against the
-final frozen runtime. Exact image/release readiness is still separate.
+the broad/corrected runs. The final full application suite passes822 tests,
+zero failures and three existing opt-in skips. Exact image/release readiness is
+still separate.
 
 The actual four-file installer rehearsal passes in the guarded root guest. The
 additional real relay/nginx rehearsal initially refused missing nginx scratch
 directories. Its fixture now declares all temporary paths under private /run;
 the host-installed nginx and libraries are reused read-only. No missing package
 was installed and the prepared guest base/production remain unchanged. The
-production guard checksum was also refreshed, with an unmocked checksum test.
+checksum review initially confused the native guard producer with its read-only
+bridge. The installer's original producer pin is correct and is restored; the
+unmocked checksum test now compares the actual native-rollout-guard.py producer.
+Never infer a hash's target merely from a similarly named guard file. This
+controller-only correction does not change the qualified application/native
+runtime, five-file installation flow or unchanged production guard.
 The final real five-binary rehearsal passes, including stopped invalid-nginx
 refusal, exact-candidate retry, actual proxy reload and preserved trust/config.
 All seven real SSH/workspace/collection/original-deadline assertions pass, with
@@ -168,3 +174,22 @@ owned unit is inactive, MainPID0 and no owned processes remain. Receipts:
 native-install-root-4.log and native-install-qualified.json. Exact image,
 shipped-WASM joined controls and current-data recovery remain REQUIRED before
 production fencing.
+
+Exact first image passes schema37/history/media/native-clock smoke and real
+startup/current-data forward recovery:63.04s,13 signed polls, expired nonce and
+expired policy refusal, existing tombstone/due physical-purge recheck,11 mutation
+refusals,41 preservation contracts and recovery of the already-running candidate
+without replacing its snapshot. Local actual nginx/TLS/maintenance/browser and
+proxy checks also pass, with owned processes/TLS keys cleaned.
+
+The joined shipped-WASM/real-native timer+files-recovery test reached live
+pause/edit/no-expiry authorization and found a real student rendering bug:
+Workspace passed the no-expiry sentinel to Date formatting. RangeError unmounted
+the page and stopped capture. The focused browser reproduced the empty page;
+the fix prints "Approval does not expire" and preserves the mounted recovery
+page/terminal without a browser error. Status copy no longer incorrectly claims
+the countdown always runs. That UI correction requires a newly frozen image and
+joined rerun; the first image is NOT eligible for deployment. Earlier queued
+capture failures were this rendering crash, not missing camera evidence or a
+native timer failure. Temporary timer instrumentation was removed before final
+qualification; bounded response/browser diagnostics remain in the test.
