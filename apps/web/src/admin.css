@@ -1734,8 +1734,9 @@
     display: grid;
     margin: 4px 0 8px;
     background: #edf5ff;
-    border: 1px dashed #86a8d2;
-    border-inline-start: 4px solid var(--brand-blue);
+    outline: 1px dashed #86a8d2;
+    outline-offset: -1px;
+    box-shadow: inset 4px 0 var(--brand-blue);
     border-radius: 8px;
     grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) 44px;
     gap: 8px;
