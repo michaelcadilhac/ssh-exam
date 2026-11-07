@@ -1,17 +1,19 @@
-# Admin list controls and exam timezone — QUALIFIED LOCALLY; deployment next
+# Admin list controls and exam timezone — PUSHED, DEPLOYED AND ONLINE
 
-November6: requested student tabs, independent available/paused/webcam filters,
-latest-completion ordering, complete history and distinct Next attempt row are
-implemented. Files saved tab/date banner removed. Exam timezone controls all
-instructor dates with DST handling and matching examctl --timezone support;
-original instants, grants, clocks and live native roles are unchanged.
-859application cases pass across the full run plus corrected history cohort;
-one existing opt-in skip.163other admin browser cases,14seven-zone workflows,
-8exact-final-image browsers, CLI TLS/races,48operator tests, types/build, real
-signed startup/current-data recovery and nginx maintenance checks pass. Runtime
-is a5a0b07. Production still unchanged; push and guarded cutover are next.
-No open design decision. Evidence/limits: docs/admin-list-controls.md and
-var/collection-tests/admin-list.20261106/; current checkpoint below that document.
+November6,22:56:15Chicago /November7,04:56:15UTC: runtimea5a0b07/schema37,
+image Configb36dd649d36f is live. Tabs restrict students before independent
+available/paused/webcam filters and latest-completion sorting; complete history
+stays visible. Next attempt has a separate blue panel. Files saved tab and date
+banner are removed. Exam settings now owns the instructor timezone, with matching
+examctl --timezone support; original dates, grants and clocks are preserved.
+859application cases pass across full+corrected cohort,1existing opt-in skip;
+163other admin browser passes,14seven-zone and8exact-image browsers; CLI TLS/races,
+48operator, actual delayed startup/current-data recovery and nginx checks pass.
+Production TLS/nine assets, signed CLI, original snapshot and41preservation checks
+pass. All four native service PIDs and loaded source worker remain unchanged;
+only web and installed CLI changed. Preparation11.43s, maintenance45.48s;0media bytes
+copied. No remaining step/decision for this request. Evidence and test/installation
+limits: docs/admin-list-controls.md and docs/todo-current-checkpoint.md.
 
 # Upload bandwidth — PUSHED, DEPLOYED AND ONLINE
 

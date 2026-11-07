@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-## November 6 local follow-up: student lists and exam date timezone
+## November 6 deployed follow-up: student lists and exam date timezone
 
 The dashboard selects students by All/Working/Needs attention first, then applies
 an independent available/paused/webcam filter and username/latest-completion sort
@@ -17,8 +17,9 @@ historical instants, authoritative deadlines and allowance snapshots stay fixed.
 Legacy definitions use Chicago; new website definitions save the device zone.
 Ambiguous hours require a choice and nonexistent times refuse. Open date editors
 pin their zone and refuse reinterpretation after a concurrent timezone change.
-The same setting has a supported examctl --timezone workflow. Implemented/tested
-locally, including exact-image release/recovery qualification; deployment pending. Details:
+The same setting has a supported examctl --timezone workflow. Pushed and deployed
+November6 at22:56Chicago, runtimea5a0b07/schema37; exact-image qualification and
+production acceptance pass. Native services remain unchanged. Details:
 [admin list controls](docs/admin-list-controls.md).
 
 ## November 6 local follow-up: reduce capture uploads

@@ -1,90 +1,95 @@
 # Admin student list and exam timezone
 
-November6: implementation/push/deployment authorized. No production changes yet.
-Milestone1 locally validated:14focused HTTP/presentation checks and4built-browser
-workflows pass, including reviewed1360px/390px screenshots. Types/build pass.
-The first synthetic pagination fixture attempted to add raw enrollments after
-grant issuance, then to invent history for an already-issued unused permission.
-Both correctly refused. The fixture now keeps legacy history and new enrollment/
-initial-grant issuance distinct; no trigger or enforcement was changed.
+Pushed and deployed November6 at22:56:15Chicago (November7,04:56:15UTC).
+Runtimea5a0b07ab8b9f7e56abf6814350d7caee01905ea, schema37, image Config
+b36dd649d36f6861e4143c30dfc74244db5a1c2da01153c1f141e01e9ed3c2d5.
+No remaining step or policy decision for this request.
 
-Milestone2 is implemented: exam timezone is definition metadata, never a grant
-snapshot/hash, clock or native execution setting. Existing exams render in Chicago;
-new web exams start with the device zone saved explicitly. All instructor date
-entry/display, source choices and review inherit the selected exam zone. Changing
-the zone converts form values while preserving their instants; gaps refuse and
-repeated hours require a choice. Open attempt-date editors pin their original zone
-and refuse changed-date submission if a later poll sees a different exam zone.
-The main date banner and redundant dialog banners are removed.
+## Student list behavior
 
-CLI: `examctl web exams update EXAM --revision HASH --timezone America/Chicago`
-(or UTC/another valid IANA name), with matching create support, help and strict
-scope/bounds/intent validation on signed replies. The first positive TLS test
-caught the missing optional field in that reply decoder; it is now validated
-without relaxing unknown-field or exact-intent checks.21focused checks, the actual
-compiled root/TLS journey, CLI races, and UTC/DST plus cross-instructor editor
-browser checks pass. Selector failures were corrected against observed controls:
-native combobox roles, the Dates cell and the inline Save button, without changing
-product enforcement. Wider seven-zone and application/browser checks remain.
+All students, Working and Needs attention select students first. Independent
+available/paused/webcam filters then narrow that subset, followed by username or
+most-recent-completion sorting, before100student pagination. Complete history and
+stable attempt numbers remain visible for each selected student. Tab counters
+count students; changing controls clears stale selection and pagination. Clearing
+extra filters retains the chosen tab. The Files saved tab is removed.
 
-Release scope: registered reviewed-web-cli/exam-dashboard-timezone-v1, schema37.
-Only web and the installed examctl change; all four live native/relay role PIDs and
-the loaded source-worker binary stay fixed. The existing atomic CLI installer
-takes private current metadata/configuration/old-CLI backups. The current-data
-forward recovery path is shared with the existing incompatible-reader workflow;
-an older writer could discard the new timezone metadata.48operator scenarios pass,
-including original-snapshot preservation and already-running-candidate recovery.
-No new deploy controller or native authority mechanism. Exact image/startup,
-packaged CLI, migration/preservation/proxy and fresh drain gates remain before
-push/cutover. Reuse existing media recovery coverage, never replicate recordings.
+Available means an authorized, unused, unexpired next attempt, including scheduled
+future starts; setup claims and pending saved-work verification are excluded.
+Paused includes paused work and paused countdowns. These list filters create no
+admission or monitoring permission. Grant projection is grouped before pagination
+without per-student grant lookups; invalid/ambiguous metadata cannot invent usable
+permission or crash SQLite JSON extraction.
 
-Bounded delivery plan:
+Next attempt has a blue background/inset stripe, upcoming arrow and dashed
+separation. History is quieter. Mobile decoration uses outline/inset shadow so
+camera columns stay aligned;1360/390px screenshots and320/430/1280px interactions
+were reviewed/tested. Existing documentation images remain unchanged.
 
-1. Dashboard HTTP and web list: independent All students/Working/Needs attention
-   tabs, extra available/paused/webcam filters and latest-completion sorting.
-   Select students before pagination, keep their complete history, count students
-   in tabs, and reset selection/pagination when controls change. Remove Files saved
-   tab. Give Next attempt a blue inset panel, explicit upcoming label/icon and
-   dashed separation from muted completed history, including mobile layouts.
-   Acceptance: public HTTP pagination/composition/sorting and browser controls,
-   selection, history and mobile regression tests.
-2. Exam settings: validated IANA timezone, Chicago fallback for existing exams,
-   display/entry only. Store outside immutable grant/attempt settings. Update all
-   admin date controls and review displays, preserving instants and DST overlap/
-   gap handling. Provide matching examctl flag/help and signed interface tests.
-   Acceptance: multiple device/exam zones, DST folds/gaps, unchanged grant hashes,
-   attempts/deadlines and exact retry/revision behavior; types/build/affected suites.
-3. Freeze exact artifacts and qualify the existing same-schema web/CLI release
-   workflow, preservation, recovery and reopening. Reuse unchanged native evidence;
-   no authority/watchdog/relay mechanism changes. Push/deploy only after the gates,
-   with fresh student/unfinished guards and authorized admin-only signout.
+## Exam timezone
 
-Available means an authorized, unused, unexpired next attempt; scheduled future
-starts are included, while setup claims and pending saved-work verification are
-not. Paused includes both paused work and a paused countdown. These are list
-filters only, never new admission or monitoring permission.
+Validated IANA timezone is exam-definition metadata outside immutable grant and
+attempt settings/hashes. Existing exams fall back to Chicago; new website exams
+save the device zone explicitly. All instructor date entry/display, source labels
+and review use the selected exam zone. Changing the zone preserves saved instants,
+original deadlines and settings snapshots. Nonexistent DST times refuse; repeated
+hours require a choice. Open date editors pin their zone and refuse reinterpretation
+if another instructor changes it. Redundant Dates-in/timezone banners are removed.
 
-Release qualification evidence is in `var/collection-tests/admin-list.20261106/`.
-The full application run passed857 cases with one existing opt-in skip and two
-old history-filter expectations failing. Both affected files now pass all18 cases
-with full matching-student history asserted; backend inputs did not change after
-that full run. The broad admin browser run passed163 cases and exposed two mobile
-camera-alignment failures plus seven stale/rate-limited timezone fixtures. Mobile
-row decoration now uses an inset stripe and outline without changing grid widths;
-320/430/1280px checks pass. Timezone fixtures use independent synthetic actors/IPs,
-current Webcam: Off wording, and wait for the actual native clock acknowledgement.
-No rate limit, clock or monitoring enforcement was relaxed. An accidentally broad
-follow-up selected unrelated legacy instructor workflows; its interrupted run is
-retained as diagnostic evidence and is not a release pass.
+CLI parity: `examctl web exams update EXAM --revision HASH --timezone America/Chicago`
+(or UTC/another valid IANA name), plus create support, help and strict signed reply
+scope/bounds/intent validation. Initial root/TLS qualification caught the missing
+optional field in the reply decoder; it now validates timezone without weakening
+unknown-field or exact-intent checks. Student clock/transport semantics are fixed.
 
-The final runtime is a5a0b07. Exact-image schema37 startup/media compatibility and
-the real66.74-second signed-poll startup/current-data recovery test pass, including
-41preservation contracts, existing tombstones/due purge rechecks,11 independent
-mutation refusals and recovery without another start or snapshot replacement.
-The actual nginx maintenance/reload check passed in0.23seconds. The exact packaged
-CLI is reused from8615d90: its entire Go tree is unchanged, and root/TLS, native
-race and root-mapped atomic replacement/refusal tests pass. All14seven-zone workflows and8exact-final-image browser workflows now pass,
-including mobile alignment, full history/late replies and the real WASM student
-clock/collection journey.163unchanged broader admin browser passes are retained;
-this is explicit full-plus-targeted qualification, not a claimed all-green rerun.
-Fresh production guards and guarded deployment remain before declaring ONLINE.
+## Qualification and limitations
+
+Evidence: `var/collection-tests/admin-list.20261106/`.
+
+- Full application run:857pass, two stale history-filter oracles, one existing
+  opt-in skip. Corrected full affected cohort18/18 passes;859cases pass across the
+  full run plus targeted rerun. No backend input changed after that full run.
+- Broad admin browsers:163pass; two mobile alignment failures fixed; seven timezone
+  fixtures corrected for Webcam: Off, independent actors/IPs and actual native clock
+  acknowledgement. No rate limit or enforcement was relaxed. All14seven-zone and
+ 8exact-final-image workflows pass, including real WASM start/clock/input/collection,
+  full history/late replies, list composition and mobile controls. An accidental
+  overbroad follow-up selected unrelated legacy instructor tests; its interrupted
+  receipt is retained, not counted as a pass or as qualification of those workflows.
+-21focused presentation/HTTP/date checks, actual root/TLS CLI, CLI races,
+ 48operator workflows, types/build and real nginx maintenance/reload pass.
+- Exact final image passes schema37 startup/media compatibility, actual66.74-second
+  signed startup, existing tombstone/due purge rechecks,41preservation contracts,
+ 11mutation refusals and current-data recovery without another start or snapshot
+  replacement. Root-mapped atomic CLI replacement/refusals pass. Unchanged native
+  authority/kernel roles reuse prior qualification; no new human MFA/media test
+  is claimed. The CLI binary is reused from8615d90; its entire Go tree is unchanged.
+
+## Production operation and recovery
+
+Reviewed scope `exam-dashboard-timezone-v1` updates web plus installed CLI only.
+All four native service PIDs and the OLD loaded saved-work binary are unchanged.
+The atomic CLI install took private current metadata/config/old-CLI backups. Its
+final guard refused one unclassified root script process; the process was gone
+on independent read-only inspection, so its identity remains unknown. The pending
+installation receipt is retained. The qualified independent after-guard then passed,
+as did fresh guards before prepare/apply, every15seconds during cutover, and final
+installed/loaded-role acceptance. No guard, record or running service was altered
+to make it pass.
+
+Online preparation11.43s reused1,065,421,981bytes; no new media copied. Fresh database
+backup130,691,072bytes plus350,448bytes of other metadata/configuration were copied.
+Maintenance45.48s; apply49.22s. The instruction timestamp was not captured; the
+late04:00:46UTC marker to reopening is55m28.44s and excludes earlier development,
+so it is not the total instruction duration. One authorized admin-only signout,
+zero student sessions invalidated.119web/186native histories remained protected.
+
+Public TLS/nine asset hashes, signed CLI/help, original snapshot and all41contracts
+pass. Website ONLINE; recording worker pause RELEASED. Frozen manifest, helpers,
+acceptance and completion: `var/collection-tests/admin-list.20261106/final-ops/`.
+Remote state: `/data/ssh-exam-admin-list-20261106-8615d90-a1ac8af4-state`.
+The namespace retains the earlier candidate label; image/source pins binda5a0b07.
+An older metadata writer could discard timezone, so rollback/reopening to it is
+refused. Qualified recovery resumes the matched candidate with CURRENT data and
+the original snapshot; never restore historical SQL over newer records. The
+existing shared media store remains the recovery source without duplicate copies.
