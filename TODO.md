@@ -1,8 +1,9 @@
 # Upload bandwidth — IMPLEMENTATION AUTHORIZED, local work in progress
 
-Binary JPEG negotiation/upload implemented locally with exact-byte/retry/freshness/
-ownership/size checks:19focused tests, types/build and3built WASM browser workflows
-pass. No deployment yet. Browser VP9 and full release qualification remain open.
+Binary JPEG and browser VP9 upload/recovery/receipt preservation are implemented
+locally:39focused tests,9built WASM/browser workflows,13actual root CLI/TLS and
+45operator checks pass. No deployment yet. Full application/affected-browser,
+guarded native capacity and exact-image release qualification remain open.
 Current implementation plan: docs/capture-upload-implementation.md.
 
 November6: synthetic browser measurements confirm binary JPEG25% payload savings

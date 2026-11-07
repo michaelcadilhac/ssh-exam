@@ -17,6 +17,13 @@ change yet. Measurements and comparison: upload-bandwidth-evaluation.md.
    Tests: exact retry, stale/foreign chain, missing dependency, crash/restart,
    malformed/over-limit codec output, same-source concurrency, stop/page changes,
    network/ACK loss, slow links, actual native evidence and16-student capacity.
+   Implemented locally:39focused capture/archive checks and9built browser
+   workflows pass, including a real minute/keyframe rotation and retained active
+   SSH recovery. Actual compiled root CLI/TLS13checks pass with receipt-bearing
+   JPEGs. The codec load seam uses32full-size streams and four decoder slots while
+   an authenticated public JPEG/SSH fixture remains responsive; it does not claim
+   that32component jobs alone qualify16native students. That guarded browser/native
+   class test and exact-image deployment qualification are in progress.
 3. Freeze artifacts, affected/full application/browser/race checks, exact image
    migration/preservation/startup/current-data recovery and actual proxy cutover.
    Push/deploy only with qualified procedures and fresh student/unfinished drain;
@@ -57,3 +64,26 @@ Actual CLI compatibility and receipt preservation must pass before release.
 Current evidence: var/collection-tests/upload-bandwidth.20261106/. Binary build's
 first restricted attempt failed on spawnSync go EPERM; the installed tool exists,
 and the appropriate build escalation passed. No package was installed.
+
+The initial256MiB decoder address bound prevented FFmpeg's installed shared
+libraries from mapping.1GiB address space plus explicit1,638,400-pixel/32MiB
+single-allocation limits, eight CPU seconds,15s elapsed time, bounded output and
+four concurrent codecs pass. Address space is not a claim of hard RSS accounting.
+The bounded queue waits at most5s before requesting JPEG recovery. Cache reuse is
+bounded by current scope,120s age, count and64MiB; restart restores no positive
+state. All ordinary capture freshness checks run again after decoding.
+
+Failed seeded ACTIVE/PREPARING test rows lacked authenticated SSH and correctly
+hit existing monitoring/authentication-gap refusals under load. Those fixtures
+were replaced with the existing complete SSH/authentication/binding transaction;
+enforcement was not changed. The32-stream codec load seam is explicitly separate.
+The first native-browser bundle used the installer's extra-file manifest rather
+than the exact retained-policy profile. It refused before guest startup. A fresh
+private bundle uses the17profile members with the same independently pinned native
+bytes. The corrected guarded qualification is in progress.
+
+Deployment uses registered reviewed-web-read/binary-vp9-capture-v1 scope with
+schema37 and unchanged native/CLI bytes. Older media writers cannot reopen; forward
+resume preserves CURRENT data and the original snapshot, including recovery from
+an already-running candidate without another start.45operator tests pass. The
+actual image/startup/proxy procedure still needs qualification before cutover.

@@ -6,7 +6,7 @@ export const CAPTURE_METADATA_LIMIT = 4096;
 export const captureUploadMetadata = z
   .object({
     version: z.literal(1),
-    encoding: z.literal("jpeg"),
+    encoding: z.enum(["jpeg", "vp9"]),
     source: z.enum(["screen", "webcam"]),
     seq: z.number().int().positive().safe(),
     captured: z.number().int().nonnegative().safe(),
@@ -22,8 +22,34 @@ export const captureUploadMetadata = z
         webcam: z.boolean(),
       })
       .strict(),
+    video: z
+      .object({
+        chain: z.string().uuid(),
+        previous: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/)
+          .nullable(),
+        key: z.boolean(),
+        width: z.number().int().min(1).max(1280),
+        height: z.number().int().min(1).max(1280),
+      })
+      .strict()
+      .optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      (value.encoding === "vp9") !== !!value.video ||
+      (value.video &&
+        (value.video.key !== (value.video.previous === null) ||
+          (value.source === "webcam" &&
+            Math.max(value.video.width, value.video.height) > 320)))
+    )
+      context.addIssue({
+        code: "custom",
+        message: "Invalid capture encoding metadata",
+      });
+  });
 export type CaptureUploadMetadata = z.infer<typeof captureUploadMetadata>;
 
 // One bounded metadata document followed by the exact encoded image bytes.
@@ -36,7 +62,7 @@ export function encodeCaptureUpload(
   if (
     json.length > CAPTURE_METADATA_LIMIT ||
     image.length > CAPTURE_IMAGE_LIMIT ||
-    image.length < 32
+    image.length < (metadata.encoding === "jpeg" ? 32 : 1)
   )
     throw Error("Capture upload size invalid");
   const body = new Uint8Array(4 + json.length + image.length);
@@ -59,7 +85,7 @@ export function decodeCaptureUpload(body: Uint8Array) {
   if (
     length < 2 ||
     length > CAPTURE_METADATA_LIMIT ||
-    body.length - length - 4 < 32 ||
+    body.length - length - 4 < 1 ||
     body.length - length - 4 > CAPTURE_IMAGE_LIMIT
   )
     throw Error("Capture upload size invalid");
@@ -70,5 +96,7 @@ export function decodeCaptureUpload(body: Uint8Array) {
       ),
     ),
   );
+  if (metadata.encoding === "jpeg" && body.length - length - 4 < 32)
+    throw Error("Capture image size invalid");
   return { metadata, image: body.subarray(4 + length) };
 }

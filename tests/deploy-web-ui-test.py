@@ -222,6 +222,47 @@ class FastUI(unittest.TestCase):
         self.assertEqual(self.history(),before);self.assertEqual(self.current,self.new['config_id'])
         self.assertEqual(result['video_pause']['status'],'RELEASED');self.assertTrue(self.running)
 
+    def capture_reader(self):
+        self.recording_reader()
+        self.release['fast_ui'].update(reviewed_scope='binary-vp9-capture-v1',previous_reader_policy_compatible=False)
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def test_capture_reader_apply_preserves_schema_history_and_native_cohort(self):
+        self.capture_reader();before=self.history();self.cli('prepare');result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(self.history(),before);self.assertEqual(result['video_pause']['status'],'RELEASED')
+
+    def test_capture_reader_failed_start_uses_forward_resume_without_replacing_snapshot(self):
+        self.capture_reader();before=self.history();self.cli('prepare');self.fail_start=True
+        self.cli('apply',expect=1);snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite')
+        _,error=self.cli('rollback',expect=1);self.assertIn('qualified forward resume',error)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE');self.assertEqual(self.current,self.new['config_id'])
+        self.assertEqual(self.history(),before);self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_capture_reader_running_candidate_recovers_without_restart_or_new_snapshot(self):
+        self.capture_reader();self.cli('prepare')
+        with patch.object(deploy.Rollout,'finish_web_running',side_effect=RuntimeError('Synthetic preopening crash')):
+            self.cli('apply',expect=1)
+        self.assertTrue(self.running);self.assertEqual(self.current,self.new['config_id'])
+        snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite');stops=len(self.stopped_calls())
+        starts=sum(args[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for args in self.calls)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(len(self.stopped_calls()),stops)
+        self.assertEqual(sum(args[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for args in self.calls),starts)
+        self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_capture_reader_forward_resume_refuses_an_unknown_running_image_without_stopping_it(self):
+        self.capture_reader();self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)
+        self.current='sha256:'+'7'*64;self.running=True;stops=len(self.stopped_calls())
+        _,error=self.cli('resume',expect=1);self.assertIn('Unknown capture image',error)
+        self.assertEqual(len(self.stopped_calls()),stops);self.assertTrue(self.running)
+
+    def test_capture_reader_refuses_compatible_old_writer_attestation_before_pause(self):
+        self.capture_reader();self.release['fast_ui']['previous_reader_policy_compatible']=True
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+        self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+        self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
     def test_recording_reader_failed_start_rollback_reopens_current_data(self):
         self.recording_reader();before=self.history();self.cli('prepare');self.fail_start=True
         self.cli('apply',expect=1);result,_=self.cli('rollback')

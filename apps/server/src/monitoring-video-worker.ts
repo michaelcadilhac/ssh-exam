@@ -17,6 +17,12 @@ import { createHash } from "node:crypto";
 import { isAbsolute, basename, dirname, join, resolve } from "node:path";
 import sharp from "sharp";
 import {
+  captureUploadReceipt,
+  readCaptureReceipt,
+  withCaptureReceipt,
+  type CaptureUploadReceipt,
+} from "./capture-upload-receipt.js";
+import {
   videoWorkerRequest,
   videoResult,
   type VideoResult,
@@ -426,6 +432,7 @@ async function work(request: ReturnType<typeof videoWorkerRequest.parse>) {
       );
       handles.push(stage);
       if (readdirSync("/proc/self/fd/" + stage).length) refuse("unsafe-target");
+      const uploadReceipts: (CaptureUploadReceipt | null)[] = [];
       for (let i = 0; i < input.frames.length; i++) {
         const frame = input.frames[i],
           fd = privateFile(
@@ -453,6 +460,7 @@ async function work(request: ReturnType<typeof videoWorkerRequest.parse>) {
         const original = data.subarray(0, count);
         if (createHash("sha256").update(original).digest("hex") !== frame.hash)
           refuse("source-digest");
+        uploadReceipts.push(readCaptureReceipt(original) ?? null);
         const meta = await sharp(original, {
           limitInputPixels: 12000000,
         }).metadata();
@@ -516,6 +524,12 @@ async function work(request: ReturnType<typeof videoWorkerRequest.parse>) {
           "12",
           "-threads",
           "1",
+          ...(uploadReceipts.some(Boolean)
+            ? [
+                "-metadata",
+                "ssh_exam_uploads=" + JSON.stringify(uploadReceipts),
+              ]
+            : []),
           "-f",
           "webm",
           "/proc/self/fd/3/" + file,
@@ -585,6 +599,38 @@ async function work(request: ReturnType<typeof videoWorkerRequest.parse>) {
       refuse("digest");
     const count = await probe(file, input.width, input.height),
       perFrame = input.width * input.height * 3;
+    const tags = JSON.parse(
+      (
+        await tool(
+          "ffprobe",
+          [
+            "-v",
+            "error",
+            "-protocol_whitelist",
+            "file,pipe",
+            "-show_entries",
+            "format_tags=SSH_EXAM_UPLOADS",
+            "-of",
+            "json",
+            "/proc/self/fd/3",
+          ],
+          file,
+          32768,
+        )
+      ).toString("utf8"),
+    );
+    const receiptTag = tags.format?.tags?.SSH_EXAM_UPLOADS;
+    let uploadReceipts: (CaptureUploadReceipt | null)[] | undefined;
+    if (receiptTag !== undefined) {
+      if (typeof receiptTag !== "string" || receiptTag.length > 16384)
+        refuse("validation");
+      const values = JSON.parse(receiptTag);
+      if (!Array.isArray(values) || values.length !== count)
+        refuse("validation");
+      uploadReceipts = values.map((value: unknown) =>
+        value === null ? null : captureUploadReceipt.parse(value),
+      );
+    }
     if (input.frames.some((frame) => frame.index >= count))
       refuse("validation");
     const raw = await tool(
@@ -625,16 +671,18 @@ async function work(request: ReturnType<typeof videoWorkerRequest.parse>) {
         raw: { width: input.width, height: input.height, channels: 3 },
         limitInputPixels: 1280 * 1280,
       });
-      const original = await image.clone().jpeg({ quality: 50 }).toBuffer(),
-        thumbnail = await image
-          .resize({
-            width: 256,
-            height: 256,
-            fit: "inside",
-            withoutEnlargement: true,
-          })
-          .jpeg({ quality: 55 })
-          .toBuffer();
+      let original = await image.clone().jpeg({ quality: 50 }).toBuffer();
+      const receipt = uploadReceipts?.[frame.index];
+      if (receipt) original = withCaptureReceipt(original, receipt);
+      const thumbnail = await image
+        .resize({
+          width: 256,
+          height: 256,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .jpeg({ quality: 55 })
+        .toBuffer();
       if (original.length > 1500000 || thumbnail.length > 1500000)
         refuse("validation");
       frames.push({

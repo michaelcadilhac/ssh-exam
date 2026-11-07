@@ -17,6 +17,9 @@ import {
 } from "node:fs";
 import { randomUUID, randomBytes } from "node:crypto";
 import sharp from "sharp";
+import type { CaptureUploadMetadata } from "../../../packages/protocol/capture-upload.js";
+import { CaptureVideoIngress } from "./capture-video-ingress.js";
+import { readCaptureReceipt } from "./capture-upload-receipt.js";
 import { Store, hash, now, type Attempt } from "./db.js";
 import { enqueueMonitoringPurge } from "./monitoring-purge-jobs.js";
 import {
@@ -138,6 +141,7 @@ export class Monitoring {
   closeTechnicalRecovery() {
     for (const pending of this.technicalRequests.values()) pending.cancel();
   }
+  readonly uploadVideo = new CaptureVideoIngress();
   private currentTechnicalRequest(id: string) {
     const pending = this.technicalRequests.get(id),
       a = this.store.attempt(id);
@@ -448,6 +452,28 @@ export class Monitoring {
   }
   challengedFrame(a: Attempt, input: any, page: string) {
     return this.frame(a, input, page, true);
+  }
+  async uploadedFrame(
+    a: Attempt,
+    metadata: CaptureUploadMetadata,
+    image: Buffer,
+    page: string,
+  ) {
+    this.readiness.validate(this.currentCapture(a, page), page, metadata);
+    const { version, encoding, ...input } = metadata;
+    if (encoding === "jpeg")
+      return this.challengedFrame(a, { ...input, data: image }, page);
+    const scope = JSON.stringify([
+      a.id,
+      page,
+      a.generation,
+      a.settings,
+      a.registered_owner,
+      metadata.source,
+    ]);
+    return this.uploadVideo.accept(scope, metadata, image, (jpeg) =>
+      this.frame(a, { ...input, data: jpeg }, page, true, true),
+    );
   }
   private currentCapture(a: Attempt, page: string) {
     const current = this.store.attempt(a.id);
@@ -861,12 +887,18 @@ export class Monitoring {
   }
   private inflight = 0;
   private instance = randomUUID();
-  async frame(a: Attempt, input: any, page: string, challenged = false) {
+  async frame(
+    a: Attempt,
+    input: any,
+    page: string,
+    challenged = false,
+    derivedVideo = false,
+  ) {
     if (this.inflight >= 16)
       throw Error("Image worker capacity exceeded; retry within bounded grace");
     this.inflight++;
     try {
-      return await this.accept(a, input, page, challenged);
+      return await this.accept(a, input, page, challenged, derivedVideo);
     } finally {
       this.inflight--;
     }
@@ -891,6 +923,7 @@ export class Monitoring {
     input: any,
     page: string,
     challenged: boolean,
+    derivedVideo: boolean,
   ) {
     if (challenged)
       this.readiness.validate(this.currentCapture(a, page), page, input);
@@ -923,6 +956,8 @@ export class Monitoring {
     const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data, "base64");
     if (bytes.length > 1500000 || bytes.length < 32)
       throw Error("Image size invalid");
+    if (readCaptureReceipt(bytes) && !derivedVideo)
+      throw Error("Reserved capture receipt cannot be supplied by a client");
     const image = sharp(bytes, { limitInputPixels: 12000000 });
     const m = await image.metadata();
     if (
@@ -933,6 +968,11 @@ export class Monitoring {
       m.height > 2560
     )
       throw Error("Only bounded JPEG images accepted");
+    if (
+      derivedVideo &&
+      (m.width !== input.video?.width || m.height !== input.video?.height)
+    )
+      throw Error("Video capture dimensions mismatch");
     await image.clone().raw().toBuffer();
     const digest = hash(bytes);
     if (challenged) {

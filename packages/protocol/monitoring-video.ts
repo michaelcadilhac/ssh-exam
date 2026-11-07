@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { attemptReference } from "./clock-management.js";
 
-// Capture hashes always identify the received JPEG. These additional fields
+// Capture hashes identify the verifier's canonical JPEG. Live VP9 wire receipts
+// travel inside that JPEG and the verified archive metadata. These extra fields
 // identify a verified, lossy video-derived representation, never fresh evidence.
 export const monitoringFrameProvenance = z
   .object({

@@ -1,3 +1,4 @@
+import { isChallengedCapture, captureMetadata } from "./capture-requests.js";
 import { test, expect, type Page } from "@playwright/test";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
@@ -115,7 +116,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   });
   page.on("response", (response) => {
     if (
-      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      isChallengedCapture(response.url()) &&
       response.status() === 200
     )
       uploads++;
@@ -189,11 +190,11 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   await page.waitForResponse(
     (response) => {
       if (
-        !new URL(response.url()).pathname.endsWith("/frames/challenged") ||
+        !isChallengedCapture(response.url()) ||
         response.status() !== 200
       )
         return false;
-      const sample = response.request().postDataJSON();
+      const sample = captureMetadata(response.request());
       return (
         sample.source === "screen" &&
         ["fullscreen", "keyboard", "screen", "focus", "visible"].every(
@@ -388,7 +389,7 @@ test("retained WASM SSH control recovery preserves its authenticated worker and 
   });
   page.on("response", (response) => {
     if (
-      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      isChallengedCapture(response.url()) &&
       response.status() === 200
     )
       uploads++;

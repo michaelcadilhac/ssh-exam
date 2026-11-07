@@ -149,13 +149,14 @@ class Rollout:
             if not isinstance(command_after, list) or not command_after or not all(isinstance(part, str) for part in command_after) or not Path(command_after[0]).is_absolute():
                 raise ValueError('A separate absolute fresh native-after guard is required')
         elif mode == 'reviewed-web-read':
+            capture_scope = self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1'
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') != 'synchronized-monitoring-playback-v1'
+                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
-                    or self.settings.get('previous_reader_policy_compatible') is not True
+                    or self.settings.get('previous_reader_policy_compatible') is not (not capture_scope)
                     or self.settings.get('unchanged_backend_protocol_native') is not False):
-                raise ValueError('Reviewed recording reader requires its exact schema37 scope, qualified source and CURRENT-data-compatible previous reader')
+                raise ValueError('Reviewed recording reader requires its exact schema37 scope, qualified source and explicit matching previous-reader policy')
             if (not re.fullmatch('[a-f0-9]{64}', self.release['cli_sha256'])
                     or self.release['old_cli_sha256'] != self.release['cli_sha256']
                     or self.release['worker_cli_sha256'] != self.release['cli_sha256']):
@@ -255,6 +256,9 @@ class Rollout:
 
     def matched_native(self):
         return self.settings.get('mode') == 'reviewed-web-native'
+
+    def forward_capture(self):
+        return self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1'
 
     def transition(self):
         path = Path(self.release['native_update']['transition_receipt'])
@@ -752,6 +756,28 @@ class Rollout:
         self.release_background()
 
     def resume(self):
+        if self.forward_capture() and self.record['phase'] in ('SNAPSHOT_DURABLE', 'RUNNING_GATED', 'VERIFIED_GATED'):
+            if self.record.get('opening_previous'):
+                raise ValueError('Older capture writers cannot reopen; preserve CURRENT data and use compatible forward recovery')
+            if self.record.get('opening_image') and self.site.read_bytes() == (self.state/self.record['opening_site']).read_bytes():
+                return self.resume_online()
+            self.inputs_unchanged(); self.configuration_unchanged(); self.coverage(); self.capacity(); self.native()
+            if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
+                raise ValueError('Capture recovery requires the owned admission fence')
+            container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+            if container['Image'] not in (self.release['old_image_config_id'], self.image['config_id']):
+                raise ValueError('Unknown capture image; do not replace or interrupt it')
+            guard = self.inventory(stopped=not container['State']['Running'])
+            if guard['history_sha256'] != self.record['guard']['history_sha256'] or guard['attempts'] != self.record['guard']['attempts']:
+                raise ValueError('CURRENT capture history changed; preserve state and reinventory')
+            self.preserved()
+            if container['State']['Running']:
+                if container['Image'] != self.image['config_id'] or 'latest_start_ms' not in self.record:
+                    raise ValueError('Unknown running capture writer; do not interrupt or replace it')
+                self.finish_web_running()
+            else:
+                self.finish_web()
+            return
         if self.matched_native():
             if self.record.get('opening_previous') and self.record.get('opening_phase') != 'CANCELLED':
                 raise ValueError('An older writer cannot reopen after this native transition; use compatible forward repair')
@@ -823,6 +849,8 @@ class Rollout:
         self.finish_apply()
 
     def rollback(self):
+        if self.forward_capture():
+            raise ValueError('Older capture writers cannot be restored; preserve CURRENT data and use qualified forward resume')
         if self.matched_native():
             raise ValueError('Older native/web writers cannot be restored; preserve CURRENT data and use the same qualified candidate for forward recovery')
         self.inputs_unchanged()
@@ -856,6 +884,8 @@ class Rollout:
         # Keep the fence: opening is a separately reviewable step after repair.
 
     def reopen(self):
+        if self.forward_capture():
+            raise ValueError('Older capture writers cannot reopen; preserve CURRENT data and use qualified forward resume')
         if self.matched_native():
             raise ValueError('Older writers cannot reopen after a live-policy transition; use compatible forward recovery')
         self.inputs_unchanged()
@@ -909,7 +939,7 @@ class Rollout:
     def resume_online(self):
         if self.record['phase'] not in ('VERIFIED_GATED', 'ROLLED_BACK_GATED', 'ONLINE', 'ONLINE_ROLLED_BACK', 'CANCELLED'):
             raise ValueError('No verified opening receipt; reinventory without stopping work')
-        if (self.settings.get('mode') == 'reviewed-web-cli'
+        if ((self.settings.get('mode') == 'reviewed-web-cli' or self.forward_capture())
                 and self.settings['previous_reader_policy_compatible'] is not True
                 and self.record['opening_image'] == self.release['old_image_config_id']
                 and self.record['opening_phase'] != 'CANCELLED'):

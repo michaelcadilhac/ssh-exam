@@ -10,6 +10,7 @@ import {
 import { Monitoring } from "../../apps/server/src/monitoring.js";
 import sharp from "sharp";
 import { hash } from "../../apps/server/src/db.js";
+import { withCaptureReceipt, readCaptureReceipt } from "../../apps/server/src/capture-upload-receipt.js";
 
 // Actual compiled CLI/root user namespace -> real TLS gateway. All attempts and
 // recording bytes are synthetic; no installed service/account is touched.
@@ -43,11 +44,17 @@ export async function qualifyMonitoringCLI(
     data: "PRIVATE-CLI-TERMINAL-日本語",
   });
   media.record(id, peer, { event: "open" });
-  const imageBytes = await sharp({
+  const decodedJPEG = await sharp({
     create: { width: 40, height: 30, channels: 3, background: "white" },
   })
     .jpeg()
     .toBuffer();
+  // Synthetic receipt tests byte-for-byte compatibility of the real compiled
+  // CLI JPEG reader/exporter. Actual VP9 decoding is qualified separately.
+  const imageBytes = withCaptureReceipt(decodedJPEG, {
+    encoding: "vp9-upload-v1", packet_sha256: "a".repeat(64), prediction_sha256: "b".repeat(64),
+    metadata_sha256: "c".repeat(64), initial_jpeg_sha256: hash(decodedJPEG), representation_jpeg_sha256: hash(decodedJPEG),
+  });
   for (let seq = 1; seq <= 2; seq++)
     await media.frame(
       before,
@@ -57,8 +64,11 @@ export async function qualifyMonitoringCLI(
         captured: Date.now(),
         monotonic: 1,
         data: imageBytes.toString("base64"),
+        video: { width: 40, height: 30 },
       },
       "PRIVATE-PAGE-HASH",
+      false,
+      true,
     );
   const run = async (args: string[]) =>
     JSON.parse((await invoke("monitoring", args)).stdout).result;
@@ -113,6 +123,7 @@ export async function qualifyMonitoringCLI(
     (await invoke("monitoring", [...imageArgs, "--output", imageFile])).stderr,
   ).toContain("One monitoring image only");
   expect(readFileSync(imageFile)).toEqual(imageBytes);
+  expect(readCaptureReceipt(readFileSync(imageFile))?.packet_sha256).toBe("a".repeat(64));
   expect(statSync(imageFile).mode & 0o777).toBe(0o600);
   await expect(
     invoke("monitoring", [...imageArgs, "--output", imageFile]),

@@ -1,11 +1,20 @@
+import { isChallengedCapture, captureMetadata } from "./capture-requests.js";
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { fixture, ready } from "./transition-fixture.js";
 import { decodeCaptureUpload } from "../../packages/protocol/capture-upload.js";
+import { CaptureVideoIngress } from "../../apps/server/src/capture-video-ingress.js";
+import { randomUUID } from "node:crypto";
 
-for (const transport of ["json", "binary"] as const) {
-  test(`student sharing uploads ${transport} JPEGs from actual screen and camera frames`, async ({
+for (const transport of [
+  "json",
+  "binary",
+  "video",
+  "video-ack-lost",
+  "video-no-encoder",
+] as const) {
+  test(`student sharing uploads ${transport} captures from actual screen and camera frames`, async ({
     page,
   }, testInfo) => {
     const runtimeReply = await page.request.get("/api/login-test");
@@ -85,16 +94,39 @@ for (const transport of ["json", "binary"] as const) {
       monotonic: number;
       data: string;
     }[] = [];
-    if (transport === "binary") {
+    const ingress = new CaptureVideoIngress(),
+      wireEncodings: string[] = [];
+    const groups: { source: string; key: boolean; chain: string }[] = [];
+    if (transport === "video") test.setTimeout(90000);
+    const accepted = new Map<string, { seq: number; challenge: string }>();
+    if (transport === "video-no-encoder")
+      await page.addInitScript(() => {
+        const Original = window.Worker;
+        window.Worker = new Proxy(Original, {
+          construct(target, args) {
+            if (String(args[0]).includes("capture-encoder"))
+              throw Error("Synthetic codec unavailable");
+            return Reflect.construct(target, args);
+          },
+        });
+      });
+    page.on("close", () => {
+      void ingress.close();
+    });
+    if (transport !== "json") {
       await page.route(
         "**/api/student/attempts/*/capture-challenges",
         (route) =>
           route.fulfill({
             json: {
-              challenge: "00000000-0000-4000-8000-000000000001",
-              after_sequence: 0,
+              challenge: randomUUID(),
+              after_sequence:
+                accepted.get(route.request().postDataJSON().source)?.seq ?? 0,
               valid_for_ms: 60000,
-              upload: { binary: "jpeg-v1" },
+              upload: {
+                binary: "jpeg-v1",
+                ...(transport.startsWith("video") ? { video: "vp9-v1" } : {}),
+              },
             },
           }),
       );
@@ -106,12 +138,50 @@ for (const transport of ["json", "binary"] as const) {
             "application/vnd.ssh-exam-capture",
           );
           const { metadata, image } = decodeCaptureUpload(body);
+          wireEncodings.push(metadata.encoding);
           expect(image.length).toBeLessThan(
             Buffer.byteLength(Buffer.from(image).toString("base64")),
           );
+          const decoded =
+            metadata.encoding === "vp9"
+              ? await ingress.accept(
+                  metadata.source,
+                  metadata,
+                  Buffer.from(image),
+                  async (jpeg) => jpeg,
+                )
+              : Buffer.from(image);
+          if (metadata.encoding === "vp9") {
+            groups.push({
+              source: metadata.source,
+              key: metadata.video!.key,
+              chain: metadata.video!.chain,
+            });
+            accepted.set(metadata.source, {
+              seq: metadata.seq,
+              challenge: metadata.challenge,
+            });
+            if (transport === "video-ack-lost") {
+              await route.fulfill({
+                status: 409,
+                json: {
+                  code: "capture_video_reset",
+                  error: "Synthetic response lost after acceptance",
+                },
+              });
+              return;
+            }
+          } else if (transport === "video-ack-lost") {
+            expect(metadata.seq).toBeGreaterThan(
+              accepted.get(metadata.source)!.seq,
+            );
+            expect(metadata.challenge).not.toBe(
+              accepted.get(metadata.source)!.challenge,
+            );
+          }
           frames.push({
             ...metadata,
-            data: Buffer.from(image).toString("base64"),
+            data: decoded.toString("base64"),
           });
           await route.fulfill({ json: { ok: true } });
         },
@@ -161,6 +231,28 @@ for (const transport of ["json", "binary"] as const) {
         contentType: "image/jpeg",
       });
     }
+    if (transport === "video") {
+      await expect
+        .poll(
+          () => groups.filter((value) => value.source === "screen").length,
+          { timeout: 70000, intervals: [500] },
+        )
+        .toBeGreaterThanOrEqual(13);
+      for (const source of ["screen", "webcam"]) {
+        const values = groups.filter((value) => value.source === source);
+        expect(values[0].key).toBe(true);
+        expect(values.some((value) => !value.key)).toBe(true);
+        expect(
+          new Set(values.map((value) => value.chain)).size,
+        ).toBeGreaterThanOrEqual(2);
+      }
+      expect(wireEncodings.every((value) => value === "vp9")).toBe(true);
+    }
+    if (transport === "video-ack-lost")
+      expect(wireEncodings.filter((value) => value === "vp9")).toHaveLength(2);
+    if (transport === "video-no-encoder")
+      expect(wireEncodings).toEqual(["jpeg", "jpeg"]);
+    await ingress.close();
   });
 }
 
@@ -187,9 +279,9 @@ test("webcam off never offers or acquires a camera through setup, start and resu
     const path = new URL(request.url()).pathname;
     if (
       request.method() === "POST" &&
-      /\/(capture-challenges|frames(?:\/challenged)?)$/.test(path)
+      /\/(capture-challenges|frames(?:\/(?:challenged|binary))?)$/.test(path)
     )
-      mediaRequests.push({ path, source: request.postDataJSON().source });
+      mediaRequests.push({ path, source: captureMetadata(request).source });
   });
   f.model.bind.release();
   await page.goto("/");
@@ -214,7 +306,7 @@ test("webcam off never offers or acquires a camera through setup, start and resu
   await expect
     .poll(
       () =>
-        mediaRequests.filter((r) => r.path.endsWith("frames/challenged"))
+        mediaRequests.filter((r) => isChallengedCapture("http://fixture.invalid" + r.path))
           .length,
     )
     .toBeGreaterThanOrEqual(2);

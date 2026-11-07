@@ -15,6 +15,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import sharp from "sharp";
+import {
+  readCaptureReceipt,
+  withCaptureReceipt,
+} from "../../apps/server/src/capture-upload-receipt.js";
 import { Store } from "../../apps/server/src/db.js";
 import {
   MonitoringVideoProcess,
@@ -83,6 +87,54 @@ async function fixture(
     },
   };
 }
+
+it("preserves the live VP9 wire receipt through verified WebM archiving and derived JPEG export", async () => {
+  const f = await fixture(),
+    worker = new MonitoringVideoProcess(f.store);
+  try {
+    const first = f.frames[0],
+      path = join(f.directory, first.id + ".jpg"),
+      original = readFileSync(path);
+    const receipt = {
+      encoding: "vp9-upload-v1" as const,
+      packet_sha256: "a".repeat(64),
+      prediction_sha256: "b".repeat(64),
+      metadata_sha256: "c".repeat(64),
+      initial_jpeg_sha256: hash(original),
+      representation_jpeg_sha256: hash(original),
+    };
+    const annotated = withCaptureReceipt(original, receipt);
+    writeFileSync(path, annotated);
+    first.hash = hash(annotated);
+    const input = f.job(),
+      result = await worker.run(input);
+    renameSync(join(input.work, result.file), join(f.directory, result.file));
+    const image = await worker.frame({
+      attempt: f.attempt,
+      segment: result.segment,
+      sha256: result.sha256,
+      index: 0,
+      decoded_sha256: result.frames[0].decoded_sha256,
+      width: result.width,
+      height: result.height,
+    });
+    const retained = readCaptureReceipt(image);
+    expect(retained).toMatchObject({
+      encoding: "vp9-upload-v1",
+      packet_sha256: receipt.packet_sha256,
+      initial_jpeg_sha256: receipt.initial_jpeg_sha256,
+    });
+    expect(await sharp(image).metadata()).toMatchObject({
+      format: "jpeg",
+      width: 320,
+      height: 240,
+    });
+    expect(readFileSync(path)).toEqual(annotated);
+  } finally {
+    await worker.close();
+    f.close();
+  }
+});
 
 it.skipIf(process.platform !== "linux")(
   "encodes a verified short VP9 segment and derives each original/thumbnail through the isolated reader without changing originals or authority",

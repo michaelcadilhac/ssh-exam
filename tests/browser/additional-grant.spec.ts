@@ -1,3 +1,4 @@
+import { isChallengedCapture, captureMetadata } from "./capture-requests.js";
 import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
 import { simulatedMedia } from "./transition-fixture.js";
@@ -106,9 +107,9 @@ test("a next attempt can be cancelled, recreated and edited before starting with
   let verifiedWebcamUploads = 0;
   page.on("response", (response) => {
     if (
-      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      isChallengedCapture(response.url()) &&
       response.status() === 200 &&
-      response.request().postDataJSON()?.source === "webcam"
+      captureMetadata(response.request())?.source === "webcam"
     )
       verifiedWebcamUploads++;
   });

@@ -1,3 +1,4 @@
+import { isChallengedCapture } from "./capture-requests.js";
 import { test, expect } from "@playwright/test";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
@@ -29,7 +30,7 @@ test("issued grant settings survive later defaults through portal, real WASM SSH
   });
   page.on("response", (response) => {
     if (
-      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      isChallengedCapture(response.url()) &&
       response.status() === 200
     )
       challengedUploads++;

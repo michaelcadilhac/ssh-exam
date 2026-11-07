@@ -12,7 +12,11 @@ import { hosts } from "./hosts.js";
 // Real authenticated SSH channels and HTTP/WebSocket interfaces; the SSH host's
 // shell/native policy are simulated. This is not privileged freezer qualification.
 export async function liveMonitoring(
-  options: { renewalReceipts?: boolean; ownedAttempt?: boolean } = {},
+  options: {
+    renewalReceipts?: boolean;
+    ownedAttempt?: boolean;
+    webcam?: boolean;
+  } = {},
 ) {
   const h = await hosts({ mfaDelayMs: 10 });
   h.control.command = async (op, body) => {
@@ -45,7 +49,7 @@ export async function liveMonitoring(
     maintenance: false,
   };
   let connection: IsolatedConnection | undefined;
-  const { app, store, life } = await createApp(config, {
+  const { app, store, life, monitoring } = await createApp(config, {
     onConnection: (value) => {
       connection = value;
     },
@@ -81,7 +85,7 @@ export async function liveMonitoring(
       latest: Date.now() + 86400000,
       template: "sample",
       terminals: 4,
-      webcam: true,
+      webcam: options.webcam ?? true,
     };
     store.db
       .prepare("INSERT INTO exams VALUES('e',?)")
@@ -182,7 +186,7 @@ export async function liveMonitoring(
     let seq = 0;
     const capture = async () =>
       Promise.all(
-        ["screen", "webcam"].map((source) =>
+        (exam.webcam ? ["screen", "webcam"] : ["screen"]).map((source) =>
           app.inject({
             method: "POST",
             url: `/api/student/attempts/${id}/frames`,
@@ -232,6 +236,7 @@ export async function liveMonitoring(
       app,
       store,
       life,
+      monitoring,
       h,
       get connection() {
         return connection!;

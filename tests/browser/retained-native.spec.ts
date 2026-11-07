@@ -1,3 +1,4 @@
+import { isChallengedCapture, captureMetadata } from "./capture-requests.js";
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -123,7 +124,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     // Actual failed HTTP uploads to this synthetic page, not fabricated ledger
     // facts. Live media remains available; v1 must report technical uncertainty.
     await page.route(
-      "**/api/student/attempts/*/frames/challenged",
+      "**/api/student/attempts/*/frames/{challenged,binary}",
       async (route) => {
         if (performance.now() < missingCaptureUntil) {
           droppedCaptures++;
@@ -177,7 +178,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
         })
         .catch(() => {});
     if (
-      response.url().endsWith("/frames/challenged") &&
+      isChallengedCapture(response.url()) &&
       response.status() === 200
     )
       uploads++;
@@ -486,9 +487,9 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     const captureUntil = performance.now() + 15000;
     const captured = page.waitForResponse(
       (response) =>
-        response.url().endsWith("/frames/challenged") &&
+        isChallengedCapture(response.url()) &&
         response.status() === 200 &&
-        response.request().postDataJSON().readiness?.fullscreen === true,
+        captureMetadata(response.request()).readiness?.fullscreen === true,
       { timeout: 15000 },
     );
     const capturedReply = await captured;
@@ -519,7 +520,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
       (response) =>
         response.url().endsWith(`/attempts/${original.id}/continue`) &&
         response.request().method() === "POST" &&
-        response.request().postDataJSON().automaticTechnical !== true,
+        captureMetadata(response.request()).automaticTechnical !== true,
     );
     await page
       .getByRole("button", {

@@ -1,3 +1,4 @@
+import { isChallengedCapture, captureMetadata } from "./capture-requests.js";
 import { test, expect, type Page, type BrowserContext } from "@playwright/test";
 import { z } from "zod";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -328,14 +329,14 @@ test("genuine SSH loss follows the explicitly reviewed recovery and timing polic
       let completeCapture = false;
       next.page.on("response", async (response) => {
         if (
-          new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+          isChallengedCapture(response.url()) &&
           captureObservations.length < 32
         ) {
           try {
             const value = await response.json();
             captureObservations.push({
               status: response.status(),
-              readiness: response.request().postDataJSON()?.readiness,
+              readiness: captureMetadata(response.request())?.readiness,
               monitoring: value.monitoring,
               error: value.error,
             });

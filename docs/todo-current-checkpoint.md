@@ -1,11 +1,16 @@
 # Current implementation — reducing upload bandwidth
 
-November6 explicit implement/push/deploy authorization. Binary JPEG capture is
-implemented locally:19focused HTTP/client checks, types/build and3actual built
-WASM browser workflows pass. No production changes yet. Next: bounded browser
-VP9 ingress/recovery and receipt preservation, then full frozen release gates.
+November6 explicit implement/push/deploy authorization. Binary JPEG and browser
+VP9 ingress/recovery/receipt preservation are implemented locally:39focused checks,
+9built WASM/browser workflows and actual compiled root CLI/TLS13checks pass.
+45operator tests pass for the schema37 forward-only capture-reader scope. No
+production changes yet. Next: frozen full application, affected browser/native
+class capacity, exact-image startup/recovery/proxy qualification, then push/deploy.
 Plan and boundaries: docs/capture-upload-implementation.md. Existing production
-remains the last accepted95c7798 release; prior deployment evidence below.
+remains the last accepted95c7798 release; prior deployment evidence below. Native
+capacity running with /var/tmp/ssh-exam-browser-native-upload.bandwidth_8c115fd7066a
+(exact unchanged95c7798 native bytes); read its completion and independent cleanup
+before any other guest run or deployment. Evidence directory as below.
 
 # Prior investigation — reducing upload bandwidth
 

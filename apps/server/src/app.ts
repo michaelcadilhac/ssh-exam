@@ -2376,7 +2376,10 @@ export async function createApp(
         .parse(req.body);
       return {
         ...monitoring.captureChallenge(a, a.page_hash!, source),
-        upload: { binary: "jpeg-v1" },
+        upload: {
+          binary: "jpeg-v1",
+          ...(monitoring.uploadVideo.available ? { video: "vp9-v1" } : {}),
+        },
       };
     },
   );
@@ -2398,13 +2401,10 @@ export async function createApp(
         throw Error("Capture suspended for authorized authentication gap");
       if (!Buffer.isBuffer(req.body)) throw Error("Binary capture required");
       const { metadata, image } = decodeCaptureUpload(req.body);
-      const { version, encoding, ...input } = metadata;
-      return monitoring.challengedFrame(
+      return monitoring.uploadedFrame(
         a,
-        {
-          ...input,
-          data: Buffer.from(image.buffer, image.byteOffset, image.byteLength),
-        },
+        metadata,
+        Buffer.from(image.buffer, image.byteOffset, image.byteLength),
         a.page_hash!,
       );
     },
@@ -4561,6 +4561,7 @@ export async function createApp(
   });
   app.addHook("onClose", async () => {
     monitoring.closeTechnicalRecovery();
+    await monitoring.uploadVideo.close();
     for (const t of [tick, cleanup, housekeeping, mail, purgeTick, videoTick])
       clearInterval(t);
     await purges.close();

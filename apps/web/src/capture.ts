@@ -1,5 +1,6 @@
 import { api, apiBinary } from "./api.js";
 import { encodeCaptureUpload } from "../../../packages/protocol/capture-upload.js";
+import { CaptureEncoder } from "./capture-encoder.js";
 
 // Keep each five-second observation independently verifiable as an ordinary
 // JPEG. Browser stream constraints are hints; the canvas also bounds actual
@@ -18,6 +19,8 @@ export class Capture {
   stopped = false;
   busy = new Map<string, Promise<boolean>>();
   private abort = new AbortController();
+  private encoder = new CaptureEncoder();
+  private videoRetryAt = new Map<string, number>();
   constructor(
     private id: string,
     private page: string,
@@ -102,7 +105,10 @@ export class Capture {
       if (this.busy.get(source) === task) this.busy.delete(source);
     }
   }
-  private async sampleOnce(source: string) {
+  private async sampleOnce(
+    source: string,
+    forceJPEG = false,
+  ): Promise<boolean> {
     if (!this.sampleAllowed()) return false;
     // Obtain the nonce BEFORE sampling. Queued legacy images cannot be
     // relabelled with a fresh nonce or refresh readiness on arrival.
@@ -134,6 +140,51 @@ export class Capture {
     const captured = Date.now(),
       monotonic = performance.now();
     if (challenge?.upload?.binary === "jpeg-v1") {
+      if (
+        !forceJPEG &&
+        challenge.upload.video === "vp9-v1" &&
+        performance.now() >= (this.videoRetryAt.get(source) ?? 0)
+      ) {
+        let encoded: Awaited<ReturnType<CaptureEncoder["encode"]>> | undefined;
+        try {
+          encoded = await this.encoder.encode(canvas, source, monotonic);
+        } catch {
+          this.encoder.reset(source);
+          this.videoRetryAt.set(source, performance.now() + 60_000);
+        }
+        if (this.stopped || !this.sampleAllowed()) return false;
+        if (encoded) {
+          try {
+            await apiBinary(
+              `/student/attempts/${this.id}/frames/binary`,
+              encodeCaptureUpload(
+                {
+                  version: 1,
+                  encoding: "vp9",
+                  source: source as "screen" | "webcam",
+                  seq,
+                  captured,
+                  monotonic,
+                  challenge: challenge.challenge,
+                  readiness: this.readiness() as any,
+                  video: encoded.video,
+                },
+                encoded.data,
+              ),
+              this.page,
+              this.abort.signal,
+            );
+            return true;
+          } catch {
+            // An ACK may have been lost after storage. Never reuse this sequence
+            // or give these pixels a different challenge/encoding on retry.
+            this.encoder.reset(source);
+            this.videoRetryAt.set(source, performance.now() + 60_000);
+            if (this.stopped || !this.sampleAllowed()) return false;
+            return this.sampleOnce(source, true);
+          }
+        }
+      }
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob(
           (value) =>
@@ -228,6 +279,7 @@ export class Capture {
   stop() {
     this.stopped = true;
     this.abort.abort();
+    this.encoder.close();
     clearInterval(this.timer);
     for (const s of this.streams.values())
       s.getTracks().forEach((t) => t.stop());

@@ -1,3 +1,4 @@
+import { isChallengedCapture } from "./capture-requests.js";
 import { test, expect } from "@playwright/test";
 import { fixture, begin, simulatedMedia, ready } from "./transition-fixture.js";
 
@@ -131,7 +132,7 @@ test("real browser SSH keeps contact and terminal input when only final heartbea
   page.on("response", (response) => {
     if (
       loseState &&
-      response.url().endsWith("/frames") &&
+      (response.url().endsWith("/frames") || isChallengedCapture(response.url())) &&
       response.status() === 200
     )
       uploads++;

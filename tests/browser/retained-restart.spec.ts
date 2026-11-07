@@ -1,3 +1,4 @@
+import { isChallengedCapture, captureMetadata } from "./capture-requests.js";
 import {
   test,
   expect,
@@ -156,9 +157,9 @@ test("capture recovery restores terminal input when React coalesces the failed a
       .toBeGreaterThan(0);
     const recovered = await page.waitForResponse(
       (response) =>
-        response.url().endsWith("/frames/challenged") &&
+        isChallengedCapture(response.url()) &&
         response.status() === 200 &&
-        response.request().postDataJSON().source === "screen",
+        captureMetadata(response.request()).source === "screen",
       { timeout: 7000 }, // Capture's actual sampling interval is five seconds.
     );
     await recovered.finished();
@@ -304,7 +305,7 @@ test("an actual gateway restart re-verifies the same live SSH and private shell 
   });
   page.on("response", (response) => {
     if (
-      new URL(response.url()).pathname.endsWith("/frames/challenged") &&
+      isChallengedCapture(response.url()) &&
       response.status() === 200
     )
       uploads++;
@@ -627,11 +628,11 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
   await page.waitForResponse(
     (response) => {
       if (
-        !new URL(response.url()).pathname.endsWith("/frames/challenged") ||
+        !isChallengedCapture(response.url()) ||
         response.status() !== 200
       )
         return false;
-      const sample = response.request().postDataJSON();
+      const sample = captureMetadata(response.request());
       return (
         sample.source === "screen" &&
         ["fullscreen", "keyboard", "screen", "focus", "visible"].every(
@@ -718,8 +719,8 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   });
   // The fault loses the original negative frame too. A later restored-condition
   // JPEG must not erase the pending negative socket report.
-  await page.route("**/frames/challenged", async (route) => {
-    const readiness = route.request().postDataJSON().readiness;
+  await page.route("**/frames/{challenged,binary}", async (route) => {
+    const readiness = captureMetadata(route.request()).readiness;
     if (
       ["fullscreen", "visible", "keyboard", "screen"].some(
         (key) => readiness?.[key] !== true,
@@ -926,11 +927,11 @@ test("gateway recovery completes a durably recorded policy pause rejected by nat
   await page.waitForResponse(
     (response) => {
       if (
-        !new URL(response.url()).pathname.endsWith("/frames/challenged") ||
+        !isChallengedCapture(response.url()) ||
         response.status() !== 200
       )
         return false;
-      const sample = response.request().postDataJSON();
+      const sample = captureMetadata(response.request());
       return (
         sample.source === "screen" &&
         ["fullscreen", "keyboard", "screen", "focus", "visible"].every(
