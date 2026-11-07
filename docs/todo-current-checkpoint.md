@@ -1,16 +1,27 @@
 # Current implementation — reducing upload bandwidth
 
-November6 explicit implement/push/deploy authorization. Binary JPEG and browser
-VP9 ingress/recovery/receipt preservation are implemented locally:39focused checks,
-9built WASM/browser workflows and actual compiled root CLI/TLS13checks pass.
-45operator tests pass for the schema37 forward-only capture-reader scope. No
-production changes yet. Next: frozen full application, affected browser/native
-class capacity, exact-image startup/recovery/proxy qualification, then push/deploy.
-Plan and boundaries: docs/capture-upload-implementation.md. Existing production
-remains the last accepted95c7798 release; prior deployment evidence below. Native
-capacity running with /var/tmp/ssh-exam-browser-native-upload.bandwidth_8c115fd7066a
-(exact unchanged95c7798 native bytes); read its completion and independent cleanup
-before any other guest run or deployment. Evidence directory as below.
+November6 explicit implement/push/deploy authorization. Runtime frozen at
+fde033c2aaf175a3e21ef216667fcaa2ddd056b6; image Config5e851b1685dc/schema37.
+Binary JPEG and VP9 capture/recovery/provenance are implemented.855application
+checks/1existing opt-in skip,39focused,13root CLI/TLS,45operator,9shipped-browser
+and12affected-browser checks pass (8mode-specific skips). Exact-image codec,
+startup/preservation/current-data recovery and actual nginx reload pass.
+No production changes or push yet; the frozen image is staged privately.
+
+Native16/64protected finish and actual128kbit/s upload/input checks pass; guest
+independently stopped, exit0, host/base/authority unchanged. Runtime/native sources
+stay frozen. Online prepare is PREPARED in11.700s, reusing1.065GB media coverage
+with0new media bytes. Site remains on95c7798; only the owned recording-optimizer
+pause is active. Qualified cancel is available before stop.
+
+Next: commit test/documentation corrections, push, admin-only signout if needed,
+fresh read-only class/student/unfinished guards, apply/acceptance. No native
+installation/restart. Forward recovery preserves CURRENT data/original snapshot.
+Evidence/operation helpers:
+var/collection-tests/upload-bandwidth.20261106/. Plan/limits:
+docs/capture-upload-implementation.md. Current production remains95c7798; fresh
+inventory119web/186native histories, all completed/cancelled, one admin session.
+Ten original dirty documentation screenshots remain protected/uncommitted.
 
 # Prior investigation — reducing upload bandwidth
 

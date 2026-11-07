@@ -164,9 +164,37 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     log: data + "/native-root.log",
   };
 });
-app.get("/api/fixture/native-state", async (req) =>
-  guest.inspect(String((req.query as any).attempt)),
-);
+app.get("/api/fixture/native-state", async (req) => {
+  const id = String((req.query as any).attempt),
+    native = await guest.inspect(id),
+    a = store.attempt(id);
+  const failure = store.db
+    .prepare(
+      "SELECT detail FROM audit WHERE target=? AND action='activation-failed' ORDER BY rowid DESC LIMIT 1",
+    )
+    .get(id) as any;
+  const permission = a?.grant_id
+    ? (store.db
+        .prepare("SELECT status FROM attempt_grants WHERE id=?")
+        .get(a.grant_id) as any)
+    : undefined;
+  return {
+    ...native,
+    gateway_start: {
+      state: a?.state,
+      start: a?.start,
+      deadline: a?.deadline,
+      permission_status: permission?.status,
+      retry_reason:
+        typeof failure?.detail === "string" &&
+        failure.detail.startsWith(
+          "native readiness verification already in progress;",
+        )
+          ? "native-readiness-busy"
+          : null,
+    },
+  };
+});
 app.get("/api/fixture/native-evidence", async (req) => {
   if (
     (process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE !== "1" &&

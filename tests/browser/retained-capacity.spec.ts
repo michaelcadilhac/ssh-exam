@@ -221,24 +221,91 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
       await page.goto(origin);
       await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
       await page.getByLabel("Username").fill(student.username);
+      await page.getByRole("button", { name: "Sign in", exact: true }).click();
       await page
-        .getByRole("button", { name: "Sign in", exact: true })
-        .click();
-      await page.getByLabel("Password", { exact: true }).fill("shared-password");
-      await page
-        .getByRole("button", { name: "Continue", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "Check setup and practice", exact: true })
-        .click();
+        .getByLabel("Password", { exact: true })
+        .fill("shared-password");
+      await page.getByRole("button", { name: "Continue", exact: true }).click();
+      for (let retry = 0; retry < 3; retry++) {
+        const result = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === "/api/student/preflight" &&
+            response.request().method() === "POST",
+          { timeout: 30000 },
+        );
+        await page
+          .getByRole("button", {
+            name: "Check setup and practice",
+            exact: true,
+          })
+          .click();
+        const response = await result;
+        if (response.ok()) break;
+        const body = await response.json();
+        expect(body.error).toMatch(
+          /^native readiness verification already in progress;/,
+        );
+        const current = (
+          await (await page.request.get("/api/student/exam")).json()
+        ).attempt;
+        expect(
+          current ?? null,
+          "Health refused before creating or reserving setup",
+        ).toBeNull();
+        expect(
+          retry,
+          "Readiness busy did not settle within bounded setup retries",
+        ).toBeLessThan(2);
+        await page.waitForTimeout(250);
+      }
       await ready(page);
-      await page
-        .getByRole("button", { name: "Start exam", exact: true })
-        .click();
-      await page
-        .getByRole("dialog")
-        .getByRole("button", { name: "Start exam", exact: true })
-        .click();
+      for (let retry = 0; retry < 3; retry++) {
+        const result = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname.endsWith("/begin") &&
+            response.request().method() === "POST",
+          { timeout: 30000 },
+        );
+        await page
+          .getByRole("button", { name: "Start exam", exact: true })
+          .click();
+        await page
+          .getByRole("dialog")
+          .getByRole("button", { name: "Start exam", exact: true })
+          .click();
+        const response = await result;
+        if (response.ok()) break;
+        const current = (
+          await (await page.request.get("/api/student/exam")).json()
+        ).attempt;
+        const inspected = await request.get(
+          `/api/fixture/native-state?attempt=${encodeURIComponent(current.id)}`,
+          { headers },
+        );
+        expect(inspected.ok(), await inspected.text()).toBe(true);
+        const view = await inspected.json();
+        // A no-wait health observation can overlap its own background probe.
+        // Only its positively unstarted, unconsumed refusal may be retried.
+        expect(view.gateway_start).toMatchObject({
+          state: "PREPARING",
+          start: null,
+          deadline: null,
+          permission_status: "AVAILABLE",
+          retry_reason: "native-readiness-busy",
+        });
+        expect(view.attempt.state).toBe("PREPARING");
+        expect(view.attempt.start).toBe(0);
+        expect(
+          retry,
+          "Readiness busy did not settle within the bounded fresh-Start workflow",
+        ).toBeLessThan(2);
+        await page
+          .getByRole("dialog", { name: "Workspace error" })
+          .getByRole("button", { name: "Close", exact: true })
+          .click({ timeout: 5000 });
+        // The next actual Start performs fresh capture/native verification.
+        await page.waitForTimeout(250);
+      }
       await expect
         .poll(
           async () =>

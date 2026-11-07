@@ -22,8 +22,11 @@ change yet. Measurements and comparison: upload-bandwidth-evaluation.md.
    SSH recovery. Actual compiled root CLI/TLS13checks pass with receipt-bearing
    JPEGs. The codec load seam uses32full-size streams and four decoder slots while
    an authenticated public JPEG/SSH fixture remains responsive; it does not claim
-   that32component jobs alone qualify16native students. That guarded browser/native
-   class test and exact-image deployment qualification are in progress.
+   that32component jobs alone qualify16native students. The separate actual native
+   class16/64workflow now passes, with protected finishes and independent exit0/
+   stopped-guest/host preservation proof. Shipped assets also pass actual128kbit/s
+   throttled HTTP uploads, keyframes/deltas and input without changing clock or
+   generation. Its synthetic native adapter is separate from the real class test.
 3. Freeze artifacts, affected/full application/browser/race checks, exact image
    migration/preservation/startup/current-data recovery and actual proxy cutover.
    Push/deploy only with qualified procedures and fresh student/unfinished drain;
@@ -86,4 +89,48 @@ Deployment uses registered reviewed-web-read/binary-vp9-capture-v1 scope with
 schema37 and unchanged native/CLI bytes. Older media writers cannot reopen; forward
 resume preserves CURRENT data and the original snapshot, including recovery from
 an already-running candidate without another start.45operator tests pass. The
-actual image/startup/proxy procedure still needs qualification before cutover.
+exact-image codec, schema37 preservation, delayed startup/current-data recovery and
+actual local nginx reload/maintenance checks pass. The shipped browser assets pass
+all9capture/retained-control workflows. Full application:855pass/1existing opt-in
+skip; affected browsers:12pass/8mode-specific skips. CLI races pass with unchanged
+native sources. Final native class capacity and throttled upload qualification
+pass; no production deployment is implied.
+
+The first startup fixture demanded a native-upgrade capability for a web-only
+release. It now exercises the controller's actual post-start signed-role freshness
+predicate, including expired observations, a62-second publisher interval and
+60-second signed-poll expiry.41preservation contracts and11independent mutation
+refusals pass; current-data recovery starts no additional container and keeps the
+original snapshot. Codec checks inside the exact image pass as UID10001 with32
+streams, four decoder slots and archive/derived-receipt preservation.
+
+The first native class run encountered an already-running health observation.
+This temporary no-start refusal did not consume a clock or permission. The class
+fixture now permits only bounded fresh retries after positively checking that
+exact refusal and unused state. A later setup-stage occurrence is similarly
+retried only before any attempt exists. One attempted parallel browser run hit a
+shared internal3100port; these fixtures must run sequentially despite their
+different public origins. Failed guests are independently stopped, with host/base
+files and authority unchanged. Original failures remain in the evidence directory.
+
+The first throttled-link run stayed ACTIVE but its arbitrary85-second observation
+ended after11samples. The existing scheduler waits five seconds AFTER completion
+of an upload, so slow transfers lengthen that interval. With the same runtime,
+the longer bounded run verifies15accepted uploads, VP9 keyframes/deltas, unchanged
+deadline/generation and fresh input. This is representative synthetic terminal
+content at128kbit/s, not a guaranteed minimum link rate or a production traffic
+measurement. JPEG fallback and highly changing content can require more upload.
+
+Release plan: same schema37, web only; keep all five native binaries/four loaded
+role PIDs unchanged. The existing pinned read-only native guard observes current
+history/configuration and bridges a fresh BEFORE receipt using the existing
+fresh-cohort reader. No native installer is staged or called. Positive actual-host
+and seven synthetic stale/foreign/changed-authority refusals pass. Online prepare
+completed in11.700s, reusing1,065,421,981bytes of media coverage with zero new media
+copies. Candidate is staged, not yet serving production. Next: commit/push, expire
+only the authorized admin sessions after a positive student/unfinished drain,
+fresh guards, fenced stopped incremental snapshot, matched web start/preservation,
+reopening and required public/signed-CLI/identity acceptance. Before stopping,
+qualified cancel restores optimization. After snapshot, recover forward with
+CURRENT data and the original snapshot; never reopen the old media writer or
+restore historical SQL over newer records. No policy or migration decision remains.

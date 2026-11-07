@@ -1,9 +1,14 @@
-# Upload bandwidth — IMPLEMENTATION AUTHORIZED, local work in progress
+# Upload bandwidth — IMPLEMENTED AND QUALIFIED LOCALLY; deployment pending
 
 Binary JPEG and browser VP9 upload/recovery/receipt preservation are implemented
-locally:39focused tests,9built WASM/browser workflows,13actual root CLI/TLS and
-45operator checks pass. No deployment yet. Full application/affected-browser,
-guarded native capacity and exact-image release qualification remain open.
+locally:855application checks/1existing opt-in skip,39focused tests,9shipped-browser
+workflows,13actual root CLI/TLS,45operator and12affected-browser checks pass
+(8mode-specific skips). Actual guarded16-student/64-terminal protected finish,
+real128kbit/s upload, exact-image codec/startup/current-data recovery and nginx
+reload pass. Guest independently stopped, exit0, host/base/authority preserved.
+Runtimefde033c/schema37 is frozen and privately staged. Online preparation11.7s
+reused1.065GB recovery coverage and copied0media bytes. Push/cutover/acceptance next;
+no candidate is serving production yet. Native installation remains unchanged.
 Current implementation plan: docs/capture-upload-implementation.md.
 
 November6: synthetic browser measurements confirm binary JPEG25% payload savings
@@ -11,11 +16,9 @@ November6: synthetic browser measurements confirm binary JPEG25% payload savings
 3.4–5.1kB/s combined, with144frames independently decoded; this is an encoder
 experiment, not integrated monitoring qualification. Independent WebP offers
 modest savings at moderate quality and is worse on the noise stress case.
-Plan, limits and acceptance: docs/upload-bandwidth-evaluation.md. No runtime or
-production change. Proposed next increments remain OPEN: binary JPEG capture
-workflow, then capability-negotiated isolated live-video decode/recovery with
-JPEG fallback and unchanged challenged freshness/enforcement. Do not treat
-encoder measurements as completion or deployment of either increment.
+These earlier encoder-only measurements remain comparative estimates, separate
+from the integrated qualification above. Plan and limits:
+docs/upload-bandwidth-evaluation.md; docs/capture-upload-implementation.md.
 
 # Disconnect follow-up — PUSHED, DEPLOYED AND ONLINE
 

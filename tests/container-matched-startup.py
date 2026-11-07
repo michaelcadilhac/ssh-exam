@@ -208,7 +208,7 @@ else:
         global sequence
         sequence+=1;now=int(time.time()*1000)
         value={'ready':True,'production_ready':True,'functional_test':False,'capabilities':list(capabilities),
-            'native_roles':{'complete':True,'retained_enabled':True,'observed':now}}
+            'native_roles':{'complete':True,'retained_enabled':True,'observed':now-(120001 if a.reviewed_scope=='binary-vp9-capture-v1' and policy!='fresh' else 0)}}
         if policy is not None:
             value['capabilities'].append('live-exam-execution-policy-v1')
             value['execution_policy_support']={'schema':1,'capability':'live-exam-execution-policy-v1','observation_only':True,'supported':True,
@@ -290,13 +290,17 @@ else:
         def sender():
             try:
                 live();health();assert http('/health/ready')['status']==200
-                assert not rollout.execution_policy_ready(),'Old ready roles incorrectly proved live-policy support'
+                def fresh_support():
+                    if a.reviewed_scope=='binary-vp9-capture-v1':
+                        return rollout.roles()['observed']>=rollout.record['latest_start_ms']-1000
+                    return rollout.execution_policy_ready()
+                assert not fresh_support(),'Old ready roles incorrectly proved post-start support'
                 events['old_ready_blocked']=True;events['nonce_live_at_start']=original['expires']>rollout.record['latest_start_ms'];assert events['nonce_live_at_start']
                 started=events['actual_start'];next_poll=time.monotonic();expired=False
                 while time.monotonic()-started<a.fresh_after_seconds and not stop.is_set():
                     if time.monotonic()>=next_poll:poll();next_poll=time.monotonic()+5
                     if not expired and time.monotonic()-started>=32:
-                        health('expired');assert not rollout.execution_policy_ready();events['expired_support_blocked']=True;expired=True
+                        health('expired');assert not fresh_support();events['expired_support_blocked']=True;expired=True
                     time.sleep(.1)
                 if stop.is_set():return
                 health('fresh');events['fresh_sent']=time.monotonic()
