@@ -1357,6 +1357,25 @@
 .grant-availability {
   color: var(--brand-blue);
 }
+.admin-roster .next-attempt-row > td {
+  background: #edf5ff;
+  border-block: 1px dashed #86a8d2;
+}
+.admin-roster .next-attempt-row .attempt-identity {
+  border-inline-start: 4px solid var(--brand-blue);
+  color: var(--brand-blue);
+}
+.next-attempt-mark {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+.admin-roster .historical-attempt-row .attempt-identity strong {
+  font-weight: 500;
+}
 .admin-roster .next-attempt-row .attempt-identity {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -1713,6 +1732,11 @@
   }
   .admin-roster .cell-edit-layout .next-attempt-row {
     display: grid;
+    margin: 4px 0 8px;
+    background: #edf5ff;
+    border: 1px dashed #86a8d2;
+    border-inline-start: 4px solid var(--brand-blue);
+    border-radius: 8px;
     grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr) 44px;
     gap: 8px;
     padding: 10px 12px 14px;

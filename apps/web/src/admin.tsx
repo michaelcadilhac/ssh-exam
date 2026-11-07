@@ -40,21 +40,16 @@ import {
   attemptElapsed,
   clockEditable,
   webcamRequired,
-  matchesDashboardView,
+  matchesDashboardStudent,
+  compareDashboardStudents,
   type DashboardView,
+  type DashboardFilter,
+  type DashboardSort,
 } from "../../../packages/protocol/admin.js";
-const filterLabels: [DashboardView, string][] = [
-  ["", "All students"],
-  ["working", "Working"],
-  ["attention", "Needs attention"],
-  ["secured", "Files saved"],
-  ["PREPARING", "Setup"],
-  ["ACTIVE", "Active attempts"],
-  ["LOCKED", "Work paused"],
-  ["FINALIZING", "Finishing"],
-  ["COMPLETED", "Completed"],
-  ["COLLECTION_FAILED", "File collection needs attention"],
-  ["CANCELLED_BEFORE_START", "Setup cancelled"],
+const filterLabels: [DashboardFilter, string][] = [
+  ["", "No additional filter"],
+  ["available", "Next attempt available"],
+  ["paused", "Paused attempt"],
   ["camera", "Webcam required"],
   ["no-camera", "Webcam off"],
 ];
@@ -109,7 +104,9 @@ export function Admin({
   } | null>(null);
   const [data, setData] = useState<any>(null),
     [search, setSearch] = useState(""),
-    [filter, setFilter] = useState<DashboardView>("");
+    [filter, setFilter] = useState<DashboardView>(""),
+    [extraFilter, setExtraFilter] = useState<DashboardFilter>(""),
+    [sort, setSort] = useState<DashboardSort>("username");
   const [offset, setOffset] = useState(0),
     [loading, setLoading] = useState(true),
     [stale, setStale] = useState(false),
@@ -172,10 +169,26 @@ export function Admin({
       ? "unavailable"
       : Notification.permission,
   );
-  const query = useRef({ exam, search, filter, offset, lifecycle }),
+  const query = useRef({
+      exam,
+      search,
+      filter,
+      extraFilter,
+      sort,
+      offset,
+      lifecycle,
+    }),
     selectedRef = useRef<any>(null),
     soundRef = useRef(sound);
-  query.current = { exam, search, filter, offset, lifecycle };
+  query.current = {
+    exam,
+    search,
+    filter,
+    extraFilter,
+    sort,
+    offset,
+    lifecycle,
+  };
   soundRef.current = sound;
   const requestPending = useRef(0),
     lastUpdate = useRef(0);
@@ -201,7 +214,7 @@ export function Admin({
         api(`/admin/exams?lifecycle=${q.lifecycle}`),
         q.exam
           ? api(
-              `/admin/exams/${q.exam}/dashboard?q=${encodeURIComponent(q.search)}&offset=${q.offset}&view=${q.filter}${review ? `&review=${review}` : ""}`,
+              `/admin/exams/${q.exam}/dashboard?q=${encodeURIComponent(q.search)}&offset=${q.offset}&view=${q.filter}&filter=${q.extraFilter}&sort=${q.sort}${review ? `&review=${review}` : ""}`,
             )
           : Promise.resolve(null),
       ]);
@@ -272,7 +285,7 @@ export function Admin({
       ++version.current;
       clearInterval(timer);
     };
-  }, [exam, search, offset, filter, lifecycle, refresh]);
+  }, [exam, search, offset, filter, extraFilter, sort, lifecycle, refresh]);
   useEffect(() => {
     const timer = setInterval(
       () => setClock(Date.now() + serverOffset.current),
@@ -313,11 +326,13 @@ export function Admin({
       exam: id,
       search: "",
       filter: "",
+      extraFilter: "",
       offset: 0,
     };
     setExam(id);
     setSearch("");
     setFilter("");
+    setExtraFilter("");
     setOffset(0);
     selectedRef.current = null;
     setSelected(null);
@@ -376,13 +391,11 @@ export function Admin({
   };
   const current = exams.find((e) => e.id === exam),
     students = data?.students || [];
-  // The server filters before pagination; the client check also tolerates older cached responses.
+  // The server selects students before pagination. Preserve all their history;
+  // this same projection also supports previously cached dashboard responses.
   const visible = students
-    .map((s: any) => ({
-      ...s,
-      attempts: s.attempts.filter((a: any) => matchesDashboardView(a, filter)),
-    }))
-    .filter((s: any) => !filter || s.attempts.length);
+    .filter((s: any) => matchesDashboardStudent(s, filter, extraFilter, clock))
+    .sort((a: any, b: any) => compareDashboardStudents(a, b, sort));
   const candidates = visible;
   const keyOf = (a: any) => a.username;
   const chosen = candidates.filter((a: any) => selection.has(keyOf(a)));
@@ -720,7 +733,6 @@ export function Admin({
                     "Needs attention",
                     data?.counts.attention ?? data?.counts.locked,
                   ],
-                  ["secured", "Files saved", data?.counts.collected],
                 ] as const
               ).map(([value, label, count]) => (
                 <button
@@ -760,19 +772,48 @@ export function Admin({
                 />
               </label>
               <label>
-                <span className="visually-hidden">Filter attempts</span>
+                <span className="visually-hidden">Filter students</span>
                 <select
-                  aria-label="Filter attempts"
-                  value={filter}
-                  onChange={(e) =>
-                    chooseFilter(e.target.value as DashboardView)
-                  }
+                  aria-label="Filter students"
+                  value={extraFilter}
+                  onChange={(e) => {
+                    clearView();
+                    const value = e.target.value as DashboardFilter;
+                    setExtraFilter(value);
+                    setOffset(0);
+                    query.current = {
+                      ...query.current,
+                      extraFilter: value,
+                      offset: 0,
+                    };
+                  }}
                 >
                   {filterLabels.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                <span className="visually-hidden">Sort students</span>
+                <select
+                  aria-label="Sort students"
+                  value={sort}
+                  onChange={(e) => {
+                    clearView();
+                    const value = e.target.value as DashboardSort;
+                    setSort(value);
+                    setOffset(0);
+                    query.current = {
+                      ...query.current,
+                      sort: value,
+                      offset: 0,
+                    };
+                  }}
+                >
+                  <option value="username">Username</option>
+                  <option value="completed-desc">Most recent completion</option>
                 </select>
               </label>
               <label className="admin-select-page">
@@ -797,7 +838,6 @@ export function Admin({
                 Select all students ({candidates.length})
               </label>
             </div>
-            <p className="roster-timezone">Dates in {deviceTimeZone()}.</p>
             {!!(unfinishedChanges.length || unfinishedRequests.length) && (
               <div
                 className="pending-attempt-changes"
@@ -958,26 +998,26 @@ export function Admin({
                   {!visible.length ? (
                     <div className="admin-empty">
                       <h3>
-                        {search || filter
+                        {search || filter || extraFilter
                           ? "No matching students"
                           : "No students yet"}
                       </h3>
                       <p>
-                        {search || filter
+                        {search || filter || extraFilter
                           ? "Change the search or filter to see more students."
                           : "Add a student or upload a CSV roster to get started."}
                       </p>
-                      {(search || filter) && (
+                      {(search || extraFilter) && (
                         <button
                           onClick={() => {
                             clearView();
                             setSearch("");
-                            setFilter("");
+                            setExtraFilter("");
                             setOffset(0);
                             query.current = {
                               ...query.current,
                               search: "",
-                              filter: "",
+                              extraFilter: "",
                               offset: 0,
                             };
                           }}
@@ -1101,7 +1141,15 @@ export function Admin({
                               >
                                 <td className="selection-cell" />
                                 <td className="attempt-identity">
-                                  <strong>Next attempt</strong>
+                                  <strong>
+                                    <span
+                                      className="next-attempt-mark"
+                                      aria-hidden="true"
+                                    >
+                                      ↗
+                                    </span>{" "}
+                                    Next attempt
+                                  </strong>
                                 </td>
                                 <td className="next-status">
                                   {grantStatus(s.unusedAttempt, clock) ===

@@ -6,7 +6,10 @@ import { ClockControl } from "./clock-control.js";
 import { username } from "../../../packages/protocol/index.js";
 import {
   dashboardViews,
-  matchesDashboardView,
+  dashboardFilters,
+  dashboardSorts,
+  matchesDashboardStudent,
+  compareDashboardStudents,
   needsAttention,
 } from "../../../packages/protocol/admin.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
@@ -45,11 +48,15 @@ export function registerExamAdmin(
       q = "",
       offset = "0",
       view = "",
+      filter = "",
+      sort = "username",
     } = z
       .object({
         q: z.string().max(64).optional(),
         offset: z.string().optional(),
         view: z.enum(dashboardViews).optional(),
+        filter: z.enum(dashboardFilters).optional(),
+        sort: z.enum(dashboardSorts).optional(),
         review: z.string().uuid().optional(),
       })
       .parse(req.query);
@@ -82,17 +89,37 @@ export function registerExamAdmin(
       if (!grouped.has(attempt.username)) grouped.set(attempt.username, []);
       grouped.get(attempt.username)!.push(attempt);
     }
+    // One bounded-shape SQL read avoids projecting every student's entire grant
+    // history merely to filter before pagination. Contradictory grants fail closed.
+    const available = new Set(
+      (
+        store.db
+          .prepare(
+            `
+      SELECT g.username FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision
+      WHERE g.agent=? AND g.exam=? AND g.status IN ('AVAILABLE','PENDING_NATIVE')
+      GROUP BY g.username HAVING count(*)=1 AND sum(CASE WHEN g.status='AVAILABLE'
+        AND json_extract(r.settings,'$.latest')>=?
+        AND NOT EXISTS(SELECT 1 FROM grant_claims c WHERE c.grant_id=g.id AND c.state<>'CANCELLED') THEN 1 ELSE 0 END)=1
+    `,
+          )
+          .all(agent.id, req.params.exam, Date.now()) as { username: string }[]
+      ).map((s) => s.username),
+    );
     const matches = users
       .map((username) => {
         const attempts = grouped.get(username) || [];
         return {
           username,
-          attempts: attempts
-            .map((a, i) => ({ ...a, attempt_number: attempts.length - i }))
-            .filter((a) => matchesDashboardView(a, view)),
+          availableNextAttempt: available.has(username),
+          attempts: attempts.map((a, i) => ({
+            ...a,
+            attempt_number: attempts.length - i,
+          })),
         };
       })
-      .filter((s) => !view || s.attempts.length);
+      .filter((s) => matchesDashboardStudent(s, view, filter))
+      .sort((a, b) => compareDashboardStudents(a, b, sort));
     const students = matches.slice(start, start + 100).map((s) => ({
       ...s,
       removable: catalog.removable(req.params.exam, s.username),
@@ -166,8 +193,12 @@ export function registerExamAdmin(
       total: matches.length,
       counts: {
         students: allUsers.length,
-        working: all.filter((a) => a.working).length,
-        attention: all.filter(needsAttention).length,
+        working: [...grouped.values()].filter((attempts) =>
+          attempts.some((a) => a.working),
+        ).length,
+        attention: [...grouped.values()].filter((attempts) =>
+          attempts.some(needsAttention),
+        ).length,
         active: all.filter((a) => a.state === "ACTIVE").length,
         locked: all.filter((a) => a.state === "LOCKED").length,
         collected: all.filter((a) => !!a.protected).length,

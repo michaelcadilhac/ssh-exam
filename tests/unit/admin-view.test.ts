@@ -4,8 +4,68 @@ import {
   hasProtectedFiles,
   clockEditable,
   matchesDashboardView,
+  matchesDashboardStudent,
+  compareDashboardStudents,
   needsAttention,
 } from "../../packages/protocol/admin.js";
+it("intersects student tabs and filters without treating history as a new attempt", () => {
+  const student = {
+    username: "one",
+    availableNextAttempt: true,
+    attempts: [
+      { state: "ACTIVE", working: true },
+      { state: "COMPLETED", ended: 20 },
+    ],
+  };
+  expect(matchesDashboardStudent(student, "working", "available")).toBe(true);
+  expect(matchesDashboardStudent(student, "attention", "available")).toBe(
+    false,
+  );
+  expect(matchesDashboardStudent(student, "working", "paused")).toBe(false);
+  expect(
+    matchesDashboardStudent(
+      {
+        ...student,
+        attempts: [
+          {
+            state: "ACTIVE",
+            working: true,
+            monitoring_mode: "v1",
+            timer_paused_at: 100,
+            timer_remaining_ms: 1000,
+          },
+        ],
+      },
+      "working",
+      "paused",
+    ),
+  ).toBe(true);
+  expect(
+    matchesDashboardStudent(
+      { ...student, attempts: [{ state: "LOCKED" }] },
+      "attention",
+      "paused",
+    ),
+  ).toBe(true);
+  expect(
+    matchesDashboardStudent(
+      { ...student, availableNextAttempt: false },
+      "working",
+      "available",
+    ),
+  ).toBe(false);
+  const rows = [
+    student,
+    { username: "earlier", attempts: [{ state: "COMPLETED", ended: 10 }] },
+    { username: "latest", attempts: [{ state: "COMPLETED", ended: 30 }] },
+    { username: "unused", attempts: [] },
+  ];
+  expect(
+    rows
+      .sort((a, b) => compareDashboardStudents(a, b, "completed-desc"))
+      .map((s) => s.username),
+  ).toEqual(["latest", "one", "earlier", "unused"]);
+});
 it("keeps unverified collection separate from a secured submission", () => {
   expect(attemptStatus({ state: "COMPLETED", protected: 0 }).label).toBe(
     "File protection unconfirmed",

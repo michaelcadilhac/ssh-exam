@@ -1,4 +1,4 @@
-import { effectiveDeadline } from "./timer.js";
+import { effectiveDeadline, timerPaused } from "./timer.js";
 // Presentation only. Authorization and clock changes remain server-controlled.
 export const dashboardViews = [
   "",
@@ -16,6 +16,68 @@ export const dashboardViews = [
   "CANCELLED_BEFORE_START",
 ] as const;
 export type DashboardView = (typeof dashboardViews)[number];
+export const dashboardFilters = [
+  "",
+  "available",
+  "paused",
+  "camera",
+  "no-camera",
+] as const;
+export type DashboardFilter = (typeof dashboardFilters)[number];
+export const dashboardSorts = ["username", "completed-desc"] as const;
+export type DashboardSort = (typeof dashboardSorts)[number];
+
+// Select STUDENTS, retaining their history. This projection is never admission.
+export function matchesDashboardStudent(
+  s: any,
+  view: DashboardView = "",
+  filter: DashboardFilter = "",
+  at = Date.now(),
+): boolean {
+  if (view && !s.attempts.some((a: any) => matchesDashboardView(a, view)))
+    return false;
+  if (filter === "available") {
+    if (typeof s.availableNextAttempt === "boolean")
+      return s.availableNextAttempt;
+    const grant = s.unusedAttempt;
+    return (
+      !!grant &&
+      grant.status === "AVAILABLE" &&
+      Number.isFinite(grant.settings?.latest) &&
+      grant.settings.latest >= at &&
+      Array.isArray(grant.claims) &&
+      grant.claims.every((c: any) => c.state === "CANCELLED")
+    );
+  }
+  if (filter === "paused")
+    return s.attempts.some(
+      (a: any) =>
+        a.state === "LOCKED" ||
+        (["ACTIVE", "LOCKED"].includes(a.state) && timerPaused(a)),
+    );
+  return (
+    !filter || s.attempts.some((a: any) => matchesDashboardView(a, filter))
+  );
+}
+export function compareDashboardStudents(
+  a: any,
+  b: any,
+  sort: DashboardSort,
+): number {
+  const completed = (s: any) =>
+    Math.max(
+      0,
+      ...s.attempts
+        .filter((x: any) => x.state === "COMPLETED")
+        .map(
+          (x: any) => Number(x.ended || x.completed_at || x.collected_at) || 0,
+        ),
+    );
+  return (
+    (sort === "completed-desc" ? completed(b) - completed(a) : 0) ||
+    (a.username < b.username ? -1 : a.username > b.username ? 1 : 0)
+  );
+}
 export function needsAttention(a: any): boolean {
   return (
     a.state === "LOCKED" ||

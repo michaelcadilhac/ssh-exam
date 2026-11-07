@@ -5,7 +5,10 @@ import {
   localDateTime,
   windowLabel,
 } from "../../apps/web/src/local-date-time.js";
-import { matchesDashboardView } from "../../packages/protocol/admin.js";
+import {
+  matchesDashboardStudent,
+  compareDashboardStudents,
+} from "../../packages/protocol/admin.js";
 import type { MonitoringOptimization } from "../../packages/protocol/monitoring-video.js";
 function makeAttempt(
   n: number,
@@ -302,19 +305,21 @@ async function fixture(
           : []
         : state.rows;
       const filtered = roster
-        .map((s) => ({
-          ...s,
-          attempts: s.attempts.filter((a: any) =>
-            matchesDashboardView(
-              a,
-              (url.searchParams.get("view") || "") as any,
-            ),
-          ),
-        }))
         .filter(
           (s) =>
-            (!url.searchParams.get("view") || s.attempts.length) &&
-            s.username.includes(url.searchParams.get("q") || ""),
+            s.username.includes(url.searchParams.get("q") || "") &&
+            matchesDashboardStudent(
+              s,
+              (url.searchParams.get("view") || "") as any,
+              (url.searchParams.get("filter") || "") as any,
+            ),
+        )
+        .sort((a, b) =>
+          compareDashboardStudents(
+            a,
+            b,
+            (url.searchParams.get("sort") || "username") as any,
+          ),
         );
       return json({
         serverNow: Date.now(),
@@ -1332,9 +1337,7 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
   // Keep an open review fresh even if it no longer matches the selected filter.
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await page
-    .getByLabel("Filter attempts", { exact: true })
-    .selectOption("attention");
+  await page.getByRole("button", { name: /^Needs attention/ }).click();
   await bob.getByRole("button", { name: "Review", exact: true }).click();
   s.rows[1].attempts[0].state = "ACTIVE";
   s.rows[1].attempts[0].working = true;
@@ -1345,7 +1348,7 @@ test("review keeps recovery deliberate, shows incidents and does not call an unv
     dialog.getByRole("button", { name: "Allow resume", exact: true }),
   ).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await page.getByLabel("Filter attempts", { exact: true }).selectOption("");
+  await page.getByRole("button", { name: /^All students/ }).click();
   await page
     .getByRole("rowgroup", { name: "carol", exact: true })
     .getByRole("button", { name: "Review", exact: true })
@@ -2243,17 +2246,109 @@ for (const width of [1280, 430])
     ).toBe(true);
   });
 
-test("next attempt waits when the current attempt is hidden by the history filter", async ({
+test("student tabs intersect extra filters, keep history and sort by latest completion", async ({
+  page,
+}) => {
+  page.setDefaultTimeout(7000);
+  const s = await fixture(page, false, false, false, true);
+  s.rows[1].unusedAttempt = { ...s.nextGrant, username: "bob" };
+  s.rows[2].attempts[0].ended = Date.now();
+  s.rows[0].attempts[1].ended = Date.now() - 60000;
+  await page
+    .getByLabel("Sort students", { exact: true })
+    .selectOption("completed-desc");
+  await expect
+    .poll(() =>
+      page.locator("tbody[aria-label]").first().getAttribute("aria-label"),
+    )
+    .toBe("carol");
+  await expect(page.getByRole("button", { name: /^Files saved/ })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText(/^Dates in /)).toHaveCount(0);
+  await page.getByRole("button", { name: /^Needs attention/ }).click();
+  await page
+    .getByLabel("Filter students", { exact: true })
+    .selectOption("available");
+  await expect(page.locator("tbody[aria-label]")).toHaveCount(1);
+  await expect(
+    page.getByRole("rowgroup", { name: "bob", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Needs attention/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: /^Working/ }).click();
+  await expect(
+    page.getByRole("rowgroup", { name: "amy", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("rowgroup", { name: "amy", exact: true })
+      .locator(".historical-attempt-row"),
+  ).toHaveCount(2);
+  await expect(page.getByLabel("Filter students", { exact: true })).toHaveValue(
+    "available",
+  );
+  await page
+    .getByLabel("Filter students", { exact: true })
+    .selectOption("paused");
+  await expect(page.locator("tbody[aria-label]")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: /^Working/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(
+    page.getByRole("rowgroup", { name: "amy", exact: true }),
+  ).toBeVisible();
+});
+
+for (const width of [1360, 390])
+  test(`next attempt is distinct from completed history at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await fixture(page, false, false, false, true);
+    const next = page.getByRole("row", {
+      name: "Next attempt for amy",
+      exact: true,
+    });
+    await expect(next).toBeVisible();
+    const cells = await next
+      .locator(".attempt-identity")
+      .evaluate((el) => ({
+        color: getComputedStyle(el).color,
+        background: getComputedStyle(el).backgroundColor,
+      }));
+    const history = await page
+      .getByRole("rowgroup", { name: "amy", exact: true })
+      .locator(".historical-attempt-row")
+      .last()
+      .locator(".attempt-identity")
+      .evaluate((el) => ({
+        color: getComputedStyle(el).color,
+        background: getComputedStyle(el).backgroundColor,
+      }));
+    expect(cells.color).not.toBe(history.color);
+    expect(cells.background).not.toBe(history.background);
+    await expect(next.locator(".next-attempt-mark")).toHaveText("↗");
+    await page.screenshot({
+      path: testInfo.outputPath(`student-list-${width}.png`),
+      fullPage: true,
+    });
+  });
+
+test("next attempt waits while the matching student retains full history", async ({
   page,
 }) => {
   const s = await fixture(page, false, false, false, true);
   s.rows[0].hasCurrentAttempt = true;
-  await page
-    .getByRole("combobox", { name: "Filter attempts", exact: true })
-    .selectOption("COMPLETED");
+  await page.getByRole("button", { name: /^Working/ }).click();
   const amy = page.getByRole("rowgroup", { name: "amy", exact: true });
   await expect(amy.locator(".attempt-row:not(.next-attempt-row)")).toHaveCount(
-    1,
+    2,
   );
   const next = amy.getByRole("row", {
     name: "Next attempt for amy",

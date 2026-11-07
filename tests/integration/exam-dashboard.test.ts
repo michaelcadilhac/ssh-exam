@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { createApp } from "../../apps/server/src/app.js";
 import { Agent } from "../../apps/server/src/agent.js";
+import { RosterManagement } from "../../apps/server/src/roster-management.js";
+import { grantExam } from "../fixtures/grant-exam.js";
 async function setup(history = false) {
   const dir = mkdtempSync(tmpdir() + "/exam-dashboard-");
   const mock = vi
@@ -364,7 +366,7 @@ it("default reset refuses a changed displayed allowance but retries an already-i
   }
 });
 
-it("filters before pagination, keeps original attempt numbers and scopes an open review to its exam", async () => {
+it("filters before pagination, keeps complete numbered history and scopes an open review to its exam", async () => {
   const t = await setup(true);
   try {
     for (let i = 0; i < 120; i++)
@@ -420,6 +422,97 @@ it("filters before pagination, keeps original attempt numbers and scopes an open
     expect((await read(`review=${t.ids[3]}`)).json().reviewAttempt).toBeNull();
     expect((await read("view=unknown")).statusCode).toBe(400);
     expect((await read("review=invalid")).statusCode).toBe(400);
+  } finally {
+    await t.close();
+  }
+});
+
+it("composes student tabs and filters, sorts latest completed history before pagination and counts students", async () => {
+  const t = await setup(false);
+  try {
+    grantExam(t.store, t.exam);
+    const roster = new RosterManagement(t.store, undefined, "class");
+    roster.add(t.exam, { username: "unused" }, "fixture");
+    roster.add(
+      t.exam,
+      {
+        username: "expired",
+        earliest: Date.now() - 120000,
+        latest: Date.now() - 60000,
+      },
+      "fixture",
+    );
+    for (let i = 0; i < 110; i++)
+      t.store.db
+        .prepare(
+          "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        )
+        .run(
+          randomUUID(),
+          t.exam,
+          `z${i}`,
+          5000 + i,
+          "COMPLETED",
+          JSON.stringify({ webcam: true }),
+          100,
+          1000,
+          1000,
+          500,
+        );
+    const id = randomUUID();
+    t.store.db
+      .prepare(
+        "INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended) VALUES(?,?,?,?,?,?,?,?,?,?)",
+      )
+      .run(
+        id,
+        t.exam,
+        "z_recent",
+        6000,
+        "COMPLETED",
+        JSON.stringify({ webcam: false }),
+        100,
+        1000,
+        1000,
+        900,
+      );
+    t.store.db
+      .prepare("UPDATE attempts SET state='LOCKED' WHERE id=?")
+      .run(t.ids[1]);
+    const read = async (query: string) =>
+      (
+        await t.app.inject({
+          url: `/api/admin/exams/${t.exam}/dashboard?${query}`,
+          headers: t.headers,
+        })
+      ).json();
+    const available = await read("filter=available");
+    expect(available.students.map((s: any) => s.username)).toEqual(["unused"]);
+    expect(available.students[0].unusedAttempt.status).toBe("AVAILABLE");
+    expect((await read("view=attention&filter=available")).students).toEqual(
+      [],
+    );
+    expect(
+      (await read("view=attention&filter=paused")).students.map(
+        (s: any) => s.username,
+      ),
+    ).toEqual(["bob"]);
+    expect((await read("view=working&filter=paused")).students).toEqual([]);
+    const sorted = await read("sort=completed-desc");
+    expect(sorted.students[0].username).toBe("z_recent");
+    expect(sorted.students).toHaveLength(100);
+    expect(
+      (await read("sort=completed-desc&offset=100")).students,
+    ).toHaveLength(16);
+    expect(t.store.attempt(t.ids[0]).deadline).toBe(t.deadline);
+    expect(
+      (
+        await t.app.inject({
+          url: `/api/admin/exams/${t.exam}/dashboard?filter=unknown`,
+          headers: t.headers,
+        })
+      ).statusCode,
+    ).toBe(400);
   } finally {
     await t.close();
   }

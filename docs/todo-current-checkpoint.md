@@ -1,3 +1,14 @@
+# Active work — admin list controls and exam timezone
+
+November6 implement/push/deploy authorized. M1 list controls are implemented and
+locally verified:14focused checks,4built-browser workflows, desktop/mobile visual
+inspection, types/build pass. Tabs intersect extra filters; full student history
+remains; completion sort precedes pagination; Next attempt has a separate blue
+panel. No production changes. Next: exam-wide presentation timezone, CLI parity,
+DST/instant-preservation regression; then qualify frozen artifacts and deploy.
+Plan/evidence: docs/admin-list-controls.md;var/collection-tests/admin-list.20261106/.
+Original dirty screenshots remain protected. Prior deployed baseline:
+
 # Current checkpoint — lower-bandwidth captures DEPLOYED AND ONLINE
 
 November6,2026,18:37:14Chicago /November7,00:37:14UTC. Authorized implementation,
