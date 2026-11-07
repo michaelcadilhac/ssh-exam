@@ -165,6 +165,8 @@ export async function qualifyTemplateCLI(
     earliest,
     "--latest",
     latest,
+    "--timezone",
+    "UTC",
     "--reason",
     "Select reviewed exact synthetic catalog version",
     "--request",
@@ -175,6 +177,7 @@ export async function qualifyTemplateCLI(
     id: examID,
     template: info.name,
     template_version: info.hash,
+    timezone: "UTC",
   });
   await f.restart();
   expect(JSON.parse((await invoke("exams", create)).stdout).result).toEqual(
@@ -187,11 +190,16 @@ export async function qualifyTemplateCLI(
     selected.result.revision,
     "--duration-seconds",
     "7200",
+    "--timezone",
+    "Asia/Kathmandu",
   ]);
   const changed = JSON.parse(unchanged.stdout).result;
   expect(changed.exam).toMatchObject({
     template_version: info.hash,
     duration: 7200,
+    timezone: "Asia/Kathmandu",
+    earliest: selected.result.exam.earliest,
+    latest: selected.result.exam.latest,
   });
   const legacy = JSON.parse(
     (
@@ -206,6 +214,7 @@ export async function qualifyTemplateCLI(
     ).stdout,
   ).result;
   expect(legacy.exam).not.toHaveProperty("template_version");
+  expect(legacy.exam.timezone).toBe("Asia/Kathmandu");
   await expect(
     invoke(
       "exams",

@@ -33,6 +33,50 @@ it("uses the device timezone, preserves exact time labels and rejects nonexisten
   }
 });
 
+it("exam zones override the device zone without moving instants or losing DST choices", () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = "Pacific/Honolulu";
+    const at = Date.UTC(2026, 10, 1, 7, 30, 12, 345);
+    expect(localDateTime(at, "exact", "America/Chicago")).toBe(
+      "2026-11-01T01:30:12.345",
+    );
+    expect(localOccurrence(at, "exact", "America/Chicago")).toBe(1);
+    expect(
+      parseLocalDateTime(
+        "2026-11-01T01:30:12.345",
+        1,
+        "exact",
+        "America/Chicago",
+      ),
+    ).toBe(at);
+    expect(() =>
+      parseLocalDateTime("2026-03-08T02:30", 0, "minute", "America/Chicago"),
+    ).toThrow("not valid");
+    expect(localDateTime(at, "exact", "Asia/Kathmandu")).toBe(
+      "2026-11-01T13:15:12.345",
+    );
+    expect(
+      parseLocalDateTime(
+        localDateTime(at, "exact", "Asia/Kathmandu"),
+        0,
+        "exact",
+        "Asia/Kathmandu",
+      ),
+    ).toBe(at);
+    expect(
+      windowLabel(
+        Date.UTC(2026, 10, 1, 6, 30),
+        Date.UTC(2026, 10, 1, 7, 30),
+        "America/Chicago",
+      ),
+    ).toContain("UTC−06:00");
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
+
 it("exact native dates round-trip milliseconds without changing minute-only callers", () => {
   const previous = process.env.TZ;
   try {

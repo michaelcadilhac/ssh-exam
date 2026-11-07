@@ -1,5 +1,6 @@
+import { useExamDates } from "./exam-timezone.js";
 import React from "react";
-import { chicago } from "./api.js";
+
 import { timeLimit } from "./local-date-time.js";
 import { pendingGrantLabel } from "./grant-options.js";
 
@@ -21,6 +22,8 @@ export function AttemptProvenance({
   onGrant?: (id: string) => void;
   onSource?: (source: SourceAttemptLink) => void;
 }) {
+  const { dateTime } = useExamDates();
+
   const g = attempt.grantContext;
   if (!g) return null; // Older cached metadata remains readable.
   if (g.state === "legacy")
@@ -104,13 +107,13 @@ export function AttemptProvenance({
         <div>
           <dt>Start window</dt>
           <dd>
-            {chicago(g.settings.earliest)} — {chicago(g.settings.latest)}
+            {dateTime(g.settings.earliest)} — {dateTime(g.settings.latest)}
           </dd>
         </div>
         <div>
           <dt>Issued</dt>
           <dd>
-            {chicago(g.issued_at)} · {g.actor}
+            {dateTime(g.issued_at)} · {g.actor}
           </dd>
         </div>
         <div>

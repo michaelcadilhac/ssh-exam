@@ -1,13 +1,17 @@
 # Active work — admin list controls and exam timezone
 
-November6 implement/push/deploy authorized. M1 list controls are implemented and
-locally verified:14focused checks,4built-browser workflows, desktop/mobile visual
-inspection, types/build pass. Tabs intersect extra filters; full student history
-remains; completion sort precedes pagination; Next attempt has a separate blue
-panel. No production changes. Next: exam-wide presentation timezone, CLI parity,
-DST/instant-preservation regression; then qualify frozen artifacts and deploy.
+November6 implement/push/deploy authorized. Functional milestones implemented:
+independent tab/filter/sort before pagination; complete history; distinct next row;
+exam timezone outside immutable settings; all instructor dates/DST and matching
+CLI flag/strict signed results.21focused checks,4list browsers, UTC/DST and
+cross-instructor date editor, actual root/TLS CLI, CLI races and48operator tests
+pass. Types/build pass. Wider application/seven-zone/browser checks and frozen
+image/startup/current-data recovery/proxy qualification remain; then push/deploy.
+No open design decision; no production changes. Scope is web plus installed CLI,
+with all four live native roles and loaded source-worker unchanged. Fresh read-only
+inventory119web/186native histories, no unfinished attempts, one admin session.
 Plan/evidence: docs/admin-list-controls.md;var/collection-tests/admin-list.20261106/.
-Original dirty screenshots remain protected. Prior deployed baseline:
+Original dirty screenshots protected. Prior deployed baseline:
 
 # Current checkpoint — lower-bandwidth captures DEPLOYED AND ONLINE
 

@@ -72,6 +72,20 @@ export type Exam = z.infer<typeof examSchema>;
 // Adding a default to examConfiguration would change existing grant hashes.
 export const examDefinitionConfiguration = examConfiguration.extend({
   pause_on_review: z.boolean().optional(),
+  // Presentation only: outside immutable grant/attempt settings and hashes.
+  timezone: z
+    .string()
+    .max(100)
+    .refine((value) => {
+      if (!/^(UTC|[A-Za-z_]+\/[A-Za-z0-9_+./-]+)$/.test(value)) return false;
+      try {
+        new Intl.DateTimeFormat("en", { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Choose a valid time zone, such as America/Chicago or UTC.")
+    .optional(),
 });
 export const examDefinitionSchema = examDefinitionConfiguration
   .refine((e) => e.latest > e.earliest, "Invalid start window")

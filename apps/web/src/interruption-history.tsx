@@ -1,5 +1,6 @@
+import { useExamDates } from "./exam-timezone.js";
 import React from "react";
-import { chicago } from "./api.js";
+
 import { formatDuration } from "../../../packages/protocol/time.js";
 import { NO_RESUME_EXPIRY } from "../../../packages/protocol/interruption-management.js";
 import {
@@ -13,6 +14,8 @@ export function InterruptionHistory({
   attempt: any;
   clock: number;
 }) {
+  const { dateTime } = useExamDates();
+
   const entries = attempt.interruptions || [];
   if (attempt.interruptionHistoryDeleted)
     return (
@@ -55,9 +58,9 @@ export function InterruptionHistory({
             </div>
             <p className="interruption-dates">
               Started{" "}
-              {entry.opened ? chicago(entry.opened) : "at an unrecorded time"}
+              {entry.opened ? dateTime(entry.opened) : "at an unrecorded time"}
               {entry.ended
-                ? ` · ${entry.outcome === "resumed" ? "Resumed" : "Ended"} ${chicago(entry.ended)}`
+                ? ` · ${entry.outcome === "resumed" ? "Resumed" : "Ended"} ${dateTime(entry.ended)}`
                 : ""}
             </p>
             <div className="interruption-body">
@@ -69,7 +72,7 @@ export function InterruptionHistory({
                       <li key={i}>
                         {event.reason}
                         {entry.events.length > 1 && !!event.at && (
-                          <time> · {chicago(event.at)}</time>
+                          <time> · {dateTime(event.at)}</time>
                         )}
                       </li>
                     ))}
@@ -88,20 +91,20 @@ export function InterruptionHistory({
                           {grant.automatic
                             ? "Allowed automatically"
                             : `Allowed by ${grant.actor}`}{" "}
-                          · {chicago(grant.at)}
+                          · {dateTime(grant.at)}
                         </span>
                         <small>
                           {authorizationStatus(grant, clock)}
                           {grant.used_at
-                            ? ` · ${chicago(grant.used_at)}`
+                            ? ` · ${dateTime(grant.used_at)}`
                             : grant.revoked_at
-                              ? ` · ${chicago(grant.revoked_at)}`
+                              ? ` · ${dateTime(grant.revoked_at)}`
                               : grant.replaced_at
-                                ? ` · ${chicago(grant.replaced_at)}`
+                                ? ` · ${dateTime(grant.replaced_at)}`
                                 : grant.expires === NO_RESUME_EXPIRY
                                   ? " · no approval expiry"
                                   : grant.expires && !grant.historical
-                                    ? ` · expires ${chicago(grant.expires)}`
+                                    ? ` · expires ${dateTime(grant.expires)}`
                                     : ""}
                         </small>
                       </li>

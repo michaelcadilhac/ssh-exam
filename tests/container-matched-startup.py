@@ -34,7 +34,7 @@ p.add_argument('--image-receipt',required=True,type=Path)
 p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
 p.add_argument('--proof-repair',action='store_true',help='Qualify proof-only recovery with the ORIGINAL frozen controller/proof, corrected nonce verifier and no service replacement')
-p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1','disconnect-diagnostics-v1','binary-vp9-capture-v1'),default='live-exam-execution-policy-v1')
+p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1','disconnect-diagnostics-v1','binary-vp9-capture-v1','exam-dashboard-timezone-v1'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'
 assert a.docker_host in ('unix:///var/run/docker.sock',f'unix:///run/user/{os.getuid()}/docker.sock')
@@ -98,7 +98,7 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-matched-startup-') as director
         for file in sorted((ROOT/'migrations').iterdir()):
             if file.suffix=='.sql' and file.stem.isdigit() and int(file.stem)<=37: db.executescript(file.read_text())
         settings=json.dumps({'id':'startup-qualification','name':'Synthetic history','duration':300,'webcam':False,'terminals':4,'template':'sample','earliest':1,'latest':2})
-        db.execute('INSERT INTO exams VALUES(?,?)',('startup-qualification',settings))
+        db.execute('INSERT INTO exams VALUES(?,?)',('startup-qualification',json.dumps({**json.loads(settings),'timezone':'Asia/Kathmandu'})))
         db.execute("INSERT INTO attempts(id,exam,username,uid,state,settings,start,deadline,original_deadline,ended,protected,checksum,access_state,policy_state,monitoring_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             ('11111111-1111-4111-8111-111111111111','startup-qualification','synthetic',20001,'COMPLETED',settings,1,300001,300001,300001,1,'a'*64,'RELEASED','NORMAL','legacy'))
     dbpath.chmod(0o660)
@@ -208,7 +208,7 @@ else:
         global sequence
         sequence+=1;now=int(time.time()*1000)
         value={'ready':True,'production_ready':True,'functional_test':False,'capabilities':list(capabilities),
-            'native_roles':{'complete':True,'retained_enabled':True,'observed':now-(120001 if a.reviewed_scope=='binary-vp9-capture-v1' and policy!='fresh' else 0)}}
+            'native_roles':{'complete':True,'retained_enabled':True,'observed':now-(120001 if a.reviewed_scope in ('binary-vp9-capture-v1','exam-dashboard-timezone-v1') and policy!='fresh' else 0)}}
         if policy is not None:
             value['capabilities'].append('live-exam-execution-policy-v1')
             value['execution_policy_support']={'schema':1,'capability':'live-exam-execution-policy-v1','observation_only':True,'supported':True,
@@ -224,11 +224,11 @@ else:
         polls.append(request);return request
     rollout=object.__new__(deploy.Rollout);rollout.project=project;rollout.data=data;rollout.state=state
     rollout.settings={'mode':'reviewed-web-native','reviewed_scope':a.reviewed_scope};rollout.record={'phase':'NATIVE_UPDATED'}
-    if a.reviewed_scope=='binary-vp9-capture-v1':
-        rollout.settings.update(mode='reviewed-web-read',previous_reader_policy_compatible=False)
+    if a.reviewed_scope in ('binary-vp9-capture-v1','exam-dashboard-timezone-v1'):
+        rollout.settings.update(mode='reviewed-web-cli' if a.reviewed_scope=='exam-dashboard-timezone-v1' else 'reviewed-web-read',previous_reader_policy_compatible=False)
         rollout.record['phase']='RUNNING_GATED'
     rollout.release={'schema':37};rollout.image={'config_id':base['Id'],'tag':a.image}
-    if a.reviewed_scope=='binary-vp9-capture-v1':rollout.release['old_image_config_id']=base['Id']
+    if a.reviewed_scope in ('binary-vp9-capture-v1','exam-dashboard-timezone-v1'):rollout.release['old_image_config_id']=base['Id']
     rollout.env=state/'environment';rollout.env.write_text('EXAM_IMAGE='+a.image+'\n');rollout.env.chmod(0o600)
     (state/'environment-before').write_bytes(rollout.env.read_bytes())
     try:
@@ -291,7 +291,7 @@ else:
             try:
                 live();health();assert http('/health/ready')['status']==200
                 def fresh_support():
-                    if a.reviewed_scope=='binary-vp9-capture-v1':
+                    if a.reviewed_scope in ('binary-vp9-capture-v1','exam-dashboard-timezone-v1'):
                         return rollout.roles()['observed']>=rollout.record['latest_start_ms']-1000
                     return rollout.execution_policy_ready()
                 assert not fresh_support(),'Old ready roles incorrectly proved post-start support'

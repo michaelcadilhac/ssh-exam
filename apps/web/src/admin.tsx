@@ -1,6 +1,7 @@
 import "./admin.css";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { api, chicago, attemptRemaining } from "./api.js";
+import { api, attemptRemaining } from "./api.js";
+import { ExamTimeZone, useExamDates } from "./exam-timezone.js";
 import { timerPaused } from "../../../packages/protocol/timer.js";
 import { Modal } from "./modal.js";
 import { CreateAdministrator } from "./create-administrator.js";
@@ -29,12 +30,7 @@ import { AdminReview } from "./admin-review.js";
 import { AlertDelivery } from "./alert-delivery.js";
 import { TemplateCatalogView } from "./template-catalog.js";
 import { grantStatus } from "./grant-options.js";
-import {
-  deviceTimeZone,
-  shortDateTime,
-  timeLimit,
-  windowLabel,
-} from "./local-date-time.js";
+import { timeLimit, DEFAULT_EXAM_TIMEZONE } from "./local-date-time.js";
 import {
   attemptStatus,
   attemptElapsed,
@@ -53,16 +49,6 @@ const filterLabels: [DashboardFilter, string][] = [
   ["camera", "Webcam required"],
   ["no-camera", "Webcam off"],
 ];
-const startFormat = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Chicago",
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZoneName: "short",
-});
-const attemptStarted = (n: number) => startFormat.format(n);
 type NextField = "duration" | "webcam" | "window" | "files";
 const nextPermissionExists = (student: any) =>
   typeof student.hasNextAttempt === "boolean"
@@ -391,6 +377,10 @@ export function Admin({
   };
   const current = exams.find((e) => e.id === exam),
     students = data?.students || [];
+  const { shortDateTime, windowLabel, dateTime } = useExamDates(
+    current?.timezone ?? DEFAULT_EXAM_TIMEZONE,
+  );
+  const attemptStarted = (at: number) => dateTime(at, false);
   // The server selects students before pagination. Preserve all their history;
   // this same projection also supports previously cached dashboard responses.
   const visible = students
@@ -536,1414 +526,1454 @@ export function Admin({
     }
   };
   return (
-    <main className="admin admin-redesign">
-      <header className="admin-header">
-        <h1>Exams</h1>
-        <label className="admin-exam-picker">
-          <span className="visually-hidden">Selected exam</span>
-          <select
-            aria-label="Selected exam"
-            value={exam}
-            disabled={loading && !exams.length}
-            onChange={(e) => chooseExam(e.target.value)}
-          >
-            <option value="">
-              {loading && !exams.length ? "Loading exams…" : "Select an exam"}
-            </option>
-            {exams.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name === e.id ? e.name : `${e.name} · ${e.id}`}
-                {e.lifecycle === "archived" ? " (archived)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <select
-          aria-label="Exam visibility"
-          value={lifecycle}
-          onChange={(event) => {
-            const value = event.target.value as typeof lifecycle;
-            query.current.lifecycle = value;
-            setLifecycle(value);
-            chooseExam("");
-          }}
-        >
-          <option value="active">Current exams</option>
-          <option value="archived">Archived exams</option>
-          <option value="all">All exams</option>
-        </select>
-        <button className="quiet-button" onClick={() => setEditingExam({})}>
-          New exam
-        </button>
-        <AdminMenu
-          label={signingOut ? "Signing out…" : "Administration"}
-          disabled={signingOut}
-          actions={[
-            {
-              label: "Alerts",
-              onSelect: () => {
-                setAlertsError("");
-                setAlerts(true);
-              },
-            },
-            {
-              label: "Starter files",
-              onSelect: () => setTemplateCatalog(true),
-            },
-            {
-              label: "Add administrator",
-              onSelect: () => setCreatingAdmin(true),
-            },
-            {
-              label: signingOut ? "Signing out…" : "Sign out",
-              disabled: signingOut,
-              onSelect: () => void signOut(),
-            },
-          ]}
-        >
-          {signingOut ? "Signing out…" : "Administration"}
-        </AdminMenu>
-      </header>
-      {error && (
-        <div className="admin-service-error" role="alert">
-          <span>
-            {stale && data ? "Updates paused. " : ""}
-            {error}
-          </span>
-          <button onClick={() => void refresh()}>Retry updates</button>
-        </div>
-      )}
-      {stale && !error && (
-        <div className="admin-service-error" role="alert">
-          <span>Updates paused. Displayed information may be out of date.</span>
-          <button onClick={() => void refresh()}>Retry updates</button>
-        </div>
-      )}
-      {notice && (
-        <div className="admin-notice" role="status">
-          {notice}
-          <button
-            aria-label="Dismiss notification"
-            onClick={() => setNotice("")}
-          >
-            ×
-          </button>
-        </div>
-      )}
-      {!exam ? (
-        <section className="admin-start" aria-label="Choose an exam">
-          {loading ? (
-            <p role="status">Loading exams…</p>
-          ) : (
-            <>
-              <h2>
-                {exams.length
-                  ? "Select an exam"
-                  : stale
-                    ? "Exam list unavailable"
-                    : "Create your first exam"}
-              </h2>
-              <p>
-                {exams.length
-                  ? "Choose an exam above to manage students and review their work."
-                  : stale
-                    ? "Use Retry updates to load your exams."
-                    : "Start with New exam to configure an exam and add students."}
-              </p>
-            </>
-          )}
-        </section>
-      ) : (
-        <>
-          <section className="admin-exam-heading">
-            <div>
-              <h2>{current?.name || exam}</h2>
-              <p>
-                {current
-                  ? `${timeLimit(current.duration)} · Webcam ${current.webcam ? "required" : "off"} by default`
-                  : "Loading exam settings…"}
-              </p>
-            </div>
-            <div>
-              <button
-                onClick={() => setEditingExam(current)}
-                disabled={!current || current.lifecycle === "archived"}
-              >
-                Exam settings
-              </button>
-              <button
-                className="primary"
-                onClick={() => setAddingStudent(true)}
-                disabled={!current || current.lifecycle === "archived"}
-              >
-                Add student
-              </button>
-              <AdminMenu
-                label="Exam actions"
-                disabled={!current || stale}
-                actions={[
-                  ...(current?.lifecycle === "archived"
-                    ? [
-                        {
-                          label: "Restore archived exam",
-                          onSelect: () =>
-                            setRetiring({
-                              exam: { ...current },
-                              action: "unarchive",
-                            }),
-                        },
-                      ]
-                    : [
-                        {
-                          label: "Archive exam",
-                          onSelect: () =>
-                            setRetiring({
-                              exam: { ...current },
-                              action: "archive",
-                            }),
-                        },
-                      ]),
-                  {
-                    label: "Delete unused exam",
-                    onSelect: () =>
-                      setRetiring({ exam: { ...current }, action: "delete" }),
-                  },
-                ]}
-              >
-                Exam actions
-              </AdminMenu>
-            </div>
-          </section>
-          <section className="admin-roster" aria-label="Students and attempts">
-            <div
-              className="admin-view-strip"
-              role="group"
-              aria-label="Exam overview"
+    <ExamTimeZone.Provider value={current?.timezone ?? DEFAULT_EXAM_TIMEZONE}>
+      <main className="admin admin-redesign">
+        <header className="admin-header">
+          <h1>Exams</h1>
+          <label className="admin-exam-picker">
+            <span className="visually-hidden">Selected exam</span>
+            <select
+              aria-label="Selected exam"
+              value={exam}
+              disabled={loading && !exams.length}
+              onChange={(e) => chooseExam(e.target.value)}
             >
-              {(
-                [
-                  ["", "All students", data?.counts.students ?? data?.total],
-                  [
-                    "working",
-                    "Working",
-                    data?.counts.working ?? data?.counts.active,
-                  ],
-                  [
-                    "attention",
-                    "Needs attention",
-                    data?.counts.attention ?? data?.counts.locked,
-                  ],
-                ] as const
-              ).map(([value, label, count]) => (
-                <button
-                  key={value}
-                  aria-pressed={filter === value}
-                  onClick={() => chooseFilter(value)}
-                >
-                  {label}
-                  <span>{count ?? "—"}</span>
-                </button>
+              <option value="">
+                {loading && !exams.length ? "Loading exams…" : "Select an exam"}
+              </option>
+              {exams.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name === e.id ? e.name : `${e.name} · ${e.id}`}
+                  {e.lifecycle === "archived" ? " (archived)" : ""}
+                </option>
               ))}
-              <span
-                className={`admin-live ${stale ? "warning" : ""}`}
-                role="status"
-              >
-                {stale ? "Updates paused" : loading ? "Updating…" : "Live"}
-              </span>
-            </div>
-            <div className="admin-roster-tools">
-              <label className="admin-search">
-                <span className="visually-hidden">Search username</span>
-                <input
-                  aria-label="Search username"
-                  placeholder="Find a student…"
-                  maxLength={64}
-                  value={search}
-                  onChange={(e) => {
-                    clearView();
-                    setSearch(e.target.value);
-                    setOffset(0);
-                    query.current = {
-                      ...query.current,
-                      search: e.target.value,
-                      offset: 0,
-                    };
-                  }}
-                />
-              </label>
-              <label>
-                <span className="visually-hidden">Filter students</span>
-                <select
-                  aria-label="Filter students"
-                  value={extraFilter}
-                  onChange={(e) => {
-                    clearView();
-                    const value = e.target.value as DashboardFilter;
-                    setExtraFilter(value);
-                    setOffset(0);
-                    query.current = {
-                      ...query.current,
-                      extraFilter: value,
-                      offset: 0,
-                    };
-                  }}
-                >
-                  {filterLabels.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="visually-hidden">Sort students</span>
-                <select
-                  aria-label="Sort students"
-                  value={sort}
-                  onChange={(e) => {
-                    clearView();
-                    const value = e.target.value as DashboardSort;
-                    setSort(value);
-                    setOffset(0);
-                    query.current = {
-                      ...query.current,
-                      sort: value,
-                      offset: 0,
-                    };
-                  }}
-                >
-                  <option value="username">Username</option>
-                  <option value="completed-desc">Most recent completion</option>
-                </select>
-              </label>
-              <label className="admin-select-page">
-                <input
-                  type="checkbox"
-                  aria-label="Select all students on this page"
-                  checked={
-                    !!candidates.length && chosen.length === candidates.length
-                  }
-                  ref={(el) => {
-                    if (el)
-                      el.indeterminate =
-                        chosen.length > 0 && chosen.length < candidates.length;
-                  }}
-                  disabled={!candidates.length || stale}
-                  onChange={(e) =>
-                    setSelection(
-                      new Set(e.target.checked ? candidates.map(keyOf) : []),
-                    )
-                  }
-                />
-                Select all students ({candidates.length})
-              </label>
-            </div>
-            {!!(unfinishedChanges.length || unfinishedRequests.length) && (
-              <div
-                className="pending-attempt-changes"
-                role="region"
-                aria-label="Unfinished changes"
-              >
-                {unfinishedRequests.map((entry) => (
-                  <button
-                    key={`request:${entry.additional}:${JSON.stringify(entry.students)}`}
-                    className="quiet-button"
-                    onClick={() =>
-                      setIssuingGrants({
-                        students: entry.students.map(
-                          (username) =>
-                            students.find(
-                              (student: any) => student.username === username,
-                            ) ?? { username },
-                        ),
-                        additional: entry.additional,
-                        resumeOnly: true,
-                      })
-                    }
-                  >
-                    Resume saved request ({entry.students.length})
-                  </button>
-                ))}
-                {unfinishedChanges.map((entry) => (
-                  <button
-                    key={JSON.stringify(entry.students)}
-                    className="quiet-button"
-                    onClick={() => {
-                      setInlineAttempt(null);
-                      setGrantsFor(null);
-                      setUnusedStudents({
-                        students: entry.students,
-                        action: "edit",
-                      });
-                    }}
-                  >
-                    Resume saved changes ({entry.students.length})
-                  </button>
-                ))}
-              </div>
+            </select>
+          </label>
+          <select
+            aria-label="Exam visibility"
+            value={lifecycle}
+            onChange={(event) => {
+              const value = event.target.value as typeof lifecycle;
+              query.current.lifecycle = value;
+              setLifecycle(value);
+              chooseExam("");
+            }}
+          >
+            <option value="active">Current exams</option>
+            <option value="archived">Archived exams</option>
+            <option value="all">All exams</option>
+          </select>
+          <button className="quiet-button" onClick={() => setEditingExam({})}>
+            New exam
+          </button>
+          <AdminMenu
+            label={signingOut ? "Signing out…" : "Administration"}
+            disabled={signingOut}
+            actions={[
+              {
+                label: "Alerts",
+                onSelect: () => {
+                  setAlertsError("");
+                  setAlerts(true);
+                },
+              },
+              {
+                label: "Starter files",
+                onSelect: () => setTemplateCatalog(true),
+              },
+              {
+                label: "Add administrator",
+                onSelect: () => setCreatingAdmin(true),
+              },
+              {
+                label: signingOut ? "Signing out…" : "Sign out",
+                disabled: signingOut,
+                onSelect: () => void signOut(),
+              },
+            ]}
+          >
+            {signingOut ? "Signing out…" : "Administration"}
+          </AdminMenu>
+        </header>
+        {error && (
+          <div className="admin-service-error" role="alert">
+            <span>
+              {stale && data ? "Updates paused. " : ""}
+              {error}
+            </span>
+            <button onClick={() => void refresh()}>Retry updates</button>
+          </div>
+        )}
+        {stale && !error && (
+          <div className="admin-service-error" role="alert">
+            <span>
+              Updates paused. Displayed information may be out of date.
+            </span>
+            <button onClick={() => void refresh()}>Retry updates</button>
+          </div>
+        )}
+        {notice && (
+          <div className="admin-notice" role="status">
+            {notice}
+            <button
+              aria-label="Dismiss notification"
+              onClick={() => setNotice("")}
+            >
+              ×
+            </button>
+          </div>
+        )}
+        {!exam ? (
+          <section className="admin-start" aria-label="Choose an exam">
+            {loading ? (
+              <p role="status">Loading exams…</p>
+            ) : (
+              <>
+                <h2>
+                  {exams.length
+                    ? "Select an exam"
+                    : stale
+                      ? "Exam list unavailable"
+                      : "Create your first exam"}
+                </h2>
+                <p>
+                  {exams.length
+                    ? "Choose an exam above to manage students and review their work."
+                    : stale
+                      ? "Use Retry updates to load your exams."
+                      : "Start with New exam to configure an exam and add students."}
+                </p>
+              </>
             )}
-            {!!chosen.length && (
-              <div
-                className="admin-selection-bar"
-                role="region"
-                aria-label="Bulk selection"
-              >
-                <span>
-                  <strong>
-                    {chosen.length}{" "}
-                    {chosen.length === 1 ? "student" : "students"} selected
-                  </strong>
-                </span>
+          </section>
+        ) : (
+          <>
+            <section className="admin-exam-heading">
+              <div>
+                <h2>{current?.name || exam}</h2>
+                <p>
+                  {current
+                    ? `${timeLimit(current.duration)} · Webcam ${current.webcam ? "required" : "off"} by default`
+                    : "Loading exam settings…"}
+                </p>
+              </div>
+              <div>
+                <button
+                  onClick={() => setEditingExam(current)}
+                  disabled={!current || current.lifecycle === "archived"}
+                >
+                  Exam settings
+                </button>
+                <button
+                  className="primary"
+                  onClick={() => setAddingStudent(true)}
+                  disabled={!current || current.lifecycle === "archived"}
+                >
+                  Add student
+                </button>
                 <AdminMenu
-                  label="Selected students"
+                  label="Exam actions"
+                  disabled={!current || stale}
                   actions={[
+                    ...(current?.lifecycle === "archived"
+                      ? [
+                          {
+                            label: "Restore archived exam",
+                            onSelect: () =>
+                              setRetiring({
+                                exam: { ...current },
+                                action: "unarchive",
+                              }),
+                          },
+                        ]
+                      : [
+                          {
+                            label: "Archive exam",
+                            onSelect: () =>
+                              setRetiring({
+                                exam: { ...current },
+                                action: "archive",
+                              }),
+                          },
+                        ]),
                     {
-                      label: "Add next attempts",
-                      disabled:
-                        stale ||
-                        !!inlineAttempt ||
-                        !canAdd.length ||
-                        canAdd.length > 200 ||
-                        chosen.some((s: any) => s.grantError) ||
-                        current?.lifecycle === "archived",
+                      label: "Delete unused exam",
                       onSelect: () =>
-                        setIssuingGrants({
-                          students: canAdd.map((s: any) => ({ ...s })),
-                          excludedStudents: alreadyAllowed,
-                        }),
-                    },
-                    {
-                      label: "Add time to current attempts",
-                      disabled:
-                        stale ||
-                        !selectedClocks.length ||
-                        selectedClocks.length > 100,
-                      onSelect: () =>
-                        openOperation(
-                          "extend",
-                          selectedClocks,
-                          chosen
-                            .filter(
-                              (s: any) =>
-                                !selectedClocks.some(
-                                  (a: any) => a.username === s.username,
-                                ),
-                            )
-                            .map((s: any) => s.username),
-                        ),
-                    },
-                    {
-                      label: "Reset time remaining",
-                      disabled:
-                        stale ||
-                        !selectedClocks.length ||
-                        selectedClocks.length > 100,
-                      onSelect: () =>
-                        openOperation(
-                          "reset",
-                          selectedClocks,
-                          chosen
-                            .filter(
-                              (s: any) =>
-                                !selectedClocks.some(
-                                  (a: any) => a.username === s.username,
-                                ),
-                            )
-                            .map((s: any) => s.username),
-                        ),
-                    },
-                    {
-                      label: "Edit next attempts",
-                      disabled:
-                        stale ||
-                        !!inlineAttempt ||
-                        !chosen.some((s: any) => s.unusedAttempt),
-                      onSelect: () =>
-                        setUnusedStudents({
-                          students: chosen.map((s: any) => s.username),
-                          action: "edit",
-                        }),
-                    },
-                    {
-                      label: "Cancel next attempts",
-                      disabled:
-                        stale ||
-                        !!inlineAttempt ||
-                        !chosen.some((s: any) => s.unusedAttempt),
-                      onSelect: () =>
-                        setUnusedStudents({
-                          students: chosen.map((s: any) => s.username),
-                          action: "cancel",
-                        }),
+                        setRetiring({ exam: { ...current }, action: "delete" }),
                     },
                   ]}
                 >
-                  Actions
+                  Exam actions
                 </AdminMenu>
-                <button
-                  className="quiet-button"
-                  onClick={() => setSelection(new Set())}
-                >
-                  Clear selection
-                </button>
               </div>
-            )}
-            {loading && !data ? (
-              <p className="admin-loading" role="status">
-                Loading students…
-              </p>
-            ) : (
-              data && (
-                <>
-                  {!visible.length ? (
-                    <div className="admin-empty">
-                      <h3>
-                        {search || filter || extraFilter
-                          ? "No matching students"
-                          : "No students yet"}
-                      </h3>
-                      <p>
-                        {search || filter || extraFilter
-                          ? "Change the search or filter to see more students."
-                          : "Add a student or upload a CSV roster to get started."}
-                      </p>
-                      {(search || extraFilter) && (
-                        <button
-                          onClick={() => {
-                            clearView();
-                            setSearch("");
-                            setExtraFilter("");
-                            setOffset(0);
-                            query.current = {
-                              ...query.current,
-                              search: "",
-                              extraFilter: "",
-                              offset: 0,
-                            };
-                          }}
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="admin-roster-scroll">
-                      <table
-                        className="selecting cell-edit-layout"
-                        aria-label="Students and attempts"
-                        role="table"
-                      >
-                        <colgroup>
-                          <col className="column-select" />
-                          <col className="column-identity" />
-                          <col className="column-status" />
-                          <col className="column-webcam" />
-                          <col className="column-time" />
-                          <col className="column-window" />
-                          <col className="column-files" />
-                          <col className="column-actions" />
-                        </colgroup>
-                        <thead>
-                          <tr role="row">
-                            <th className="selection-cell">
-                              <span className="visually-hidden">Selection</span>
-                            </th>
-                            <th>Student / attempt</th>
-                            <th>Status</th>
-                            <th className="webcam-heading">
-                              <span aria-hidden="true">📷</span>
-                              <span className="visually-hidden">Webcam</span>
-                            </th>
-                            <th>Time</th>
-                            <th>Dates</th>
-                            <th>Starting files</th>
-                            <th>
-                              <span className="visually-hidden">Actions</span>
-                            </th>
-                          </tr>
-                        </thead>
-                        {visible.map((s: any) => (
-                          <tbody
-                            role="rowgroup"
-                            key={s.username}
-                            aria-label={s.username}
+            </section>
+            <section
+              className="admin-roster"
+              aria-label="Students and attempts"
+            >
+              <div
+                className="admin-view-strip"
+                role="group"
+                aria-label="Exam overview"
+              >
+                {(
+                  [
+                    ["", "All students", data?.counts.students ?? data?.total],
+                    [
+                      "working",
+                      "Working",
+                      data?.counts.working ?? data?.counts.active,
+                    ],
+                    [
+                      "attention",
+                      "Needs attention",
+                      data?.counts.attention ?? data?.counts.locked,
+                    ],
+                  ] as const
+                ).map(([value, label, count]) => (
+                  <button
+                    key={value}
+                    aria-pressed={filter === value}
+                    onClick={() => chooseFilter(value)}
+                  >
+                    {label}
+                    <span>{count ?? "—"}</span>
+                  </button>
+                ))}
+                <span
+                  className={`admin-live ${stale ? "warning" : ""}`}
+                  role="status"
+                >
+                  {stale ? "Updates paused" : loading ? "Updating…" : "Live"}
+                </span>
+              </div>
+              <div className="admin-roster-tools">
+                <label className="admin-search">
+                  <span className="visually-hidden">Search username</span>
+                  <input
+                    aria-label="Search username"
+                    placeholder="Find a student…"
+                    maxLength={64}
+                    value={search}
+                    onChange={(e) => {
+                      clearView();
+                      setSearch(e.target.value);
+                      setOffset(0);
+                      query.current = {
+                        ...query.current,
+                        search: e.target.value,
+                        offset: 0,
+                      };
+                    }}
+                  />
+                </label>
+                <label>
+                  <span className="visually-hidden">Filter students</span>
+                  <select
+                    aria-label="Filter students"
+                    value={extraFilter}
+                    onChange={(e) => {
+                      clearView();
+                      const value = e.target.value as DashboardFilter;
+                      setExtraFilter(value);
+                      setOffset(0);
+                      query.current = {
+                        ...query.current,
+                        extraFilter: value,
+                        offset: 0,
+                      };
+                    }}
+                  >
+                    {filterLabels.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="visually-hidden">Sort students</span>
+                  <select
+                    aria-label="Sort students"
+                    value={sort}
+                    onChange={(e) => {
+                      clearView();
+                      const value = e.target.value as DashboardSort;
+                      setSort(value);
+                      setOffset(0);
+                      query.current = {
+                        ...query.current,
+                        sort: value,
+                        offset: 0,
+                      };
+                    }}
+                  >
+                    <option value="username">Username</option>
+                    <option value="completed-desc">
+                      Most recent completion
+                    </option>
+                  </select>
+                </label>
+                <label className="admin-select-page">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all students on this page"
+                    checked={
+                      !!candidates.length && chosen.length === candidates.length
+                    }
+                    ref={(el) => {
+                      if (el)
+                        el.indeterminate =
+                          chosen.length > 0 &&
+                          chosen.length < candidates.length;
+                    }}
+                    disabled={!candidates.length || stale}
+                    onChange={(e) =>
+                      setSelection(
+                        new Set(e.target.checked ? candidates.map(keyOf) : []),
+                      )
+                    }
+                  />
+                  Select all students ({candidates.length})
+                </label>
+              </div>
+              {!!(unfinishedChanges.length || unfinishedRequests.length) && (
+                <div
+                  className="pending-attempt-changes"
+                  role="region"
+                  aria-label="Unfinished changes"
+                >
+                  {unfinishedRequests.map((entry) => (
+                    <button
+                      key={`request:${entry.additional}:${JSON.stringify(entry.students)}`}
+                      className="quiet-button"
+                      onClick={() =>
+                        setIssuingGrants({
+                          students: entry.students.map(
+                            (username) =>
+                              students.find(
+                                (student: any) => student.username === username,
+                              ) ?? { username },
+                          ),
+                          additional: entry.additional,
+                          resumeOnly: true,
+                        })
+                      }
+                    >
+                      Resume saved request ({entry.students.length})
+                    </button>
+                  ))}
+                  {unfinishedChanges.map((entry) => (
+                    <button
+                      key={JSON.stringify(entry.students)}
+                      className="quiet-button"
+                      onClick={() => {
+                        setInlineAttempt(null);
+                        setGrantsFor(null);
+                        setUnusedStudents({
+                          students: entry.students,
+                          action: "edit",
+                        });
+                      }}
+                    >
+                      Resume saved changes ({entry.students.length})
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!!chosen.length && (
+                <div
+                  className="admin-selection-bar"
+                  role="region"
+                  aria-label="Bulk selection"
+                >
+                  <span>
+                    <strong>
+                      {chosen.length}{" "}
+                      {chosen.length === 1 ? "student" : "students"} selected
+                    </strong>
+                  </span>
+                  <AdminMenu
+                    label="Selected students"
+                    actions={[
+                      {
+                        label: "Add next attempts",
+                        disabled:
+                          stale ||
+                          !!inlineAttempt ||
+                          !canAdd.length ||
+                          canAdd.length > 200 ||
+                          chosen.some((s: any) => s.grantError) ||
+                          current?.lifecycle === "archived",
+                        onSelect: () =>
+                          setIssuingGrants({
+                            students: canAdd.map((s: any) => ({ ...s })),
+                            excludedStudents: alreadyAllowed,
+                          }),
+                      },
+                      {
+                        label: "Add time to current attempts",
+                        disabled:
+                          stale ||
+                          !selectedClocks.length ||
+                          selectedClocks.length > 100,
+                        onSelect: () =>
+                          openOperation(
+                            "extend",
+                            selectedClocks,
+                            chosen
+                              .filter(
+                                (s: any) =>
+                                  !selectedClocks.some(
+                                    (a: any) => a.username === s.username,
+                                  ),
+                              )
+                              .map((s: any) => s.username),
+                          ),
+                      },
+                      {
+                        label: "Reset time remaining",
+                        disabled:
+                          stale ||
+                          !selectedClocks.length ||
+                          selectedClocks.length > 100,
+                        onSelect: () =>
+                          openOperation(
+                            "reset",
+                            selectedClocks,
+                            chosen
+                              .filter(
+                                (s: any) =>
+                                  !selectedClocks.some(
+                                    (a: any) => a.username === s.username,
+                                  ),
+                              )
+                              .map((s: any) => s.username),
+                          ),
+                      },
+                      {
+                        label: "Edit next attempts",
+                        disabled:
+                          stale ||
+                          !!inlineAttempt ||
+                          !chosen.some((s: any) => s.unusedAttempt),
+                        onSelect: () =>
+                          setUnusedStudents({
+                            students: chosen.map((s: any) => s.username),
+                            action: "edit",
+                          }),
+                      },
+                      {
+                        label: "Cancel next attempts",
+                        disabled:
+                          stale ||
+                          !!inlineAttempt ||
+                          !chosen.some((s: any) => s.unusedAttempt),
+                        onSelect: () =>
+                          setUnusedStudents({
+                            students: chosen.map((s: any) => s.username),
+                            action: "cancel",
+                          }),
+                      },
+                    ]}
+                  >
+                    Actions
+                  </AdminMenu>
+                  <button
+                    className="quiet-button"
+                    onClick={() => setSelection(new Set())}
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              )}
+              {loading && !data ? (
+                <p className="admin-loading" role="status">
+                  Loading students…
+                </p>
+              ) : (
+                data && (
+                  <>
+                    {!visible.length ? (
+                      <div className="admin-empty">
+                        <h3>
+                          {search || filter || extraFilter
+                            ? "No matching students"
+                            : "No students yet"}
+                        </h3>
+                        <p>
+                          {search || filter || extraFilter
+                            ? "Change the search or filter to see more students."
+                            : "Add a student or upload a CSV roster to get started."}
+                        </p>
+                        {(search || extraFilter) && (
+                          <button
+                            onClick={() => {
+                              clearView();
+                              setSearch("");
+                              setExtraFilter("");
+                              setOffset(0);
+                              query.current = {
+                                ...query.current,
+                                search: "",
+                                extraFilter: "",
+                                offset: 0,
+                              };
+                            }}
                           >
-                            <tr className="student-row" role="row">
-                              <td className="selection-cell" role="cell">
-                                <input
-                                  type="checkbox"
-                                  aria-label={`Select student ${s.username}`}
-                                  checked={selection.has(s.username)}
-                                  disabled={stale}
-                                  onChange={() => toggle(s.username)}
-                                />
-                              </td>
-                              <td
-                                className="student-identity"
-                                role="cell"
-                                colSpan={6}
-                              >
-                                <strong title={s.username}>{s.username}</strong>
-                                <small>
-                                  {s.attempts.length
-                                    ? `${s.attempts.length} ${s.attempts.length === 1 ? "attempt" : "attempts"}`
-                                    : "No previous attempts"}
-                                </small>
-                                {s.grantError && (
-                                  <small className="warn">
-                                    Attempt settings need review
-                                  </small>
-                                )}
-                              </td>
-                              <td
-                                role="cell"
-                                className="row-actions student-row-actions"
-                              >
-                                {!nextPermissionExists(s) && !s.grantError && (
-                                  <button
-                                    type="button"
-                                    className="icon-button"
-                                    aria-label={`Add next attempt for ${s.username}`}
-                                    title="Add next attempt"
-                                    disabled={
-                                      stale ||
-                                      !!inlineAttempt ||
-                                      current?.lifecycle === "archived"
-                                    }
-                                    onClick={() =>
-                                      setIssuingGrants({ students: [{ ...s }] })
-                                    }
-                                  >
-                                    <span aria-hidden="true">＋</span>
-                                  </button>
-                                )}
-                                {s.removable === true && (
-                                  <button
-                                    type="button"
-                                    className="icon-button danger"
-                                    aria-label={`Delete student ${s.username}`}
-                                    title="Delete student from this exam"
-                                    disabled={stale || !!inlineAttempt}
-                                    onClick={() => {
-                                      setRemovingError("");
-                                      setRemoving(s.username);
-                                    }}
-                                  >
-                                    <span aria-hidden="true">🗑️</span>
-                                  </button>
-                                )}
-                              </td>
+                            Clear filters
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="admin-roster-scroll">
+                        <table
+                          className="selecting cell-edit-layout"
+                          aria-label="Students and attempts"
+                          role="table"
+                        >
+                          <colgroup>
+                            <col className="column-select" />
+                            <col className="column-identity" />
+                            <col className="column-status" />
+                            <col className="column-webcam" />
+                            <col className="column-time" />
+                            <col className="column-window" />
+                            <col className="column-files" />
+                            <col className="column-actions" />
+                          </colgroup>
+                          <thead>
+                            <tr role="row">
+                              <th className="selection-cell">
+                                <span className="visually-hidden">
+                                  Selection
+                                </span>
+                              </th>
+                              <th>Student / attempt</th>
+                              <th>Status</th>
+                              <th className="webcam-heading">
+                                <span aria-hidden="true">📷</span>
+                                <span className="visually-hidden">Webcam</span>
+                              </th>
+                              <th>Time</th>
+                              <th>Dates</th>
+                              <th>Starting files</th>
+                              <th>
+                                <span className="visually-hidden">Actions</span>
+                              </th>
                             </tr>
-                            {s.unusedAttempt && (
-                              <tr
-                                className="attempt-row next-attempt-row"
-                                aria-label={`Next attempt for ${s.username}`}
-                              >
-                                <td className="selection-cell" />
-                                <td className="attempt-identity">
-                                  <strong>
-                                    <span
-                                      className="next-attempt-mark"
-                                      aria-hidden="true"
-                                    >
-                                      ↗
-                                    </span>{" "}
-                                    Next attempt
+                          </thead>
+                          {visible.map((s: any) => (
+                            <tbody
+                              role="rowgroup"
+                              key={s.username}
+                              aria-label={s.username}
+                            >
+                              <tr className="student-row" role="row">
+                                <td className="selection-cell" role="cell">
+                                  <input
+                                    type="checkbox"
+                                    aria-label={`Select student ${s.username}`}
+                                    checked={selection.has(s.username)}
+                                    disabled={stale}
+                                    onChange={() => toggle(s.username)}
+                                  />
+                                </td>
+                                <td
+                                  className="student-identity"
+                                  role="cell"
+                                  colSpan={6}
+                                >
+                                  <strong title={s.username}>
+                                    {s.username}
                                   </strong>
-                                </td>
-                                <td className="next-status">
-                                  {grantStatus(s.unusedAttempt, clock) ===
-                                    "Ready" &&
-                                  (s.hasCurrentAttempt ??
-                                    s.attempts.some((a: any) =>
-                                      [
-                                        "PREPARING",
-                                        "ACTIVATING",
-                                        "ACTIVE",
-                                        "LOCKED",
-                                        "FINALIZING",
-                                      ].includes(a.state),
-                                    ))
-                                    ? "Waiting for current attempt"
-                                    : grantStatus(s.unusedAttempt, clock)}
-                                </td>
-                                <td className="next-webcam" data-label="Webcam">
-                                  {inlineEditor(s, "webcam") ?? (
-                                    <button
-                                      type="button"
-                                      className="cell-value icon-button"
-                                      id={fieldTrigger(
-                                        s.unusedAttempt.id,
-                                        "webcam",
-                                      )}
-                                      aria-label={`Change webcam for ${s.username}`}
-                                      aria-pressed={
-                                        !!s.unusedAttempt.settings.webcam
-                                      }
-                                      aria-description={
-                                        s.unusedAttempt.settings.webcam
-                                          ? "Required"
-                                          : "Off"
-                                      }
-                                      title={`Webcam: ${s.unusedAttempt.settings.webcam ? "Required" : "Off"}`}
-                                      disabled={
-                                        stale ||
-                                        !!inlineAttempt ||
-                                        exam === "sandbox"
-                                      }
-                                      onClick={() => editCell(s, "webcam")}
-                                    >
-                                      <CameraIcon
-                                        required={
-                                          s.unusedAttempt.settings.webcam
-                                        }
-                                      />
-                                    </button>
+                                  <small>
+                                    {s.attempts.length
+                                      ? `${s.attempts.length} ${s.attempts.length === 1 ? "attempt" : "attempts"}`
+                                      : "No previous attempts"}
+                                  </small>
+                                  {s.grantError && (
+                                    <small className="warn">
+                                      Attempt settings need review
+                                    </small>
                                   )}
                                 </td>
                                 <td
-                                  className="next-time"
-                                  data-label="Time limit"
+                                  role="cell"
+                                  className="row-actions student-row-actions"
                                 >
-                                  {inlineEditor(s, "duration") ?? (
+                                  {!nextPermissionExists(s) &&
+                                    !s.grantError && (
+                                      <button
+                                        type="button"
+                                        className="icon-button"
+                                        aria-label={`Add next attempt for ${s.username}`}
+                                        title="Add next attempt"
+                                        disabled={
+                                          stale ||
+                                          !!inlineAttempt ||
+                                          current?.lifecycle === "archived"
+                                        }
+                                        onClick={() =>
+                                          setIssuingGrants({
+                                            students: [{ ...s }],
+                                          })
+                                        }
+                                      >
+                                        <span aria-hidden="true">＋</span>
+                                      </button>
+                                    )}
+                                  {s.removable === true && (
+                                    <button
+                                      type="button"
+                                      className="icon-button danger"
+                                      aria-label={`Delete student ${s.username}`}
+                                      title="Delete student from this exam"
+                                      disabled={stale || !!inlineAttempt}
+                                      onClick={() => {
+                                        setRemovingError("");
+                                        setRemoving(s.username);
+                                      }}
+                                    >
+                                      <span aria-hidden="true">🗑️</span>
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                              {s.unusedAttempt && (
+                                <tr
+                                  className="attempt-row next-attempt-row"
+                                  aria-label={`Next attempt for ${s.username}`}
+                                >
+                                  <td className="selection-cell" />
+                                  <td className="attempt-identity">
+                                    <strong>
+                                      <span
+                                        className="next-attempt-mark"
+                                        aria-hidden="true"
+                                      >
+                                        ↗
+                                      </span>{" "}
+                                      Next attempt
+                                    </strong>
+                                  </td>
+                                  <td className="next-status">
+                                    {grantStatus(s.unusedAttempt, clock) ===
+                                      "Ready" &&
+                                    (s.hasCurrentAttempt ??
+                                      s.attempts.some((a: any) =>
+                                        [
+                                          "PREPARING",
+                                          "ACTIVATING",
+                                          "ACTIVE",
+                                          "LOCKED",
+                                          "FINALIZING",
+                                        ].includes(a.state),
+                                      ))
+                                      ? "Waiting for current attempt"
+                                      : grantStatus(s.unusedAttempt, clock)}
+                                  </td>
+                                  <td
+                                    className="next-webcam"
+                                    data-label="Webcam"
+                                  >
+                                    {inlineEditor(s, "webcam") ?? (
+                                      <button
+                                        type="button"
+                                        className="cell-value icon-button"
+                                        id={fieldTrigger(
+                                          s.unusedAttempt.id,
+                                          "webcam",
+                                        )}
+                                        aria-label={`Change webcam for ${s.username}`}
+                                        aria-pressed={
+                                          !!s.unusedAttempt.settings.webcam
+                                        }
+                                        aria-description={
+                                          s.unusedAttempt.settings.webcam
+                                            ? "Required"
+                                            : "Off"
+                                        }
+                                        title={`Webcam: ${s.unusedAttempt.settings.webcam ? "Required" : "Off"}`}
+                                        disabled={
+                                          stale ||
+                                          !!inlineAttempt ||
+                                          exam === "sandbox"
+                                        }
+                                        onClick={() => editCell(s, "webcam")}
+                                      >
+                                        <CameraIcon
+                                          required={
+                                            s.unusedAttempt.settings.webcam
+                                          }
+                                        />
+                                      </button>
+                                    )}
+                                  </td>
+                                  <td
+                                    className="next-time"
+                                    data-label="Time limit"
+                                  >
+                                    {inlineEditor(s, "duration") ?? (
+                                      <button
+                                        type="button"
+                                        className="cell-value"
+                                        id={fieldTrigger(
+                                          s.unusedAttempt.id,
+                                          "duration",
+                                        )}
+                                        aria-label={`Change time limit for ${s.username}`}
+                                        disabled={
+                                          stale ||
+                                          !!inlineAttempt ||
+                                          exam === "sandbox"
+                                        }
+                                        onClick={() => editCell(s, "duration")}
+                                      >
+                                        {timeLimit(
+                                          s.unusedAttempt.settings.duration,
+                                        )}
+                                      </button>
+                                    )}
+                                  </td>
+                                  <td
+                                    className="next-window"
+                                    data-label="Dates"
+                                  >
+                                    {inlineEditor(s, "window") ?? (
+                                      <button
+                                        type="button"
+                                        className="cell-value next-attempt-dates"
+                                        id={fieldTrigger(
+                                          s.unusedAttempt.id,
+                                          "window",
+                                        )}
+                                        aria-label={`Change start dates for ${s.username}`}
+                                        title={windowLabel(
+                                          s.unusedAttempt.settings.earliest,
+                                          s.unusedAttempt.settings.latest,
+                                        )}
+                                        disabled={stale || !!inlineAttempt}
+                                        onClick={() => editCell(s, "window")}
+                                      >
+                                        <span>
+                                          Opens{" "}
+                                          {shortDateTime(
+                                            s.unusedAttempt.settings.earliest,
+                                          )}
+                                        </span>
+                                        <span>
+                                          Closes{" "}
+                                          {shortDateTime(
+                                            s.unusedAttempt.settings.latest,
+                                          )}
+                                        </span>
+                                      </button>
+                                    )}
+                                  </td>
+                                  <td
+                                    className="next-files"
+                                    data-label="Starting files"
+                                  >
                                     <button
                                       type="button"
                                       className="cell-value"
                                       id={fieldTrigger(
                                         s.unusedAttempt.id,
-                                        "duration",
+                                        "files",
                                       )}
-                                      aria-label={`Change time limit for ${s.username}`}
-                                      disabled={
-                                        stale ||
-                                        !!inlineAttempt ||
-                                        exam === "sandbox"
-                                      }
-                                      onClick={() => editCell(s, "duration")}
+                                      aria-label={`Change starting files for ${s.username}`}
+                                      disabled={stale || !!inlineAttempt}
+                                      onClick={() => editCell(s, "files")}
                                     >
-                                      {timeLimit(
-                                        s.unusedAttempt.settings.duration,
+                                      {s.unusedAttempt.work.kind ===
+                                      "template" ? (
+                                        `Starter files: ${s.unusedAttempt.work.name}`
+                                      ) : s.unusedAttempt.work.kind ===
+                                        "empty" ? (
+                                        "Empty folder"
+                                      ) : s.unusedAttempt.sourceAttempt ? (
+                                        <>
+                                          <span>
+                                            From{" "}
+                                            {s.unusedAttempt.sourceAttempt.exam}
+                                          </span>
+                                          <small>
+                                            Attempt{" "}
+                                            {
+                                              s.unusedAttempt.sourceAttempt
+                                                .attempt_number
+                                            }
+                                            {s.unusedAttempt.sourceAttempt.start
+                                              ? ` · ${shortDateTime(s.unusedAttempt.sourceAttempt.start)}`
+                                              : ""}
+                                          </small>
+                                        </>
+                                      ) : (
+                                        "Saved files"
                                       )}
                                     </button>
-                                  )}
-                                </td>
-                                <td className="next-window" data-label="Dates">
-                                  {inlineEditor(s, "window") ?? (
+                                  </td>
+                                  <td className="row-actions">
                                     <button
                                       type="button"
-                                      className="cell-value next-attempt-dates"
-                                      id={fieldTrigger(
-                                        s.unusedAttempt.id,
-                                        "window",
-                                      )}
-                                      aria-label={`Change start dates for ${s.username}`}
-                                      title={windowLabel(
-                                        s.unusedAttempt.settings.earliest,
-                                        s.unusedAttempt.settings.latest,
-                                      )}
+                                      className="icon-button danger"
+                                      aria-label={`Cancel next attempt for ${s.username}`}
+                                      title="Cancel next attempt"
                                       disabled={stale || !!inlineAttempt}
-                                      onClick={() => editCell(s, "window")}
-                                    >
-                                      <span>
-                                        Opens{" "}
-                                        {shortDateTime(
-                                          s.unusedAttempt.settings.earliest,
-                                        )}
-                                      </span>
-                                      <span>
-                                        Closes{" "}
-                                        {shortDateTime(
-                                          s.unusedAttempt.settings.latest,
-                                        )}
-                                      </span>
-                                    </button>
-                                  )}
-                                </td>
-                                <td
-                                  className="next-files"
-                                  data-label="Starting files"
-                                >
-                                  <button
-                                    type="button"
-                                    className="cell-value"
-                                    id={fieldTrigger(
-                                      s.unusedAttempt.id,
-                                      "files",
-                                    )}
-                                    aria-label={`Change starting files for ${s.username}`}
-                                    disabled={stale || !!inlineAttempt}
-                                    onClick={() => editCell(s, "files")}
-                                  >
-                                    {s.unusedAttempt.work.kind ===
-                                    "template" ? (
-                                      `Starter files: ${s.unusedAttempt.work.name}`
-                                    ) : s.unusedAttempt.work.kind ===
-                                      "empty" ? (
-                                      "Empty folder"
-                                    ) : s.unusedAttempt.sourceAttempt ? (
-                                      <>
-                                        <span>
-                                          From{" "}
-                                          {s.unusedAttempt.sourceAttempt.exam}
-                                        </span>
-                                        <small>
-                                          Attempt{" "}
-                                          {
-                                            s.unusedAttempt.sourceAttempt
-                                              .attempt_number
-                                          }
-                                          {s.unusedAttempt.sourceAttempt.start
-                                            ? ` · ${shortDateTime(s.unusedAttempt.sourceAttempt.start)}`
-                                            : ""}
-                                        </small>
-                                      </>
-                                    ) : (
-                                      "Saved files"
-                                    )}
-                                  </button>
-                                </td>
-                                <td className="row-actions">
-                                  <button
-                                    type="button"
-                                    className="icon-button danger"
-                                    aria-label={`Cancel next attempt for ${s.username}`}
-                                    title="Cancel next attempt"
-                                    disabled={stale || !!inlineAttempt}
-                                    onClick={() =>
-                                      openGrants(
-                                        s.username,
-                                        s.unusedAttempt.id,
-                                        "cancel",
-                                      )
-                                    }
-                                  >
-                                    <span aria-hidden="true">🗑️</span>
-                                  </button>
-                                </td>
-                              </tr>
-                            )}
-                            {inlineAttempt &&
-                              inlineAttempt.username === s.username &&
-                              inlineAttempt.field !== "files" &&
-                              (!s.unusedAttempt ||
-                                s.unusedAttempt.id !== inlineAttempt.id) && (
-                                <tr className="next-attempt-editor">
-                                  <td colSpan={8}>
-                                    <AttemptGrantsDialog
-                                      key={`${exam}:${inlineAttempt.id}:${inlineAttempt.field}`}
-                                      exam={exam}
-                                      actor={actor}
-                                      username={s.username}
-                                      initialGrantId={inlineAttempt.id}
-                                      editField={inlineAttempt.field}
-                                      directSetting={
-                                        inlineAttempt.directSetting
+                                      onClick={() =>
+                                        openGrants(
+                                          s.username,
+                                          s.unusedAttempt.id,
+                                          "cancel",
+                                        )
                                       }
-                                      embedded
-                                      autoEdit
-                                      onClose={closeInline}
-                                      onChanged={refresh}
-                                    />
+                                    >
+                                      <span aria-hidden="true">🗑️</span>
+                                    </button>
                                   </td>
                                 </tr>
                               )}
-                            {s.attempts.map((a: any) => {
-                              const status = attemptStatus(a),
-                                editable = !stale && clockEditable(a, clock),
-                                webcam = webcamRequired(a);
-                              return (
-                                <React.Fragment key={a.id}>
-                                  <tr
-                                    className="attempt-row historical-attempt-row"
-                                    role="row"
-                                  >
-                                    <td
-                                      className="selection-cell"
-                                      role="cell"
-                                    />
-                                    <td
-                                      className="attempt-identity"
-                                      role="cell"
-                                    >
-                                      <span>Attempt {a.attempt_number}</span>
-
-                                      {!!a.preflight_started_at && !a.start && (
-                                        <time
-                                          dateTime={new Date(
-                                            a.preflight_started_at,
-                                          ).toISOString()}
-                                          title={chicago(
-                                            a.preflight_started_at,
-                                          )}
-                                        >
-                                          Setup{" "}
-                                          {attemptStarted(
-                                            a.preflight_started_at,
-                                          )}
-                                        </time>
-                                      )}
-                                    </td>
-                                    <td role="cell">
-                                      <span
-                                        className={`attempt-status ${status.tone}`}
-                                      >
-                                        {status.label}
-                                      </span>
-                                      {!!a.reason &&
-                                        (a.state === "LOCKED" ||
-                                          a.state === "COLLECTION_FAILED") && (
-                                          <small
-                                            className="attempt-reason"
-                                            title={a.reason}
-                                          >
-                                            {a.reason}
-                                          </small>
-                                        )}
-                                      {a.interruptionHistoryDeleted ? (
-                                        <small className="interruption-summary">
-                                          Interruption history deleted
-                                        </small>
-                                      ) : a.interruptions?.length ? (
-                                        <button
-                                          className="interruption-toggle"
-                                          aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
-                                          aria-expanded={interruptionRows.has(
-                                            a.id,
-                                          )}
-                                          aria-controls={`interruptions-${a.id}`}
-                                          onClick={() =>
-                                            setInterruptionRows((previous) => {
-                                              const next = new Set(previous);
-                                              if (next.has(a.id))
-                                                next.delete(a.id);
-                                              else next.add(a.id);
-                                              return next;
-                                            })
-                                          }
-                                        >
-                                          {a.interruptions.length}{" "}
-                                          {a.interruptions.length === 1
-                                            ? "interruption"
-                                            : "interruptions"}{" "}
-                                          {interruptionRows.has(a.id)
-                                            ? "▴"
-                                            : "▾"}
-                                        </button>
-                                      ) : (
-                                        <small className="interruption-summary">
-                                          {a.state === "LOCKED"
-                                            ? "Pause details not recorded"
-                                            : "No interruptions recorded"}
-                                        </small>
-                                      )}
-                                    </td>
-                                    <td
-                                      role="cell"
-                                      data-label="Webcam"
-                                      className="history-webcam"
-                                    >
-                                      <span
-                                        role="img"
-                                        aria-label={`Webcam ${webcam === null ? "unknown" : webcam ? "required" : "off"}`}
-                                        title={`Webcam: ${webcam === null ? "Unknown" : webcam ? "Required" : "Off"}`}
-                                      >
-                                        <CameraIcon required={webcam} />
-                                      </span>
-                                    </td>
-                                    <td
-                                      role="cell"
-                                      data-label={
-                                        ["ACTIVE", "LOCKED"].includes(a.state)
-                                          ? "Time remaining"
-                                          : a.ended && a.start
-                                            ? "Time used"
-                                            : "Time"
-                                      }
-                                      className="attempt-clock"
-                                    >
-                                      <time
-                                        title={
-                                          timerPaused(a)
-                                            ? "Countdown paused; monitored work may continue"
-                                            : a.deadline
-                                              ? `Deadline: ${chicago(a.deadline)}`
-                                              : undefined
+                              {inlineAttempt &&
+                                inlineAttempt.username === s.username &&
+                                inlineAttempt.field !== "files" &&
+                                (!s.unusedAttempt ||
+                                  s.unusedAttempt.id !== inlineAttempt.id) && (
+                                  <tr className="next-attempt-editor">
+                                    <td colSpan={8}>
+                                      <AttemptGrantsDialog
+                                        key={`${exam}:${inlineAttempt.id}:${inlineAttempt.field}`}
+                                        exam={exam}
+                                        actor={actor}
+                                        username={s.username}
+                                        initialGrantId={inlineAttempt.id}
+                                        editField={inlineAttempt.field}
+                                        directSetting={
+                                          inlineAttempt.directSetting
                                         }
-                                      >
-                                        {["ACTIVE", "LOCKED"].includes(a.state)
-                                          ? attemptRemaining(a, clock)
-                                          : a.ended &&
-                                              attemptElapsed(a, clock) !== null
-                                            ? `${formatDuration(attemptElapsed(a, clock)!)} used`
-                                            : "—"}
-                                      </time>
-                                      {["ACTIVE", "LOCKED"].includes(a.state) &&
-                                        timerPaused(a) && (
-                                          <span>
-                                            {a.timer_resume_on_work
-                                              ? "Countdown resumes with student"
-                                              : "Countdown paused"}
-                                          </span>
-                                        )}
-                                      {![
-                                        "COMPLETED",
-                                        "CANCELLED_BEFORE_START",
-                                      ].includes(a.state) &&
-                                        !a.ended &&
-                                        attemptElapsed(a, clock) !== null && (
-                                          <small>
-                                            {formatDuration(
-                                              attemptElapsed(a, clock)!,
-                                            )}{" "}
-                                            {a.ended ? "taken" : "elapsed"}
-                                          </small>
-                                        )}
-                                      {a.pendingClockReset && (
-                                        <small className="warn">
-                                          Clock change pending
-                                        </small>
-                                      )}
-                                    </td>
-                                    <td
-                                      role="cell"
-                                      className="history-window"
-                                      data-label="Dates"
-                                    >
-                                      {a.start || a.ended ? (
-                                        <>
-                                          {!!a.start && (
-                                            <time
-                                              dateTime={new Date(
-                                                a.start,
-                                              ).toISOString()}
-                                              title={chicago(a.start)}
-                                            >
-                                              Started {attemptStarted(a.start)}
-                                            </time>
-                                          )}
-                                          {!!a.ended && (
-                                            <time
-                                              dateTime={new Date(
-                                                a.ended,
-                                              ).toISOString()}
-                                              title={chicago(a.ended)}
-                                            >
-                                              Ended {attemptStarted(a.ended)}
-                                            </time>
-                                          )}
-                                        </>
-                                      ) : (
-                                        "—"
-                                      )}
-                                    </td>
-                                    <td
-                                      role="cell"
-                                      className="history-files"
-                                      data-label="Starting files"
-                                    >
-                                      <AttemptProvenance
-                                        attempt={a}
-                                        compact
-                                        onGrant={(id) =>
-                                          openGrants(a.username, id)
-                                        }
-                                        onSource={openSource}
+                                        embedded
+                                        autoEdit
+                                        onClose={closeInline}
+                                        onChanged={refresh}
                                       />
                                     </td>
-                                    <td role="cell" className="row-actions">
-                                      <button
-                                        className={
-                                          a.state === "LOCKED"
-                                            ? "review-needed"
-                                            : "quiet-button"
-                                        }
-                                        onClick={() => openReview(a)}
-                                      >
-                                        Review
-                                      </button>
-                                      {["ACTIVE", "LOCKED"].includes(
-                                        a.state,
-                                      ) && (
-                                        <AdminMenu
-                                          label={`Actions for ${s.username} attempt ${a.attempt_number}`}
-                                          children="More"
-                                          actions={[
-                                            ...(a.monitoring_mode === "v1"
-                                              ? [
-                                                  {
-                                                    label: timerPaused(a)
-                                                      ? "Resume countdown"
-                                                      : "Pause countdown",
-                                                    disabled:
-                                                      !editable || !!timerBusy,
-                                                    onSelect: () => {
-                                                      if (
-                                                        !timerPaused(a) &&
-                                                        a.state === "LOCKED"
-                                                      ) {
-                                                        setResumeOnWork(false);
-                                                        setTimerError("");
-                                                        setPausingTimer(a);
-                                                      } else
-                                                        void changeTimer(a);
-                                                    },
-                                                  },
-                                                ]
-                                              : []),
-                                            {
-                                              label: "Reset time remaining",
-                                              disabled: !editable,
-                                              onSelect: () =>
-                                                openOperation("reset", [a]),
-                                            },
-                                            {
-                                              label: "Add time",
-                                              disabled: !editable,
-                                              onSelect: () =>
-                                                openOperation("extend", [a]),
-                                            },
-                                          ]}
-                                        />
-                                      )}
-                                    </td>
                                   </tr>
-                                  {interruptionRows.has(a.id) && (
-                                    <tr className="interruption-row">
-                                      <td colSpan={8}>
-                                        <section
-                                          id={`interruptions-${a.id}`}
-                                          aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
+                                )}
+                              {s.attempts.map((a: any) => {
+                                const status = attemptStatus(a),
+                                  editable = !stale && clockEditable(a, clock),
+                                  webcam = webcamRequired(a);
+                                return (
+                                  <React.Fragment key={a.id}>
+                                    <tr
+                                      className="attempt-row historical-attempt-row"
+                                      role="row"
+                                    >
+                                      <td
+                                        className="selection-cell"
+                                        role="cell"
+                                      />
+                                      <td
+                                        className="attempt-identity"
+                                        role="cell"
+                                      >
+                                        <span>Attempt {a.attempt_number}</span>
+
+                                        {!!a.preflight_started_at &&
+                                          !a.start && (
+                                            <time
+                                              dateTime={new Date(
+                                                a.preflight_started_at,
+                                              ).toISOString()}
+                                              title={dateTime(
+                                                a.preflight_started_at,
+                                              )}
+                                            >
+                                              Setup{" "}
+                                              {attemptStarted(
+                                                a.preflight_started_at,
+                                              )}
+                                            </time>
+                                          )}
+                                      </td>
+                                      <td role="cell">
+                                        <span
+                                          className={`attempt-status ${status.tone}`}
                                         >
-                                          <InterruptionHistory
-                                            attempt={a}
-                                            clock={clock}
+                                          {status.label}
+                                        </span>
+                                        {!!a.reason &&
+                                          (a.state === "LOCKED" ||
+                                            a.state ===
+                                              "COLLECTION_FAILED") && (
+                                            <small
+                                              className="attempt-reason"
+                                              title={a.reason}
+                                            >
+                                              {a.reason}
+                                            </small>
+                                          )}
+                                        {a.interruptionHistoryDeleted ? (
+                                          <small className="interruption-summary">
+                                            Interruption history deleted
+                                          </small>
+                                        ) : a.interruptions?.length ? (
+                                          <button
+                                            className="interruption-toggle"
+                                            aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
+                                            aria-expanded={interruptionRows.has(
+                                              a.id,
+                                            )}
+                                            aria-controls={`interruptions-${a.id}`}
+                                            onClick={() =>
+                                              setInterruptionRows(
+                                                (previous) => {
+                                                  const next = new Set(
+                                                    previous,
+                                                  );
+                                                  if (next.has(a.id))
+                                                    next.delete(a.id);
+                                                  else next.add(a.id);
+                                                  return next;
+                                                },
+                                              )
+                                            }
+                                          >
+                                            {a.interruptions.length}{" "}
+                                            {a.interruptions.length === 1
+                                              ? "interruption"
+                                              : "interruptions"}{" "}
+                                            {interruptionRows.has(a.id)
+                                              ? "▴"
+                                              : "▾"}
+                                          </button>
+                                        ) : (
+                                          <small className="interruption-summary">
+                                            {a.state === "LOCKED"
+                                              ? "Pause details not recorded"
+                                              : "No interruptions recorded"}
+                                          </small>
+                                        )}
+                                      </td>
+                                      <td
+                                        role="cell"
+                                        data-label="Webcam"
+                                        className="history-webcam"
+                                      >
+                                        <span
+                                          role="img"
+                                          aria-label={`Webcam ${webcam === null ? "unknown" : webcam ? "required" : "off"}`}
+                                          title={`Webcam: ${webcam === null ? "Unknown" : webcam ? "Required" : "Off"}`}
+                                        >
+                                          <CameraIcon required={webcam} />
+                                        </span>
+                                      </td>
+                                      <td
+                                        role="cell"
+                                        data-label={
+                                          ["ACTIVE", "LOCKED"].includes(a.state)
+                                            ? "Time remaining"
+                                            : a.ended && a.start
+                                              ? "Time used"
+                                              : "Time"
+                                        }
+                                        className="attempt-clock"
+                                      >
+                                        <time
+                                          title={
+                                            timerPaused(a)
+                                              ? "Countdown paused; monitored work may continue"
+                                              : a.deadline
+                                                ? `Deadline: ${dateTime(a.deadline)}`
+                                                : undefined
+                                          }
+                                        >
+                                          {["ACTIVE", "LOCKED"].includes(
+                                            a.state,
+                                          )
+                                            ? attemptRemaining(a, clock)
+                                            : a.ended &&
+                                                attemptElapsed(a, clock) !==
+                                                  null
+                                              ? `${formatDuration(attemptElapsed(a, clock)!)} used`
+                                              : "—"}
+                                        </time>
+                                        {["ACTIVE", "LOCKED"].includes(
+                                          a.state,
+                                        ) &&
+                                          timerPaused(a) && (
+                                            <span>
+                                              {a.timer_resume_on_work
+                                                ? "Countdown resumes with student"
+                                                : "Countdown paused"}
+                                            </span>
+                                          )}
+                                        {![
+                                          "COMPLETED",
+                                          "CANCELLED_BEFORE_START",
+                                        ].includes(a.state) &&
+                                          !a.ended &&
+                                          attemptElapsed(a, clock) !== null && (
+                                            <small>
+                                              {formatDuration(
+                                                attemptElapsed(a, clock)!,
+                                              )}{" "}
+                                              {a.ended ? "taken" : "elapsed"}
+                                            </small>
+                                          )}
+                                        {a.pendingClockReset && (
+                                          <small className="warn">
+                                            Clock change pending
+                                          </small>
+                                        )}
+                                      </td>
+                                      <td
+                                        role="cell"
+                                        className="history-window"
+                                        data-label="Dates"
+                                      >
+                                        {a.start || a.ended ? (
+                                          <>
+                                            {!!a.start && (
+                                              <time
+                                                dateTime={new Date(
+                                                  a.start,
+                                                ).toISOString()}
+                                                title={dateTime(a.start)}
+                                              >
+                                                Started{" "}
+                                                {attemptStarted(a.start)}
+                                              </time>
+                                            )}
+                                            {!!a.ended && (
+                                              <time
+                                                dateTime={new Date(
+                                                  a.ended,
+                                                ).toISOString()}
+                                                title={dateTime(a.ended)}
+                                              >
+                                                Ended {attemptStarted(a.ended)}
+                                              </time>
+                                            )}
+                                          </>
+                                        ) : (
+                                          "—"
+                                        )}
+                                      </td>
+                                      <td
+                                        role="cell"
+                                        className="history-files"
+                                        data-label="Starting files"
+                                      >
+                                        <AttemptProvenance
+                                          attempt={a}
+                                          compact
+                                          onGrant={(id) =>
+                                            openGrants(a.username, id)
+                                          }
+                                          onSource={openSource}
+                                        />
+                                      </td>
+                                      <td role="cell" className="row-actions">
+                                        <button
+                                          className={
+                                            a.state === "LOCKED"
+                                              ? "review-needed"
+                                              : "quiet-button"
+                                          }
+                                          onClick={() => openReview(a)}
+                                        >
+                                          Review
+                                        </button>
+                                        {["ACTIVE", "LOCKED"].includes(
+                                          a.state,
+                                        ) && (
+                                          <AdminMenu
+                                            label={`Actions for ${s.username} attempt ${a.attempt_number}`}
+                                            children="More"
+                                            actions={[
+                                              ...(a.monitoring_mode === "v1"
+                                                ? [
+                                                    {
+                                                      label: timerPaused(a)
+                                                        ? "Resume countdown"
+                                                        : "Pause countdown",
+                                                      disabled:
+                                                        !editable ||
+                                                        !!timerBusy,
+                                                      onSelect: () => {
+                                                        if (
+                                                          !timerPaused(a) &&
+                                                          a.state === "LOCKED"
+                                                        ) {
+                                                          setResumeOnWork(
+                                                            false,
+                                                          );
+                                                          setTimerError("");
+                                                          setPausingTimer(a);
+                                                        } else
+                                                          void changeTimer(a);
+                                                      },
+                                                    },
+                                                  ]
+                                                : []),
+                                              {
+                                                label: "Reset time remaining",
+                                                disabled: !editable,
+                                                onSelect: () =>
+                                                  openOperation("reset", [a]),
+                                              },
+                                              {
+                                                label: "Add time",
+                                                disabled: !editable,
+                                                onSelect: () =>
+                                                  openOperation("extend", [a]),
+                                              },
+                                            ]}
                                           />
-                                        </section>
+                                        )}
                                       </td>
                                     </tr>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </tbody>
-                        ))}
-                      </table>
-                    </div>
-                  )}
-                  <footer className="admin-pagination">
-                    <span>
-                      {data.total
-                        ? `${offset + 1}–${Math.min(offset + 100, data.total)} of ${data.total} students`
-                        : "0 students"}
-                    </span>
-                    {(offset > 0 || data.total > 100) && (
-                      <div>
-                        <button
-                          disabled={!offset}
-                          onClick={() => {
-                            clearView();
-                            setOffset(Math.max(0, offset - 100));
-                          }}
-                        >
-                          Previous
-                        </button>
-                        <button
-                          disabled={offset + 100 >= data.total}
-                          onClick={() => {
-                            clearView();
-                            setOffset(offset + 100);
-                          }}
-                        >
-                          Next
-                        </button>
+                                    {interruptionRows.has(a.id) && (
+                                      <tr className="interruption-row">
+                                        <td colSpan={8}>
+                                          <section
+                                            id={`interruptions-${a.id}`}
+                                            aria-label={`Interruption history for ${s.username} attempt ${a.attempt_number}`}
+                                          >
+                                            <InterruptionHistory
+                                              attempt={a}
+                                              clock={clock}
+                                            />
+                                          </section>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </tbody>
+                          ))}
+                        </table>
                       </div>
                     )}
-                  </footer>
-                </>
-              )
-            )}
-          </section>
-        </>
-      )}
-      {issuingGrants && current && (
-        <GrantIssuanceDialog
-          key={JSON.stringify([
-            exam,
-            issuingGrants.students.map((s) => s.username).sort(),
-            issuingGrants.additional,
-            issuingGrants.resumeOnly,
-          ])}
-          initial={current}
-          actor={actor}
-          students={issuingGrants.students}
-          excludedStudents={issuingGrants.excludedStudents}
-          resumeOnly={issuingGrants.resumeOnly}
-          onAdoptStudents={(names) => {
-            setSelection(new Set(names));
-            setIssuingGrants((previous) => ({
-              additional: previous?.additional,
-              resumeOnly: previous?.resumeOnly,
-              students: names.map((username) => ({
-                ...(students.find((s: any) => s.username === username) ?? {
-                  username,
-                }),
-              })),
-            }));
-          }}
-          additional={issuingGrants.additional ?? true}
-          onClose={() => setIssuingGrants(null)}
-          onChanged={refresh}
-        />
-      )}
-      {inlineAttempt?.field === "files" && (
-        <AttemptGrantsDialog
-          key={`${exam}:${inlineAttempt.id}:files`}
-          exam={exam}
-          actor={actor}
-          username={inlineAttempt.username}
-          initialGrantId={inlineAttempt.id}
-          editField="files"
-          autoEdit
-          onClose={closeInline}
-          onChanged={refresh}
-        />
-      )}
-      {(grantsFor || unusedStudents) && (
-        <AttemptGrantsDialog
-          key={`${exam}:${grantsFor ?? JSON.stringify(unusedStudents)}:${grantFocus ?? "list"}`}
-          exam={exam}
-          actor={actor}
-          username={grantsFor ?? undefined}
-          students={unusedStudents?.students}
-          initialAction={unusedStudents?.action ?? grantAction}
-          initialGrantId={grantFocus ?? undefined}
-          onClose={() => {
-            setGrantsFor(null);
-            setUnusedStudents(null);
-          }}
-          onChanged={refresh}
-        />
-      )}
-      {templateCatalog && (
-        <Modal
-          title="Starter files"
-          wide
-          onClose={() => setTemplateCatalog(false)}
-        >
-          <TemplateCatalogView />
-          <div className="actions">
-            <button onClick={() => setTemplateCatalog(false)}>
-              Close catalog
-            </button>
-          </div>
-        </Modal>
-      )}
-      {creatingAdmin && (
-        <CreateAdministrator
-          onClose={() => setCreatingAdmin(false)}
-          onCreated={(username) => {
-            setCreatingAdmin(false);
-            setNotice(`Administrator ${username} created.`);
-          }}
-        />
-      )}
-      {retiring && (
-        <ExamRetirement
-          key={`${retiring.exam.id}:${retiring.action}`}
-          exam={retiring.exam}
-          action={retiring.action}
-          onClose={() => setRetiring(null)}
-          onDone={async (result) => {
-            chooseExam("");
-            setNotice(
-              `Exam ${result.id} ${result.lifecycle}. Student history and restrictions are preserved.`,
-            );
-            await refresh();
-          }}
-        />
-      )}
-      {editingExam && (
-        <ExamSettings
-          initial={editingExam}
-          onClose={() => setEditingExam(null)}
-          onSaved={async (e) => {
-            query.current.lifecycle = "active";
-            setLifecycle("active");
-            chooseExam(e.id);
-            await refresh();
-          }}
-        />
-      )}
-      {addingStudent && current && (
-        <StudentImport
-          exam={exam}
-          defaultWebcam={current.webcam}
-          defaultDuration={current.duration}
-          defaultEarliest={current.earliest}
-          defaultLatest={current.latest}
-          defaultRevision={current.revision}
-          onClose={() => setAddingStudent(false)}
-          onDone={async () => {
-            setAddingStudent(false);
-            await refresh();
-          }}
-        />
-      )}
-      {operation && current && (
-        <StudentActions
-          exam={current}
-          operation={operation}
-          clock={clock}
-          onClose={() => setOperation(null)}
-          onDone={async (text) => {
-            setNotice(text);
-            setSelection(new Set());
-            await refresh();
-          }}
-        />
-      )}
-      {removing && (
-        <Modal
-          title={`Delete ${removing} from this exam?`}
-          onClose={() => {
-            if (!removingBusy) setRemoving(null);
-          }}
-        >
-          <p>
-            This removes the student from this exam's list. You will need to add
-            them again to allow an attempt.
-          </p>
-          {removingError && (
-            <p role="alert" className="warn">
-              {removingError}
+                    <footer className="admin-pagination">
+                      <span>
+                        {data.total
+                          ? `${offset + 1}–${Math.min(offset + 100, data.total)} of ${data.total} students`
+                          : "0 students"}
+                      </span>
+                      {(offset > 0 || data.total > 100) && (
+                        <div>
+                          <button
+                            disabled={!offset}
+                            onClick={() => {
+                              clearView();
+                              setOffset(Math.max(0, offset - 100));
+                            }}
+                          >
+                            Previous
+                          </button>
+                          <button
+                            disabled={offset + 100 >= data.total}
+                            onClick={() => {
+                              clearView();
+                              setOffset(offset + 100);
+                            }}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </footer>
+                  </>
+                )
+              )}
+            </section>
+          </>
+        )}
+        {issuingGrants && current && (
+          <GrantIssuanceDialog
+            key={JSON.stringify([
+              exam,
+              issuingGrants.students.map((s) => s.username).sort(),
+              issuingGrants.additional,
+              issuingGrants.resumeOnly,
+            ])}
+            initial={current}
+            actor={actor}
+            students={issuingGrants.students}
+            excludedStudents={issuingGrants.excludedStudents}
+            resumeOnly={issuingGrants.resumeOnly}
+            onAdoptStudents={(names) => {
+              setSelection(new Set(names));
+              setIssuingGrants((previous) => ({
+                additional: previous?.additional,
+                resumeOnly: previous?.resumeOnly,
+                students: names.map((username) => ({
+                  ...(students.find((s: any) => s.username === username) ?? {
+                    username,
+                  }),
+                })),
+              }));
+            }}
+            additional={issuingGrants.additional ?? true}
+            onClose={() => setIssuingGrants(null)}
+            onChanged={refresh}
+          />
+        )}
+        {inlineAttempt?.field === "files" && (
+          <AttemptGrantsDialog
+            key={`${exam}:${inlineAttempt.id}:files`}
+            exam={exam}
+            actor={actor}
+            username={inlineAttempt.username}
+            initialGrantId={inlineAttempt.id}
+            editField="files"
+            autoEdit
+            onClose={closeInline}
+            onChanged={refresh}
+          />
+        )}
+        {(grantsFor || unusedStudents) && (
+          <AttemptGrantsDialog
+            key={`${exam}:${grantsFor ?? JSON.stringify(unusedStudents)}:${grantFocus ?? "list"}`}
+            exam={exam}
+            actor={actor}
+            username={grantsFor ?? undefined}
+            students={unusedStudents?.students}
+            initialAction={unusedStudents?.action ?? grantAction}
+            initialGrantId={grantFocus ?? undefined}
+            onClose={() => {
+              setGrantsFor(null);
+              setUnusedStudents(null);
+            }}
+            onChanged={refresh}
+          />
+        )}
+        {templateCatalog && (
+          <Modal
+            title="Starter files"
+            wide
+            onClose={() => setTemplateCatalog(false)}
+          >
+            <TemplateCatalogView />
+            <div className="actions">
+              <button onClick={() => setTemplateCatalog(false)}>
+                Close catalog
+              </button>
+            </div>
+          </Modal>
+        )}
+        {creatingAdmin && (
+          <CreateAdministrator
+            onClose={() => setCreatingAdmin(false)}
+            onCreated={(username) => {
+              setCreatingAdmin(false);
+              setNotice(`Administrator ${username} created.`);
+            }}
+          />
+        )}
+        {retiring && (
+          <ExamRetirement
+            key={`${retiring.exam.id}:${retiring.action}`}
+            exam={retiring.exam}
+            action={retiring.action}
+            onClose={() => setRetiring(null)}
+            onDone={async (result) => {
+              chooseExam("");
+              setNotice(
+                `Exam ${result.id} ${result.lifecycle}. Student history and restrictions are preserved.`,
+              );
+              await refresh();
+            }}
+          />
+        )}
+        {editingExam && (
+          <ExamSettings
+            initial={editingExam}
+            onClose={() => setEditingExam(null)}
+            onSaved={async (e) => {
+              query.current.lifecycle = "active";
+              setLifecycle("active");
+              chooseExam(e.id);
+              await refresh();
+            }}
+          />
+        )}
+        {addingStudent && current && (
+          <StudentImport
+            exam={exam}
+            defaultWebcam={current.webcam}
+            defaultDuration={current.duration}
+            defaultEarliest={current.earliest}
+            defaultLatest={current.latest}
+            defaultRevision={current.revision}
+            onClose={() => setAddingStudent(false)}
+            onDone={async () => {
+              setAddingStudent(false);
+              await refresh();
+            }}
+          />
+        )}
+        {operation && current && (
+          <StudentActions
+            exam={current}
+            operation={operation}
+            clock={clock}
+            onClose={() => setOperation(null)}
+            onDone={async (text) => {
+              setNotice(text);
+              setSelection(new Set());
+              await refresh();
+            }}
+          />
+        )}
+        {removing && (
+          <Modal
+            title={`Delete ${removing} from this exam?`}
+            onClose={() => {
+              if (!removingBusy) setRemoving(null);
+            }}
+          >
+            <p>
+              This removes the student from this exam's list. You will need to
+              add them again to allow an attempt.
             </p>
-          )}
-          <div className="actions">
-            <button disabled={removingBusy} onClick={() => setRemoving(null)}>
-              Cancel
-            </button>
+            {removingError && (
+              <p role="alert" className="warn">
+                {removingError}
+              </p>
+            )}
+            <div className="actions">
+              <button disabled={removingBusy} onClick={() => setRemoving(null)}>
+                Cancel
+              </button>
+              <button
+                className="danger"
+                disabled={removingBusy}
+                onClick={async () => {
+                  if (removingBusy) return;
+                  setRemovingBusy(true);
+                  setRemovingError("");
+                  try {
+                    await api(`/admin/exams/${exam}/roster/remove`, {
+                      username: removing,
+                      confirm: true,
+                    });
+                    setRemoving(null);
+                    await refresh();
+                  } catch (e) {
+                    setRemovingError((e as Error).message);
+                  } finally {
+                    setRemovingBusy(false);
+                  }
+                }}
+              >
+                {removingBusy ? "Deleting…" : "Delete student"}
+              </button>
+            </div>
+          </Modal>
+        )}
+        {pausingTimer && (
+          <Modal
+            title={`Pause countdown for ${pausingTimer.username}`}
+            onClose={() => {
+              if (!timerBusy) setPausingTimer(null);
+            }}
+          >
+            <p>The student's remaining time will stay fixed.</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={resumeOnWork}
+                disabled={!!timerBusy}
+                onChange={(event) => setResumeOnWork(event.target.checked)}
+              />
+              Automatically resume countdown when the student resumes work
+            </label>
+            {timerError && (
+              <p role="alert" className="warn">
+                {timerError}
+              </p>
+            )}
+            <div className="actions">
+              <button
+                disabled={!!timerBusy}
+                onClick={() => setPausingTimer(null)}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={!!timerBusy}
+                onClick={() => void changeTimer(pausingTimer, resumeOnWork)}
+              >
+                {timerBusy ? "Pausing…" : "Pause countdown"}
+              </button>
+            </div>
+          </Modal>
+        )}
+        {selected && (
+          <AdminReview
+            key={selected.id}
+            attempt={selected}
+            clock={clock}
+            stale={stale}
+            onClose={closeReview}
+            onGrant={(id) => {
+              closeReview();
+              openGrants(selected.username, id);
+            }}
+            onSource={openSource}
+            onChanged={refresh}
+          />
+        )}
+        {alerts && (
+          <Modal title="Alerts" onClose={() => setAlerts(false)}>
+            {alertsError && (
+              <p role="alert" className="warn">
+                {alertsError}
+              </p>
+            )}
+            <p>
+              Desktop alerts:{" "}
+              {permission === "unavailable"
+                ? "unavailable in this browser"
+                : permission === "granted"
+                  ? "enabled"
+                  : permission === "denied"
+                    ? "blocked in browser settings"
+                    : "not enabled"}
+            </p>
             <button
-              className="danger"
-              disabled={removingBusy}
+              disabled={
+                permission === "unavailable" || permission === "granted"
+              }
               onClick={async () => {
-                if (removingBusy) return;
-                setRemovingBusy(true);
-                setRemovingError("");
                 try {
-                  await api(`/admin/exams/${exam}/roster/remove`, {
-                    username: removing,
-                    confirm: true,
-                  });
-                  setRemoving(null);
-                  await refresh();
+                  setPermission(await Notification.requestPermission());
                 } catch (e) {
-                  setRemovingError((e as Error).message);
-                } finally {
-                  setRemovingBusy(false);
+                  setAlertsError((e as Error).message);
                 }
               }}
             >
-              {removingBusy ? "Deleting…" : "Delete student"}
+              Enable desktop alerts
             </button>
-          </div>
-        </Modal>
-      )}
-      {pausingTimer && (
-        <Modal
-          title={`Pause countdown for ${pausingTimer.username}`}
-          onClose={() => {
-            if (!timerBusy) setPausingTimer(null);
-          }}
-        >
-          <p>The student's remaining time will stay fixed.</p>
-          <label>
-            <input
-              type="checkbox"
-              checked={resumeOnWork}
-              disabled={!!timerBusy}
-              onChange={(event) => setResumeOnWork(event.target.checked)}
-            />
-            Automatically resume countdown when the student resumes work
-          </label>
-          {timerError && (
-            <p role="alert" className="warn">
-              {timerError}
-            </p>
-          )}
-          <div className="actions">
-            <button
-              disabled={!!timerBusy}
-              onClick={() => setPausingTimer(null)}
-            >
-              Cancel
-            </button>
-            <button
-              disabled={!!timerBusy}
-              onClick={() => void changeTimer(pausingTimer, resumeOnWork)}
-            >
-              {timerBusy ? "Pausing…" : "Pause countdown"}
-            </button>
-          </div>
-        </Modal>
-      )}
-      {selected && (
-        <AdminReview
-          key={selected.id}
-          attempt={selected}
-          clock={clock}
-          stale={stale}
-          onClose={closeReview}
-          onGrant={(id) => {
-            closeReview();
-            openGrants(selected.username, id);
-          }}
-          onSource={openSource}
-          onChanged={refresh}
-        />
-      )}
-      {alerts && (
-        <Modal title="Alerts" onClose={() => setAlerts(false)}>
-          {alertsError && (
-            <p role="alert" className="warn">
-              {alertsError}
-            </p>
-          )}
-          <p>
-            Desktop alerts:{" "}
-            {permission === "unavailable"
-              ? "unavailable in this browser"
-              : permission === "granted"
-                ? "enabled"
-                : permission === "denied"
-                  ? "blocked in browser settings"
-                  : "not enabled"}
-          </p>
-          <button
-            disabled={permission === "unavailable" || permission === "granted"}
-            onClick={async () => {
-              try {
-                setPermission(await Notification.requestPermission());
-              } catch (e) {
-                setAlertsError((e as Error).message);
-              }
-            }}
-          >
-            Enable desktop alerts
-          </button>
-          <label>
-            <input
-              type="checkbox"
-              checked={sound}
-              onChange={(e) => setSound(e.target.checked)}
-            />{" "}
-            Attention sound
-          </label>
-          <AlertDelivery />
-          <div className="actions">
-            <button onClick={() => setAlerts(false)}>Close</button>
-          </div>
-        </Modal>
-      )}
-    </main>
+            <label>
+              <input
+                type="checkbox"
+                checked={sound}
+                onChange={(e) => setSound(e.target.checked)}
+              />{" "}
+              Attention sound
+            </label>
+            <AlertDelivery />
+            <div className="actions">
+              <button onClick={() => setAlerts(false)}>Close</button>
+            </div>
+          </Modal>
+        )}
+      </main>
+    </ExamTimeZone.Provider>
   );
 }

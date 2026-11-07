@@ -1,3 +1,4 @@
+import { useExamDates } from "./exam-timezone.js";
 import {
   effectiveDeadline,
   timerPaused,
@@ -5,7 +6,7 @@ import {
 import { formatDuration } from "../../../packages/protocol/time.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
-import { api, chicago, attemptRemaining } from "./api.js";
+import { api, attemptRemaining } from "./api.js";
 import { InterruptionHistory } from "./interruption-history.js";
 import { CaptureTimeline } from "./capture-timeline.js";
 import { Modal } from "./modal.js";
@@ -23,7 +24,10 @@ import {
   webcamRequired,
 } from "../../../packages/protocol/admin.js";
 
-function accessDescription(a: any) {
+function accessDescription(
+  a: any,
+  dateTime: (at: number | null | undefined) => string,
+) {
   if (a.functional_test)
     return "Administrator test: server access is retained.";
   if (a.policy_state === "RESTORE_FAILED")
@@ -40,7 +44,7 @@ function accessDescription(a: any) {
   if (a.access_state === "RELEASED")
     return "Normal server access has been restored.";
   if (a.start)
-    return `Normal server access remains blocked until at least ${chicago(Math.max(a.original_deadline || 0, a.deadline || 0))} and secured collection. Finishing early does not release this restriction.`;
+    return `Normal server access remains blocked until at least ${dateTime(Math.max(a.original_deadline || 0, a.deadline || 0))} and secured collection. Finishing early does not release this restriction.`;
   return "Server access is not restricted.";
 }
 // One request at a time; reconnecting or returning to the page refreshes immediately.
@@ -93,6 +97,8 @@ function Replay({
   positions: Map<string, number>;
   active: boolean;
 }) {
+  const { dateTime } = useExamDates();
+
   const root = useRef<HTMLDivElement>(null),
     terminal = useRef<Terminal | null>(null),
     offset = useRef(0),
@@ -192,7 +198,7 @@ function Replay({
       )}
       <label>
         Replay position{" "}
-        {chicago(events.current[Math.min(position, length - 1)]?.at)}
+        {dateTime(events.current[Math.min(position, length - 1)]?.at)}
         <input
           type="range"
           min={0}
@@ -226,6 +232,8 @@ export function AdminReview({
   onGrant?: (id: string) => void;
   onSource?: (source: SourceAttemptLink) => void;
 }) {
+  const { dateTime } = useExamDates();
+
   const [refreshError, setRefreshError] = useState("");
   const [section, setSection] = useState("Monitoring"),
     [media, setMedia] = useState<any>(null),
@@ -542,7 +550,7 @@ export function AdminReview({
                   });
                   setAuthorization(null);
                   await onChanged();
-                  return `${result.noExpiry ? "Resume allowed without approval expiry" : `Resume allowed until ${chicago(result.expires)}`}. ${
+                  return `${result.noExpiry ? "Resume allowed without approval expiry" : `Resume allowed until ${dateTime(result.expires)}`}. ${
                     a.monitoring_mode === "v1"
                       ? "The student restores the checks and chooses Resume exam. After a lost session, they sign in again. The deadline stays the same."
                       : "The student must sign in again and restore the checks."
@@ -580,17 +588,17 @@ export function AdminReview({
           <dt>Setup started</dt>
           <dd>
             {a.preflight_started_at
-              ? chicago(a.preflight_started_at)
+              ? dateTime(a.preflight_started_at)
               : "Not recorded"}
           </dd>
         </div>
         <div>
           <dt>Exam started</dt>
-          <dd>{chicago(a.start)}</dd>
+          <dd>{dateTime(a.start)}</dd>
         </div>
         <div>
           <dt>{a.start ? "Exam ended" : "Setup ended"}</dt>
-          <dd>{chicago(a.ended)}</dd>
+          <dd>{dateTime(a.ended)}</dd>
         </div>
         <div>
           <dt>
@@ -606,7 +614,7 @@ export function AdminReview({
         </div>
         <div>
           <dt>Deadline</dt>
-          <dd>{timerPaused(a) ? "Countdown paused" : chicago(a.deadline)}</dd>
+          <dd>{timerPaused(a) ? "Countdown paused" : dateTime(a.deadline)}</dd>
         </div>
         <div>
           <dt>Connection</dt>
@@ -635,11 +643,11 @@ export function AdminReview({
           </div>
           <div>
             <dt>Original deadline</dt>
-            <dd>{chicago(a.original_deadline || a.deadline)}</dd>
+            <dd>{dateTime(a.original_deadline || a.deadline)}</dd>
           </div>
           <div>
             <dt>Last browser contact</dt>
-            <dd>{chicago(a.last_contact)}</dd>
+            <dd>{dateTime(a.last_contact)}</dd>
           </div>
           <div>
             <dt>Webcam</dt>
@@ -670,11 +678,11 @@ export function AdminReview({
                         : `Reset to ${formatDuration(change.remaining_seconds)}`}
                 </strong>
                 <span>
-                  Requested {chicago(change.requested_at)} by {change.actor};
-                  confirmed {chicago(change.applied_at)}.{" "}
+                  Requested {dateTime(change.requested_at)} by {change.actor};
+                  confirmed {dateTime(change.applied_at)}.{" "}
                   {change.timer_paused_at
                     ? `${formatDuration(change.timer_remaining_ms / 1000)} remaining; countdown paused.`
-                    : `Deadline ${chicago(change.deadline)}.`}
+                    : `Deadline ${dateTime(change.deadline)}.`}
                 </span>
               </li>
             ))}
@@ -955,7 +963,7 @@ export function AdminReview({
             <ol className="incident-list">
               {activityIncidents.map((i: any) => (
                 <li key={i.id}>
-                  <time>{chicago(i.opened)}</time>
+                  <time>{dateTime(i.opened)}</time>
                   <div>
                     {!a.interruptions &&
                       JSON.parse(i.events).map((e: any, n: number) => (
@@ -963,7 +971,7 @@ export function AdminReview({
                       ))}
                     {i.message && <blockquote>{i.message}</blockquote>}
                     {i.review_at && (
-                      <small>Reviewed {chicago(i.review_at)}</small>
+                      <small>Reviewed {dateTime(i.review_at)}</small>
                     )}
                   </div>
                 </li>
@@ -999,15 +1007,15 @@ export function AdminReview({
                 </div>
                 <div>
                   <dt>Work ended</dt>
-                  <dd>{chicago(a.completed_at)}</dd>
+                  <dd>{dateTime(a.completed_at)}</dd>
                 </div>
                 <div>
                   <dt>Files collected</dt>
-                  <dd>{chicago(a.collected_at)}</dd>
+                  <dd>{dateTime(a.collected_at)}</dd>
                 </div>
                 <div>
                   <dt>Files protected</dt>
-                  <dd>{chicago(a.secured_at)}</dd>
+                  <dd>{dateTime(a.secured_at)}</dd>
                 </div>
               </dl>
               {media?.manifest && (
@@ -1066,7 +1074,7 @@ export function AdminReview({
           )}
           <details className="review-access">
             <summary>Server access</summary>
-            <p>{accessDescription(a)}</p>
+            <p>{accessDescription(a, dateTime)}</p>
             {a.access_override && <p>Audited override: {a.access_override}</p>}
             {a.access_error && (
               <p className="warn">Server access error: {a.access_error}</p>
@@ -1074,15 +1082,15 @@ export function AdminReview({
             <dl className="review-facts">
               <div>
                 <dt>Restriction began</dt>
-                <dd>{chicago(a.access_held_at)}</dd>
+                <dd>{dateTime(a.access_held_at)}</dd>
               </div>
               <div>
                 <dt>Access restored</dt>
-                <dd>{chicago(a.access_released_at)}</dd>
+                <dd>{dateTime(a.access_released_at)}</dd>
               </div>
             </dl>
             {!!a.access_checked_at && (
-              <small>Last checked {chicago(a.access_checked_at)}</small>
+              <small>Last checked {dateTime(a.access_checked_at)}</small>
             )}
           </details>
         </section>

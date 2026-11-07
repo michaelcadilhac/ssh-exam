@@ -10,6 +10,18 @@ import (
 func examReplyFixture() map[string]any {
 	return map[string]any{"exam": map[string]any{"id": "midterm", "name": "Midterm", "template": "v1", "duration": 5400, "webcam": true, "terminals": 4, "earliest": 0, "latest": 8640000000000000}, "revision": strings.Repeat("a", 64)}
 }
+func TestExamTimezoneReplyConfirmsExactSettingAndRejectsInvalidMetadata(t *testing.T) {
+	body := map[string]any{"id": "midterm", "revision": strings.Repeat("a", 64), "changes": map[string]any{"timezone": "Asia/Kathmandu"}}
+	for _, value := range []any{"Asia/Kathmandu", "America/Chicago", "Invalid/Zone", "Local", nil, 1} {
+		r := examReplyFixture()
+		r["exam"].(map[string]any)["timezone"] = value
+		raw, _ := json.Marshal(r)
+		err := validateExamResult("exams.update", body, raw)
+		if (err == nil) != (value == "Asia/Kathmandu") {
+			t.Fatal(value, err)
+		}
+	}
+}
 func TestExamReviewCountdownReplyMustConfirmTheRequestedPolicy(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		body := map[string]any{"id": "midterm", "revision": strings.Repeat("a", 64), "changes": map[string]any{"pause_on_review": enabled}}

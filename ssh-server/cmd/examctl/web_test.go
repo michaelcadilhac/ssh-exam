@@ -73,6 +73,29 @@ func TestWebReviewCountdownHelpAndSyntax(t *testing.T) {
 	}
 }
 
+func TestWebTimezoneHelpAndSyntax(t *testing.T) {
+	out, code := cliProcess(t, "web", "exams", "update", "--help")
+	if code != 0 || !strings.Contains(out, "--timezone ZONE") || !strings.Contains(out, "existing dates/allowances stay fixed") {
+		t.Fatal(code, out)
+	}
+	for _, args := range [][]string{
+		{"web", "exams", "show", "exam", "--timezone", "UTC"},
+		{"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--timezone", "Invalid/Zone"},
+		{"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--timezone", "Local"},
+	} {
+		out, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(out, "web help") {
+			t.Fatal(code, out)
+		}
+	}
+	for _, zone := range []string{"UTC", "America/Chicago", "Asia/Kathmandu"} {
+		out, code := cliProcess(t, "--timezone", zone, "web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--config", "/missing")
+		if code != 1 {
+			t.Fatal("Valid timezone did not reach root/config verification", code, out)
+		}
+	}
+}
+
 func TestWebCollectionLimitsHelpAndSyntax(t *testing.T) {
 	output, code := cliProcess(t, "web", "exams", "update", "--help")
 	for _, required := range []string{"--collection-file-mib", "--collection-total-mib", "128", "512", "logical", "ALL", "unstarted, setup and running attempts", "freshly verified current file", "Protected submissions keep"} {

@@ -1,15 +1,10 @@
+import { useExamDates } from "./exam-timezone.js";
 import React, { useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { LocalDateTimeInput } from "./local-date-time-input.js";
-import {
-  deviceTimeZone,
-  localDateTime,
-  localOccurrence,
-  parseLocalDateTime,
-  timeLimit,
-} from "./local-date-time.js";
+import { timeLimit } from "./local-date-time.js";
 export function StudentImport({
   exam,
   defaultWebcam = false,
@@ -29,6 +24,11 @@ export function StudentImport({
   onClose: () => void;
   onDone: () => Promise<void>;
 }) {
+  const { localDateTime, localOccurrence, parseLocalDateTime } = useExamDates(
+    undefined,
+    true,
+  );
+
   const [defaults] = useState(() => ({
     webcam: defaultWebcam,
     duration: defaultDuration,
@@ -162,10 +162,7 @@ export function StudentImport({
               }}
             />
           </div>
-          <small>
-            These dates apply only to new first attempts. Times in{" "}
-            {deviceTimeZone()}.
-          </small>
+          <small>These dates apply to attempts created by this import.</small>
         </fieldset>
       )}
       {method === "single" ? (

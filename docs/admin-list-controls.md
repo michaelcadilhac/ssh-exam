@@ -8,6 +8,36 @@ grant issuance, then to invent history for an already-issued unused permission.
 Both correctly refused. The fixture now keeps legacy history and new enrollment/
 initial-grant issuance distinct; no trigger or enforcement was changed.
 
+Milestone2 is implemented: exam timezone is definition metadata, never a grant
+snapshot/hash, clock or native execution setting. Existing exams render in Chicago;
+new web exams start with the device zone saved explicitly. All instructor date
+entry/display, source choices and review inherit the selected exam zone. Changing
+the zone converts form values while preserving their instants; gaps refuse and
+repeated hours require a choice. Open attempt-date editors pin their original zone
+and refuse changed-date submission if a later poll sees a different exam zone.
+The main date banner and redundant dialog banners are removed.
+
+CLI: `examctl web exams update EXAM --revision HASH --timezone America/Chicago`
+(or UTC/another valid IANA name), with matching create support, help and strict
+scope/bounds/intent validation on signed replies. The first positive TLS test
+caught the missing optional field in that reply decoder; it is now validated
+without relaxing unknown-field or exact-intent checks.21focused checks, the actual
+compiled root/TLS journey, CLI races, and UTC/DST plus cross-instructor editor
+browser checks pass. Selector failures were corrected against observed controls:
+native combobox roles, the Dates cell and the inline Save button, without changing
+product enforcement. Wider seven-zone and application/browser checks remain.
+
+Release scope: registered reviewed-web-cli/exam-dashboard-timezone-v1, schema37.
+Only web and the installed examctl change; all four live native/relay role PIDs and
+the loaded source-worker binary stay fixed. The existing atomic CLI installer
+takes private current metadata/configuration/old-CLI backups. The current-data
+forward recovery path is shared with the existing incompatible-reader workflow;
+an older writer could discard the new timezone metadata.48operator scenarios pass,
+including original-snapshot preservation and already-running-candidate recovery.
+No new deploy controller or native authority mechanism. Exact image/startup,
+packaged CLI, migration/preservation/proxy and fresh drain gates remain before
+push/cutover. Reuse existing media recovery coverage, never replicate recordings.
+
 Bounded delivery plan:
 
 1. Dashboard HTTP and web list: independent All students/Working/Needs attention

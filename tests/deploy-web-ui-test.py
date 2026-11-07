@@ -254,12 +254,35 @@ class FastUI(unittest.TestCase):
     def test_capture_reader_forward_resume_refuses_an_unknown_running_image_without_stopping_it(self):
         self.capture_reader();self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)
         self.current='sha256:'+'7'*64;self.running=True;stops=len(self.stopped_calls())
-        _,error=self.cli('resume',expect=1);self.assertIn('Unknown capture image',error)
+        _,error=self.cli('resume',expect=1);self.assertIn('Unknown forward-recovery image',error)
         self.assertEqual(len(self.stopped_calls()),stops);self.assertTrue(self.running)
 
     def test_capture_reader_refuses_compatible_old_writer_attestation_before_pause(self):
         self.capture_reader();self.release['fast_ui']['previous_reader_policy_compatible']=True
         (self.bundle/'release.json').write_text(json.dumps(self.release))
+        self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+        self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
+    def test_dashboard_timezone_apply_and_forward_recovery_preserve_current_data(self):
+        self.reviewed_web_cli(scope='exam-dashboard-timezone-v1');before=self.history()
+        self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)
+        snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite')
+        _,error=self.cli('rollback',expect=1);self.assertIn('qualified forward resume',error)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(self.history(),before);self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_dashboard_timezone_running_candidate_resumes_without_restart_or_new_snapshot(self):
+        self.reviewed_web_cli(scope='exam-dashboard-timezone-v1');self.cli('prepare')
+        with patch.object(deploy.Rollout,'finish_web_running',side_effect=RuntimeError('Synthetic preopening crash')):
+            self.cli('apply',expect=1)
+        snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite');calls=list(self.calls)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+        self.assertEqual(sum(a[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for a in self.calls),sum(a[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for a in calls))
+
+    def test_dashboard_timezone_refuses_old_writer_compatibility_before_pause(self):
+        self.reviewed_web_cli(scope='exam-dashboard-timezone-v1',compatible=True)
         self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
         self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
 

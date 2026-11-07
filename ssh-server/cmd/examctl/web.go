@@ -18,6 +18,14 @@ func validWebcamSetting(value string) bool {
 	return value == "required" || value == "off" || value == "optional"
 }
 
+func validExamTimezone(value string) bool {
+	if len(value) > 100 || !regexp.MustCompile(`^(UTC|[A-Za-z_]+/[A-Za-z0-9_+./-]+)$`).MatchString(value) {
+		return false
+	}
+	_, err := time.LoadLocation(value)
+	return err == nil
+}
+
 func webArguments(args []string) ([]string, bool) {
 	for i := 0; i < len(args); i++ {
 		if takesValue(args[i]) {
@@ -94,6 +102,8 @@ Settings (no ad hoc database/JSON editing required):
 --webcam required|off     creation default required; off never offers/captures webcam
 --terminals N            1..4; creation default 4
 --pause-on-review on|off  pause countdown during instructor review; default off
+--timezone ZONE          exam date display/entry zone, e.g. America/Chicago or UTC
+                        existing dates/allowances stay fixed; legacy default Chicago
 --collection-file-mib N   1..4096 MiB logical bytes/file; creation default 128
 --collection-total-mib N  1..16384 MiB logical bytes total; creation default 512
                         total must be at least per-file; 1 MiB = 1048576 bytes
@@ -243,6 +253,7 @@ func webMain(args []string) int {
 	webcam := flags.String("webcam", "required", "required or off (optional is a compatibility alias for off)")
 	terminals := flags.Int("terminals", 4, "terminal count")
 	pauseOnReview := flags.String("pause-on-review", "off", "on or off: pause countdown during instructor review")
+	timezone := flags.String("timezone", "", "IANA exam date display/entry zone")
 	collectionFile := flags.Int64("collection-file-mib", 128, "per-file logical MiB")
 	collectionTotal := flags.Int64("collection-total-mib", 512, "total logical MiB")
 	earliest := flags.String("earliest", "", "earliest Begin RFC3339")
@@ -276,7 +287,7 @@ func webMain(args []string) int {
 		return usage("--out/--evidence apply only to native-review/reconcile-native")
 	}
 	mutatingFlag := false
-	for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "pause-on-review", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
+	for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "pause-on-review", "timezone", "earliest", "latest", "revision", "reason", "collection-file-mib", "collection-total-mib"} {
 		mutatingFlag = mutatingFlag || visited[key]
 	}
 	switch words[1] {
@@ -359,7 +370,7 @@ func webMain(args []string) int {
 		if len(words) != 3 || !id.MatchString(words[2]) || visited["limit"] || visited["after"] || visited["lifecycle"] {
 			return usage("retirement takes one exam ID, without list filters")
 		}
-		for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "pause-on-review", "earliest", "latest", "collection-file-mib", "collection-total-mib"} {
+		for _, key := range []string{"name", "template", "template-version", "duration-seconds", "webcam", "terminals", "pause-on-review", "timezone", "earliest", "latest", "collection-file-mib", "collection-total-mib"} {
 			if visited[key] {
 				return usage("retirement never changes exam settings")
 			}
@@ -398,6 +409,11 @@ func webMain(args []string) int {
 		if *pauseOnReview != "on" && *pauseOnReview != "off" {
 			return usage("--pause-on-review requires on or off")
 		}
+		if visited["timezone"] {
+			if !validExamTimezone(*timezone) {
+				return usage("--timezone requires a valid IANA time zone, such as America/Chicago or UTC")
+			}
+		}
 		if *collectionFile < 1 || *collectionFile > 4096 || *collectionTotal < 1 || *collectionTotal > 16384 || ((create || (visited["collection-file-mib"] && visited["collection-total-mib"])) && *collectionTotal < *collectionFile) {
 			return usage("collection limits require file 1..4096 MiB, total 1..16384 MiB and total at least per-file; units are logical MiB")
 		}
@@ -417,6 +433,9 @@ func webMain(args []string) int {
 		}
 		if visited["pause-on-review"] {
 			settings["pause_on_review"] = *pauseOnReview == "on"
+		}
+		if visited["timezone"] {
+			settings["timezone"] = *timezone
 		}
 		if visited["template-version"] {
 			value := *templateVersion

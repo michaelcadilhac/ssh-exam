@@ -5,11 +5,10 @@ import { TemplatePicker } from "./template-picker.js";
 import { LocalDateTimeInput } from "./local-date-time-input.js";
 import {
   deviceTimeZone,
-  localDateTime,
-  localOccurrence,
-  parseLocalDateTime,
+  DEFAULT_EXAM_TIMEZONE,
   timeLimit,
 } from "./local-date-time.js";
+import { ExamTimeZone, useExamDates } from "./exam-timezone.js";
 import {
   isSandbox,
   hasSandboxWindow,
@@ -33,6 +32,9 @@ export function ExamSettings({
   const [form, setForm] = useState({
     id: "",
     name: "Programming exam",
+    timezone:
+      initial.timezone ??
+      (initial.id ? DEFAULT_EXAM_TIMEZONE : deviceTimeZone()),
     template: "sample-exam",
     template_version: "",
     duration: 5400,
@@ -48,6 +50,9 @@ export function ExamSettings({
       ? { earliest: NaN, latest: NaN }
       : {}),
   });
+  const { localDateTime, localOccurrence, parseLocalDateTime } = useExamDates(
+    form.timezone,
+  );
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [durationDraft, setDurationDraft] = useState(
@@ -69,265 +74,345 @@ export function ExamSettings({
     );
   const intent = useRef({ fingerprint: "", requestID: "" });
   return (
-    <Modal
-      title={initial.id ? "Exam settings" : "New exam"}
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-    >
-      <form
-        className="admin-exam-form"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (busy) return;
-          setBusy(true);
-          setError("");
-          try {
-            const changes = {
-              ...form,
-              earliest:
-                Number.isFinite(form.earliest) &&
-                earliestDraft === localDateTime(form.earliest, "exact") &&
-                earliestOccurrence === localOccurrence(form.earliest, "exact")
-                  ? form.earliest
-                  : parseLocalDateTime(
-                      earliestDraft,
-                      earliestOccurrence,
-                      "exact",
-                    ),
-              latest:
-                Number.isFinite(form.latest) &&
-                latestDraft === localDateTime(form.latest, "exact") &&
-                latestOccurrence === localOccurrence(form.latest, "exact")
-                  ? form.latest
-                  : parseLocalDateTime(latestDraft, latestOccurrence, "exact"),
-            };
-            if (changes.latest <= changes.earliest)
-              throw Error("Latest start must be after earliest start.");
-            const fingerprint = JSON.stringify(changes);
-            if (intent.current.fingerprint !== fingerprint)
-              intent.current = { fingerprint, requestID: crypto.randomUUID() };
-            const result = await api(
-              form.template_version ? "/admin/exams/versioned" : "/admin/exams",
-              {
-                ...changes,
-                requestID: intent.current.requestID,
-              },
-            );
-            onSaved(result);
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
+    <ExamTimeZone.Provider value={form.timezone}>
+      <Modal
+        title={initial.id ? "Exam settings" : "New exam"}
+        onClose={() => {
+          if (!busy) onClose();
         }}
       >
-        <div className="admin-form-grid">
-          <label>
-            Exam ID
-            <input
-              required
-              value={form.id}
-              disabled={!!initial.id || busy}
-              pattern="[a-zA-Z0-9_\-]{1,64}"
-              onChange={(e) => setForm({ ...form, id: e.target.value })}
-            />
-          </label>
-          <label>
-            Name
-            <input
-              required
-              maxLength={120}
-              disabled={busy}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </label>
-        </div>
-        <fieldset className="admin-form-group">
-          <legend>Exam settings</legend>
-          <TemplatePicker
-            label="Exam files"
-            name={form.template}
-            hash={form.template_version ?? ""}
-            disabled={busy}
-            onChange={(template, template_version) =>
-              setForm({ ...form, template, template_version })
+        <form
+          className="admin-exam-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (busy) return;
+            setBusy(true);
+            setError("");
+            try {
+              const changes = {
+                ...form,
+                earliest:
+                  Number.isFinite(form.earliest) &&
+                  earliestDraft === localDateTime(form.earliest, "exact") &&
+                  earliestOccurrence === localOccurrence(form.earliest, "exact")
+                    ? form.earliest
+                    : parseLocalDateTime(
+                        earliestDraft,
+                        earliestOccurrence,
+                        "exact",
+                      ),
+                latest:
+                  Number.isFinite(form.latest) &&
+                  latestDraft === localDateTime(form.latest, "exact") &&
+                  latestOccurrence === localOccurrence(form.latest, "exact")
+                    ? form.latest
+                    : parseLocalDateTime(
+                        latestDraft,
+                        latestOccurrence,
+                        "exact",
+                      ),
+              };
+              if (changes.latest <= changes.earliest)
+                throw Error("Latest start must be after earliest start.");
+              const fingerprint = JSON.stringify(changes);
+              if (intent.current.fingerprint !== fingerprint)
+                intent.current = {
+                  fingerprint,
+                  requestID: crypto.randomUUID(),
+                };
+              const result = await api(
+                form.template_version
+                  ? "/admin/exams/versioned"
+                  : "/admin/exams",
+                {
+                  ...changes,
+                  requestID: intent.current.requestID,
+                },
+              );
+              onSaved(result);
+            } catch (e) {
+              setError((e as Error).message);
+            } finally {
+              setBusy(false);
             }
-          />
-          <label>
-            <input
-              type="checkbox"
-              checked={form.pause_on_review}
-              disabled={busy}
-              onChange={(event) =>
-                setForm({ ...form, pause_on_review: event.target.checked })
-              }
-            />
-            Pause countdown while instructor review is needed
-          </label>
-          <small>
-            The countdown restarts when the student resumes work. Existing
-            manual pauses stay paused.
-          </small>
-          <label>
-            Terminal limit
-            <input
-              required
-              type="number"
-              min={1}
-              max={4}
-              disabled={busy || isSandbox(form.id)}
-              value={form.terminals}
-              onChange={(e) =>
-                setForm({ ...form, terminals: Number(e.target.value) })
-              }
-            />
-          </label>
-          <details>
-            <summary>File limits</summary>
-            <fieldset className="admin-form-group">
-              <legend>File limits</legend>
-              <div className="admin-form-grid">
-                <label>
-                  Maximum file size (MiB)
-                  <input
-                    required
-                    type="number"
-                    min={1}
-                    max={MAX_COLLECTION_FILE_MIB}
-                    disabled={busy}
-                    value={form.collection_file_mib}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        collection_file_mib: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  Maximum total size (MiB)
-                  <input
-                    required
-                    type="number"
-                    min={form.collection_file_mib}
-                    max={MAX_COLLECTION_TOTAL_MIB}
-                    disabled={busy}
-                    value={form.collection_total_mib}
-                    onChange={(e) =>
-                      setForm({
-                        ...form,
-                        collection_total_mib: Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-              </div>
-            </fieldset>
-          </details>
-          {initial.id && (
-            <p>
-              Terminal and file limits apply to all attempts. Open terminals
-              stay open.
-            </p>
-          )}
-        </fieldset>
-        <fieldset className="admin-form-group">
-          <legend>Defaults for new attempts</legend>
-          <fieldset className="admin-form-group">
-            <legend>
-              {initial.id ? "Default start dates" : "Start window"}
-            </legend>
-            <div className="admin-form-grid">
-              <LocalDateTimeInput
-                label="Opens"
-                precision="exact"
-                value={earliestDraft}
-                onChange={setEarliestDraft}
-                occurrence={earliestOccurrence}
-                onOccurrence={setEarliestOccurrence}
-                disabled={busy}
-              />
-              <LocalDateTimeInput
-                label="Closes"
-                precision="exact"
-                value={latestDraft}
-                onChange={setLatestDraft}
-                occurrence={latestOccurrence}
-                onOccurrence={setLatestOccurrence}
-                disabled={busy}
-              />
-            </div>
-            <small>
-              Times in {deviceTimeZone()}. Students may start between these
-              times.
-            </small>
-          </fieldset>
-          {isSandbox(form.id) && (
-            <p>Practice: 5 minutes, no webcam, 4 terminals.</p>
-          )}
+          }}
+        >
           <div className="admin-form-grid">
             <label>
-              Time limit (minutes)
+              Exam ID
               <input
-                required={
-                  !initial.id || Number.isInteger(initial.duration / 60)
-                }
-                type="number"
-                min={1}
-                max={360}
-                disabled={busy || isSandbox(form.id)}
-                value={isSandbox(form.id) ? 5 : durationDraft}
-                placeholder={
-                  initial.id ? `Keep ${timeLimit(initial.duration)}` : "90"
-                }
-                onChange={(e) => {
-                  setDurationDraft(e.target.value);
-                  setForm({
-                    ...form,
-                    duration:
-                      e.target.value === "" && initial.id
-                        ? initial.duration
-                        : Number(e.target.value) * 60,
-                  });
-                }}
+                required
+                value={form.id}
+                disabled={!!initial.id || busy}
+                pattern="[a-zA-Z0-9_\-]{1,64}"
+                onChange={(e) => setForm({ ...form, id: e.target.value })}
+              />
+            </label>
+            <label>
+              Name
+              <input
+                required
+                maxLength={120}
+                disabled={busy}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </label>
           </div>
-          <label>
-            Default webcam
-            <select
-              disabled={busy || isSandbox(form.id)}
-              value={isSandbox(form.id) ? "false" : String(form.webcam)}
-              onChange={(e) =>
-                setForm({ ...form, webcam: e.target.value === "true" })
+          <fieldset className="admin-form-group">
+            <legend>Exam settings</legend>
+            <label>
+              Time zone
+              <select
+                value={form.timezone}
+                disabled={busy}
+                onChange={(e) => {
+                  try {
+                    const timezone = e.target.value;
+                    const earliest =
+                      !earliestDraft && !Number.isFinite(form.earliest)
+                        ? form.earliest
+                        : parseLocalDateTime(
+                            earliestDraft,
+                            earliestOccurrence,
+                            "exact",
+                          );
+                    const latest =
+                      !latestDraft && !Number.isFinite(form.latest)
+                        ? form.latest
+                        : parseLocalDateTime(
+                            latestDraft,
+                            latestOccurrence,
+                            "exact",
+                          );
+                    setForm({ ...form, timezone, earliest, latest });
+                    setEarliestDraft(
+                      localDateTime(earliest, "exact", timezone),
+                    );
+                    setLatestDraft(localDateTime(latest, "exact", timezone));
+                    setEarliestOccurrence(
+                      localOccurrence(earliest, "exact", timezone),
+                    );
+                    setLatestOccurrence(
+                      localOccurrence(latest, "exact", timezone),
+                    );
+                    setError("");
+                  } catch (error) {
+                    setError((error as Error).message);
+                  }
+                }}
+              >
+                {[
+                  ...new Set([
+                    form.timezone,
+                    "UTC",
+                    ...Intl.supportedValuesOf("timeZone"),
+                  ]),
+                ]
+                  .sort()
+                  .map((zone) => (
+                    <option key={zone} value={zone}>
+                      {(
+                        {
+                          "America/Chicago": "Chicago — Central Time",
+                          "America/New_York": "New York — Eastern Time",
+                          "America/Denver": "Denver — Mountain Time",
+                          "America/Los_Angeles": "Los Angeles — Pacific Time",
+                          UTC: "UTC",
+                        } as Record<string, string>
+                      )[zone] ??
+                        zone
+                          .replaceAll("_", " ")
+                          .split("/")
+                          .reverse()
+                          .join(" · ")}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <TemplatePicker
+              label="Exam files"
+              name={form.template}
+              hash={form.template_version ?? ""}
+              disabled={busy}
+              onChange={(template, template_version) =>
+                setForm({ ...form, template, template_version })
               }
-            >
-              <option value="true">Required</option>
-              <option value="false">Off</option>
-            </select>
-          </label>
-          {initial.id && (
-            <p>
-              Existing time limits, webcam rules and start dates stay unchanged.
+            />
+            <label>
+              <input
+                type="checkbox"
+                checked={form.pause_on_review}
+                disabled={busy}
+                onChange={(event) =>
+                  setForm({ ...form, pause_on_review: event.target.checked })
+                }
+              />
+              Pause countdown while instructor review is needed
+            </label>
+            <small>
+              The countdown restarts when the student resumes work. Existing
+              manual pauses stay paused.
+            </small>
+            <label>
+              Terminal limit
+              <input
+                required
+                type="number"
+                min={1}
+                max={4}
+                disabled={busy || isSandbox(form.id)}
+                value={form.terminals}
+                onChange={(e) =>
+                  setForm({ ...form, terminals: Number(e.target.value) })
+                }
+              />
+            </label>
+            <details>
+              <summary>File limits</summary>
+              <fieldset className="admin-form-group">
+                <legend>File limits</legend>
+                <div className="admin-form-grid">
+                  <label>
+                    Maximum file size (MiB)
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      max={MAX_COLLECTION_FILE_MIB}
+                      disabled={busy}
+                      value={form.collection_file_mib}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          collection_file_mib: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Maximum total size (MiB)
+                    <input
+                      required
+                      type="number"
+                      min={form.collection_file_mib}
+                      max={MAX_COLLECTION_TOTAL_MIB}
+                      disabled={busy}
+                      value={form.collection_total_mib}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          collection_total_mib: Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              </fieldset>
+            </details>
+            {initial.id && (
+              <p>
+                Terminal and file limits apply to all attempts. Open terminals
+                stay open.
+              </p>
+            )}
+          </fieldset>
+          <fieldset className="admin-form-group">
+            <legend>Defaults for new attempts</legend>
+            <fieldset className="admin-form-group">
+              <legend>
+                {initial.id ? "Default start dates" : "Start window"}
+              </legend>
+              <div className="admin-form-grid">
+                <LocalDateTimeInput
+                  timezone={form.timezone}
+                  label="Opens"
+                  precision="exact"
+                  value={earliestDraft}
+                  onChange={setEarliestDraft}
+                  occurrence={earliestOccurrence}
+                  onOccurrence={setEarliestOccurrence}
+                  disabled={busy}
+                />
+                <LocalDateTimeInput
+                  timezone={form.timezone}
+                  label="Closes"
+                  precision="exact"
+                  value={latestDraft}
+                  onChange={setLatestDraft}
+                  occurrence={latestOccurrence}
+                  onOccurrence={setLatestOccurrence}
+                  disabled={busy}
+                />
+              </div>
+              <small>Students may start between these times.</small>
+            </fieldset>
+            {isSandbox(form.id) && (
+              <p>Practice: 5 minutes, no webcam, 4 terminals.</p>
+            )}
+            <div className="admin-form-grid">
+              <label>
+                Time limit (minutes)
+                <input
+                  required={
+                    !initial.id || Number.isInteger(initial.duration / 60)
+                  }
+                  type="number"
+                  min={1}
+                  max={360}
+                  disabled={busy || isSandbox(form.id)}
+                  value={isSandbox(form.id) ? 5 : durationDraft}
+                  placeholder={
+                    initial.id ? `Keep ${timeLimit(initial.duration)}` : "90"
+                  }
+                  onChange={(e) => {
+                    setDurationDraft(e.target.value);
+                    setForm({
+                      ...form,
+                      duration:
+                        e.target.value === "" && initial.id
+                          ? initial.duration
+                          : Number(e.target.value) * 60,
+                    });
+                  }}
+                />
+              </label>
+            </div>
+            <label>
+              Default webcam
+              <select
+                disabled={busy || isSandbox(form.id)}
+                value={isSandbox(form.id) ? "false" : String(form.webcam)}
+                onChange={(e) =>
+                  setForm({ ...form, webcam: e.target.value === "true" })
+                }
+              >
+                <option value="true">Required</option>
+                <option value="false">Off</option>
+              </select>
+            </label>
+            {initial.id && (
+              <p>
+                Existing time limits, webcam rules and start dates stay
+                unchanged.
+              </p>
+            )}
+          </fieldset>
+          {error && (
+            <p role="alert" className="warn">
+              {error}
             </p>
           )}
-        </fieldset>
-        {error && (
-          <p role="alert" className="warn">
-            {error}
-          </p>
-        )}
-        <div className="actions">
-          <button type="button" disabled={busy} onClick={onClose}>
-            Cancel
-          </button>
-          <button disabled={busy} className="primary">
-            {busy ? "Saving…" : initial.id ? "Save settings" : "Save exam"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="actions">
+            <button type="button" disabled={busy} onClick={onClose}>
+              Cancel
+            </button>
+            <button disabled={busy} className="primary">
+              {busy ? "Saving…" : initial.id ? "Save settings" : "Save exam"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+    </ExamTimeZone.Provider>
   );
 }

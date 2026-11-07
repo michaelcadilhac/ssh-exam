@@ -18,7 +18,11 @@ export function sandboxExam(
     Partial<
       Pick<
         ExamDefinition,
-        "earliest" | "latest" | "template_version" | "pause_on_review"
+        | "earliest"
+        | "latest"
+        | "template_version"
+        | "pause_on_review"
+        | "timezone"
       >
     > = {},
 ): ExamDefinition {
@@ -36,6 +40,7 @@ export function sandboxExam(
     ...(limits.pause_on_review !== undefined
       ? { pause_on_review: limits.pause_on_review }
       : {}),
+    ...(limits.timezone ? { timezone: limits.timezone } : {}),
     ...(limits.template_version
       ? { template_version: limits.template_version }
       : {}),

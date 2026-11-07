@@ -96,11 +96,11 @@ export function registerExamAdmin(
         store.db
           .prepare(
             `
-      SELECT g.username FROM attempt_grants g JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision
+      SELECT g.username FROM attempt_grants g LEFT JOIN grant_revisions r ON r.grant_id=g.id AND r.revision=g.revision
       WHERE g.agent=? AND g.exam=? AND g.status IN ('AVAILABLE','PENDING_NATIVE')
-      GROUP BY g.username HAVING count(*)=1 AND sum(CASE WHEN g.status='AVAILABLE'
-        AND json_extract(r.settings,'$.latest')>=?
-        AND NOT EXISTS(SELECT 1 FROM grant_claims c WHERE c.grant_id=g.id AND c.state<>'CANCELLED') THEN 1 ELSE 0 END)=1
+      GROUP BY g.username HAVING count(*)=1 AND sum(CASE WHEN g.status='AVAILABLE' AND json_valid(r.settings)
+        THEN CASE WHEN json_extract(r.settings,'$.latest')>=?
+        AND NOT EXISTS(SELECT 1 FROM grant_claims c WHERE c.grant_id=g.id AND c.state<>'CANCELLED') THEN 1 ELSE 0 END ELSE 0 END)=1
     `,
           )
           .all(agent.id, req.params.exam, Date.now()) as { username: string }[]

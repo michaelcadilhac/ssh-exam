@@ -6,6 +6,7 @@ import { createApp } from "../../apps/server/src/app.js";
 import { Agent } from "../../apps/server/src/agent.js";
 import { RosterManagement } from "../../apps/server/src/roster-management.js";
 import { grantExam } from "../fixtures/grant-exam.js";
+import { ExamDefinitions } from "../../apps/server/src/exam-definitions.js";
 async function setup(history = false) {
   const dir = mkdtempSync(tmpdir() + "/exam-dashboard-");
   const mock = vi
@@ -93,6 +94,70 @@ async function setup(history = false) {
     },
   };
 }
+it("saves the exam timezone without moving existing dates, grants, attempts or original deadlines", async () => {
+  const t = await setup(false);
+  try {
+    const settings = grantExam(t.store, t.exam);
+    new RosterManagement(t.store, undefined, "class").add(
+      t.exam,
+      { username: "unused" },
+      "fixture",
+    );
+    const definition = new ExamDefinitions(t.store, "class").show(t.exam);
+    const grants = t.store.db
+      .prepare("SELECT * FROM grant_revisions ORDER BY grant_id,revision")
+      .all();
+    const attempts = t.store.db
+      .prepare("SELECT * FROM attempts ORDER BY id")
+      .all();
+    const payload = {
+      id: t.exam,
+      timezone: "Asia/Kathmandu",
+      revision: definition.revision,
+      requestID: randomUUID(),
+    };
+    const write = () =>
+      t.app.inject({
+        method: "POST",
+        url: "/api/admin/exams",
+        headers: t.headers,
+        payload,
+      });
+    const saved = await write();
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({
+      timezone: "Asia/Kathmandu",
+      earliest: settings.earliest,
+      latest: settings.latest,
+    });
+    expect((await write()).json()).toEqual(saved.json());
+    expect(
+      t.store.db
+        .prepare("SELECT * FROM grant_revisions ORDER BY grant_id,revision")
+        .all(),
+    ).toEqual(grants);
+    expect(
+      t.store.db.prepare("SELECT * FROM attempts ORDER BY id").all(),
+    ).toEqual(attempts);
+    const refused = await t.app.inject({
+      method: "POST",
+      url: "/api/admin/exams",
+      headers: t.headers,
+      payload: {
+        id: t.exam,
+        timezone: "not-a-zone",
+        revision: saved.json().revision,
+      },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(
+      new ExamDefinitions(t.store, "class").show(t.exam).exam.timezone,
+    ).toBe("Asia/Kathmandu");
+  } finally {
+    await t.close();
+  }
+});
+
 it("scopes the combined dashboard to the selected exam, includes all attempts and removed students", async () => {
   const t = await setup(true);
   try {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { publishedFiles } from "./exam-file-options.js";
-import { shortDateTime } from "./local-date-time.js";
+import { useExamDates } from "./exam-timezone.js";
 import { RefreshButton } from "./refresh-button.js";
 
 export function TemplatePicker({
@@ -18,6 +18,7 @@ export function TemplatePicker({
   disabled?: boolean;
   compact?: boolean;
 }) {
+  const { shortDateTime } = useExamDates();
   const [sources, setSources] = useState<any[] | null>(null),
     [error, setError] = useState(""),
     [reload, setReload] = useState(0);

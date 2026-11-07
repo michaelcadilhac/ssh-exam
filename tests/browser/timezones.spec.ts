@@ -15,9 +15,10 @@ const zones = [
 for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
   test.describe(timezoneId, () => {
     test.use({ timezoneId });
-    test("exam settings convert device-local start times to absolute instants", async ({
+    test("exam timezone overrides the device, preserves instants and handles DST gaps and repeated hours", async ({
       page,
     }) => {
+      page.setDefaultTimeout(8000);
       let saved: any;
       await page.route("**/api/**", async (route) => {
         const path = new URL(route.request().url()).pathname;
@@ -79,6 +80,51 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
       await expect(dialog).toHaveCount(0);
       expect(saved.earliest).toBe(Date.parse(localStartUTC));
       expect(saved.latest - saved.earliest).toBe(3600000);
+      await page
+        .getByRole("button", { name: "Exam settings", exact: true })
+        .click();
+      const edit = page.getByRole("dialog", {
+        name: "Exam settings",
+        exact: true,
+      });
+      await edit
+        .getByRole("combobox", { name: "Time zone", exact: true })
+        .selectOption("America/Chicago");
+      await edit.getByLabel("Opens", { exact: true }).fill("2026-03-08T02:30");
+      await edit
+        .getByRole("button", { name: "Save settings", exact: true })
+        .click();
+      await expect(
+        edit.getByText(/not valid in the exam time zone/),
+      ).toBeVisible();
+      expect(saved.earliest).toBe(Date.parse(localStartUTC));
+      await edit
+        .getByLabel("Opens", { exact: true })
+        .fill("2026-11-01T01:30:12.345");
+      await edit
+        .getByLabel("Closes", { exact: true })
+        .fill("2026-11-01T02:30:12.345");
+      await edit
+        .getByRole("combobox", { name: "Occurrence for Opens", exact: true })
+        .selectOption("1");
+      await edit
+        .getByRole("combobox", { name: "Time zone", exact: true })
+        .selectOption("UTC");
+      await expect(edit.getByLabel("Opens", { exact: true })).toHaveValue(
+        "2026-11-01T07:30:12.345",
+      );
+      await expect(edit.getByLabel("Closes", { exact: true })).toHaveValue(
+        "2026-11-01T08:30:12.345",
+      );
+      await edit
+        .getByRole("button", { name: "Save settings", exact: true })
+        .click();
+      await expect(edit).toHaveCount(0);
+      expect(saved).toMatchObject({
+        timezone: "UTC",
+        earliest: Date.UTC(2026, 10, 1, 7, 30, 12, 345),
+        latest: Date.UTC(2026, 10, 1, 8, 30, 12, 345),
+      });
     });
 
     test("student SSH login, start, individual timing, clock changes and collection ignore the browser timezone", async ({

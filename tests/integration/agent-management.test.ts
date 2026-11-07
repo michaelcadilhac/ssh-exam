@@ -13,6 +13,7 @@ import { MonitoringManagement } from "../../apps/server/src/monitoring-managemen
 import sharp from "sharp";
 import {
   generateKeyPairSync,
+  createHash,
   randomBytes,
   randomUUID,
   sign,
@@ -816,11 +817,21 @@ it.skipIf(process.env.EXAM_MANAGEMENT_USERNS !== "1")(
         "-days",
         "1",
       ]);
-      await run("go", ["build", "-o", binary, "./cmd/examctl"], {
-        cwd: "ssh-server",
-        timeout: 30000,
-        env: { ...process.env, CGO_ENABLED: "0" },
-      });
+      const candidate = process.env.EXAM_MANAGEMENT_CLI_BINARY;
+      if (candidate) {
+        const bytes = readFileSync(candidate);
+        expect(bytes.length).toBeLessThan(128 * 1024 * 1024);
+        expect(createHash("sha256").update(bytes).digest("hex")).toBe(
+          process.env.EXAM_MANAGEMENT_CLI_SHA256,
+        );
+        writeFileSync(binary, bytes, { mode: 0o700, flag: "wx" });
+      } else {
+        await run("go", ["build", "-o", binary, "./cmd/examctl"], {
+          cwd: "ssh-server",
+          timeout: 30000,
+          env: { ...process.env, CGO_ENABLED: "0" },
+        });
+      }
       let corruptCatalog: string | null = null;
       let corruptImage: string | null = null;
       let corruptRetirement: "drop" | "scope" | null = null;

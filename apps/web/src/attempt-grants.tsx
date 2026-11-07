@@ -1,3 +1,4 @@
+import { useExamDates } from "./exam-timezone.js";
 import { useEffect, useId, useRef, useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
@@ -10,19 +11,10 @@ import {
   attemptsForExam,
   examChoiceLabel,
   latestStarted,
-  savedWorkLabel,
+  savedWorkLabel as sourceWorkLabel,
   savedWorkUsable,
 } from "./exam-file-options.js";
-import {
-  deviceTimeZone,
-  localDateTime,
-  localOccurrence,
-  parseLocalDateTime,
-  shortDateTime,
-  timeLimit,
-  utcOffset,
-  windowLabel,
-} from "./local-date-time.js";
+import { timeLimit } from "./local-date-time.js";
 import { LocalDateTimeInput } from "./local-date-time-input.js";
 
 export type NextAttemptField = "duration" | "webcam" | "window" | "files";
@@ -156,22 +148,6 @@ export function pendingAttemptChanges(actor: string, exam: string) {
   }
   return pending;
 }
-function workLabel(work: any, sources: any[]) {
-  if (work.kind === "empty") return "Empty folder";
-  if (work.kind === "template") return `${work.name} (starter files)`;
-  const source = sources.find((s) => s?.id === work.attempt);
-  return source
-    ? `Saved files from ${savedWorkLabel(source, sources)}`
-    : "Saved files";
-}
-function valueLabel(key: string, value: any) {
-  if (key === "duration") return timeLimit(value);
-  if (key === "webcam") return value ? "Required" : "Off";
-  if (key === "earliest" || key === "latest")
-    return `${shortDateTime(value)} (${utcOffset(value)})`;
-  return String(value);
-}
-
 export function AttemptGrantsDialog({
   exam,
   username,
@@ -186,6 +162,33 @@ export function AttemptGrantsDialog({
   onClose,
   onChanged,
 }: AttemptGrantsProps) {
+  const {
+    localDateTime,
+    localOccurrence,
+    parseLocalDateTime,
+    shortDateTime,
+    utcOffset,
+    windowLabel,
+    zone,
+  } = useExamDates(undefined, true);
+  const savedWorkLabel = (a: any, choices: any[] = []) =>
+    sourceWorkLabel(a, choices, zone);
+  function workLabel(work: any, sources: any[]) {
+    if (work.kind === "empty") return "Empty folder";
+    if (work.kind === "template") return `${work.name} (starter files)`;
+    const source = sources.find((s) => s?.id === work.attempt);
+    return source
+      ? `Saved files from ${savedWorkLabel(source, sources)}`
+      : "Saved files";
+  }
+  function valueLabel(key: string, value: any) {
+    if (key === "duration") return timeLimit(value);
+    if (key === "webcam") return value ? "Required" : "Off";
+    if (key === "earliest" || key === "latest")
+      return `${shortDateTime(value)} (${utcOffset(value)})`;
+    return String(value);
+  }
+
   const names = [...new Set(students ?? (username ? [username] : []))].sort(),
     cacheKey = prefix + JSON.stringify([actor, exam, names]),
     formId = useId();
@@ -1218,11 +1221,6 @@ export function AttemptGrantsDialog({
     (snapshots[row.grant.id]?.grant &&
       snapshots[row.grant.id].grant.revision !==
         (row.result?.revision ?? row.grant.revision));
-  const dateChanges = review?.some(
-    (row) =>
-      row.body.changes?.earliest !== undefined ||
-      row.body.changes?.latest !== undefined,
-  );
   const pendingRows =
       review?.filter((r) => ["review", "unknown"].includes(r.state)) ?? [],
     unknown = review?.some((r) => r.state === "unknown");
@@ -1583,9 +1581,6 @@ export function AttemptGrantsDialog({
             }}
           >
             {!loaded && <p role="status">Loading attempt settings…</p>}
-            {!!catalog.length && !editField && (
-              <p className="muted">Times in {deviceTimeZone()}.</p>
-            )}
             {!username && (
               <>
                 {catalogReady && (
@@ -2001,7 +1996,6 @@ export function AttemptGrantsDialog({
             </h3>
             <p>
               {review.length} {review.length === 1 ? "attempt" : "attempts"}
-              {dateChanges ? ` · Dates shown in ${deviceTimeZone()}` : ""}
             </p>
             {review.map((row) => (
               <article key={row.grant.id} className="clock-batch-row">

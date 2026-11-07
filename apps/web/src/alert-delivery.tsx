@@ -1,5 +1,6 @@
+import { useExamDates } from "./exam-timezone.js";
 import React, { useEffect, useRef, useState } from "react";
-import { api, chicago } from "./api.js";
+import { api } from "./api.js";
 import { RefreshButton } from "./refresh-button.js";
 
 const deliveryLabels: Record<string, string> = {
@@ -13,6 +14,8 @@ const deliveryLabels: Record<string, string> = {
 // Operational metadata only. Selection captures the reviewed revision; polling
 // must not silently advance it under an unsent/retried manual reminder.
 export function AlertDelivery() {
+  const { dateTime } = useExamDates();
+
   const [data, setData] = useState<any>(null);
   const [status, setStatus] = useState("all");
   const [cursor, setCursor] = useState("");
@@ -261,7 +264,8 @@ export function AlertDelivery() {
               <summary>Details</summary>
               <p>
                 Outbox {row.id}: {row.status}; retries {row.tries}
-                {row.status === "pending" ? `; next ${chicago(row.next)}` : ""}.
+                {row.status === "pending" ? `; next ${dateTime(row.next)}` : ""}
+                .
               </p>
               {row.episode && (
                 <p>

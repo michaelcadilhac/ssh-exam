@@ -128,7 +128,7 @@ export function latestStarted(attempts: any[], username: string) {
   return started[0] ?? null;
 }
 
-export const savedWorkLabel = (a: any, choices: any[] = []) => {
+export const savedWorkLabel = (a: any, choices: any[] = [], zone?: string) => {
   const name = a.settings?.name || a.exam;
-  return `${name}${name !== a.exam ? ` (${a.exam})` : ""}${a.attempt_number ? ` · Attempt ${a.attempt_number}` : ""} · ${shortDateTime(a.start)}`;
+  return `${name}${name !== a.exam ? ` (${a.exam})` : ""}${a.attempt_number ? ` · Attempt ${a.attempt_number}` : ""} · ${shortDateTime(a.start, zone)}`;
 };

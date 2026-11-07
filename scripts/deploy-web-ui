@@ -163,14 +163,14 @@ class Rollout:
                 raise ValueError('Reviewed recording reader must retain the installed and loaded native CLI cohort')
         elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1', 'unified-exam-student-list-v1')
+                    or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1', 'unified-exam-student-list-v1', 'exam-dashboard-timezone-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or type(self.settings.get('previous_reader_policy_compatible')) is not bool):
                 raise ValueError('Reviewed web/CLI mode requires schema37, an exact registered reviewed scope, qualified source and explicit previous-reader compatibility')
-            if (self.settings.get('reviewed_scope') == 'unified-exam-student-list-v1'
+            if (self.settings.get('reviewed_scope') in ('unified-exam-student-list-v1', 'exam-dashboard-timezone-v1')
                     and self.settings['previous_reader_policy_compatible'] is not False):
-                raise ValueError('Unified exam student-list policy requires previous_reader_policy_compatible=false; the previous writer can remove students with history')
+                raise ValueError('This reviewed scope requires previous_reader_policy_compatible=false; an older writer can discard exam settings or student history')
             if self.settings.get('unchanged_backend_protocol_native') is True:
                 raise ValueError('Reviewed backend semantics changed; do not attest unchanged UI-only contracts')
             if (any(not re.fullmatch('[a-f0-9]{64}', self.release[key]) for key in ('old_cli_sha256', 'cli_sha256'))
@@ -257,8 +257,9 @@ class Rollout:
     def matched_native(self):
         return self.settings.get('mode') == 'reviewed-web-native'
 
-    def forward_capture(self):
-        return self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1'
+    def forward_web(self):
+        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1')
+                or (self.settings.get('mode') == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'exam-dashboard-timezone-v1'))
 
     def transition(self):
         path = Path(self.release['native_update']['transition_receipt'])
@@ -756,24 +757,24 @@ class Rollout:
         self.release_background()
 
     def resume(self):
-        if self.forward_capture() and self.record['phase'] in ('SNAPSHOT_DURABLE', 'RUNNING_GATED', 'VERIFIED_GATED'):
+        if self.forward_web() and self.record['phase'] in ('SNAPSHOT_DURABLE', 'RUNNING_GATED', 'VERIFIED_GATED'):
             if self.record.get('opening_previous'):
-                raise ValueError('Older capture writers cannot reopen; preserve CURRENT data and use compatible forward recovery')
+                raise ValueError('Older writers cannot reopen; preserve CURRENT data and use compatible forward recovery')
             if self.record.get('opening_image') and self.site.read_bytes() == (self.state/self.record['opening_site']).read_bytes():
                 return self.resume_online()
             self.inputs_unchanged(); self.configuration_unchanged(); self.coverage(); self.capacity(); self.native()
             if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
-                raise ValueError('Capture recovery requires the owned admission fence')
+                raise ValueError('Forward recovery requires the owned admission fence')
             container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
             if container['Image'] not in (self.release['old_image_config_id'], self.image['config_id']):
-                raise ValueError('Unknown capture image; do not replace or interrupt it')
+                raise ValueError('Unknown forward-recovery image; do not replace or interrupt it')
             guard = self.inventory(stopped=not container['State']['Running'])
             if guard['history_sha256'] != self.record['guard']['history_sha256'] or guard['attempts'] != self.record['guard']['attempts']:
                 raise ValueError('CURRENT capture history changed; preserve state and reinventory')
             self.preserved()
             if container['State']['Running']:
                 if container['Image'] != self.image['config_id'] or 'latest_start_ms' not in self.record:
-                    raise ValueError('Unknown running capture writer; do not interrupt or replace it')
+                    raise ValueError('Unknown running forward-recovery writer; do not interrupt or replace it')
                 self.finish_web_running()
             else:
                 self.finish_web()
@@ -849,8 +850,8 @@ class Rollout:
         self.finish_apply()
 
     def rollback(self):
-        if self.forward_capture():
-            raise ValueError('Older capture writers cannot be restored; preserve CURRENT data and use qualified forward resume')
+        if self.forward_web():
+            raise ValueError('Older writers cannot be restored; preserve CURRENT data and use qualified forward resume')
         if self.matched_native():
             raise ValueError('Older native/web writers cannot be restored; preserve CURRENT data and use the same qualified candidate for forward recovery')
         self.inputs_unchanged()
@@ -884,8 +885,8 @@ class Rollout:
         # Keep the fence: opening is a separately reviewable step after repair.
 
     def reopen(self):
-        if self.forward_capture():
-            raise ValueError('Older capture writers cannot reopen; preserve CURRENT data and use qualified forward resume')
+        if self.forward_web():
+            raise ValueError('Older writers cannot reopen; preserve CURRENT data and use qualified forward resume')
         if self.matched_native():
             raise ValueError('Older writers cannot reopen after a live-policy transition; use compatible forward recovery')
         self.inputs_unchanged()
@@ -939,7 +940,7 @@ class Rollout:
     def resume_online(self):
         if self.record['phase'] not in ('VERIFIED_GATED', 'ROLLED_BACK_GATED', 'ONLINE', 'ONLINE_ROLLED_BACK', 'CANCELLED'):
             raise ValueError('No verified opening receipt; reinventory without stopping work')
-        if ((self.settings.get('mode') == 'reviewed-web-cli' or self.forward_capture())
+        if ((self.settings.get('mode') == 'reviewed-web-cli' or self.forward_web())
                 and self.settings['previous_reader_policy_compatible'] is not True
                 and self.record['opening_image'] == self.release['old_image_config_id']
                 and self.record['opening_phase'] != 'CANCELLED'):

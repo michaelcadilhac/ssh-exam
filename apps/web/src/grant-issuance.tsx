@@ -1,3 +1,4 @@
+import { useExamDates } from "./exam-timezone.js";
 import { useEffect, useState, useId } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
@@ -5,17 +6,10 @@ import {
   attemptsForExam,
   examChoiceLabel,
   latestStarted,
-  savedWorkLabel,
+  savedWorkLabel as sourceWorkLabel,
   savedWorkUsable,
 } from "./exam-file-options.js";
-import {
-  deviceTimeZone,
-  localDateTime,
-  parseLocalDateTime,
-  shortDateTime,
-  timeLimit,
-  windowLabel,
-} from "./local-date-time.js";
+import { timeLimit } from "./local-date-time.js";
 import { LocalDateTimeInput } from "./local-date-time-input.js";
 import { TemplatePicker } from "./template-picker.js";
 import { workspaceChoice } from "./grant-workspace.js";
@@ -133,6 +127,16 @@ export function GrantIssuanceDialog({
   onChanged: () => Promise<void>;
   onAdoptStudents: (names: string[]) => void;
 }) {
+  const {
+    localDateTime,
+    parseLocalDateTime,
+    shortDateTime,
+    windowLabel,
+    zone,
+  } = useExamDates(undefined, true);
+  const savedWorkLabel = (a: any, choices: any[] = []) =>
+    sourceWorkLabel(a, choices, zone);
+
   const names = students.map((s) => s.username).sort(),
     practice = initial.id === "sandbox",
     kind = practice
@@ -689,7 +693,7 @@ export function GrantIssuanceDialog({
             <p>{pending.body.usernames.join(", ")}</p>
             <p>
               {shortDateTime(pending.body.earliest)} —{" "}
-              {shortDateTime(pending.body.latest)} · {deviceTimeZone()}
+              {shortDateTime(pending.body.latest)}
             </p>
             <p>
               {pending.body.preserve_duration
@@ -918,8 +922,7 @@ export function GrantIssuanceDialog({
                   onOccurrence={setLatestOccurrence}
                 />
                 <p className="muted">
-                  Dates shown in {deviceTimeZone()}. The time limit starts when
-                  the student begins.
+                  The time limit starts when the student begins.
                 </p>
               </fieldset>
               {additional && !practice && names.length > 1 && (
@@ -1012,10 +1015,7 @@ export function GrantIssuanceDialog({
                 )}
               </p>
             )}
-            <p>
-              Dates shown in {deviceTimeZone()}. The full time limit starts when
-              each student begins.
-            </p>
+            <p>The full time limit starts when each student begins.</p>
             {review.rows.map((row: any) => (
               <article key={row.username} className="clock-batch-row">
                 {review.status === "CONFIRMED" &&

@@ -5,6 +5,22 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 6 local follow-up: student lists and exam date timezone
+
+The dashboard selects students by All/Working/Needs attention first, then applies
+an independent available/paused/webcam filter and username/latest-completion sort
+before pagination. Each selected student's full history stays visible, with a
+separate blue upcoming-attempt panel. The Files saved tab is removed.
+An optional validated IANA timezone belongs to the exam definition, outside
+immutable grant/attempt settings. Instructor date display and entry use it;
+historical instants, authoritative deadlines and allowance snapshots stay fixed.
+Legacy definitions use Chicago; new website definitions save the device zone.
+Ambiguous hours require a choice and nonexistent times refuse. Open date editors
+pin their zone and refuse reinterpretation after a concurrent timezone change.
+The same setting has a supported examctl --timezone workflow. Implemented/tested
+locally; wider release qualification and deployment pending. Details:
+[admin list controls](docs/admin-list-controls.md).
+
 ## November 6 local follow-up: reduce capture uploads
 
 The existing authenticated capture challenge negotiates binary JPEG or browser

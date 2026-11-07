@@ -47,6 +47,7 @@ async function fixture(
   provenance = false,
   retained = false,
   next = false,
+  timezone?: string,
 ) {
   const amy = makeAttempt(1, "amy", "ACTIVE", {
       working: true,
@@ -110,6 +111,7 @@ async function fixture(
     failDashboard: false,
     failSettings: false,
     pauseOnReview: false,
+    timezone,
     nextGrant: null as any,
     failReview: false,
     failedClock: "",
@@ -287,6 +289,7 @@ async function fixture(
           webcam: false,
           terminals: 4,
           pause_on_review: state.pauseOnReview,
+          timezone: state.timezone,
           template: "sample-exam",
           template_version: "a".repeat(64),
           revision: 1,
@@ -2246,6 +2249,46 @@ for (const width of [1280, 430])
     ).toBe(true);
   });
 
+test.describe("exam date zone differs from the instructor device", () => {
+  test.use({ timezoneId: "Asia/Kathmandu" });
+  test("next-attempt dates use the exam zone and refuse reinterpretation after another instructor changes it", async ({
+    page,
+  }) => {
+    page.setDefaultTimeout(8000);
+    const s = await fixture(page, false, false, false, true, "UTC");
+    await page
+      .getByRole("button", { name: "Change start dates for amy", exact: true })
+      .click();
+    const editor = page.getByRole("region", {
+      name: "Start dates for amy",
+      exact: true,
+    });
+    await expect(editor.getByLabel("Opens", { exact: true })).toHaveValue(
+      new Date(s.nextGrant.settings.earliest).toISOString().slice(0, 16),
+    );
+    await editor.getByLabel("Opens", { exact: true }).fill("2026-07-17T09:15");
+    const poll = page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname === "/api/admin/exams" &&
+        r.request().method() === "GET",
+      { timeout: 10000 },
+    );
+    s.timezone = "America/Chicago";
+    await poll;
+    await expect(
+      page
+        .getByRole("rowgroup", { name: "amy", exact: true })
+        .locator(".historical-attempt-row")
+        .first()
+        .locator(".history-window time")
+        .first(),
+    ).toContainText(/\b(CST|CDT)\b/);
+    await editor.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(editor.getByText(/exam time zone changed/)).toBeVisible();
+    expect(s.calls).toHaveLength(0);
+  });
+});
+
 test("student tabs intersect extra filters, keep history and sort by latest completion", async ({
   page,
 }) => {
@@ -2316,12 +2359,10 @@ for (const width of [1360, 390])
       exact: true,
     });
     await expect(next).toBeVisible();
-    const cells = await next
-      .locator(".attempt-identity")
-      .evaluate((el) => ({
-        color: getComputedStyle(el).color,
-        background: getComputedStyle(el).backgroundColor,
-      }));
+    const cells = await next.locator(".attempt-identity").evaluate((el) => ({
+      color: getComputedStyle(el).color,
+      background: getComputedStyle(el).backgroundColor,
+    }));
     const history = await page
       .getByRole("rowgroup", { name: "amy", exact: true })
       .locator(".historical-attempt-row")

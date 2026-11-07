@@ -1,3 +1,4 @@
+import { useExamDates } from "./exam-timezone.js";
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import React, {
   useCallback,
@@ -7,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { chicago } from "./api.js";
+
 import { monitoringPlaybackVideo } from "../../../packages/protocol/monitoring-video.js";
 import {
   captureAt,
@@ -35,6 +36,8 @@ function CaptureView({
   onReady: (source: string, id: string, ready: boolean) => void;
   onDeleted: () => void;
 }) {
+  const { dateTime } = useExamDates();
+
   const frame = captureAt(frames, time),
     label = source === "screen" ? "Screen" : "Webcam";
   const clip = frame?.video;
@@ -208,9 +211,9 @@ function CaptureView({
         {caption && (
           <time
             dateTime={new Date(caption.captured).toISOString()}
-            title={`Received ${chicago(caption.received)}`}
+            title={`Received ${dateTime(caption.received)}`}
           >
-            {chicago(caption.captured)}
+            {dateTime(caption.captured)}
           </time>
         )}
       </figcaption>
@@ -303,6 +306,8 @@ export function CaptureTimeline({
   active: boolean;
   deleted: boolean;
 }) {
+  const { dateTime } = useExamDates();
+
   const tracks = useMemo(
     () => ({
       screen: orderedCaptures(frames, "screen"),
@@ -442,13 +447,13 @@ export function CaptureTimeline({
               aria-label="Recording time"
               dateTime={new Date(time).toISOString()}
             >
-              {chicago(time)}
+              {dateTime(time)}
             </time>
           </div>
           <input
             type="range"
             aria-label="Recording timeline"
-            aria-valuetext={chicago(time)}
+            aria-valuetext={dateTime(time)}
             min={start}
             max={end}
             step={1}
@@ -474,8 +479,8 @@ export function CaptureTimeline({
             }}
           />
           <div className="capture-bounds">
-            <span>{chicago(start)}</span>
-            <span>{chicago(end)}</span>
+            <span>{dateTime(start)}</span>
+            <span>{dateTime(end)}</span>
           </div>
         </div>
       )}
