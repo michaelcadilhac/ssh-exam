@@ -63,3 +63,28 @@ Available means an authorized, unused, unexpired next attempt; scheduled future
 starts are included, while setup claims and pending saved-work verification are
 not. Paused includes both paused work and a paused countdown. These are list
 filters only, never new admission or monitoring permission.
+
+Release qualification evidence is in `var/collection-tests/admin-list.20261106/`.
+The full application run passed857 cases with one existing opt-in skip and two
+old history-filter expectations failing. Both affected files now pass all18 cases
+with full matching-student history asserted; backend inputs did not change after
+that full run. The broad admin browser run passed163 cases and exposed two mobile
+camera-alignment failures plus seven stale/rate-limited timezone fixtures. Mobile
+row decoration now uses an inset stripe and outline without changing grid widths;
+320/430/1280px checks pass. Timezone fixtures use independent synthetic actors/IPs,
+current Webcam: Off wording, and wait for the actual native clock acknowledgement.
+No rate limit, clock or monitoring enforcement was relaxed. An accidentally broad
+follow-up selected unrelated legacy instructor workflows; its interrupted run is
+retained as diagnostic evidence and is not a release pass.
+
+The final runtime is a5a0b07. Exact-image schema37 startup/media compatibility and
+the real66.74-second signed-poll startup/current-data recovery test pass, including
+41preservation contracts, existing tombstones/due purge rechecks,11 independent
+mutation refusals and recovery without another start or snapshot replacement.
+The actual nginx maintenance/reload check passed in0.23seconds. The exact packaged
+CLI is reused from8615d90: its entire Go tree is unchanged, and root/TLS, native
+race and root-mapped atomic replacement/refusal tests pass. All14seven-zone workflows and8exact-final-image browser workflows now pass,
+including mobile alignment, full history/late replies and the real WASM student
+clock/collection journey.163unchanged broader admin browser passes are retained;
+this is explicit full-plus-targeted qualification, not a claimed all-green rerun.
+Fresh production guards and guarded deployment remain before declaring ONLINE.

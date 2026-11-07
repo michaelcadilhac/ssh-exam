@@ -845,9 +845,7 @@ for (const width of [320, 430, 1280])
       }
     };
     await fits();
-    await expect(page.locator(".roster-timezone")).toHaveText(
-      "Dates in America/Chicago.",
-    );
+    await expect(page.locator(".roster-timezone")).toHaveCount(0);
     for (const label of [
       "Change webcam for amy",
       "Cancel next attempt for amy",

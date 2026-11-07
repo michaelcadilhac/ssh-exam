@@ -363,7 +363,7 @@ it("legacy history preserves exact seconds and protected history, and falls back
   }
 });
 
-it("filtered dashboard retains the current-attempt fact when the visible history hides that attempt", async () => {
+it("selecting completed students retains full history and the current-attempt fact", async () => {
   const f = await fixture();
   try {
     f.store.db
@@ -410,8 +410,8 @@ it("filtered dashboard retains the current-attempt fact when the visible history
     const row = (await f.read("COMPLETED"))[0];
     expect(row.hasCurrentAttempt).toBe(true);
     expect(row.unusedAttempt).toBeNull();
-    expect(row.attempts.map((a: any) => a.id)).toEqual([old]);
-    expect(row.attempts.every((a: any) => a.state === "COMPLETED")).toBe(true);
+    expect(row.attempts.map((a: any) => a.id)).toEqual([attempt,old]);
+    expect(row.attempts.map((a: any) => a.state)).toEqual(["PREPARING","COMPLETED"]);
   } finally {
     await f.close();
   }

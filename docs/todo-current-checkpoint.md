@@ -1,17 +1,20 @@
-# Active work — admin list controls and exam timezone
+# Active work — admin list controls/timezone READY FOR AUTHORIZED CUTOVER
 
-November6 implement/push/deploy authorized. Functional milestones implemented:
-independent tab/filter/sort before pagination; complete history; distinct next row;
-exam timezone outside immutable settings; all instructor dates/DST and matching
-CLI flag/strict signed results.21focused checks,4list browsers, UTC/DST and
-cross-instructor date editor, actual root/TLS CLI, CLI races and48operator tests
-pass. Types/build pass. Wider application/seven-zone/browser checks and frozen
-image/startup/current-data recovery/proxy qualification remain; then push/deploy.
-No open design decision; no production changes. Scope is web plus installed CLI,
-with all four live native roles and loaded source-worker unchanged. Fresh read-only
-inventory119web/186native histories, no unfinished attempts, one admin session.
-Plan/evidence: docs/admin-list-controls.md;var/collection-tests/admin-list.20261106/.
-Original dirty screenshots protected. Prior deployed baseline:
+Runtimea5a0b07/schema37; final image Configb36dd649d36f6861e4143c30dfc74244db5a1c2da01153c1f141e01e9ed3c2d5.
+Local qualification complete:859application passes across full+corrected cohort,
+1existing opt-in skip;163unchanged admin browser passes,14seven-zone and8exact-image
+browsers; CLI TLS/races,48operator, types/build, actual signed startup/current-data
+recovery and nginx maintenance checks pass. No native authority change/retest needed.
+Next: commit/push remaining test/docs, authorized admin-only signout, staged guarded
+CLI file replacement, fresh cohort bridge, online prepare/apply/acceptance. All four
+native service PIDs and OLD loaded saved-work binary stay fixed; installed CLI is
+1a8272c2bd00b4caab1379e7e77340f196c62ef71d902275af3345f598e799bb.
+No open decision or production changes yet. Fresh inventory119web/186native histories,
+no unfinished, one admin. Stages/release/guarded operation scripts are frozen under
+var/collection-tests/admin-list.20261106/final-ops/. Existing media baseline reused;
+forward recovery uses CURRENT data/original snapshot, never the older writer.
+Details: docs/admin-list-controls.md. Original16documentation images preserved.
+Previous deployed baseline:
 
 # Current checkpoint — lower-bandwidth captures DEPLOYED AND ONLINE
 

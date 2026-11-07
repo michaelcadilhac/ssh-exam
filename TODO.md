@@ -1,16 +1,17 @@
-# Admin list controls and exam timezone — IMPLEMENTED LOCALLY; qualification pending
+# Admin list controls and exam timezone — QUALIFIED LOCALLY; deployment next
 
-November6: user authorizes implement/push/deploy. Tabs now select students before
-independent extra filters and completion sorting, retaining full history before
-pagination. Files saved tab and date banner removed. Next attempt is visually
-separate on desktop/mobile. Exam timezone controls instructor dates, including
-DST handling, without changing saved instants, grants or clocks; matching examctl
---timezone workflow and strict signed-result checks are implemented.
-21focused checks,4list browsers, UTC/DST and cross-instructor editor cases,
-actual root/TLS CLI, CLI races, types/build and48operator checks pass. Wider
-application, seven-zone/browser and exact-artifact qualification remain before
-deployment. Production unchanged; no open design question. Plan/checkpoint:
-docs/admin-list-controls.md and docs/todo-current-checkpoint.md.
+November6: requested student tabs, independent available/paused/webcam filters,
+latest-completion ordering, complete history and distinct Next attempt row are
+implemented. Files saved tab/date banner removed. Exam timezone controls all
+instructor dates with DST handling and matching examctl --timezone support;
+original instants, grants, clocks and live native roles are unchanged.
+859application cases pass across the full run plus corrected history cohort;
+one existing opt-in skip.163other admin browser cases,14seven-zone workflows,
+8exact-final-image browsers, CLI TLS/races,48operator tests, types/build, real
+signed startup/current-data recovery and nginx maintenance checks pass. Runtime
+is a5a0b07. Production still unchanged; push and guarded cutover are next.
+No open design decision. Evidence/limits: docs/admin-list-controls.md and
+var/collection-tests/admin-list.20261106/; current checkpoint below that document.
 
 # Upload bandwidth — PUSHED, DEPLOYED AND ONLINE
 

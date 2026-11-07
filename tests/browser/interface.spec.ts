@@ -480,13 +480,12 @@ test("exam selection scopes the grouped history and ignores late replies after s
   await expect(table.locator(".attempt-row")).toHaveCount(2);
   await expect(
     table.getByRole("rowgroup", { name: "history-only-user", exact: true }),
-  ).toContainText("Exam default");
-  await page
-    .getByLabel("Filter attempts", { exact: true })
-    .selectOption("COMPLETED");
-  await expect(table.locator(".attempt-row")).toHaveCount(1);
-  await expect(table.locator(".attempt-row")).toContainText("Attempt 1");
-  await page.getByLabel("Filter attempts", { exact: true }).selectOption("");
+  ).toContainText("Attempt 2");
+  await page.getByLabel("Filter students", { exact: true }).selectOption("no-camera");
+  // One matching historical attempt selects the student, with BOTH attempts.
+  await expect(table.locator(".attempt-row")).toHaveCount(2);
+  await expect(table.getByRole("rowgroup", {name:"history-only-user",exact:true})).toContainText("Attempt 1");
+  await page.getByLabel("Filter students", { exact: true }).selectOption("");
   let releaseReview!: () => void;
   const waitReview = new Promise<void>((resolve) => {
     releaseReview = resolve;

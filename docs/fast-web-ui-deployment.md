@@ -31,6 +31,18 @@ against an older server must refuse the unsupported read flag actionably. The
 matched CLI must still be installed and independently guarded before apply.
 Unknown scope names remain refused; this does not authorize other backend changes.
 
+The exact scope `exam-dashboard-timezone-v1` covers independent student tabs,
+filters and completion ordering, presentation of complete student history, and
+exam-definition timezone metadata with matching CLI create/update flags. It
+retains schema37, immutable attempt/grant settings and all loaded native roles.
+Install the digest-pinned CLI file without restarting its existing saved-work
+worker; the guard must distinguish the new installed CLI from that unchanged
+loaded binary. The prior writer can discard timezone metadata, so this scope
+requires `previous_reader_policy_compatible: false`. Recovery resumes the matched
+candidate with CURRENT data and the original snapshot; reopening the old writer
+is refused. Exact-image signed startup and current-data recovery are qualified
+separately from the operator tests. See [admin list controls](admin-list-controls.md).
+
 The third exact scope `unified-exam-student-list-v1` covers the shared exam student
 catalog, permanent membership after attempt/permission history, Add/CSV safeguards
 and reviewed NEW-permission restoration of missing compatibility metadata. It

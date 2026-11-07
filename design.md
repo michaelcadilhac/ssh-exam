@@ -18,7 +18,7 @@ Legacy definitions use Chicago; new website definitions save the device zone.
 Ambiguous hours require a choice and nonexistent times refuse. Open date editors
 pin their zone and refuse reinterpretation after a concurrent timezone change.
 The same setting has a supported examctl --timezone workflow. Implemented/tested
-locally; wider release qualification and deployment pending. Details:
+locally, including exact-image release/recovery qualification; deployment pending. Details:
 [admin list controls](docs/admin-list-controls.md).
 
 ## November 6 local follow-up: reduce capture uploads

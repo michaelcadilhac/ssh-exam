@@ -510,7 +510,7 @@ it("webcam off refuses both camera challenges and uploads through the public stu
   }
 });
 
-it("dashboard distinguishes a claimed Next attempt from consumed authority even when the visible history hides the active attempt", async () => {
+it("dashboard distinguishes claimed and consumed authority while retaining full matching-student history", async () => {
   const f = await fixture(true);
   try {
     // This fixture's public review intentionally used a later window. Open its
@@ -533,6 +533,7 @@ it("dashboard distinguishes a claimed Next attempt from consumed authority even 
       hasCurrentAttempt: true,
     });
     expect(claimed.json().students[0].attempts.map((a: any) => a.id)).toEqual([
+      attempt.id,
       f.oldAttempt,
     ]);
     f.consume(attempt);
@@ -544,6 +545,7 @@ it("dashboard distinguishes a claimed Next attempt from consumed authority even 
       hasCurrentAttempt: true,
     });
     expect(consumed.json().students[0].attempts.map((a: any) => a.id)).toEqual([
+      attempt.id,
       f.oldAttempt,
     ]);
   } finally {

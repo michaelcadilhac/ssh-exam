@@ -1035,6 +1035,7 @@ for (const [index, username] of [
   "prof_additional_review",
   "prof_additional_saved",
   "prof_additional_bulk",
+  ...Array.from({ length: 7 }, (_, i) => `timezone_instructor_${i + 1}`),
 ].entries())
   store.db
     .prepare("INSERT INTO admins VALUES(?,?,?)")
