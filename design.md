@@ -15,8 +15,9 @@ Missing codec/chain state or an uncertain reply recovers with a NEW challenge an
 new JPEG sample, never alternate bytes for a possibly accepted sequence. Canonical
 JPEGs and verified recording segments retain digest-only transport provenance;
 existing review and examctl export workflows remain supported. No new management
-setting or native update is required. Runtime source fde033c is locally qualified;
-deployment remains pending. Details: [capture uploads](docs/capture-upload-implementation.md).
+setting or native update is required. Runtime source fde033c/schema37 is deployed
+November6 at18:37Chicago, with protected history and unchanged native roles.
+Details: [capture uploads](docs/capture-upload-implementation.md).
 
 ## November6 local follow-up: explain disconnects without changing authority
 

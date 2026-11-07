@@ -1,7 +1,10 @@
 # Lower-bandwidth capture implementation
 
-November6. User authorizes implementation, push and deployment. No production
-change yet. Measurements and comparison: upload-bandwidth-evaluation.md.
+November6: pushed and deployed at18:37:14Chicago /November7,00:37:14UTC.
+Runtimefde033c2aaf175a3e21ef216667fcaa2ddd056b6, schema37, image Config
+5e851b1685dc24a52bb02314ce6e8e99d6ec1984e490a2be45b6e339a399db06.
+All required acceptance passed; no pending deployment step. Measurements and
+comparison: upload-bandwidth-evaluation.md.
 
 ## Ordered milestones and stopping boundary
 
@@ -127,10 +130,22 @@ history/configuration and bridges a fresh BEFORE receipt using the existing
 fresh-cohort reader. No native installer is staged or called. Positive actual-host
 and seven synthetic stale/foreign/changed-authority refusals pass. Online prepare
 completed in11.700s, reusing1,065,421,981bytes of media coverage with zero new media
-copies. Candidate is staged, not yet serving production. Next: commit/push, expire
-only the authorized admin sessions after a positive student/unfinished drain,
-fresh guards, fenced stopped incremental snapshot, matched web start/preservation,
-reopening and required public/signed-CLI/identity acceptance. Before stopping,
-qualified cancel restores optimization. After snapshot, recover forward with
+copies. Cutover completed with a positive student/unfinished drain, authorized
+admin-only signout, fresh guards, fenced stopped incremental snapshot, matched web
+start/preservation and reopening. Required public TLS/nine asset hashes, signed
+CLI/monitoring help, five installed binaries/four unchanged loaded PIDs, original
+snapshot and41preservation contracts pass. All119web/186native histories at the
+drain boundary were preserved; no student session was invalidated. Optimization
+resumed. Before stopping, qualified cancel restores optimization. After snapshot,
+recover forward with
 CURRENT data and the original snapshot; never reopen the old media writer or
 restore historical SQL over newer records. No policy or migration decision remains.
+
+Maintenance67.7579s; apply invocation71.5813s. The stopped backup contains the
+129,249,280-byte SQL snapshot and350,448additional bytes, with0new media objects;
+1,065,421,981media bytes are reused. Total instruction-start wall time was not
+captured; the later frozen-qualification marker00:02:26UTC through reopening is
+34m48.6s and excludes earlier implementation/build work. This is a lower bound,
+not the total task duration. Do not describe maintenance alone as total deployment
+time. Exact private stage/state, artifacts, operation/acceptance receipts and
+recovery evidence are under var/collection-tests/upload-bandwidth.20261106/.

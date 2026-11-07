@@ -1,4 +1,4 @@
-# Upload bandwidth — IMPLEMENTED AND QUALIFIED LOCALLY; deployment pending
+# Upload bandwidth — PUSHED, DEPLOYED AND ONLINE
 
 Binary JPEG and browser VP9 upload/recovery/receipt preservation are implemented
 locally:855application checks/1existing opt-in skip,39focused tests,9shipped-browser
@@ -6,9 +6,12 @@ workflows,13actual root CLI/TLS,45operator and12affected-browser checks pass
 (8mode-specific skips). Actual guarded16-student/64-terminal protected finish,
 real128kbit/s upload, exact-image codec/startup/current-data recovery and nginx
 reload pass. Guest independently stopped, exit0, host/base/authority preserved.
-Runtimefde033c/schema37 is frozen and privately staged. Online preparation11.7s
-reused1.065GB recovery coverage and copied0media bytes. Push/cutover/acceptance next;
-no candidate is serving production yet. Native installation remains unchanged.
+November6,18:37:14Chicago /November7,00:37:14UTC: runtimefde033c/schema37,
+image Config5e851b1685dc is deployed. Public TLS/nine assets, signed CLI, original
+snapshot and all41preservation contracts pass. All five native binaries/four
+loaded role PIDs remain unchanged. Online preparation11.7s reused1.065GB recovery
+coverage and copied0media bytes; maintenance67.76s. The optimizer pause is released.
+No remaining implementation/deployment step or decision for this request.
 Current implementation plan: docs/capture-upload-implementation.md.
 
 November6: synthetic browser measurements confirm binary JPEG25% payload savings
