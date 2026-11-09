@@ -5,6 +5,18 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November9 local follow-up: notification consolidation
+
+Unstarted setup timeouts group per student/exam/agent: at least two failures,
+first-failure five-minute durable grace, one email, cancellation on sign-in/setup
+recovery and a new episode after30minutes of inactivity. Serious started-attempt
+and security faults remain separate. One notification belongs to each interruption;
+review text updates its incident and only its unsent/unattempted original notice.
+New generations and explicit manual reminders retain their existing workflows.
+This intentionally replaces per-retry and per-distinct-message automatic emails.
+No clock, grant, account restriction or monitoring policy changes. Implemented/
+tested locally; final image qualification and guarded deployment remain pending.
+
 ## November9 local follow-up: keep the student display awake
 
 The visible student setup/unfinished workspace requests a best-effort screen wake

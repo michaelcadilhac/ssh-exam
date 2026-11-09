@@ -1,13 +1,16 @@
-# Active work — wake lock then notification consolidation
+# Active work — wake lock committed; notification changes locally validated
 
-November9 implementation, separate commits, push/deploy authorized. Wake-lock
-milestone locally validated:4focused/10affected browser checks, types/build pass;
-existing fullscreen enforcement and late grant cleanup asserted. No OS/human sleep
-prevention claimed. Next commit this milestone, implement grouped notification
-policy and qualify actual SMTP/admin/CLI/restart, then freeze/qualify/deploy the web
-image after full student drain. No production changes; original screenshots safe.
+November9 implementation/separate commits/push/deploy authorized. Wake-lock
+commite4fb7e4 passes4focused/10affected browser checks, types/build; existing
+fullscreen enforcement and late grant cleanup asserted. No OS sleep guarantee.
+Notification consolidation passes5focused real SSH/SMTP/HTTP/service tests and
+51operator tests. Next: commit milestone2, full app/affected browser/type checks,
+freeze exact image and qualify startup/current-data recovery/proxy; push/deploy
+after the complete student drain. No production changes. Original screenshots safe.
 Plan/evidence:docs/wake-lock-notifications.md;
-var/collection-tests/wake-notifications.20261109/. Deployment start marker recorded.
+var/collection-tests/wake-notifications.20261109/. Start marker recorded.
+No open policy choice; previous installation follows:
+
 Prior deployed baseline:
 
 # Current checkpoint — admin lists and exam timezone DEPLOYED AND ONLINE

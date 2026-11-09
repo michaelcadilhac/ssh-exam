@@ -47,11 +47,15 @@ and genuine recurrence opens a new episode even with the same error text.
 CLI/web alert metadata uses the same disposition. Evidence and qualification:
 preflight-cleanup-alert-disposition.md. No production change or access release.
 
-Every accepted review request updates the dashboard and records an audit entry.
-Each distinct trimmed message emails once per interruption generation. Duplicate
-clicks, reloads and retries retain useful requests without another email; changed
-messages and new interruptions can notify, subject to the existing rate limit.
-There are no timed reminders and a request grants no continuation permission.
+November9 authorized policy update (implemented/tested locally; rollout pending):
+every accepted review request updates the incident/dashboard and audit. One email
+belongs to the interruption, rather than each distinct message. The latest nonempty
+explanation can update its original unsent/unattempted email; sent/attempted mail
+is immutable. A pause without an initial notice gets one fallback request email.
+Edits, clicks and restart add no email; a new interruption generation can notify.
+Existing request limits, explicit reminders and continuation authority are unchanged.
+Repeated unstarted setup timeouts use one five-minute, non-sliding help notice,
+requiring two failures; recovery cancels it. Details: wake-lock-notifications.md.
 
 Intentional policy change: routine Emacs `.#NAME` symlink omission records no
 longer require a saved sibling to suppress email. Mixed reports exclude those

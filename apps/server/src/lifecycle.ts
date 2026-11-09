@@ -2,6 +2,7 @@ import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import {
   effectiveDeadline,
   timerState,
+  timerPaused,
 } from "../../../packages/protocol/timer.js";
 import { cleanupDiagnostic } from "./cleanup-diagnostic.js";
 import { AttemptGrants } from "./attempt-grants.js";
@@ -143,6 +144,43 @@ export class Lifecycle {
       },
       notBefore,
     });
+  }
+
+  reviewRequest(a: Attempt, message: string) {
+    const current = this.store.db
+      .prepare(
+        "SELECT outbox FROM alert_episodes WHERE attempt=? AND event='interruption' AND generation=? AND resolved IS NULL",
+      )
+      .get(a.id, a.generation) as { outbox: string } | undefined;
+    const subject = `Review requested: ${a.username}`;
+    const body = `Student message: ${JSON.stringify(message)}\n${timerPaused(a) ? "Countdown paused." : "Countdown is running."} Open the authenticated dashboard.`;
+    if (current) {
+      if (!message.trim()) return current.outbox;
+      // Never rewrite mail already sent or attempted by SMTP. All versions of
+      // the request are independently retained in the review-request audit.
+      this.store.db
+        .prepare(
+          "UPDATE outbox SET body=? WHERE id=? AND status='pending' AND tries=0",
+        )
+        .run(
+          [
+            ...alertContext(a),
+            "",
+            `${a.exam}: ${JSON.stringify(a.reason || "Instructor review requested")}`,
+            body,
+          ].join("\n"),
+          current.outbox,
+        );
+      return current.outbox;
+    }
+    // A legacy pause or a non-notifying lock still needs one actionable notice.
+    return this.notifyAttempt(
+      a,
+      "interruption",
+      subject,
+      body,
+      a.reason || "review-request",
+    );
   }
 
   private resolvePreflightNotifications(id: string) {

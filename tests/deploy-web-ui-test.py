@@ -263,6 +263,39 @@ class FastUI(unittest.TestCase):
         self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
         self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
 
+    def notification_policy(self):
+        self.recording_reader()
+        # The previous timezone CLI update intentionally left its loaded worker
+        # running. This update preserves BOTH exact identities without restart.
+        self.release['worker_cli_sha256']='8'*64
+        self.release['fast_ui'].update(reviewed_scope='wake-lock-notifications-v1',previous_reader_policy_compatible=False)
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def test_notification_policy_preserves_native_cohort_and_current_data(self):
+        self.notification_policy();before=self.history();self.cli('prepare');self.fail_start=True
+        self.cli('apply',expect=1);snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite')
+        _,error=self.cli('rollback',expect=1);self.assertIn('qualified forward resume',error)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(self.history(),before);self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_notification_policy_running_candidate_recovers_without_restart(self):
+        self.notification_policy();self.cli('prepare')
+        with patch.object(deploy.Rollout,'finish_web_running',side_effect=RuntimeError('Synthetic preopening failure')):
+            self.cli('apply',expect=1)
+        snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite');calls=list(self.calls)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+        self.assertEqual(sum(a[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for a in self.calls),sum(a[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for a in calls))
+
+    def test_notification_policy_refuses_old_writer_and_cli_change_before_pause(self):
+        self.notification_policy();original=json.loads(json.dumps(self.release))
+        for field,value in [('previous_reader_policy_compatible',True),('reviewed_scope','wake-lock-notifications-v2'),('qualified_source','2'*40),('old_cli_sha256','3'*64),('worker_cli_sha256','unknown')]:
+            self.release=json.loads(json.dumps(original))
+            target=self.release if field.endswith('sha256') else self.release['fast_ui'];target[field]=value
+            (self.bundle/'release.json').write_text(json.dumps(self.release))
+            self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+            self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
     def test_dashboard_timezone_apply_and_forward_recovery_preserve_current_data(self):
         self.reviewed_web_cli(scope='exam-dashboard-timezone-v1');before=self.history()
         self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)

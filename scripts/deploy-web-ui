@@ -150,16 +150,18 @@ class Rollout:
                 raise ValueError('A separate absolute fresh native-after guard is required')
         elif mode == 'reviewed-web-read':
             capture_scope = self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1'
+            notification_scope = self.settings.get('reviewed_scope') == 'wake-lock-notifications-v1'
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1')
+                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1', 'wake-lock-notifications-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
-                    or self.settings.get('previous_reader_policy_compatible') is not (not capture_scope)
+                    or self.settings.get('previous_reader_policy_compatible') is not (not (capture_scope or notification_scope))
                     or self.settings.get('unchanged_backend_protocol_native') is not False):
                 raise ValueError('Reviewed recording reader requires its exact schema37 scope, qualified source and explicit matching previous-reader policy')
             if (not re.fullmatch('[a-f0-9]{64}', self.release['cli_sha256'])
                     or self.release['old_cli_sha256'] != self.release['cli_sha256']
-                    or self.release['worker_cli_sha256'] != self.release['cli_sha256']):
+                    or not re.fullmatch('[a-f0-9]{64}', self.release['worker_cli_sha256'])
+                    or (not notification_scope and self.release['worker_cli_sha256'] != self.release['cli_sha256'])):
                 raise ValueError('Reviewed recording reader must retain the installed and loaded native CLI cohort')
         elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
@@ -258,7 +260,7 @@ class Rollout:
         return self.settings.get('mode') == 'reviewed-web-native'
 
     def forward_web(self):
-        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1')
+        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('binary-vp9-capture-v1', 'wake-lock-notifications-v1'))
                 or (self.settings.get('mode') == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'exam-dashboard-timezone-v1'))
 
     def transition(self):

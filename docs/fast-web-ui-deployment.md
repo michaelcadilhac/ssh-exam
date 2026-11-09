@@ -56,6 +56,16 @@ operator workflows include exact-scope refusal, matched-CLI checks and this held
 rollback/reopen boundary. They mock privileged transport; unchanged real nginx
 and signed-startup timing evidence remains separate.
 
+The exact `reviewed-web-read/wake-lock-notifications-v1` scope updates best-effort
+student wake locks and notification grouping/delivery only, retaining schema37
+and every installed native binary. It preserves the already-different installed
+CLI and loaded saved-work binary as two separately pinned identities; neither is
+installed/restarted by this scope. Exact qualified source is required. The prior
+mailer could deliver a newly grouped single-failure notice incorrectly, so old
+writer compatibility must be false. Use the existing forward CURRENT-data/original-
+snapshot recovery; old-writer reopening is refused. Pending SMTP delivery remains
+a drain blocker. See [policy and evidence](wake-lock-notifications.md).
+
 The separate exact mode `reviewed-web-native`, scope
 `live-exam-execution-policy-v1`, coordinates the matched native transition. It is
 not an unchanged-native attestation. Its release pins all four old/new native

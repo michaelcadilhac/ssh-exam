@@ -11,6 +11,7 @@ import path from "node:path";
 import argon2 from "argon2";
 import { mailTransport } from "./mail.js";
 import { signInAlertContext } from "./alerts.js";
+import { SignInNotifications } from "./sign-in-notifications.js";
 import {
   AlertManagement,
   alertPage,
@@ -224,6 +225,25 @@ export async function createApp(
   );
   const interruptionManagement = new InterruptionManagement(store);
   const alertManagement = new AlertManagement(store, () => !!config.smtp);
+  const signInNotifications = new SignInNotifications(store, config.agent.id);
+  const signInConnections = new WeakMap<
+    IsolatedConnection,
+    { id: string; created: number }
+  >();
+  const recoverSignInNotifications = (
+    username: string,
+    exam: string,
+    identity: string,
+  ) => {
+    try {
+      signInNotifications.recovered(username, exam, identity);
+    } catch {
+      app.log.warn(
+        { username, exam },
+        "Sign-in notification recovery could not be recorded",
+      );
+    }
+  };
   const administratorManagement = new AdministratorManagement(store);
   const authAttempts = new Map<string, { at: number; count: number }>();
   store.db
@@ -434,6 +454,8 @@ export async function createApp(
     username: string,
     exam: string,
   ) => {
+    const connectionIdentity = { id: randomUUID(), created: now() };
+    signInConnections.set(isolated, connectionIdentity);
     isolated.onFailure = (failure) => {
       if (!store.db.open) return;
       const owned = [...attemptConnections].find(([, c]) => c === isolated);
@@ -470,6 +492,21 @@ export async function createApp(
         },
         "Attempt connection process failed",
       );
+      const setupTimeout =
+        !context?.start && failure.cause === "operation-timeout";
+      const recordSetupTimeout = () => {
+        const current = connections.get(`${exam}:${username}`);
+        if (!current?.alive || current === isolated) {
+          try {
+            signInNotifications.failed(username, exam, connectionIdentity);
+          } catch {
+            app.log.warn(
+              { username, exam },
+              "Sign-in timeout notification could not be recorded",
+            );
+          }
+        }
+      };
       if (retained) {
         // Neither a dead proxy nor its missing memory proves SSH loss. Remove
         // only its routing references; signed current-page/native rebind must
@@ -478,6 +515,10 @@ export async function createApp(
         if (connections.get(key) === isolated) connections.delete(key);
         if (owned && attemptConnections.get(owned[0]) === isolated)
           attemptConnections.delete(owned[0]);
+        if (setupTimeout) {
+          recordSetupTimeout();
+          return;
+        }
         const subject = "Exam control proxy failure: " + username;
         const body = `The browser is retrying exam control on its existing SSH session. Native monitoring and original deadlines remain authoritative. No student policy violation or SSH exit is established by this proxy failure.\nDiagnostic: ${detail}`;
         if (context)
@@ -496,6 +537,10 @@ export async function createApp(
               coalesce: false,
             },
           );
+        return;
+      }
+      if (setupTimeout) {
+        recordSetupTimeout();
         return;
       }
       const reason = context?.start
@@ -2077,6 +2122,11 @@ export async function createApp(
         );
       if (expectedGrant?.work) grants.accept(staged, store.attempt(id));
     }
+    const preparedConnection = signInConnections.get(
+      conn as IsolatedConnection,
+    );
+    if (preparedConnection)
+      recoverSignInNotifications(s.username, s.exam, preparedConnection.id);
     return {
       id,
       page: pageSecret,
@@ -2455,15 +2505,9 @@ export async function createApp(
           a.id,
           JSON.stringify({ generation: a.generation, message }),
         );
-        // Each distinct trimmed message notifies once per interruption. Requests
-        // remain auditable; no automatic reminders or continued-work permission.
-        life.notifyAttempt(
-          a,
-          `review-request:${hash(message.trim())}`,
-          `Review requested: ${a.username}`,
-          `Student message: ${JSON.stringify(message)}\n${timerPaused(a) ? "Countdown paused." : "Countdown is running."} Open the authenticated dashboard.`,
-          message.trim(),
-        );
+        // One email belongs to the interruption; follow-up text remains on its
+        // incident/audit and may update an unsent original, never create a retry email.
+        life.reviewRequest(a, message);
       })();
       return { ok: true };
     },
@@ -3891,6 +3935,11 @@ export async function createApp(
               );
           }
           p.done = true;
+          const identity = signInConnections.get(
+            p.connection as IsolatedConnection,
+          );
+          if (identity)
+            recoverSignInNotifications(m.username, m.exam, identity.id);
           send(ws, { type: "authenticated" });
         } catch (e) {
           // Log only a bounded stage code; SSH output and credentials never enter audit.
@@ -4509,6 +4558,7 @@ export async function createApp(
         try {
           if (
             !alertManagement.prepareForDelivery(r.id) ||
+            !signInNotifications.prepareForDelivery(r.id) ||
             !life.preparePreflightNotification(r.id)
           )
             continue;

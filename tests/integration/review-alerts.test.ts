@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { Writable } from "node:stream";
 import { createApp } from "../../apps/server/src/app.js";
 
-it("audits every accepted review request but emails distinct messages only once in an interruption, including after restart", async () => {
+it("audits all review messages but emails once per interruption, including edits and restart", async () => {
   const data = mkdtempSync(tmpdir() + "/review-alerts-");
   const config: any = {
     mode: "development",
@@ -34,6 +34,13 @@ it("audits every accepted review request but emails distinct messages only once 
     store.db.exec(
       "INSERT INTO exams VALUES('e','{}'); INSERT INTO attempts(id,exam,username,uid,state,settings,generation) VALUES('a','e','alice',1001,'LOCKED','{}',1); INSERT INTO incidents(id,attempt,generation,opened,events) VALUES('incident','a',1,1,'[]');",
     );
+    fixture.life.notifyAttempt(
+      store.attempt("a"),
+      "interruption",
+      "Exam interrupted: alice",
+      "Screen sharing stopped",
+      "screen track ended",
+    );
     const s = store.session("student", "alice", "e");
     const headers = {
       cookie: `session=${s.token}`,
@@ -61,7 +68,7 @@ it("audits every accepted review request but emails distinct messages only once 
     ).toBe(200);
     expect(
       fixture.store.db.prepare("SELECT count(*) AS n FROM outbox").get(),
-    ).toEqual({ n: 2 });
+    ).toEqual({ n: 1 });
     expect(
       fixture.store.db
         .prepare(
@@ -79,10 +86,11 @@ it("audits every accepted review request but emails distinct messages only once 
     expect((await request("Please help")).statusCode).toBe(200);
     expect(
       fixture.store.db.prepare("SELECT count(*) AS n FROM outbox").get(),
-    ).toEqual({ n: 3 });
+    ).toEqual({ n: 2 });
     const messages = fixture.store.db
       .prepare("SELECT body FROM outbox")
       .all() as any[];
+    expect(messages[0].body).toContain('Student message: " Please help "');
     expect(messages[1].body).not.toContain("\nStudent: forged");
     expect(fixture.store.attempt("a").state).toBe("LOCKED");
   } finally {

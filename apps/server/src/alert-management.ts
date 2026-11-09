@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { Store, hash, now, type Attempt } from "./db.js";
-import { alertContext } from "./alerts.js";
+import { alertContext, signInAlertContext } from "./alerts.js";
+import { signInNoticeAccount } from "./sign-in-notifications.js";
 
 const uuid = z.string().uuid();
 const revision = z.string().regex(/^[a-f0-9]{64}$/);
@@ -265,6 +266,10 @@ export class AlertManagement {
       const a = this.store.db
         .prepare("SELECT * FROM attempts WHERE id=?")
         .get(episode.attempt) as Attempt | undefined;
+      const signIn =
+        episode.event === "sign-in-timeout"
+          ? signInNoticeAccount(episode.attempt)
+          : undefined;
       const id = randomUUID();
       const body = [
         "Explicit manual operator reminder, not a newly detected incident or permission to resume.",
@@ -273,11 +278,13 @@ export class AlertManagement {
         `Episode: ${episode.id}; event: ${JSON.stringify(episode.event)}; generation: ${episode.generation}`,
         `Original notice: ${episode.outbox}; opened: ${new Date(episode.opened).toISOString()}`,
         "Current gateway metadata below is not a fresh native verification. Inspect the dashboard and class-server attempt before acting.",
-        ...(a
-          ? alertContext(a)
-          : [
-              `Attempt: ${episode.attempt}; historical attempt metadata is unavailable. Preserve native history and inspect locally.`,
-            ]),
+        ...(signIn
+          ? signInAlertContext(signIn.username, signIn.exam)
+          : a
+            ? alertContext(a)
+            : [
+                `Attempt: ${episode.attempt}; historical attempt metadata is unavailable. Preserve native history and inspect locally.`,
+              ]),
       ].join("\n");
       this.store.db
         .prepare("INSERT INTO outbox(id,subject,body,next) VALUES(?,?,?,?)")
