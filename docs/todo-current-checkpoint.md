@@ -1,15 +1,26 @@
-# Active work — wake lock committed; notification changes locally validated
+# Active work — READY; waiting for complete student drain before deployment
 
-November9 implementation/separate commits/push/deploy authorized. Wake-lock
-commite4fb7e4 passes4focused/10affected browser checks, types/build; existing
-fullscreen enforcement and late grant cleanup asserted. No OS sleep guarantee.
-Notification consolidation passes5focused real SSH/SMTP/HTTP/service tests and
-51operator tests. Next: commit milestone2, full app/affected browser/type checks,
-freeze exact image and qualify startup/current-data recovery/proxy; push/deploy
-after the complete student drain. No production changes. Original screenshots safe.
+November9 implement/two commits/push/deploy authorized. Wake lock:e4fb7e4;
+notification policy:79ecd97. Runtime/image frozen at79ecd97/schema37, Config
+1741701b8cf623e69c24820cc018a3eb8cc170d52034d3f50fd4d1dd5412c307.
+Full146files/863app passes/1existing opt-in skip incl real root CLI/TLS;10exact-image
+browsers,10workspace transitions, real5-fault isolation/SMTP,51operator, types/build,
+actual63.48s signed startup/current-data recovery/41contracts and nginx0.116s pass.
+Original screenshots preserved. No new OS-sleep guarantee/human MFA claimed.
+
+One active exam/student session remains in read-only inventory, latest deadline
+November9,5:36:50PM Chicago. Production is untouched/online; never force that drain.
+Next: commit/push final test/docs, wait/recheck live drain, refresh web/native
+inventories, run prepared operations generator and self-test, stage frozen code,
+authorized admin-only signout, fresh native bridge, online prepare/apply/accept.
+No native/CLI installation or service restart. Recovery is forward CURRENT-data/
+original snapshot only; old notification writer reopening is refused.
+
 Plan/evidence:docs/wake-lock-notifications.md;
-var/collection-tests/wake-notifications.20261109/. Start marker recorded.
-No open policy choice; previous installation follows:
+var/collection-tests/wake-notifications.20261109/. Start22:38:50.606UTC recorded.
+Frozen image underimage/; prepare-ops.py and read-inventory.py are syntax/fixture
+qualified, including unsafe-input refusal. Actual staging/prepare/apply not yet run.
+No open design decision. Prior baseline:
 
 Prior deployed baseline:
 

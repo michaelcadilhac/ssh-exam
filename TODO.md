@@ -3,8 +3,10 @@
 November9 implement/two commits/push/deploy authorized. Wake lock is implemented:
 10affected browser workflows, types/build pass; OS denial/unsupported APIs remain
 best-effort, with existing monitoring enforced. Notification consolidation now
-passes5focused real SSH/SMTP/HTTP/service tests and51operator tests. Broad app/
-browser and exact-image guarded deployment are next. Production unchanged. Plan/evidence:
+passes5focused real SSH/SMTP/HTTP/service tests and51operator tests. Full863app
+checks/1existing skip,10exact-image browsers, real crash isolation, delayed signed
+startup/current-data recovery and nginx checks pass. Runtime79ecd97 is frozen.
+Production unchanged; one running exam currently prevents the guarded rollout. Plan/evidence:
 docs/wake-lock-notifications.md; current checkpoint.
 
 # Admin list controls and exam timezone — PUSHED, DEPLOYED AND ONLINE

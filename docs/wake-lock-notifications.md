@@ -76,3 +76,31 @@ installed-versus-loaded CLI pinning. Broad application/browser and final image
 qualification remain before push/deployment. Reviewed web-only release scope:
 `wake-lock-notifications-v1`, using the existing controller/forward-recovery path.
 All native binaries, installed CLI and loaded source worker remain unchanged.
+
+Release qualification complete locally, runtime79ecd97/schema37, image Config
+1741701b8cf623e69c24820cc018a3eb8cc170d52034d3f50fd4d1dd5412c307.
+Full146-file suite:863pass/1existing opt-in skip, including actual root-mapped
+compiled CLI/TLS management using unchanged installed CLI1a8272c2. Four wake-lock
+and the complete10-case workspace cohort pass;10exact-image browser workflows
+cover wake locks, notification management and real WASM clocks/input/finish.
+The real five-fault isolation workflow passes while another student keeps working
+and serious faults still deliver through SMTP. Its old test clicked a correctly
+disabled pre-approval button; it now checks both that UI and the actual400server
+refusal. The actual flat session response was used to correct its CSRF lookup;
+those failed/interrupted fixture receipts are retained. Individual actions are
+bounded, with a separate75second wait for the deliberate60second hang.
+
+51operator scenarios pass. Exact image schema/media compatibility,63.48-second
+real signed-poll startup,41preservation contracts, due physical-purge rechecks,
+11mutation refusals and already-running-candidate CURRENT-data recovery pass.
+Actual TLS/nginx maintenance/reload passes0.116seconds. Owned containers/nginx/
+synthetic keys are removed. Unchanged native authority/relay/Go sources reuse
+prior race/kernel/capacity qualification; no new human MFA or physical sleep
+prevention is claimed. Local operation generation additionally refuses an active
+exam, student session and wrong current image before producing any staging plan.
+
+At the latest inventory one student is still working, with a5:36PM Chicago
+recorded deadline. No production write, staging, maintenance or restart has run.
+Both implementation commits are complete; push and guarded rollout will use the
+same frozen artifacts after a fresh complete drain. All original documentation
+screenshots are byte-for-byte preserved.

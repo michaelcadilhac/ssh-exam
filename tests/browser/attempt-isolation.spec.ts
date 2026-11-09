@@ -117,6 +117,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
   const alice = await a.newPage(),
     bob = await b.newPage(),
     admin = await instructor.newPage();
+  for (const page of [alice, bob, admin]) page.setDefaultTimeout(8000);
   const runtime = async () =>
     (await admin.request.get(origin + "/api/fixture/runtime")).json();
   try {
@@ -162,7 +163,7 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
       expect(crashedPid).not.toBe(bobPid);
       await expect(
         alice.getByRole("heading", { name: "Instructor review required" }),
-      ).toBeVisible({ timeout: 20000 });
+      ).toBeVisible({ timeout: fault === "hang" ? 75000 : 20000 });
       const data = await runtime();
       expect(data.pid).toBe(initial.pid);
       expect(
@@ -185,10 +186,19 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
         deadline: originalB.deadline,
         original_deadline: originalB.original_deadline,
       });
-      await alice
-        .getByRole("button", { name: "Reconnect SSH", exact: true })
-        .click();
-      await expect(alice.getByRole("alert")).toContainText(
+      await expect(
+        alice.getByRole("button", { name: "Reconnect SSH", exact: true }),
+      ).toBeDisabled();
+      const student = await (await alice.request.get("/api/session")).json();
+      const refused = await alice.request.post(
+        `/api/student/attempts/${originalA.id}/reauth`,
+        {
+          headers: { origin, "x-csrf-token": student.csrf },
+          data: {},
+        },
+      );
+      expect(refused.status(), await refused.text()).toBe(400);
+      expect(await refused.text()).toContain(
         "Ask your instructor to approve resuming",
       );
       const alerts = data.outbox.filter(
