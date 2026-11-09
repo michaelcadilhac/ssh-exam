@@ -5,6 +5,16 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November9 local follow-up: keep the student display awake
+
+The visible student setup/unfinished workspace requests a best-effort screen wake
+lock. Hiding, finish and leaving release it; visibility/focus/fullscreen return
+can reacquire it, without duplicate pending requests or rejection loops. Grants
+arriving after cleanup are released. Unsupported/denied/revoked wake locks never
+change capture requirements, fullscreen checks, account holds or exam clocks.
+Implemented/tested locally; notification consolidation and deployment are pending.
+See [wake lock and notifications](docs/wake-lock-notifications.md).
+
 ## November 6 deployed follow-up: student lists and exam date timezone
 
 The dashboard selects students by All/Working/Needs attention first, then applies

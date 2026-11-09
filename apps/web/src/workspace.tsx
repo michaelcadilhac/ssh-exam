@@ -162,6 +162,72 @@ export function Workspace({
     [authenticationGap, setAuthenticationGap] = useState(false),
     [recoveryExpired, setRecoveryExpired] = useState(false),
     [signOutAfterFinish, setSignOutAfterFinish] = useState(false);
+  const keepScreenAwake = [
+    "PREPARING",
+    "ACTIVATING",
+    "ACTIVE",
+    "LOCKED",
+  ].includes(attempt.state);
+  useEffect(() => {
+    if (!keepScreenAwake || !navigator.wakeLock?.request) return;
+    let disposed = false,
+      pending = false,
+      held: WakeLockSentinel | undefined;
+    const release = () => {
+      const previous = held;
+      held = undefined;
+      if (previous && !previous.released)
+        void previous.release().catch(() => {});
+    };
+    const acquire = async () => {
+      if (
+        disposed ||
+        pending ||
+        document.visibilityState !== "visible" ||
+        (held && !held.released)
+      )
+        return;
+      pending = true;
+      try {
+        const next = await navigator.wakeLock.request("screen");
+        if (disposed || document.visibilityState !== "visible") {
+          await next.release().catch(() => {});
+          return;
+        }
+        held = next;
+        next.addEventListener(
+          "release",
+          () => {
+            if (held === next) held = undefined;
+          },
+          { once: true },
+        );
+      } catch {
+        // Battery/OS policy and API availability are not monitoring violations.
+        // Retry only on a later return/focus, never in a release/rejection loop.
+      } finally {
+        pending = false;
+      }
+    };
+    const visible = () => {
+      if (document.visibilityState === "visible") void acquire();
+      else release();
+    };
+    const focus = () => {
+      void acquire();
+    };
+    document.addEventListener("visibilitychange", visible);
+    document.addEventListener("fullscreenchange", focus);
+    window.addEventListener("focus", focus);
+    void acquire();
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", visible);
+      document.removeEventListener("fullscreenchange", focus);
+      window.removeEventListener("focus", focus);
+      release();
+    };
+  }, [keepScreenAwake]);
   useEffect(() => {
     if (!attempt.clock_revision) return;
     warnings.current.clear();

@@ -1,3 +1,11 @@
+# Wake lock and notification consolidation — IN PROGRESS LOCALLY
+
+November9 implement/two commits/push/deploy authorized. Wake lock is implemented:
+10affected browser workflows, types/build pass; OS denial/unsupported APIs remain
+best-effort, with existing monitoring enforced. Notification consolidation and
+exact-image guarded deployment are next. Production unchanged. Plan/evidence:
+docs/wake-lock-notifications.md; current checkpoint.
+
 # Admin list controls and exam timezone — PUSHED, DEPLOYED AND ONLINE
 
 November6,22:56:15Chicago /November7,04:56:15UTC: runtimea5a0b07/schema37,
