@@ -1,13 +1,27 @@
-# Wake lock and notification consolidation — IN PROGRESS LOCALLY
+# Wake lock and notification consolidation — PUSHED, DEPLOYED AND ONLINE
 
-November9 implement/two commits/push/deploy authorized. Wake lock is implemented:
-10affected browser workflows, types/build pass; OS denial/unsupported APIs remain
-best-effort, with existing monitoring enforced. Notification consolidation now
-passes5focused real SSH/SMTP/HTTP/service tests and51operator tests. Full863app
-checks/1existing skip,10exact-image browsers, real crash isolation, delayed signed
-startup/current-data recovery and nginx checks pass. Runtime79ecd97 is frozen.
-Production unchanged; one running exam currently prevents the guarded rollout. Plan/evidence:
-docs/wake-lock-notifications.md; current checkpoint.
+November9,17:44:19Chicago /23:44:19UTC: runtime79ecd97/schema37, image Config
+1741701b8cf6 is live. Separate feature commits:e4fb7e4(wake lock),79ecd97(notices).
+Visible setup/unfinished workspaces request/release/reacquire best-effort screen
+wake locks; denial does not affect monitoring or clocks. Repeated unstarted setup
+timeouts group into one five-minute notice requiring two failures; lone timeouts
+and recovered setups send none. Review edits update the existing interruption,
+not new automatic emails. Serious started-attempt/security alerts remain intact.
+Full863app passes/1existing skip,10exact-image browsers,10workspace transitions,
+real crash/SMTP isolation,51operator and actual image/startup/recovery/nginx pass.
+Public TLS/nine assets, signed CLI,41preservation contracts and original snapshot
+pass.132web/200native histories preserved; all five binaries/four role PIDs stayed
+fixed during cutover. No student session invalidated or exam interrupted.
+Preparation20.9s; maintenance80.77s;0media recopied. Measured total65m29s includes
+32m20s waiting for the complete student/original-deadline drain. No pending step
+for this request. Evidence/limits:docs/wake-lock-notifications.md; current checkpoint.
+
+Separate discovered follow-up (not changed in this rollout): the saved-work worker
+misclassifies an empty `{task:null}` response as a decode error and logs it every
+poll. Queued-task handling is unchanged; no source jobs were pending at cutover.
+Its role/core code matches the prior worker. Add a strict nullable-idle regression
+and fix that diagnostic in a separately qualified native update; do not relax
+catalog validation globally. No worker restart/install was performed here.
 
 # Admin list controls and exam timezone — PUSHED, DEPLOYED AND ONLINE
 

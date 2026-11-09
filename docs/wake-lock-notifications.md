@@ -1,7 +1,8 @@
 # Screen wake lock and useful instructor notifications
 
 November9: implementation, two ordered commits, push and deployment authorized.
-Production is unchanged. Existing screenshots and student history are preserved.
+Deployed17:44:19Chicago /23:44:19UTC, runtime79ecd97/schema37, after a full drain.
+Existing screenshots and student history are preserved.
 
 Delivery plan:
 
@@ -99,8 +100,33 @@ prior race/kernel/capacity qualification; no new human MFA or physical sleep
 prevention is claimed. Local operation generation additionally refuses an active
 exam, student session and wrong current image before producing any staging plan.
 
-At the latest inventory one student is still working, with a5:36PM Chicago
-recorded deadline. No production write, staging, maintenance or restart has run.
-Both implementation commits are complete; push and guarded rollout will use the
-same frozen artifacts after a fresh complete drain. All original documentation
-screenshots are byte-for-byte preserved.
+Before cutover, one student remained active until finishing/signing out; the
+existing original-deadline guard cleared after17:36:50Chicago. The read-only watch
+observed a complete drain at23:37:36UTC. Both feature commits were already pushed;
+no student was interrupted. Original documentation images remain unchanged.
+
+Production acceptance: public TLS/nine exact assets, signed CLI/help, all five
+unchanged binaries/four current role PIDs,41contracts, original snapshot and
+released recording pause PASS.132web/200native histories preserved. Preparation
+20.90s reused1,324,421,366media bytes with0new copies. Fresh database164,909,056bytes
+plus442,925bytes of other metadata/configuration were copied. Maintenance80.77s;
+apply84.63s. Recorded start22:38:50UTC→reopening23:44:19UTC65m29.04s includes
+32m20.26s of measured waiting for the student/original-deadline drain.
+
+The native baseline check detected an independent source-worker restart at06:12
+CST November9. It loaded the already-installed/qualified CLI1a8272c2. Diffing its
+worker/catalog/core source against the prior95c7798 worker found no changes; only
+unrelated exam-management flags/results differ. Private staging continued before
+that local assertion was resolved; no installation/fence/restart occurred until
+source comparison and fresh complete guard verification passed. All loaded roles
+were then pinned to their actual current identities and preserved through cutover.
+One preparatory refresh observed a transient service descendant and refused; the
+strict independent recheck passed, as did all six apply refreshes. No relaxation.
+
+The old worker's idle `{task:null}` response is incorrectly rejected by its strict
+catalog helper, producing repeated log errors. Valid queued-task handling is
+unchanged and no source tasks were pending at cutover. This separate diagnostic
+follow-up is recorded inTODO, not patched during deployment. No native binaries
+were installed or services restarted. Recovery uses the qualified matched image
+with CURRENT data/original snapshot; old-mailer reopening remains refused.
+Private frozen plan and receipts:var/collection-tests/wake-notifications.20261109/ops/.

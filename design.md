@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-## November9 local follow-up: notification consolidation
+## November9 deployed follow-up: notification consolidation
 
 Unstarted setup timeouts group per student/exam/agent: at least two failures,
 first-failure five-minute durable grace, one email, cancellation on sign-in/setup
@@ -15,16 +15,16 @@ review text updates its incident and only its unsent/unattempted original notice
 New generations and explicit manual reminders retain their existing workflows.
 This intentionally replaces per-retry and per-distinct-message automatic emails.
 No clock, grant, account restriction or monitoring policy changes. Implemented/
-tested locally; final image qualification and guarded deployment remain pending.
+tested locally and deployed at17:44Chicago, runtime79ecd97/schema37.
 
-## November9 local follow-up: keep the student display awake
+## November9 deployed follow-up: keep the student display awake
 
 The visible student setup/unfinished workspace requests a best-effort screen wake
 lock. Hiding, finish and leaving release it; visibility/focus/fullscreen return
 can reacquire it, without duplicate pending requests or rejection loops. Grants
 arriving after cleanup are released. Unsupported/denied/revoked wake locks never
 change capture requirements, fullscreen checks, account holds or exam clocks.
-Implemented/tested locally; notification consolidation and deployment are pending.
+Implemented/tested and deployed with notification consolidation at17:44Chicago.
 See [wake lock and notifications](docs/wake-lock-notifications.md).
 
 ## November 6 deployed follow-up: student lists and exam date timezone

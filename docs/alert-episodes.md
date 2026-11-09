@@ -47,7 +47,7 @@ and genuine recurrence opens a new episode even with the same error text.
 CLI/web alert metadata uses the same disposition. Evidence and qualification:
 preflight-cleanup-alert-disposition.md. No production change or access release.
 
-November9 authorized policy update (implemented/tested locally; rollout pending):
+November9 policy update (tested and deployed17:44Chicago, runtime79ecd97):
 every accepted review request updates the incident/dashboard and audit. One email
 belongs to the interruption, rather than each distinct message. The latest nonempty
 explanation can update its original unsent/unattempted email; sent/attempted mail
