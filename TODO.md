@@ -1,4 +1,4 @@
-# Accidental navigation protection — IMPLEMENTED/TESTED LOCALLY; deployment pending
+# Accidental navigation protection — PUSHED; deployment blocked by active exams
 
 November9–10: student workspace cancels mouse Back/Forward defaults and requests
 the native leave-page confirmation for unfinished work. Five focused Chromium
@@ -6,8 +6,14 @@ cases and15 affected navigation/wake/workspace cases pass; actual WASM/server
 cancelled reload preserves SSH owner, generation, original timing and input.
 Actual departure/fullscreen loss still enforces review. No history trapping or
 new authority/configuration. Browser-specific/OS mouse mappings remain best-effort.
-Release qualification/push remain in progress. Initial production inventory found
-two active exams; do not deploy/restart until the complete student/deadline drain.
+Committed/pushed ed09efc. 34 affected browser checks pass across corrected cohorts;
+six also pass against the exact image. Build/types, schema37/media compatibility,
+real 63s signed startup, 41 authority contracts and CURRENT-data recovery pass.
+Candidate Config1070db5eb056 is qualified locally. No server/native change.
+At 06:10:57UTC November10, two unfinished exams, three student sessions and two
+future deadlines block deployment; latest 02:57:48 Chicago. Site remains ONLINE on
+79ecd97. No maintenance, upload, restart, session or student-record change occurred.
+Do not deploy/restart until the complete student/deadline drain.
 Details, evidence and exact next steps: docs/navigation-protection.md and checkpoint.
 
 # Wake lock and notification consolidation — PUSHED, DEPLOYED AND ONLINE

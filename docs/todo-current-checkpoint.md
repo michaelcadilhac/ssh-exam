@@ -1,55 +1,36 @@
-# Current checkpoint — navigation protection locally tested, release in progress
+# Current checkpoint — navigation protection PUSHED; deployment blocked
 
-November10: implement/push/deploy authorized. Workspace Back/Forward suppression
-and native leave confirmation pass5focused cases,15affected browsers and one real
-WASM SSH/server cancelled-reload/authorized-recovery workflow. Build/types pass.
-No new durable state, backend/native/protocol/settings change. Current broader
-recovery cohort had28passes and one stale25s abandonment wait (production already
-uses60s); corrected fixture qualification is running. Read its completion before
-advancing. Test input freeze while its runner is active.
+November10: implement/push/deploy authorized. Code commit ed09efc is on origin/main.
+34 affected browser cases pass across corrected cohorts; six navigation/real-WASM
+SSH cases also pass against exact image assets. Build/typecheck pass. The old
+25s abandonment fixture now uses the existing 60s constant; actual close/reload
+recovery passes. No production timeout or enforcement was weakened.
 
-Evidence:var/collection-tests/navigation-protection.20261109/, feature/status:
-docs/navigation-protection.md. Next: collect closure-corrected.log, affected real
-interface checks, commit/freeze image and qualify exact assets/startup/recovery,
-push; repeat fresh drain inventory before preparing any cutover.
+Exact image Config1070db5eb0560837102796e2562f8f79988fec915f721a3bc3a56e8e3a57b32e,
+tag ssh-exam-release:navigation-ed09efc4bbbd. Schema37/media smoke, actual63s startup,
+13signed polls, 41authority contracts, due purge rechecks, 11mutation refusals and
+already-running CURRENT-data/original-snapshot recovery pass. Owned test processes,
+containers and private keys/data cleaned up. Server/native/protocol/dependencies/
+controller sources unchanged: prior863app/native race/kernel/operator evidence
+reused. Existing10dirty documentation images preserved; all16baseline hashes match.
 
-Production unchanged/ONLINE: runtime79ecd97/schema37, Config1741701b8cf6.
-At06:03UTC November10 two active attempts, three student sessions and three future
-deadlines block deployment; latest02:57:48Chicago. No fence/service restart/session
-invalidation performed. Preserve existing10dirty documentation images.
+Evidence: var/collection-tests/navigation-protection.20261109/; detailed status,
+artifact pins and rollout/recovery instructions: docs/navigation-protection.md.
+Frozen image lives under image/; current read-only inventories and final drain
+observation are in that evidence root. No cutover staging/controller state created.
 
-## Last completed deployment
+Production remains ONLINE on79ecd97/schema37, Config1741701b8cf6. At06:10:57UTC,
+two unfinished exams, three student sessions and two future deadlines block
+cutover; latest November10,02:57:48 Chicago. No production maintenance/upload/
+restart/configuration/student-record/session changes. Do not interrupt exams.
 
-Wake lock and notifications DEPLOYED AND ONLINE:
+Exact next action: after full student/deadline drain, refresh web/native inventories,
+generate a fresh private plan from the previous wake-notifications ops using stock
+UI-only mode and the new exact image; freeze/review plan, stage, prepare, guarded
+apply and required public/preservation/native acceptance. No migration/native
+restart. Existing request authorizes that deployment; no extra routine approval
+needed. Admin-only signout remains authorized. Never reuse stale history pins.
 
-November9,17:44:19Chicago /23:44:19UTC. Runtime79ecd97/schema37, image Config
-1741701b8cf623e69c24820cc018a3eb8cc170d52034d3f50fd4d1dd5412c307.
-Separate feature commits:e4fb7e4(wake lock),79ecd97(notification consolidation).
-All requested implementation/push/deployment work is complete; no decision pending.
-
-863application checks/146files pass,1existing opt-in skip;10exact-image browsers,
-10workspace transitions, real5-fault healthy-peer/SMTP recovery,51operator tests,
-types/build, exact-image media/startup63.48s/current-data recovery and nginx pass.
-Final public TLS/nine assets, signed CLI/help,41preservation contracts, original
-snapshot and released recording pause pass. No human OS-sleep/MFA test claimed;
-wake lock remains best-effort.132web/200native histories preserved.
-
-Complete drain observed23:37:36UTC after waiting32m20s. Preparation20.90s,
-maintenance80.77s, apply84.63s; measured marker→reopening65m29.04s includes initial
-development/qualification and wait.1.324GB recovery media reused,0new media copied.
-One authorized admin signout; zero student sessions invalidated. All five installed
-binaries and four role PIDs unchanged DURING this deployment. The source worker
-had independently restarted at06:12CST, loading qualified CLI1a8272c2; its relevant
-worker/core source is unchanged. Fresh guard pinned that current511099PID and all
-other exact roles/configuration. One preparatory descendant observation refused;
-strict recheck and all6apply refreshes passed. No guard was bypassed.
-
-Frozen operations/evidence:var/collection-tests/wake-notifications.20261109/ops/,
-operator-freeze.json, deployment-completion.json and three acceptance receipts.
-Web stage:/var/tmp/ssh-exam-wake-notifications-20261109-5f21df4e-web
-State:/data/ssh-exam-wake-notifications-20261109-5f21df4e-state, ONLINE.
-Forward CURRENT-data/original-snapshot recovery only; old mailer reopening refused.
-Original documentation screenshots preserved. Details:docs/wake-lock-notifications.md.
-
-Separate follow-up documented inTODO: existing worker rejects emptytask:null as an
-error despite unchanged valid queued-task handling. No native fix/restart included.
+Previous production rollout/evidence: docs/wake-lock-notifications.md and
+var/collection-tests/wake-notifications.20261109/ops/. The unrelated idle task:null
+saved-work-worker diagnostic remains in TODO and is not part of this change.
