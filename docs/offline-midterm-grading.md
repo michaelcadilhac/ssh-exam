@@ -115,6 +115,9 @@ The output retains rosters, `attempts.tsv`, `selections.tsv` (username/UUID/chec
 outcome), authored materials/digest, toolchain provenance, and per-user archives,
 grading logs, exact sandbox command, exit/unit state and cleanup receipts.
 `unit-state.txt` distinguishes systemd timeout/OOM/setup failures where available.
+`GRADER_TOOL_FAILED` means the grader emitted a missing/unusable-tool diagnostic
+despite printing a total; the grade stays blank. Inspect `grader.log`, repair the
+sandbox toolchain and rerun into a new directory. Never use its printed score.
 Treat exported copies according to the submission-retention policy. Successful
 CSV publication is atomic; interrupted results remain `.grades.partial`.
 
@@ -163,3 +166,35 @@ applies. Installation updates only the grading example/helpers/guide, with exact
 previous hashes and private backups. Rollback may restore only those matching
 files; never restore older databases, native authority or student data. Prefer
 forward repair because the earlier Docker version has a rejected dependency.
+
+## November10 grading correction
+
+The first private midterm comparison had an invalid85-point ceiling. On csc-sys,
+`/usr/bin/awk` points through `/etc/alternatives/awk` to `/usr/bin/gawk`. The
+minimal namespace hides `/etc`, so host dependency checks passed while the grader
+could not run awk. Its GDB-answer checks lost15points, and its external-symbol
+filter also could not work correctly. A valid-looking TOTAL and exit0 were not
+enough to validate the report. Those original comparison grades are superseded;
+do not repair them by adding15points.
+
+The local fix binds the resolved awk executable read-only under `/grading-bin`,
+preserving host `/etc` isolation. Inside-namespace tool lookup and an actual awk
+probe must succeed before extraction/grading. The outer runner rejects authored
+grader missing-tool/permission diagnostics even when a total is printed.
+Regression coverage includes actual awk-dependent scoring, a broken executable
+refused before TOTAL, and a swallowed dependency error refused as a blank grade.
+All seven focused checks pass with real bwrap/user-systemd/kernel limits; types
+and Python/zsh syntax pass. No application/native/browser changes are involved.
+
+The corrected files are used only in a new private grading directory on csc-sys;
+installed examples, services, configuration and student records are unchanged.
+A root DynamicUser rerun verifies the reported student's exact archive earns full marks
+with the unchanged official grader. An initial private staging permission refusal
+was retained with cleanup before the corrected probe; no score was accepted.
+The full84-submission rerun is complete with zero infrastructure errors, verified
+checksums/totals and no remaining owned grading units. It preserves original
+selections, archives and cutoffs; the corrected70-row CSV retains the no-loss
+formula. Eleven latest-attempt grades are100. The invalid initial report and
+original inputs remain in private audit backups. The installed utility still
+needs a separately instructed two-file repair; no application deployment is needed.
+Current report/verification status is in docs/todo-current-checkpoint.md.

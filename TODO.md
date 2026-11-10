@@ -1,3 +1,17 @@
+# Grading dependency correction — LOCAL FIX AND PRIVATE REPORT VERIFIED; install pending
+
+November10: the original midterm comparison was invalid because sandbox awk
+resolved through hidden /etc/alternatives. Local canonical read-only binding and
+inside-tool probe fix this; the outer runner refuses missing-tool diagnostics
+even with TOTAL/exit0. Seven focused real bwrap/systemd checks and types/syntax
+pass. A root DynamicUser rerun confirms the reported full-mark result. All84same
+protected submissions regraded; zero infrastructure errors, verified totals/archive
+checksums/cleanup and70corrected CSV rows with the no-loss formula. Eleven latest
+attempts now score100. Original report retained as invalid private evidence.
+No services/student records or installed grading utilities changed. The local
+script/helper patch remains to be installed under a separate instruction.
+Status/evidence: docs/offline-midterm-grading.md and current checkpoint.
+
 # Accidental navigation protection — PUSHED, DEPLOYED AND ONLINE
 
 November10,11:22:26Chicago /17:22:26UTC: runtimeed09efc/schema37, Config1070db5eb056.

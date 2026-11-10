@@ -195,6 +195,11 @@ for student in "${students[@]}"; do
         record_error GRADER_FAILED; continue
     fi
     (( $(wc -c < "$job/grader.log") < 1048576 )) || { record_error OUTPUT_LIMIT; continue; }
+    # The authored grader may print TOTAL and exit zero after a missing tool.
+    # Such an infrastructure failure is never a student's lost points.
+    if grep -Eq '^/materials/grade: [0-9]+: .*: (not found|command not found|Permission denied)$' "$job/grader.log"; then
+        record_error GRADER_TOOL_FAILED; continue
+    fi
     typeset -i totals=0
     earned='' possible=''
     while IFS= read -r record || [[ -n $record ]]; do

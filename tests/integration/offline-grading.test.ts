@@ -120,6 +120,7 @@ test.skipIf(process.env.EXAM_GRADING_BWRAP !== "1")(
     const run = join(dir, "private run");
     const grade = `#!/bin/sh
 set -eu
+[ "$(awk 'BEGIN {print 7}')" = 7 ]
 python3 - <<'CHECK'
 import os,pathlib
 assert os.getuid()!=0
@@ -365,6 +366,65 @@ os.execv(${JSON.stringify(ssh)},[${JSON.stringify(ssh)},shlex.join(['sudo','-n',
     expect(readFileSync(join(localRun, "grades.csv"), "utf8")).toContain(
       "alice,20",
     );
+
+    // A host tool can exist while its /etc/alternatives link is unavailable in
+    // the sandbox. Bind its resolved executable without exposing host /etc,
+    // and refuse a broken executable before the trusted grader can award points.
+    const brokenAwk = join(dir, "broken-awk");
+    writeFileSync(brokenAwk, "#!/bin/sh\nexit 127\n", { mode: 0o755 });
+    const brokenToolRun = join(dir, "broken sandbox tool");
+    const brokenToolEnv = { ...localEnv, EXAM_GRADE_AWK_BIN: brokenAwk };
+    roots.push({ run: brokenToolRun, env: brokenToolEnv });
+    const brokenTool = spawnSync(
+      "/usr/bin/zsh",
+      [script, "run", "--local", brokenToolRun],
+      {
+        env: brokenToolEnv,
+        encoding: "utf8",
+        timeout: 20000,
+      },
+    );
+    expect(brokenTool.status, brokenTool.stdout + brokenTool.stderr).toBe(1);
+    expect(readFileSync(join(brokenToolRun, "grades.csv"), "utf8")).toContain(
+      "alice,\n",
+    );
+    const brokenToolLog = readFileSync(
+      join(brokenToolRun, "jobs/alice/grader.log"),
+      "utf8",
+    );
+    expect(brokenToolLog).toContain("Sandbox tool failed: awk");
+    expect(brokenToolLog).not.toContain("TOTAL:");
+
+    // Legacy graders may swallow dependency failures and still print TOTAL.
+    // The public workflow must not accept that number as a real score.
+    const toolFailureGrade =
+      "#!/bin/sh\nprintf '%s\\n' '/materials/grade: 96: awk: not found' 'TOTAL: 100/100'\n";
+    writeFileSync(join(localMaterials, "grade"), toolFailureGrade);
+    const diagnosticRun = join(dir, "swallowed tool failure");
+    const diagnosticEnv = {
+      ...localEnv,
+      EXAM_GRADE_GRADER_SHA256: createHash("sha256")
+        .update(toolFailureGrade)
+        .digest("hex"),
+    };
+    roots.push({ run: diagnosticRun, env: diagnosticEnv });
+    const diagnostic = spawnSync(
+      "/usr/bin/zsh",
+      [script, "run", "--local", diagnosticRun],
+      {
+        env: diagnosticEnv,
+        encoding: "utf8",
+        timeout: 20000,
+      },
+    );
+    expect(diagnostic.status, diagnostic.stdout + diagnostic.stderr).toBe(1);
+    expect(readFileSync(join(diagnosticRun, "grades.csv"), "utf8")).toContain(
+      "alice,\n",
+    );
+    expect(readFileSync(join(diagnosticRun, "errors.tsv"), "utf8")).toContain(
+      "GRADER_TOOL_FAILED",
+    );
+    writeFileSync(join(localMaterials, "grade"), grade);
 
     // A real kernel limit differing from the requested properties must refuse
     // before the supplied grader or any submitted program is executed.

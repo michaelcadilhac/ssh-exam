@@ -121,7 +121,8 @@ def run(args):
                   "KillMode=control-group", "OOMPolicy=kill", "LimitCORE=0",
                   "LimitNOFILE=1024", "NoNewPrivileges=yes"]
     inputs = {"archive": job / "submission.tar.gz", "materials": materials,
-              "extractor": extractor, "control": control, "runner": Path(__file__).resolve()}
+              "extractor": extractor, "control": control, "runner": Path(__file__).resolve(),
+              "awk": Path(executable("awk")).resolve(strict=True)}
     if scope == "system":
         # systemd mounts only these inputs before dropping to a transient UID.
         # Their root-private ancestors need not become accessible on the host.
@@ -156,10 +157,15 @@ def run(args):
                 "--ro-bind", str(inputs["materials"]), "/materials",
                 "--ro-bind", str(inputs["extractor"]), "/grading-extract.py",
                 "--ro-bind", str(inputs["control"]), "/control",
-                "--clearenv", "--setenv", "PATH", "/usr/bin:/bin",
+                "--dir", "/grading-bin",
+                "--ro-bind", str(inputs["awk"]), "/grading-bin/awk",
+                "--clearenv", "--setenv", "PATH", "/grading-bin:/usr/bin:/bin",
                 "--setenv", "HOME", "/tmp", "--setenv", "TMPDIR", "/tmp",
                 "--setenv", "LC_ALL", "C", "--chdir", "/work",
                 "/bin/sh", "-c", '[ ! -e /control/cancelled ] || exit 125; '
+                'for tool in python3 gcc nm awk grep timeout mktemp dirname rm tr cat tail; do '
+                'command -v "$tool" >/dev/null || { echo "Sandbox tool unavailable: $tool" >&2; exit 125; }; done; '
+                '[ "$(awk \'BEGIN {print 7}\')" = 7 ] || { echo "Sandbox tool failed: awk" >&2; exit 125; }; '
                 'python3 /grading-extract.py submission /input/submission.tar.gz /work '
                 '&& exec /materials/grade --work /work']
     # Inspectable provenance; no submitted code has run before registration.
