@@ -3627,3 +3627,16 @@ change clocks, trigger misconduct or bypass ownership/freshness checks. Unavaila
 facts remain explicit. No tickets, credentials, MFA answers, SSH payload or raw
 user-controlled errors are recorded. See docs/disconnect-diagnostics.md for the
 operator workflow, actual stall/privacy qualification and deployment evidence.
+
+### Accidental workspace navigation (November9,2026)
+
+While an attempt is unfinished, cancel mouse Back/Forward defaults in the page
+where supported, including pointer release as well as mouse/auxiliary events.
+Do not alter browser history or terminal keyboard shortcuts. Request the browser's
+standard leave-page confirmation before real navigation/reload/closure. A blocked
+press or cancelled confirmation is not an incident and changes no clock, page,
+owner, capture, input authority or account restriction. Actual page departure,
+fullscreen/capture loss and existing contact/focus enforcement remain unchanged.
+Sign-out teardown and completed/cancelled attempts release the guard. This is
+best-effort browser accident prevention, not a universal mouse/OS lockdown.
+Implementation, qualification and rollout status: docs/navigation-protection.md.

@@ -1,4 +1,26 @@
-# Current checkpoint — wake lock and notifications DEPLOYED AND ONLINE
+# Current checkpoint — navigation protection locally tested, release in progress
+
+November10: implement/push/deploy authorized. Workspace Back/Forward suppression
+and native leave confirmation pass5focused cases,15affected browsers and one real
+WASM SSH/server cancelled-reload/authorized-recovery workflow. Build/types pass.
+No new durable state, backend/native/protocol/settings change. Current broader
+recovery cohort had28passes and one stale25s abandonment wait (production already
+uses60s); corrected fixture qualification is running. Read its completion before
+advancing. Test input freeze while its runner is active.
+
+Evidence:var/collection-tests/navigation-protection.20261109/, feature/status:
+docs/navigation-protection.md. Next: collect closure-corrected.log, affected real
+interface checks, commit/freeze image and qualify exact assets/startup/recovery,
+push; repeat fresh drain inventory before preparing any cutover.
+
+Production unchanged/ONLINE: runtime79ecd97/schema37, Config1741701b8cf6.
+At06:03UTC November10 two active attempts, three student sessions and three future
+deadlines block deployment; latest02:57:48Chicago. No fence/service restart/session
+invalidation performed. Preserve existing10dirty documentation images.
+
+## Last completed deployment
+
+Wake lock and notifications DEPLOYED AND ONLINE:
 
 November9,17:44:19Chicago /23:44:19UTC. Runtime79ecd97/schema37, image Config
 1741701b8cf623e69c24820cc018a3eb8cc170d52034d3f50fd4d1dd5412c307.

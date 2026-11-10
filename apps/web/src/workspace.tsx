@@ -162,6 +162,41 @@ export function Workspace({
     [authenticationGap, setAuthenticationGap] = useState(false),
     [recoveryExpired, setRecoveryExpired] = useState(false),
     [signOutAfterFinish, setSignOutAfterFinish] = useState(false);
+  useEffect(() => {
+    const unfinished = () =>
+      !["COMPLETED", "CANCELLED_BEFORE_START"].includes(
+        attemptRef.current.state,
+      );
+    const mouseHistory = (event: MouseEvent) => {
+      if (unfinished() && (event.button === 3 || event.button === 4))
+        event.preventDefault();
+    };
+    const confirmDeparture = (event: BeforeUnloadEvent) => {
+      if (!unfinished()) return;
+      // A cancelled navigation is not an incident. Only actual departure or
+      // independently observed monitoring loss follows the existing lock path.
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const mouseEvents = [
+      "pointerdown",
+      "pointerup",
+      "mousedown",
+      "mouseup",
+      "auxclick",
+    ] as const;
+    for (const type of mouseEvents)
+      window.addEventListener(type, mouseHistory, {
+        capture: true,
+        passive: false,
+      });
+    window.addEventListener("beforeunload", confirmDeparture);
+    return () => {
+      for (const type of mouseEvents)
+        window.removeEventListener(type, mouseHistory, true);
+      window.removeEventListener("beforeunload", confirmDeparture);
+    };
+  }, []);
   const keepScreenAwake = [
     "PREPARING",
     "ACTIVATING",

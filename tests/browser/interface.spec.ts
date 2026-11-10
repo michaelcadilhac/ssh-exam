@@ -1,5 +1,8 @@
 import { test, expect, request, type Page } from "@playwright/test";
-import { readyTerminal } from "./transition-fixture.js";
+import {
+  readyTerminal,
+  reloadAfterConfirmingDeparture,
+} from "./transition-fixture.js";
 async function adminCommand(page: Page, command: string) {
   await page
     .getByRole("button", { name: "Administration", exact: true })
@@ -481,10 +484,14 @@ test("exam selection scopes the grouped history and ignores late replies after s
   await expect(
     table.getByRole("rowgroup", { name: "history-only-user", exact: true }),
   ).toContainText("Attempt 2");
-  await page.getByLabel("Filter students", { exact: true }).selectOption("no-camera");
+  await page
+    .getByLabel("Filter students", { exact: true })
+    .selectOption("no-camera");
   // One matching historical attempt selects the student, with BOTH attempts.
   await expect(table.locator(".attempt-row")).toHaveCount(2);
-  await expect(table.getByRole("rowgroup", {name:"history-only-user",exact:true})).toContainText("Attempt 1");
+  await expect(
+    table.getByRole("rowgroup", { name: "history-only-user", exact: true }),
+  ).toContainText("Attempt 1");
   await page.getByLabel("Filter students", { exact: true }).selectOption("");
   let releaseReview!: () => void;
   const waitReview = new Promise<void>((resolve) => {
@@ -1564,7 +1571,7 @@ test("expired incomplete preflight explains cancellation, permits fresh retry, a
     path: test.info().outputPath("preflight-expired.png"),
     fullPage: true,
   });
-  await page.reload();
+  await reloadAfterConfirmingDeparture(page);
   await expect(
     page.getByText("Your connection has ended.", { exact: false }),
   ).toBeVisible();
@@ -1653,7 +1660,7 @@ test("login-only interface identifies real hosts and displays authentication suc
   await page.route("**/api/student/exam", (route) =>
     route.fulfill({ json: hosts }),
   );
-  await page.reload();
+  await reloadAfterConfirmingDeparture(page);
   await expect(
     page.getByRole("heading", { name: "SSH sign-in succeeded" }),
   ).toBeVisible();
@@ -2172,7 +2179,7 @@ test("active page reload requires one instructor grant and fresh SSH before rest
       return send.call(this, data);
     };
   });
-  await page.reload();
+  await reloadAfterConfirmingDeparture(page);
   await expect(
     page.getByRole("button", { name: "Reconnect SSH", exact: true }),
   ).toBeVisible();
@@ -2221,7 +2228,7 @@ test("active page reload requires one instructor grant and fresh SSH before rest
       ).ok(),
     ).toBe(true);
     // Reloading an already locked attempt must preserve this one authorization.
-    await page.reload();
+    await reloadAfterConfirmingDeparture(page);
     await expect(
       page.getByRole("button", { name: "Reconnect SSH", exact: true }),
     ).toBeVisible();

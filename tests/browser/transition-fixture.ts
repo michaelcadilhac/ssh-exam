@@ -3,8 +3,24 @@ import {
   type Page,
   type Route,
   type WebSocketRoute,
+  type Dialog,
 } from "@playwright/test";
 import { createHash } from "node:crypto";
+
+// Deliberate reload/recovery scenarios must confirm leaving an unfinished
+// workspace. Do not silently dismiss the new protection and test a stale page.
+export async function reloadAfterConfirmingDeparture(page: Page) {
+  const accept = async (dialog: Dialog) => {
+    expect(dialog.type()).toBe("beforeunload");
+    await dialog.accept();
+  };
+  page.on("dialog", accept);
+  try {
+    await page.reload();
+  } finally {
+    page.off("dialog", accept);
+  }
+}
 
 export function gate() {
   let release!: () => void;

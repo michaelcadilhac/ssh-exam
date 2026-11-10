@@ -7,6 +7,7 @@ import {
   gate,
   resetScreens,
   onlyScreens,
+  reloadAfterConfirmingDeparture,
 } from "./transition-fixture.js";
 
 async function type(page: Page, text: string) {
@@ -264,7 +265,7 @@ test("reloading ACTIVE waits for server-side recovery, preserves the deadline an
     await route.fulfill({ json: f.snapshot() });
   };
   try {
-    await page.reload();
+    await reloadAfterConfirmingDeparture(page);
     await expect.poll(() => seen).toBe(true);
     await expect(page.getByRole("status")).toHaveText("Loading…");
     await expect(page.locator(".workspace, form")).toHaveCount(0);

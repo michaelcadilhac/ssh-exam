@@ -1,5 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
-import { simulatedMedia, ready } from "./transition-fixture.js";
+import {
+  simulatedMedia,
+  ready,
+  reloadAfterConfirmingDeparture,
+} from "./transition-fixture.js";
 async function login(page: Page, username: string) {
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
@@ -115,7 +119,7 @@ test("direct logout with active SSH panes pauses the attempt and preserves its d
   });
   expect(logout.ok()).toBe(true);
   expect((await page.request.get("/api/session")).status()).toBe(401);
-  await page.reload();
+  await reloadAfterConfirmingDeparture(page);
   await expect(
     page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toBeVisible();

@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { simulatedMedia, ready, readyTerminal } from "./transition-fixture.js";
+import {
+  simulatedMedia,
+  ready,
+  readyTerminal,
+  reloadAfterConfirmingDeparture,
+} from "./transition-fixture.js";
 const origin = "http://localhost:3100";
 async function signIn(page: Page, exam: string, username: string) {
   await page.getByLabel("Exam ID", { exact: true }).fill(exam);
@@ -61,7 +66,7 @@ async function restore(page: Page, admin: Page, headers: any, id: string) {
   expect(approved.authorizations.at(-1).actor).toBe("instructor");
   expect(approved.authorizations.at(-1).used_at).toBeUndefined();
 
-  await page.reload();
+  await reloadAfterConfirmingDeparture(page);
   await page
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();

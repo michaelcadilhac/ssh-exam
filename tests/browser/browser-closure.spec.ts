@@ -10,7 +10,9 @@ import {
   readyTerminal,
   observeScreens,
   onlyScreens,
+  reloadAfterConfirmingDeparture,
 } from "./transition-fixture.js";
+import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 const origin = "http://localhost:3100";
 let lastCleanup = 0,
   serverPid = 0;
@@ -60,10 +62,17 @@ async function type(page: Page, text: string, count = 1) {
 }
 async function deny(page: Page) {
   await expect(page.locator(".workspace,form")).toHaveCount(0);
-  await page
-    .getByRole("button", { name: "Reconnect SSH", exact: true })
-    .click();
-  await expect(page.getByRole("alert")).toContainText(
+  const session = await (await page.request.get("/api/session")).json();
+  const info = await (await page.request.get("/api/student/exam")).json();
+  const refused = await page.request.post(
+    `/api/student/attempts/${info.attempt.id}/reauth`,
+    {
+      headers: { origin, "x-csrf-token": session.csrf },
+      data: {},
+    },
+  );
+  expect(refused.status(), await refused.text()).toBe(400);
+  expect(await refused.text()).toContain(
     "Ask your instructor to approve resuming",
   );
   await expect(page.locator(".workspace,form")).toHaveCount(0);
@@ -92,7 +101,7 @@ async function restore(
     },
   );
   expect(grant.ok()).toBe(true);
-  await page.reload();
+  await reloadAfterConfirmingDeparture(page);
   await page
     .getByRole("button", { name: "Reconnect SSH", exact: true })
     .click();
@@ -186,7 +195,7 @@ test.describe.serial("browser abandonment and recovery", () => {
     browser,
     request,
   }) => {
-    test.setTimeout(90000);
+    test.setTimeout(2 * OPERATION_TIMEOUT_MS + 45000);
     const headers = await admin(request);
     serverPid = (await runtime(request)).pid;
     let context = await browser.newContext({ baseURL: origin });
@@ -227,7 +236,7 @@ test.describe.serial("browser abandonment and recovery", () => {
       await context.close();
       await expect
         .poll(async () => (await attempt(request, original.id)).state, {
-          timeout: 25000,
+          timeout: OPERATION_TIMEOUT_MS + 10000,
           intervals: [200, 500, 1000],
         })
         .toBe("LOCKED");
@@ -268,7 +277,7 @@ test.describe.serial("browser abandonment and recovery", () => {
       await context.close();
       await expect
         .poll(async () => (await attempt(request, original.id)).state, {
-          timeout: 25000,
+          timeout: OPERATION_TIMEOUT_MS + 10000,
           intervals: [200, 500, 1000],
         })
         .toBe("LOCKED");
@@ -333,6 +342,31 @@ test.describe.serial("browser abandonment and recovery", () => {
     await expect(savedPane.locator(".xterm-rows")).toContainText(
       "Saved fixture text",
     );
+    // A cancelled real reload must keep the same authenticated WASM SSH,
+    // server owner, generation, deadline and protected input path working.
+    await page.evaluate(() => ((window as any).__sameNavigationPage = true));
+    const warning = page.waitForEvent("dialog", { timeout: 5000 });
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      await cdp.send("Page.reload");
+      const dialog = await warning;
+      expect(dialog.type()).toBe("beforeunload");
+      await dialog.dismiss();
+    } finally {
+      await cdp.detach();
+    }
+    expect(
+      await page.evaluate(() => (window as any).__sameNavigationPage),
+    ).toBe(true);
+    expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
+    const unchanged = await attempt(request, original.id);
+    expect(unchanged.state).toBe("ACTIVE");
+    for (const key of ["start", "deadline", "generation", "registered_owner"])
+      expect(unchanged[key]).toBe(original[key]);
+    await type(page, "probe-navigation-still-open", 2);
+    await expect(savedPane.locator(".xterm-rows")).toContainText(
+      "Echo: probe-navigation-still-open",
+    );
     hold = true;
     await page
       .getByRole("button", { name: "New terminal", exact: true })
@@ -346,7 +380,7 @@ test.describe.serial("browser abandonment and recovery", () => {
         return send.call(this, data);
       };
     });
-    await page.reload();
+    await reloadAfterConfirmingDeparture(page);
     hold = false;
     await deny(page);
     await expect
