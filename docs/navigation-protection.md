@@ -103,3 +103,18 @@ contracts and unchanged native roles remain mandatory acceptance checks.
 Compatible recovery uses CURRENT data and the original snapshot; never restore
 an old database over student changes. Deployment authorization remains for this
 request, subject to the full drain and fresh baseline.
+
+## Deployed November10,2026
+
+ONLINE at17:22:26UTC /11:22:26Chicago. Runtimeed09efc/schema37, image Config
+1070db5eb056. Public TLS/all nine exact assets, readiness/notifications, original
+snapshot,41preservation contracts, five unchanged binaries/four unchanged loaded
+role PIDs and signed CLI/help pass. All147web/217native histories preserved.
+Online preparation25.37s; maintenance69.47s; apply73.47s.1.703GB recovery media
+reused with0new media bytes copied; consistent DB snapshot186,093,568bytes.
+One initial pre-maintenance native descendant guard refusal cleared naturally;
+read-only singleton verification and the single retry/five apply refreshes pass.
+A concurrent status command refused the operation lock while apply ran; apply
+completed normally. No guard relaxed and no native restart/student interruption.
+Frozen operations/acceptance receipts:var/collection-tests/navigation-protection.20261109/ops/.
+This deployment is complete; earlier held status above is historical.
