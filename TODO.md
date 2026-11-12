@@ -1,3 +1,14 @@
+# Reduce live dependence on marco — INVESTIGATED; PROPOSAL AWAITS DECISION
+
+November12: current capture challenge/upload and one-Hz native evidence paths
+cross the webserver;60-second freshness charges network delay. Long WAN/backend
+stalls can therefore cause technical holds despite healthy SSH; no particular
+incident was diagnosed. Recommend relocating the existing authoritative runtime
+near csc-sys and using France only for asynchronous copies, rather than building
+a distributed monitoring service first. Alternatives, invariants, migration and
+isolated acceptance plan:docs/marco-runtime-dependency-review.md. No runtime,
+configuration, student record or production change; not implemented or deployed.
+
 # Remove redundant examctl --all — IMPLEMENTED/TESTED LOCALLY
 
 November12: flag/state/compatibility checks removed; help, both zsh examples and

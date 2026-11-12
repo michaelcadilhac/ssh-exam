@@ -1,23 +1,20 @@
-# Current checkpoint — redundant --all REMOVED AND TESTED LOCALLY
+# Current investigation — reduce live dependence on marco
 
-November12 follow-up: remove parser flag/state/compatibility conditions; migrate
-help, both zsh examples and operating docs. Default full listings, explicit limits,
-filters, signed scope checks and authority are unchanged. --all/--all=false are
-refused before configuration/authentication for ordinary and formatted commands.
+Source inspection complete; proposal only. Capture challenge/upload verification
+and one-Hz native signed monitoring evidence still cross the webserver. Freshness
+is60seconds, charged from challenge issue including transit. This can expose a
+healthy SSH session to a long webserver/WAN stall; no actual route measurements
+or particular-incident diagnosis were made.
 
-Verification: focused actual CLI/TLS checks, full CLI race suite32.86s, static
-build/vet/types and both zsh syntax checks pass. Exact candidate real gateway plus
-second-go workflow and synthetic bwrap grading:8passes/12unselected,13.89s.
-Evidence:var/collection-tests/remove-all.20261112/; docs/complete-cli-lists.md.
-CLI candidate SHA2565927a0703f76578836bc553e12c3b3d466928623261725b5e0821c382d8abfce.
-No web/native-authority changes; their existing qualification still applies.
+Preferred proposal: move the one existing authoritative web runtime/data near
+csc-sys; France receives asynchronous copies. Alternative: a substantially larger
+regional live verifier/control service with explicit ownership and management
+revision acknowledgements. Full protocol, preservation, migration/recovery and
+qualification boundaries:docs/marco-runtime-dependency-review.md.
 
-Local work complete; no push/deployment requested for this follow-up. Before a
-future CLI deployment, migrate installed example invocations too; custom scripts
-must omit the removed flag. New scripts work with the currently deployed CLI.
-Production remains CLI47bda3d (accepts --all), webed09efc/schema37; prior CLI
-rollout/preservation evidence is in docs/complete-cli-lists.md.
-
-Separate pending work: grading-helper repair cb58259 is pushed but uninstalled;
-saved-work idle task:null diagnostic remains in TODO. Original ten dirty images
-preserved; all16documentation image hashes match the prior baseline.
+Await architecture/host decision before implementation. No runtime/tests/deploy
+changed for this investigation. The prior --all removal remains locally tested
+at dc15f46, unpushed; installed CLI47bda3d/webed09efc/schema37 remain the last
+verified production cohort. Next deployment must migrate bundled script calls.
+Original ten dirty documentation screenshots preserved. Separate grading-helper
+installation and idle task:null diagnostic remain pending as previously recorded.
