@@ -223,10 +223,10 @@ with open(c['trace'],'a') as f:f.write(json.dumps(a)+'\\n')
 if a[:3]==['sudo','-n','/usr/local/sbin/examctl']:
  a=a[3:]
  if a[:3]==['web','students','list']:
-  assert '--all' in a and a[a.index('--fields')+1]=='username'
+  assert '--all' not in a and a[a.index('--fields')+1]=='username'
   print('alice\\nbob\\ncharlie' if a[3]=='midterm' else 'alice\\ndave')
  elif a[:3]==['web','attempts','list']:
-  assert '--all' in a and a.count('--exam')==2
+  assert '--all' not in a and a.count('--exam')==2
   for row in c['attempts']:print('\\t'.join('' if v is None else str(v) for v in row))
  elif a[0]=='export':
   path=c['exports'][a[1]]

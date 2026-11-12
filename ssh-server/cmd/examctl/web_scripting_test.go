@@ -307,11 +307,11 @@ func newScriptCLIFixture(t *testing.T, handle func(map[string]any) (any, string,
 func TestScriptingDiscoveryAndSyntaxBeforeAuthority(t *testing.T) {
 	for _, args := range [][]string{{"help", "scripting"}, {"web", "grants", "--format", "table", "--help"}} {
 		out, code := cliProcess(t, args...)
-		if code != 0 || !strings.Contains(out, "--from-receipt") || !strings.Contains(out, "--all") {
+		if code != 0 || !strings.Contains(out, "--from-receipt") || !strings.Contains(out, "Lists follow every cursor automatically") || strings.Contains(out, "--all") {
 			t.Fatal(code, out)
 		}
 	}
-	for _, args := range [][]string{{"web", "attempts", "list", "--all", "--format", "bogus"}, {"web", "students", "list", "midterm", "--all", "--request", "12345678-1234-4234-8234-123456789abc"}, {"web", "grants", "issue-confirm", "--format", "table"}} {
+	for _, args := range [][]string{{"web", "attempts", "list", "--format", "bogus"}, {"web", "students", "list", "midterm", "--format", "json", "--limit", "0"}, {"web", "grants", "issue-confirm", "--format", "table"}} {
 		out, code := cliProcess(t, args...)
 		if code != 2 || !strings.Contains(out, "scripting") {
 			t.Fatal(code, out)
@@ -368,7 +368,7 @@ func TestScriptingActualCLICompleteExportsAndNoPartialOutput(t *testing.T) {
 		}
 		return map[string]any{"attempts": []any{row}, "next": next, "scanned": 1}, "", false
 	})
-	args := []string{"attempts", "list", "--exam", "midterm", "--exam", "midterm-recovery", "--all", "--view", "secured", "--format", "tsv", "--fields", "username,start,id,checksum", "--no-header"}
+	args := []string{"attempts", "list", "--exam", "midterm", "--exam", "midterm-recovery", "--view", "secured", "--format", "tsv", "--fields", "username,start,id,checksum", "--no-header"}
 	out, stderr, code := f.invoke(args...)
 	if code != 0 || strings.Count(out, "alice\t1000\t") != 2 || strings.Contains(out, "\"request\"") {
 		t.Fatal(code, out, stderr)
@@ -408,7 +408,7 @@ func TestScriptingActualCLIEmptyFinalExportIsEmptyRowsNotEnvelope(t *testing.T) 
 		return map[string]any{"grants": []any{}, "next": nil}, "", false
 	})
 	for _, format := range []string{"tsv", "csv", "table", "jsonl", "json"} {
-		args := []string{"grants", "list", "midterm", "--all", "--format", format, "--fields", "id,status,username"}
+		args := []string{"grants", "list", "midterm", "--format", format, "--fields", "id,status,username"}
 		if format != "json" && format != "jsonl" {
 			args = append(args, "--no-header")
 		}
@@ -732,7 +732,7 @@ func TestScriptingActualCLIStdinProjectionAndOutputFailure(t *testing.T) {
 	}
 	mu.Unlock()
 	for _, format := range []string{"json", "jsonl"} {
-		stdout, stderr, code := f.invoke("attempts", "list", "--exam", "midterm", "--all", "--format", format, "--fields", "username,start")
+		stdout, stderr, code := f.invoke("attempts", "list", "--exam", "midterm", "--format", format, "--fields", "username,start")
 		if code != 0 || !strings.Contains(stdout, `"username":"alice"`) || strings.Contains(stdout, `"checksum"`) {
 			t.Fatal(code, stdout, stderr)
 		}
@@ -742,20 +742,35 @@ func TestScriptingActualCLIStdinProjectionAndOutputFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer full.Close()
-	stderr, code := f.streams(nil, full, "attempts", "list", "--exam", "midterm", "--all", "--format", "tsv", "--fields", "username")
+	stderr, code := f.streams(nil, full, "attempts", "list", "--exam", "midterm", "--format", "tsv", "--fields", "username")
 	if code != 1 || !strings.Contains(stderr, "no space left") {
 		t.Fatal("write failure hidden", code, stderr)
 	}
 	path := filepath.Join(f.dir, "export.tsv")
-	if stdout, stderr, code := f.invoke("attempts", "list", "--exam", "midterm", "--all", "--format", "tsv", "--fields", "username", "--output", path); code != 0 || stdout != "" {
+	if stdout, stderr, code := f.invoke("attempts", "list", "--exam", "midterm", "--format", "tsv", "--fields", "username", "--output", path); code != 0 || stdout != "" {
 		t.Fatal(code, stdout, stderr)
 	}
 	before, _ := os.ReadFile(path)
-	if _, _, code := f.invoke("attempts", "list", "--exam", "midterm", "--all", "--format", "tsv", "--fields", "username", "--output", path); code != 1 {
+	if _, _, code := f.invoke("attempts", "list", "--exam", "midterm", "--format", "tsv", "--fields", "username", "--output", path); code != 1 {
 		t.Fatal("export overwritten")
 	}
 	after, _ := os.ReadFile(path)
 	if string(before) != string(after) {
 		t.Fatal("existing output changed")
+	}
+}
+
+func TestRemovedAllFlagRefusedBeforeAuthority(t *testing.T) {
+	for _, args := range [][]string{
+		{"web", "exams", "list", "--all"},
+		{"web", "students", "list", "midterm", "--all=false"},
+		{"web", "attempts", "list", "midterm", "--all", "--format", "json"},
+		{"web", "grants", "list", "midterm", "--format", "table", "--all=false"},
+	} {
+		selected := append([]string{"--config", "/missing/removed-all-config"}, args...)
+		out, code := cliProcess(t, selected...)
+		if code != 2 || !strings.Contains(out, "flag provided but not defined: -all") || strings.Contains(out, "Load root") || strings.Contains(out, "Management request ID") {
+			t.Fatal("removed flag accepted or reached authority", args, code, out)
+		}
 	}
 }

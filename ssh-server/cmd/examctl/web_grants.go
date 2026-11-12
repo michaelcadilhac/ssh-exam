@@ -162,7 +162,7 @@ otherwise inspect/cancel the old review and make a fresh review.
 
 Examples:
   sudo examctl web grants list midterm --username student01
-  sudo examctl web grants list midterm --next --all --format table --fields username,status
+  sudo examctl web grants list midterm --next --format table --fields username,status
   sudo examctl web grants show GRANT_UUID
   sudo examctl web grants revise GRANT_UUID --revision 1 --duration-minutes 90 --reason 'Explicit unused allowance revision'
   sudo examctl web grants revoke GRANT_UUID --revision 2 --reason 'Withdraw unused authorization'

@@ -102,9 +102,9 @@ ec() {
 { gcc --version; bwrap --version; systemd-run --version; sha256sum "$(command -v gcc)" "$(command -v bwrap)" "$sandbox" "$extractor"; } > "$run_dir/toolchain.txt"
 
 for exam in midterm midterm-recovery; do
-    ec web students list "$exam" --all --format tsv --fields username --no-header > "$run_dir/$exam-roster.tsv"
+    ec web students list "$exam" --format tsv --fields username --no-header > "$run_dir/$exam-roster.tsv"
 done
-ec web attempts list --exam midterm --exam midterm-recovery --all --format tsv \
+ec web attempts list --exam midterm --exam midterm-recovery --format tsv \
     --fields username,exam,start,id,checksum,protected,state --no-header > "$run_dir/attempts.tsv"
 
 typeset -A known=() newest=() attempts=() checksums=() protected=() states=() ties=()

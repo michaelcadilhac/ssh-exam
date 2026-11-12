@@ -31,14 +31,14 @@ func (s *scriptStrings) Set(v string) error { *s = append(*s, v); return nil }
 
 type scriptOptions struct {
 	config, request, format, fields, receipt, from, definition, errorFormat, input, output string
-	all, noHeader, resume                                                                  bool
+	noHeader, resume                                                                       bool
 	rowLimit                                                                               int
 }
 
 func scriptingRequested(args []string) bool {
 	for _, arg := range args {
 		switch strings.SplitN(arg, "=", 2)[0] {
-		case "--exam", "--username", "--all", "--format", "--fields", "--no-header", "--receipt", "--from-receipt", "--definition-from", "--resume", "--error-format", "--input":
+		case "--exam", "--username", "--format", "--fields", "--no-header", "--receipt", "--from-receipt", "--definition-from", "--resume", "--error-format", "--input":
 			return true
 		}
 	}
@@ -48,8 +48,8 @@ func scriptingRequested(args []string) bool {
 func scriptingHelp(w io.Writer) {
 	fmt.Fprintln(w, `Shell scripting options (existing root authentication and policy):
   web exams show EXAM --receipt FILE
-  web {exams,students,attempts,grants} list [EXAM] --all --format jsonl
-  web attempts list --exam EXAM --exam OTHER --all --format tsv
+  web {exams,students,attempts,grants} list [EXAM] --format jsonl
+  web attempts list --exam EXAM --exam OTHER --format tsv
       --fields username,start,id,checksum --no-header
   web grants additional-preview EXAM USER... --definition-from FILE
       --saved-sources FILE|- --duration-minutes N --earliest RFC3339
@@ -66,7 +66,7 @@ explicit dot-separated metadata fields. TSV refuses control characters; null is
 empty. --no-header applies to tsv/csv/table. --username is an exact list filter;
 --q remains the dashboard substring search. Multiple --exam values apply to
 attempts. Lists follow every cursor automatically, including empty filtered
-pages, with fresh read IDs. --all remains an accepted compatibility alias.
+pages, with fresh read IDs.
 --limit N returns at most N matching rows (1..200), across the selected exams.
 An explicit --request applies to the first page only; --after selects a starting
 cursor. Omit both for fresh complete results. Lists are bounded to 10000 rows/32MiB;
@@ -152,7 +152,6 @@ func webScriptingMain(args []string) int {
 	f.StringVar(&o.errorFormat, "error-format", "text", "text/json")
 	f.StringVar(&o.input, "input", "", "explicit per-student batch FILE|-")
 	f.StringVar(&o.output, "output", "", "new private complete export file")
-	f.BoolVar(&o.all, "all", false, "follow every page")
 	f.BoolVar(&o.noHeader, "no-header", false, "omit text header")
 	f.BoolVar(&o.resume, "resume", false, "retry original durable intent")
 	var exams scriptStrings
@@ -257,14 +256,14 @@ func webScriptingMain(args []string) int {
 	}
 	body := map[string]any{}
 	allowed := map[string]bool{"config": true, "request": true, "format": true, "fields": true, "receipt": true, "error-format": true, "output": true, "no-header": true, "resume": true}
-	for _, name := range []string{"all", "limit", "after", "username"} {
+	for _, name := range []string{"limit", "after", "username"} {
 		if w[1] == "list" {
 			allowed[name] = true
 		}
 	}
 	if w[1] == "list" {
-		if *limit < 1 || *limit > 200 || (o.all && (*after != "" || o.request != "")) {
-			return bad("choose --limit1..200; legacy --all requires fresh reads without --after/--request")
+		if *limit < 1 || *limit > 200 {
+			return bad("choose --limit1..200")
 		}
 		body["limit"] = *limit
 		if seen["limit"] {
@@ -517,9 +516,6 @@ func webScriptingMain(args []string) int {
 		if !allowed[key] {
 			return bad("--" + key + " is not supported for this operation")
 		}
-	}
-	if o.all && w[1] != "list" {
-		return bad("--all is only for lists")
 	}
 	if o.resume && o.receipt == "" {
 		return bad("--resume requires a durable --receipt")

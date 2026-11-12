@@ -5,6 +5,13 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November12 remove redundant CLI flag (implemented/tested locally)
+
+The current source removes --all, its compatibility state/checks and its uses in
+shipped scripts/help. Lists already return all matches automatically; --limit
+retains its explicit output cap. The deployed47bda3d still accepts the flag until
+this follow-up is separately deployed. No authority or server policy changes.
+
 ## November12 CLI listing follow-up (deployed)
 
 Public examctl metadata lists collect all server pages by default. An explicitly

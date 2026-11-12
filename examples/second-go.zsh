@@ -232,11 +232,11 @@ prepare)
         die 'Cannot read an exact versioned definition. Inspect the error above; verify/sync the starter and select its exact --template-version before a NEW preparation.'
     fi
     ec web students list "$exam" \
-        --all --format tsv --fields username,duration,webcam --no-header \
+        --format tsv --fields username,duration,webcam --no-header \
         > "$run_dir/students.tsv"
     ec web attempts list \
         "${exam_filters[@]}" \
-        --all --format tsv --fields username,start,id,checksum --no-header \
+        --format tsv --fields username,start,id,checksum --no-header \
         > "$run_dir/attempts.tsv"
 
     select_sources "$run_dir/students.tsv" "$run_dir/defaults.tsv" \

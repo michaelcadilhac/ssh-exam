@@ -89,7 +89,7 @@ func TestGrantNextActualSignedCLIAndTablePagination(t *testing.T) {
 	mu.Lock()
 	mode = "pages"
 	mu.Unlock()
-	out, err, code = f.invoke("grants", "list", "midterm", "--next", "--all", "--format", "tsv", "--fields", "username,status")
+	out, err, code = f.invoke("grants", "list", "midterm", "--next", "--format", "tsv", "--fields", "username,status")
 	if code != 0 || err != "" || out != "username\tstatus\nstudent\tAVAILABLE\notherstudent\tPENDING_NATIVE\n" {
 		t.Fatal("filtered table pagination changed", code, out, err)
 	}

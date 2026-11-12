@@ -1,7 +1,7 @@
 # Additional attempts and workspace sources
 
 Next-attempt listing (local development, not deployed):
-`examctl web grants list EXAM --next --all --format table --fields username,status`
+`examctl web grants list EXAM --next --format table --fields username,status`
 uses the existing authenticated paginated listing with `next_only: true`. It reads
 only AVAILABLE/PENDING_NATIVE permissions, so bulk inspection does not retrieve
 cancelled or started grant history. Claimed setups and closed dates remain visible;

@@ -1,3 +1,12 @@
+# Remove redundant examctl --all — IMPLEMENTED/TESTED LOCALLY
+
+November12: flag/state/compatibility checks removed; help, both zsh examples and
+operator docs updated. Removed-flag refusal before authority, default complete
+lists and explicit limits pass; full CLI races/build/vet/types, real gateway/zsh
+and synthetic bwrap grading pass (8integration checks). No push or deployment.
+Future deployment must also migrate the installed examples' invocations. Evidence:
+var/collection-tests/remove-all.20261112/; docs/complete-cli-lists.md.
+
 # Complete examctl listings — PUSHED, DEPLOYED AND VERIFIED
 
 November12,12:27:14Chicago: CLI47bda3d is installed on csc-sys. Lists fetch all

@@ -1,25 +1,23 @@
-# Current checkpoint — complete CLI listings PUSHED AND DEPLOYED
+# Current checkpoint — redundant --all REMOVED AND TESTED LOCALLY
 
-November12,12:27:14Chicago /18:27:14UTC: CLI source47bda3d is installed on csc-sys.
-SHA25603e3600ae5825f41274480e00d1d4f151ef0ed6d3f617fe02502f0d9e1132564.
-Ordinary metadata lists retrieve all matches; explicit --limit counts returned
-matches. --all remains compatible. Empty pages, exact filters, multi-exam fresh
-request IDs, cursor failures and no partial output are covered.
+November12 follow-up: remove parser flag/state/compatibility conditions; migrate
+help, both zsh examples and operating docs. Default full listings, explicit limits,
+filters, signed scope checks and authority are unchanged. --all/--all=false are
+refused before configuration/authentication for ordinary and formatted commands.
 
-Verification: all10actual CLI/TLS entries, full CLI race suite31.45s, vet/build/
-types, exact-binary real gateway/zsh12.73s and namespace atomic install/recovery
-pass. Seven installed signed reads, complete70student/86attempt midterm lists,
-explicit caps, --all and public readiness pass. All four role PIDs/loaded binaries,
-configuration/unit and217native histories preserved. A post-read guard saw a
-transient child absent at inspection; same unmodified guard recheck passed.
-No services restarted, maintenance, media copy or student authority changes.
-Installation1.07s; acceptance4.14s (development/qualification excluded).
+Verification: focused actual CLI/TLS checks, full CLI race suite32.86s, static
+build/vet/types and both zsh syntax checks pass. Exact candidate real gateway plus
+second-go workflow and synthetic bwrap grading:8passes/12unselected,13.89s.
+Evidence:var/collection-tests/remove-all.20261112/; docs/complete-cli-lists.md.
+CLI candidate SHA2565927a0703f76578836bc553e12c3b3d466928623261725b5e0821c382d8abfce.
+No web/native-authority changes; their existing qualification still applies.
 
-Deployment complete; no next action or decision for this request. Detailed
-policy/evidence/recovery:docs/complete-cli-lists.md and
-var/collection-tests/complete-cli-lists.20261112/.
-Web remains ed09efc/schema37. Corrected private70-row grading report is complete;
-local grading-helper fix cb58259 is pushed but NOT installed (separate pending
-task). Unrelated saved-work idle task:null diagnostic remains in TODO.
-Original ten dirty documentation screenshots remain preserved; all16image hashes
-match the prior preservation baseline.
+Local work complete; no push/deployment requested for this follow-up. Before a
+future CLI deployment, migrate installed example invocations too; custom scripts
+must omit the removed flag. New scripts work with the currently deployed CLI.
+Production remains CLI47bda3d (accepts --all), webed09efc/schema37; prior CLI
+rollout/preservation evidence is in docs/complete-cli-lists.md.
+
+Separate pending work: grading-helper repair cb58259 is pushed but uninstalled;
+saved-work idle task:null diagnostic remains in TODO. Original ten dirty images
+preserved; all16documentation image hashes match the prior baseline.

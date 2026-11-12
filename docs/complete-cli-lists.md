@@ -8,12 +8,13 @@ Evidence:var/collection-tests/complete-cli-lists.20261112/.
 Ordinary `examctl web … list` returns all matches. It covers exams, students,
 attempts, grants, templates, administrators, alerts, monitoring inventories and
 purge inventories, plus `web grants issue-list`. No pagination flags are needed.
-Existing `--all` scripting commands remain valid. `--lifecycle all` is still an
+`--all` is removed from the current source; omit it in older commands. This
+follow-up is tested locally only until separately deployed. `--lifecycle all` is an
 exam visibility filter (include archived definitions), unrelated to pagination.
 
 An explicit `--limit N` returns at most N matching rows, across selected exams.
-This intentionally replaces its old server-page-size meaning, including when
-combined with `--all`. Existing numeric ranges remain:1..200, reviews1..20,
+This intentionally replaces its old server-page-size meaning. Existing numeric
+ranges remain:1..200, reviews1..20,
 purges1..100. Exact username filtering does not consume that allowance for other
 students or empty scanned pages. Repeated `--exam` and `--username` work without
 format flags. Without an explicit limit, exceeding10000rows/32MiB or10000requests
@@ -25,8 +26,7 @@ Monitoring keeps the first signed inventory watermark. Non-advancing/repeated
 cursors, duplicate identities and later-page errors refuse before stdout or an
 export file is published. Lists are observations over time, not atomic snapshots.
 An explicit `--request` affects the first page; omit it for fresh results. Existing
-`--after` remains an advanced starting cursor. Legacy `--all` keeps its prior
-refusal of explicit request/starting cursor combinations. Mutation retries,
+`--after` remains an advanced starting cursor. Mutation retries,
 receipts, authorization, archive verification and media replay/export are unchanged.
 Legacy JSON collections/envelope fields remain; attempt `scanned` totals are added
 across fetched pages. Scripting JSON retains observation provenance and marks
@@ -86,3 +86,21 @@ The audited upload was15,871,873bytes; no recordings/media were copied. No datab
 web image, native service, student authority or grading utility was changed.
 The pre-existing loaded saved-work worker intentionally retains its previous
 binary inode/hash until a separately authorized restart. Deployment is complete.
+
+## Local follow-up: remove the redundant flag
+
+The parser no longer registers --all or carries its state/compatibility checks.
+Help and both bundled zsh examples omit it. Ordinary/formatted --all and
+--all=false refuse before configuration/authentication; complete default listings
+and explicit output limits retain their regression coverage. Full CLI races,
+static build/vet/types and zsh syntax pass; the exact candidate's real gateway/
+second-go workflow and synthetic bwrap grading pass8integration checks. Evidence:
+var/collection-tests/remove-all.20261112/. One initial refusal test wrongly expected
+a help hint; it now asserts the actual explicit unknown-flag error and no authority.
+No backend, browser or native-authority change requires their suites to repeat.
+
+This follow-up is local only. Deploy the updated bundled script invocations before
+or with the flag-removing CLI; the new scripts also work with deployed47bda3d.
+Custom scripts should omit --all. Keep the separate uninstalled grading-helper
+repair explicit when preparing any later installation. No production file,
+configuration, student record, clock or service changed during this work.
