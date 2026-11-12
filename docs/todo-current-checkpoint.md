@@ -1,32 +1,25 @@
-# Current checkpoint — complete CLI listings QUALIFIED LOCALLY
+# Current checkpoint — complete CLI listings PUSHED AND DEPLOYED
 
-Current milestone: ordinary `examctl web … list` returns every matching metadata
-row without `--all`; explicit `--limit` caps returned matches. Preserve signed
-scope validation, bounded requests, cursor/watermark handling and no partial
-stdout on failure. `--all` remains accepted by existing scripts.
+November12,12:27:14Chicago /18:27:14UTC: CLI source47bda3d is installed on csc-sys.
+SHA25603e3600ae5825f41274480e00d1d4f151ef0ed6d3f617fe02502f0d9e1132564.
+Ordinary metadata lists retrieve all matches; explicit --limit counts returned
+matches. --all remains compatible. Empty pages, exact filters, multi-exam fresh
+request IDs, cursor failures and no partial output are covered.
 
-Plan: (1) integrate all existing list entry points and focused actual CLI/TLS
-regressions; (2) run CLI races/build/vet and qualify the exact atomic installer;
-(3) commit/push, inventory and back up the installed CLI, atomically replace only
-examctl, then verify complete/bounded authenticated reads and unchanged loaded
-services/history. No web deployment, native restart, grading-helper installation
-or student-record changes. Push/deploy explicitly authorized November12.
+Verification: all10actual CLI/TLS entries, full CLI race suite31.45s, vet/build/
+types, exact-binary real gateway/zsh12.73s and namespace atomic install/recovery
+pass. Seven installed signed reads, complete70student/86attempt midterm lists,
+explicit caps, --all and public readiness pass. All four role PIDs/loaded binaries,
+configuration/unit and217native histories preserved. A post-read guard saw a
+transient child absent at inspection; same unmodified guard recheck passed.
+No services restarted, maintenance, media copy or student authority changes.
+Installation1.07s; acceptance4.14s (development/qualification excluded).
 
-Acceptance: default lists cross empty/full pages; explicit limits count matches;
-filters and monitoring watermarks survive; repeated cursors, wrong scope and
-later-page failures emit no partial results. Every request stays bounded.
-Status: integrated and qualified locally. All10actual CLI/TLS list entry points,
-empty/exact filters, explicit limits, later-page refusal/privacy/cursor failures,
-and multi-exam fresh IDs pass. Complete CLI race suite31.45s, vet/build/types,
-exact-binary real gateway/zsh12.73s and namespace atomic install/recovery pass.
-Frozen candidate SHA256:03e3600ae5825f41274480e00d1d4f151ef0ed6d3f617fe02502f0d9e1132564.
-Next: commit/push, refresh native guard pins, stage audited bundle and install
-only CLI with existing atomic procedure; then signed reads/public health/unchanged
-roles-history acceptance. Installed CLI is still unchanged. Details/evidence:
-docs/complete-cli-lists.md; var/collection-tests/complete-cli-lists.20261112/.
-
-Earlier navigation release ed09efc/schema37 remains deployed. Corrected private
-70-row grade comparison and local grading-helper fix cb58259 are complete; the
-helper installation is a separate pending task. Original ten dirty documentation
-screenshots are preserved. Detailed earlier evidence is in navigation-protection.md
-and offline-midterm-grading.md. No open policy decision for this CLI milestone.
+Deployment complete; no next action or decision for this request. Detailed
+policy/evidence/recovery:docs/complete-cli-lists.md and
+var/collection-tests/complete-cli-lists.20261112/.
+Web remains ed09efc/schema37. Corrected private70-row grading report is complete;
+local grading-helper fix cb58259 is pushed but NOT installed (separate pending
+task). Unrelated saved-work idle task:null diagnostic remains in TODO.
+Original ten dirty documentation screenshots remain preserved; all16image hashes
+match the prior preservation baseline.

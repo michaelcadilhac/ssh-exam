@@ -1,11 +1,13 @@
-# Complete examctl listings — IMPLEMENTED/TESTED LOCALLY; DEPLOYMENT PENDING
+# Complete examctl listings — PUSHED, DEPLOYED AND VERIFIED
 
-November12: ordinary metadata lists should retrieve all pages automatically;
-explicit --limit intentionally bounds returned matches. Keep --all compatibility,
-server request bounds, scope checks and no partial output on failure. All10actual CLI/TLS list entries, complete CLI races, build/vet/types, exact
-real-gateway/zsh workflow and atomic install/recovery qualification pass. Authorized
-CLI-only push/deploy is next. Website/native services and student records remain unchanged.
-Progress: docs/todo-current-checkpoint.md.
+November12,12:27:14Chicago: CLI47bda3d is installed on csc-sys. Lists fetch all
+pages automatically; explicit --limit counts matching output rows. Existing --all
+scripts remain compatible. All10actual CLI/TLS list entries, CLI races/build/vet/
+types, exact real-gateway/zsh and atomic install/recovery qualification pass.
+Seven installed signed reads, complete70student/86attempt midterm lists, explicit
+caps, public readiness and unchanged native role/config/history guards pass.
+No web/native restart, migration, media copy, student authority or grading utility
+change. Deployment complete. Evidence/recovery:docs/complete-cli-lists.md.
 
 # Grading dependency correction — LOCAL FIX AND PRIVATE REPORT VERIFIED; install pending
 

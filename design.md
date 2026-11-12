@@ -5,7 +5,7 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-## November12 CLI listing follow-up (implemented/tested locally)
+## November12 CLI listing follow-up (deployed)
 
 Public examctl metadata lists collect all server pages by default. An explicitly
 supplied --limit caps matching output rows, rather than rows scanned by the web
@@ -13,6 +13,7 @@ server. --all remains a scripting compatibility alias. Per-request server bounds
 signed scope checks, stable monitoring watermarks and no partial output on failed
 collection remain enforced. Lists are observations over time, not atomic snapshots.
 No authority, grant, clock, storage or web-interface policy change is involved.
+CLI47bda3d deployed November12 at12:27Chicago; web/schema/services are unchanged.
 
 ## November9 deployed follow-up: notification consolidation
 

@@ -1,6 +1,7 @@
 # Complete examctl metadata lists
 
-November12: implemented and qualified locally; authorized deployment pending.
+November12: pushed and DEPLOYED on csc-sys at12:27:14Chicago /18:27:14UTC.
+Source47bda3da8c80775482faf7a1baa3c33c53400ae6; web remains ed09efc/schema37.
 Frozen CLI SHA256:03e3600ae5825f41274480e00d1d4f151ef0ed6d3f617fe02502f0d9e1132564.
 Evidence:var/collection-tests/complete-cli-lists.20261112/.
 
@@ -68,3 +69,20 @@ for the SAME qualified atomic replacement, with current candidate hash as expect
 old digest and the recorded old hash as expected new digest. Do not truncate the
 installed file, restore the database/state/configuration or restart any service.
 Recheck native guard and authenticated reads. No recovery is executed on success.
+
+Production acceptance passes: seven signed reads, five complete exam definitions,
+70midterm students and86midterm attempts, explicit one-row caps, --all JSONL
+compatibility and public readiness. All four loaded role PIDs/binaries, native
+configuration/worker unit and217native histories are preserved. One optional
+post-read idle guard observed a descendant; it had exited before the bounded
+read-only inspection, so its identity is unknown. The same unmodified guard then
+passed; no process was terminated and no guard was relaxed.
+
+Private stage:/var/tmp/ssh-exam-cli-lists-20261112-e649ac83-cli.
+Private recovery:/var/backups/ssh-exam/recording-storage-cli-4s_y12ol.
+Atomic installation1.07s; signed/public acceptance4.14s; maintenance0s. These are
+activation/acceptance measurements, excluding preceding development/qualification.
+The audited upload was15,871,873bytes; no recordings/media were copied. No database,
+web image, native service, student authority or grading utility was changed.
+The pre-existing loaded saved-work worker intentionally retains its previous
+binary inode/hash until a separately authorized restart. Deployment is complete.
