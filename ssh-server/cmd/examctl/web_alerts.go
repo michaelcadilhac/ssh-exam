@@ -22,7 +22,8 @@ credentials, SMTP-recipient override or native exam control. Help needs no root.
 
 list/show return bounded METADATA only, not raw mail bodies, student review text,
 terminal/media data or SMTP secrets. List is ordered by outbox UUID, not time;
-next is the exclusive --after cursor. Refresh with a NEW request ID. show names
+Lists fetch all pages automatically; --limit N caps returned messages (1..200).
+--after is an optional starting cursor. Refresh with a NEW request ID. show names
 the original episode ID/revision, resolution and latest ten manual reminders.
 Test/legacy notices without an episode cannot receive an episode reminder.
 
@@ -67,7 +68,7 @@ func webAlertsMain(args []string) int {
 	flags.SetOutput(os.Stderr)
 	config := flags.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := flags.String("request", "", "durable intent UUID")
-	limit := flags.Int("limit", 50, "page size 1..200")
+	limit := flags.Int("limit", 50, "maximum returned messages 1..200; default all")
 	after := flags.String("after", "", "outbox UUID cursor")
 	status := flags.String("status", "all", "delivery status filter")
 	revision := flags.String("revision", "", "reviewed episode revision")
@@ -127,5 +128,5 @@ func webAlertsMain(args []string) int {
 	default:
 		return usage("unsupported alert workflow")
 	}
-	return executeWeb(*config, *request, "alerts."+w[1], b, "")
+	return executeWeb(*config, *request, "alerts."+w[1], b, "", webListLimit(flags, *limit))
 }

@@ -57,7 +57,7 @@ func TestGrantNextActualSignedCLIAndTablePagination(t *testing.T) {
 				t.Error("next flag was not a typed true", body)
 			}
 			if mode == "pages" {
-				if body["limit"] != float64(1) {
+				if body["limit"] != float64(100) {
 					t.Error("page size changed", body)
 				}
 				if body["after"] == nil {
@@ -89,7 +89,7 @@ func TestGrantNextActualSignedCLIAndTablePagination(t *testing.T) {
 	mu.Lock()
 	mode = "pages"
 	mu.Unlock()
-	out, err, code = f.invoke("grants", "list", "midterm", "--next", "--all", "--limit", "1", "--format", "tsv", "--fields", "username,status")
+	out, err, code = f.invoke("grants", "list", "midterm", "--next", "--all", "--format", "tsv", "--fields", "username,status")
 	if code != 0 || err != "" || out != "username\tstatus\nstudent\tAVAILABLE\notherstudent\tPENDING_NATIVE\n" {
 		t.Fatal("filtered table pagination changed", code, out, err)
 	}

@@ -36,8 +36,9 @@ No browser session, separate token, root SSH or direct database editing.
 --config FILE      existing protected agent config; default /etc/exam-agent/agent.json
 --request UUID     durable intent; new by default. On a lost reply, retry SAME ID,
                    username and ORIGINAL password. Changed arguments refuse.
-                   Use a NEW ID for fresh list/show; old reads are cached snapshots.
---limit N          list page, default100, maximum200; --after is its exclusive cursor
+                   Use a NEW ID for fresh reads. Lists pin only their first page;
+                   later pages use fresh IDs. Lists are not atomic snapshots.
+--limit N          maximum returned names1..200; omitted returns all; --after is optional
 --password-stdin   read exact finite UTF-8 bytes until EOF from a pipe/private file.
                    NO trimming: a trailing newline is part of the password.
                    Maximum4096 input bytes and12..1024 UTF-16 code units, matching
@@ -81,7 +82,7 @@ func webAdministratorsMain(args []string) int {
 	flags.SetOutput(io.Discard) // Flag errors can contain a supplied secret value.
 	config := flags.String("config", "/etc/exam-agent/agent.json", "protected config")
 	request := flags.String("request", "", "durable intent UUID")
-	limit := flags.Int("limit", 100, "page size")
+	limit := flags.Int("limit", 100, "maximum returned names 1..200; default all")
 	after := flags.String("after", "", "exclusive username cursor")
 	stdin := flags.Bool("password-stdin", false, "exact finite private UTF-8 input")
 	usage := func() int {
@@ -122,6 +123,9 @@ func webAdministratorsMain(args []string) int {
 		body["username"] = words[2]
 	default:
 		return usage()
+	}
+	if op == "list" {
+		return executeWeb(*config, *request, "administrators.list", body, "", webListLimit(flags, *limit))
 	}
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Run examctl as root on the class server using its existing agent identity; see examctl web administrators help")

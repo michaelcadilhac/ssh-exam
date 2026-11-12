@@ -179,12 +179,13 @@ contents. These are timestamped SOURCE ATTESTATIONS, not live filesystem probes,
 availability leases, template selection, grant/Begin permission or migrations.
 Native exact verification remains required before Begin. No latest/deletion.
 
-List is a bounded live metadata page: --limit default 50, range 1..200. Pass next
-as exclusive --after NAME@HASH; keep --name stable. Not a complete snapshot/export.
+List returns all matching source attestations automatically; --limit N caps
+output (1..200). --after NAME@HASH is an optional starting cursor. Multi-page
+metadata is observed over time, not an atomic snapshot.
 Show requires the exact name and lowercase 64-hex hash, not an exam/attempt ID.
 Common --config FILE defaults to /etc/exam-agent/agent.json; --request UUID retains
-an original read snapshot. Use a NEW request ID for fresh metadata. Reads never
-query class files. Native templates list/show/verify remain separate/offline.
+the first read snapshot; later pages use fresh IDs. Use a NEW request ID or omit
+it for fresh metadata. Reads never query class files. Native templates list/show/verify remain separate/offline.
 
 To record/update an observation, run local templates verify then templates sync
 NAME HASH --reason TEXT on the class server. Sync verifies actual bytes in the
@@ -211,7 +212,7 @@ func webTemplatesMain(args []string) int {
 	config := f.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := f.String("request", "", "read request UUID")
 	name := f.String("name", "", "name filter")
-	limit := f.Int("limit", 50, "page size")
+	limit := f.Int("limit", 50, "maximum returned rows 1..200; default all")
 	after := f.String("after", "", "exclusive NAME@HASH cursor")
 	usage := func(message string) int {
 		fmt.Fprintln(os.Stderr, message+"; run examctl web templates help")
@@ -251,7 +252,7 @@ func webTemplatesMain(args []string) int {
 	default:
 		return usage("only list/show are supported; source confirmation uses local templates sync")
 	}
-	return executeWeb(*config, *request, "templates."+w[1], b, "")
+	return executeWeb(*config, *request, "templates."+w[1], b, "", webListLimit(f, *limit))
 }
 
 func templateSync(c core.Config, b core.TemplateCommand, request string) (any, error) {

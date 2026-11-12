@@ -155,8 +155,17 @@ rejected Docker: grading uses bwrap and transient resource limits, with direct
 `run --local DIRECTORY` on the class server or remote SSH mode. No real submissions
 have been graded during development/installation.
 
-`web exams/students/attempts/grants list --all` follows every page, including empty
-filtered pages. Repeated `--exam` selects multiple attempt histories. `--username`
+Ordinary `web … list` commands follow every page automatically, including empty
+filtered pages. This also covers templates, administrators, alerts, monitoring
+inventories/purges and grant review lists. `--all` remains accepted by the original
+scripting list commands for compatibility. `--limit N` intentionally returns at
+most N matching rows, across selected exams; it is no longer a server page size.
+Exact --username and repeated --exam filters also work without format flags.
+Its existing range is 1..200 (review lists 1..20; purge lists 1..100).
+The CLI retains bounded server requests and monitoring inventory watermarks.
+An explicit `--request` pins only the first page; subsequent pages use fresh IDs.
+Omit it and `--after` for a fresh full list. Legacy `--all` still rejects these
+two flags. Complete lists are observed over time, not atomic snapshots. Repeated `--exam` selects multiple attempt histories. `--username`
 matches one exact account; `--q` remains substring search. Use `--format
 json|jsonl|tsv|csv|table`, `--fields username,start,id,checksum` and optional
 `--no-header`. Fields use dot paths; explicitly absent fields refuse rather than

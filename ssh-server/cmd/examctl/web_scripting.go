@@ -32,12 +32,13 @@ func (s *scriptStrings) Set(v string) error { *s = append(*s, v); return nil }
 type scriptOptions struct {
 	config, request, format, fields, receipt, from, definition, errorFormat, input, output string
 	all, noHeader, resume                                                                  bool
+	rowLimit                                                                               int
 }
 
 func scriptingRequested(args []string) bool {
 	for _, arg := range args {
 		switch strings.SplitN(arg, "=", 2)[0] {
-		case "--all", "--format", "--fields", "--no-header", "--receipt", "--from-receipt", "--definition-from", "--resume", "--error-format", "--input":
+		case "--exam", "--username", "--all", "--format", "--fields", "--no-header", "--receipt", "--from-receipt", "--definition-from", "--resume", "--error-format", "--input":
 			return true
 		}
 	}
@@ -64,8 +65,12 @@ func scriptingHelp(w io.Writer) {
 explicit dot-separated metadata fields. TSV refuses control characters; null is
 empty. --no-header applies to tsv/csv/table. --username is an exact list filter;
 --q remains the dashboard substring search. Multiple --exam values apply to
-attempts. --all follows every cursor, including empty filtered pages, with fresh
-read IDs. Complete export is bounded to 10000 rows/32MiB; failure emits no partial
+attempts. Lists follow every cursor automatically, including empty filtered
+pages, with fresh read IDs. --all remains an accepted compatibility alias.
+--limit N returns at most N matching rows (1..200), across the selected exams.
+An explicit --request applies to the first page only; --after selects a starting
+cursor. Omit both for fresh complete results. Lists are bounded to 10000 rows/32MiB;
+failure emits no partial
 stdout. Multi-page data is metadata observed over time, not an atomic snapshot.
 
 Receipts are private, versioned metadata bound to agent/origin/verification key
@@ -152,7 +157,7 @@ func webScriptingMain(args []string) int {
 	f.BoolVar(&o.resume, "resume", false, "retry original durable intent")
 	var exams scriptStrings
 	f.Var(&exams, "exam", "attempt exam filter; repeat for multiple exams")
-	limit := f.Int("limit", 100, "page size 1..200")
+	limit := f.Int("limit", 100, "maximum returned rows 1..200; default all")
 	nextOnly := f.Bool("next", false, "list next permissions without cancelled/started history; grants list only")
 	after := f.String("after", "", "exclusive cursor")
 	username := f.String("username", "", "exact username")
@@ -259,9 +264,12 @@ func webScriptingMain(args []string) int {
 	}
 	if w[1] == "list" {
 		if *limit < 1 || *limit > 200 || (o.all && (*after != "" || o.request != "")) {
-			return bad("choose page size1..200; --all requires fresh reads without --after/--request")
+			return bad("choose --limit1..200; legacy --all requires fresh reads without --after/--request")
 		}
 		body["limit"] = *limit
+		if seen["limit"] {
+			o.rowLimit = *limit
+		}
 		if *after != "" {
 			body["after"] = *after
 		}
@@ -516,9 +524,7 @@ func webScriptingMain(args []string) int {
 	if o.resume && o.receipt == "" {
 		return bad("--resume requires a durable --receipt")
 	}
-	if len(exams) > 1 && !o.all {
-		return bad("multiple exams require --all so no page is silently omitted")
-	}
+
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		return scriptFail(o, "root_required", "not_sent", "run_as_root", errors.New("run examctl as root on the class server"))
 	}
@@ -534,7 +540,10 @@ func webScriptingMain(args []string) int {
 			}
 		}
 	}
-	if w[1] == "list" {
+	if w[1] == "list" || op == "grants.issue-list" {
+		if seen["limit"] {
+			o.rowLimit = *limit
+		}
 		return scriptExport(c, o, op, body, exams, *username)
 	}
 	if op == "grants.issue-confirm" {
@@ -606,6 +615,13 @@ func scriptValidatedCall(c core.Config, operation string, body any, request stri
 }
 
 func scriptValidateResult(agent, operation string, body any, raw json.RawMessage) error {
+	if operation == "administrators.list" {
+		input, ok := body.(map[string]any)
+		if !ok {
+			return errors.New("invalid administrator list body")
+		}
+		return validateAdministratorResult("list", input, raw)
+	}
 	for _, validate := range []func(string, any, json.RawMessage) error{validateExamResult, validateMonitoringResult, validateClockResult, validateInterruptionResult} {
 		if err := validate(operation, body, raw); err != nil {
 			return err
@@ -621,25 +637,26 @@ func scriptValidateResult(agent, operation string, body any, raw json.RawMessage
 }
 
 func scriptExport(c core.Config, o scriptOptions, operation string, body map[string]any, exams []string, username string) int {
-	key := strings.TrimSuffix(operation, ".list")
-	if key == "students" {
-		key = "students"
+	if o.receipt != "" {
+		return scriptFail(o, "usage", "not_sent", "use_export_output", errors.New("list exports use --output; receipts are for exact show/review/mutation operations"))
 	}
-	// A non-nil empty collection is a valid completed export. nil tells the
-	// formatter to derive a single operation row from its result envelope.
+	key := webListKey(operation)
 	rows := make([]map[string]any, 0)
-	var finalNext *string
-	var lastRequest string
 	started := time.Now().UnixMilli()
 	if len(exams) == 0 {
 		exams = []string{""}
 	}
-	seenExams, identities := map[string]bool{}, map[string]bool{}
+	seenExams := map[string]bool{}
+	// Reject duplicate scopes before making any request.
 	for _, exam := range exams {
 		if seenExams[exam] {
 			return scriptFail(o, "usage", "not_sent", "correct_arguments", errors.New("duplicate exam selection"))
 		}
 		seenExams[exam] = true
+	}
+	var next any
+	complete := true
+	for i, exam := range exams {
 		page := map[string]any{}
 		for k, v := range body {
 			page[k] = v
@@ -647,80 +664,33 @@ func scriptExport(c core.Config, o scriptOptions, operation string, body map[str
 		if exam != "" {
 			page["exam"] = exam
 		}
-		cursors := map[string]bool{}
-		for {
-			request := o.request
-			if request == "" {
-				request = core.ManagementID()
-			}
-			r, err := scriptValidatedCall(c, operation, page, request)
-			if err != nil {
-				return scriptManagementFailure(o, request, err)
-			}
-			var result map[string]json.RawMessage
-			if json.Unmarshal(r.Result, &result) != nil || result[key] == nil {
-				return scriptFail(o, "reply_schema", "unknown", "inspect_original", errors.New("list reply lacks its typed row collection"))
-			}
-			var part []map[string]any
-			if decodeScriptJSON(result[key], &part) != nil {
-				return scriptFail(o, "reply_schema", "unknown", "inspect_original", errors.New("invalid list rows"))
-			}
-			if err := validateScriptListRows(operation, page, part); err != nil {
-				return scriptFail(o, "reply_scope", "unknown", "new_export", err)
-			}
-			for _, row := range part {
-				if username != "" && row["username"] != username {
-					continue
-				}
-				identity, _ := row["id"].(string)
-				if operation == "students.list" {
-					identity, _ = row["username"].(string)
-				}
-				if operation == "exams.list" {
-					if e, ok := row["exam"].(map[string]any); ok {
-						identity, _ = e["id"].(string)
-					}
-				}
-				if identity == "" || identities[exam+"\x00"+identity] {
-					return scriptFail(o, "inconsistent_export", "not_changed", "new_export", errors.New("missing/duplicate identity in export"))
-				}
-				identities[exam+"\x00"+identity] = true
-				rows = append(rows, row)
-			}
-			var next *string
-			if raw, exists := result["next"]; !exists || json.Unmarshal(raw, &next) != nil {
-				return scriptFail(o, "reply_schema", "unknown", "new_export", errors.New("list reply lacks its next cursor"))
-			}
-			if next != nil && (*next == "" || *next <= stringField(page, "after")) {
-				return scriptFail(o, "cursor_cycle", "not_changed", "new_export", errors.New("non-advancing list cursor; no complete export inferred"))
-			}
-			finalNext, lastRequest = next, request
-			encoded, _ := json.Marshal(rows)
-			if len(rows) > scriptExportRows || len(encoded) > scriptExportBytes {
-				return scriptFail(o, "export_limit", "not_changed", "narrow_filter", errors.New("complete export exceeds10000 rows/32MiB; narrow the selection; no partial output"))
-			}
-			if !o.all || next == nil {
-				break
-			}
-			if *next == "" || cursors[*next] || page["after"] == *next {
-				return scriptFail(o, "cursor_cycle", "not_changed", "new_export", errors.New("repeated list cursor; no complete export inferred"))
-			}
-			cursors[*next] = true
-			page["after"] = *next
+		remaining := 0
+		if o.rowLimit > 0 {
+			remaining = o.rowLimit - len(rows)
+		}
+		request := o.request
+		if i > 0 {
+			request = ""
+		}
+		r, part, err := collectWebList(c, operation, page, request, remaining, username, true)
+		if err != nil {
+			return scriptManagementFailure(o, r.Request, err)
+		}
+		rows = append(rows, part...)
+		var value map[string]any
+		_ = decodeScriptJSON(r.Result, &value)
+		next = value["next"]
+		encoded, _ := json.Marshal(rows)
+		if len(rows) > scriptExportRows || len(encoded) > scriptExportBytes {
+			return scriptFail(o, "export_limit", "not_changed", "narrow_filter", errors.New("complete export exceeds10000 rows/32MiB; no partial output"))
+		}
+		if o.rowLimit > 0 && len(rows) >= o.rowLimit {
+			complete = next == nil && i == len(exams)-1
+			break
 		}
 	}
-	if o.all {
-		finalNext = nil
-	}
-	result, _ := json.Marshal(map[string]any{key: rows, "next": finalNext, "observed_from": started, "observed_until": time.Now().UnixMilli(), "atomic_snapshot": false, "source": "authenticated gateway metadata; native archive verification remains required"})
-	r := core.ManagementResult{Operation: operation, Confirmed: true, Result: result}
-	if len(exams) == 1 && !o.all {
-		r.Request = lastRequest
-	}
-	if o.receipt != "" {
-		return scriptFail(o, "usage", "not_changed", "use_export_output", errors.New("list exports use --output; receipts are for exact show/review/mutation operations"))
-	}
-	return scriptOutput(o, r, rows)
+	result, _ := json.Marshal(map[string]any{key: rows, "next": next, "complete": complete, "observed_from": started, "observed_until": time.Now().UnixMilli(), "atomic_snapshot": false, "source": "authenticated gateway metadata; native archive verification remains required"})
+	return scriptOutput(o, core.ManagementResult{Operation: operation, Confirmed: true, Result: result}, rows)
 }
 
 func scriptRows(r core.ManagementResult) ([]map[string]any, error) {

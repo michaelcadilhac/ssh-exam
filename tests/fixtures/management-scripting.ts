@@ -784,13 +784,10 @@ export async function qualifyScriptingCLI(
     catalogNames,
   );
   expect(dashboard.json().counts.students).toBe(70);
-  const listed = await get("students", [
-    "list",
-    catalogExam,
-    "--all",
-    "--limit",
-    "17",
-  ]);
+  const listed = await get("students", ["list", catalogExam]);
+  const limited = await get("students", ["list", catalogExam, "--limit", "17"]);
+  expect(limited.students.map((s: any) => s.username)).toEqual(catalogNames.slice(0, 17));
+  expect(limited.next).not.toBe(null);
   expect(listed.students.map((s: any) => s.username)).toEqual(catalogNames);
   expect(listed.next).toBe(null);
   for (const row of catalogHistory)
@@ -807,9 +804,6 @@ export async function qualifyScriptingCLI(
       await invoke("students", [
         "list",
         catalogExam,
-        "--all",
-        "--limit",
-        "17",
         "--format",
         format,
         "--fields",

@@ -1,3 +1,12 @@
+# Complete examctl listings — IMPLEMENTED/TESTED LOCALLY; DEPLOYMENT PENDING
+
+November12: ordinary metadata lists should retrieve all pages automatically;
+explicit --limit intentionally bounds returned matches. Keep --all compatibility,
+server request bounds, scope checks and no partial output on failure. All10actual CLI/TLS list entries, complete CLI races, build/vet/types, exact
+real-gateway/zsh workflow and atomic install/recovery qualification pass. Authorized
+CLI-only push/deploy is next. Website/native services and student records remain unchanged.
+Progress: docs/todo-current-checkpoint.md.
+
 # Grading dependency correction — LOCAL FIX AND PRIVATE REPORT VERIFIED; install pending
 
 November10: the original midterm comparison was invalid because sandbox awk

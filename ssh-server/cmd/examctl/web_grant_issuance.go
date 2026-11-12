@@ -27,7 +27,7 @@ func webGrantIssuanceMain(args []string) int {
 	latest := f.String("latest", "", "finite latest Begin RFC3339")
 	reason := f.String("reason", "", "audited NEW issuance reason")
 	revision := f.String("revision", "", "reviewed preview hash")
-	limit := f.Int("limit", 20, "recent review page size1..20")
+	limit := f.Int("limit", 20, "maximum returned reviews1..20; default all")
 	after := f.String("after", "", "exclusive recent-review cursor")
 	minutes := f.Int64("duration-minutes", 0, "explicit additional allowance minutes")
 	seconds := f.Int64("duration-seconds", 0, "explicit additional allowance seconds")
@@ -200,7 +200,7 @@ func webGrantIssuanceMain(args []string) int {
 	if invalid != "" {
 		return usage("--" + invalid + " is not valid for this issuance workflow")
 	}
-	return executeWeb(*config, *request, "grants."+w[1], body, "")
+	return executeWeb(*config, *request, "grants."+w[1], body, "", webListLimit(f, *limit))
 }
 
 type grantReplacementRef struct {

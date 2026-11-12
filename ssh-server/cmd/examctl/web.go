@@ -86,8 +86,8 @@ after a lost reply repeat the SAME arguments and --request UUID first.
 definitions with unfinished work remain visible for monitoring. show stays available.
 
 --config FILE  root agent configuration (default /etc/exam-agent/agent.json)
---limit N      list page size, default 100, range 1..200
---after EXAM   exclusive exam-ID cursor from a previous page's next field
+--limit N      maximum returned rows, range 1..200; omitted returns all
+--after EXAM   optional starting exam-ID cursor; normally unnecessary
 --request UUID durable intent ID; new by default. Retry a lost reply with the same
                ID/arguments; use a NEW ID for a fresh read, not a cached snapshot.
 --help         help without root or configuration
@@ -244,7 +244,7 @@ func webMain(args []string) int {
 	flags.SetOutput(os.Stderr)
 	config := flags.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := flags.String("request", "", "durable management request UUID")
-	limit := flags.Int("limit", 100, "page size")
+	limit := flags.Int("limit", 100, "maximum returned rows 1..200; default all")
 	after := flags.String("after", "", "exclusive exam-ID cursor")
 	name := flags.String("name", "Programming exam", "exam name")
 	template := flags.String("template", "", "installed template")
@@ -473,12 +473,12 @@ func webMain(args []string) int {
 	default:
 		return usage("unsupported exam workflow")
 	}
-	return executeWeb(*config, *request, operation, body, "")
+	return executeWeb(*config, *request, operation, body, "", webListLimit(flags, *limit))
 }
 
 // CSV output is requested only after an authenticated gateway result. An empty
 // output path keeps JSON; '-' streams CSV; a filename is exclusive/private.
-func executeWeb(config, request, operation string, body any, csvOutput string) int {
+func executeWeb(config, request, operation string, body any, csvOutput string, listLimit ...int) int {
 	if os.Getuid() != 0 || os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "Run examctl as root on the class server with its existing agent identity; see examctl web help")
 		return 1
@@ -504,6 +504,27 @@ func executeWeb(config, request, operation string, body any, csvOutput string) i
 		if input, ok := body.(map[string]any); ok {
 			fmt.Fprintln(os.Stderr, "Optimization intent ID:", input["requestID"])
 		}
+	}
+	if webListKey(operation) != "" {
+		total := 0
+		if len(listLimit) > 0 {
+			total = listLimit[0]
+		}
+		input, ok := body.(map[string]any)
+		if !ok {
+			fmt.Fprintln(os.Stderr, "Invalid metadata list body")
+			return 1
+		}
+		result, _, err := collectWebList(c, operation, input, request, total, "", false)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err, "; no partial output; retry a fresh list")
+			return 1
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+			fmt.Fprintln(os.Stderr, "List output incomplete:", err)
+			return 1
+		}
+		return 0
 	}
 	result, err := core.ManagementCall(c, operation, body, request)
 	if err != nil {

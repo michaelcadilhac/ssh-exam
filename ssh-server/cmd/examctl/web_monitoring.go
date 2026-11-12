@@ -44,10 +44,11 @@ Keep the printed --request and --intent for unknown replies; --intent defaults
 to the request ID. Same intent/arguments never requeues work; after a confirmed
 refusal deliberately use a new intent. Fresh show reads progress; an accepted
 receipt confirms the request only, not completed conversion or JPEG cleanup.
-list returns metadata only: default frames, 50 entries, range 1..200. Choose
-terminals to discover pane IDs for replay. Cursors are nonnegative safe integers;
---after requires the first page's --through watermark. Keep both when paging;
-new captures after that watermark require a fresh list. No screenshot bytes in list.
+list returns all metadata automatically: default frames; choose terminals to
+discover pane IDs for replay. --limit N caps returned entries (1..200). The CLI
+keeps the first inventory watermark while fetching pages; later captures require
+a fresh list. Advanced --after requires --through. No screenshot bytes in list.
+purges also returns all matches by default; --limit N caps entries (1..100).
 
 image reads ONE listed FRAME UUID belonging to ATTEMPT. It returns the original
 or video-derived JPEG (maximum 1,500,000 bytes); --thumbnail selects its derived JPEG (maximum 2 MiB).
@@ -181,7 +182,7 @@ func webMonitoringMain(args []string) int {
 	config := f.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := f.String("request", "", "durable management UUID")
 	section := f.String("section", "frames", "frames or terminals")
-	limit := f.Int("limit", 50, "metadata page size")
+	limit := f.Int("limit", 50, "maximum returned metadata rows; default all")
 	after := f.String("after", "", "list numeric cursor or purge inventory attempt ID")
 	status := f.String("status", "", "purge job state filter")
 	through := f.Int64("through", 0, "first page watermark")
@@ -314,7 +315,7 @@ func webMonitoringMain(args []string) int {
 	if w[1] == "purge-status" {
 		operation = "monitoring.purge"
 	}
-	return executeWeb(*config, *request, operation, b, *output)
+	return executeWeb(*config, *request, operation, b, *output, webListLimit(f, *limit))
 }
 
 // Validate scope and byte boundaries before printing private data or creating a

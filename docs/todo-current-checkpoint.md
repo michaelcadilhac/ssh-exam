@@ -1,37 +1,32 @@
-# Current checkpoint — navigation DEPLOYED; grading report CORRECTED
+# Current checkpoint — complete CLI listings QUALIFIED LOCALLY
 
-Navigation releaseed09efc/schema37 remains ONLINE, imageConfig1070db5eb056,
-deployed November10,11:22:26Chicago. Public/assets/preservation/CLI/native-role
-acceptance is complete; maintenance69.47s, no native restart/student interruption.
-Evidence:docs/navigation-protection.md and
-var/collection-tests/navigation-protection.20261109/ops/.
+Current milestone: ordinary `examctl web … list` returns every matching metadata
+row without `--all`; explicit `--limit` caps returned matches. Preserve signed
+scope validation, bounded requests, cursor/watermark handling and no partial
+stdout on failure. `--all` remains accepted by existing scripts.
 
-November10 grade correction complete. Previous85-point ceiling was caused by
-awk resolving through /etc/alternatives hidden inside bwrap. The local runner
-binds its resolved executable privately, probes it and other tools inside, and
-rejects swallowed missing-tool diagnostics even with TOTAL/exit0. Seven actual
-bwrap/systemd checks, types and Python/zsh syntax pass. Root DynamicUser full-
-mark probe and84same archived submissions rerun pass; zero infrastructure errors,
-verified checksums/official totals/cleanup and no remaining owned units. Initial
-private staging permission refusal preserved before successful root probe.
+Plan: (1) integrate all existing list entry points and focused actual CLI/TLS
+regressions; (2) run CLI races/build/vet and qualify the exact atomic installer;
+(3) commit/push, inventory and back up the installed CLI, atomically replace only
+examctl, then verify complete/bounded authenticated reads and unchanged loaded
+services/history. No web deployment, native restart, grading-helper installation
+or student-record changes. Push/deploy explicitly authorized November12.
 
-70-row CSV regenerated from the unchanged official grader and SAME frozen source
-selection: latest COMPLETED midterm/midterm-recovery before November1,00:00Chicago
-and as of November10,11:25:48Chicago. No completed submission=0 (20before/17now).
-Eleven latest attempts are100. X=G1+max(0,G2-G1)/2; independent SQL-selection, exact
-decimal/formula, lower/equal/higher/fractional/zero cases pass. No student record,
-grade import, clock, permission, configuration or service changes.
+Acceptance: default lists cross empty/full pages; explicit limits count matches;
+filters and monitoring watermarks survive; repeated cursors, wrong scope and
+later-page failures emit no partial results. Every request stays bounded.
+Status: integrated and qualified locally. All10actual CLI/TLS list entry points,
+empty/exact filters, explicit limits, later-page refusal/privacy/cursor failures,
+and multi-exam fresh IDs pass. Complete CLI race suite31.45s, vet/build/types,
+exact-binary real gateway/zsh12.73s and namespace atomic install/recovery pass.
+Frozen candidate SHA256:03e3600ae5825f41274480e00d1d4f151ef0ed6d3f617fe02502f0d9e1132564.
+Next: commit/push, refresh native guard pins, stage audited bundle and install
+only CLI with existing atomic procedure; then signed reads/public health/unchanged
+roles-history acceptance. Installed CLI is still unchanged. Details/evidence:
+docs/complete-cli-lists.md; var/collection-tests/complete-cli-lists.20261112/.
 
-Private result:var/grade-reports/midterm-comparison-20261110-e6d2b5e9d9/midterm-comparison.csv
-SHA25698229c67a31bccf670d3be47fa302f1657442a97239fad4c11b334259c740b96.
-Same private directory retains repair manifest, corrected audit, final verification,
-invalid original backups and builder. Corrected host candidate and reports:
-/var/tmp/ssh-exam-midterm-regrade-20261110-8ef94a0ca2. Installed grading utilities
-remain UNCHANGED/need repair. Local examples/grade-midterm.zsh and
-examples/grading-sandbox.py plus focused tests/docs are committed locally; do not push/install without
-instruction. No grading data enters Git.
-
-The current user's report question and corrected CSV are complete. Future
-installation of the two grading files remains a separate task; no app deploy.
-Original10dirty documentation screenshots preserved. Unrelated saved-work idle
-task:null diagnostic remains in TODO.
+Earlier navigation release ed09efc/schema37 remains deployed. Corrected private
+70-row grade comparison and local grading-helper fix cb58259 are complete; the
+helper installation is a separate pending task. Original ten dirty documentation
+screenshots are preserved. Detailed earlier evidence is in navigation-protection.md
+and offline-midterm-grading.md. No open policy decision for this CLI milestone.

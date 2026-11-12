@@ -15,13 +15,13 @@ import (
 )
 
 func webGrantsHelp(out io.Writer) {
-	fmt.Fprintln(out, `Usage: sudo examctl web grants list EXAM [--next] [--username USER] [--limit 100] [--after UUID]
+	fmt.Fprintln(out, `Usage: sudo examctl web grants list EXAM [--next] [--username USER] [--limit N] [--after UUID]
        sudo examctl web grants show GRANT_UUID [--before REVISION]
        sudo examctl web grants revise GRANT_UUID --revision N --reason TEXT SETTINGS
        sudo examctl web grants revoke GRANT_UUID --revision N --reason TEXT
        sudo examctl web grants issue-preview EXAM USER... --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT
        sudo examctl web grants issue-show PREVIEW_UUID
-       sudo examctl web grants issue-list EXAM [--limit 20 --after REVIEW_UUID]
+       sudo examctl web grants issue-list EXAM [--limit N] [--after REVIEW_UUID]
        sudo examctl web grants issue-confirm PREVIEW_UUID --revision REVIEW_HASH
        sudo examctl web grants issue-cancel PREVIEW_UUID --revision REVIEW_HASH
        sudo examctl web grants additional-preview EXAM USER... --duration-minutes N --definition-revision HASH --template-version HASH --earliest RFC3339 --latest RFC3339 --reason TEXT [--webcam required|off]
@@ -46,8 +46,8 @@ replacement. Started deadlines, history and account holds remain protected.
 Use issue-show/confirm/cancel for the reviewed result. Its finite window may lie
 outside exam defaults; the latest saved attempt's webcam setting is copied unless
 overridden. With no attempt history, legacy enrollment/exam settings are used.
-issue-list shows this authenticated actor's recent requests, with an exclusive
-cursor for earlier pages. Use --format table --fields id,status,created to inspect
+issue-list returns all this authenticated actor's reviews automatically;
+--limit N returns at most N reviews (1..20). Use --format table --fields id,status,created to inspect
 them without parsing JSON; issue-show retrieves the selected complete review.
 Detailed review exports support username,replacement_count,replacement_refs;
 confirmation exports also support grant,replaced_count,replaced_refs. References
@@ -135,7 +135,7 @@ Current clocks/holds/protected submissions never change.
 First verified preparation binds the Unix UID in retained claim history. A UID
 change, even after cancellation, needs reviewed NEW authorization, not rebinding.
 
-list is paginated (1..200).
+Lists return all matches automatically; --limit N caps output (1..200).
 --next lists AVAILABLE/PENDING_NATIVE permissions without cancelled/started
 history. It includes closed dates and claimed setups so you can inspect them;
 this filter does not prove editability or authorize starting. Omit --next for
@@ -205,7 +205,7 @@ func webGrantsMain(args []string) int {
 	config := flags.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := flags.String("request", "", "durable intent UUID")
 	username := flags.String("username", "", "enrolled username filter")
-	limit := flags.Int("limit", 100, "page size")
+	limit := flags.Int("limit", 100, "maximum returned rows 1..200; default all")
 	nextOnly := flags.Bool("next", false, "list next permissions without cancelled/started grant history")
 	after := flags.String("after", "", "exclusive grant cursor")
 	before := flags.Int64("before", 0, "history before revision")
@@ -364,7 +364,7 @@ func webGrantsMain(args []string) int {
 			return usage("flag --" + name + " is not valid for this workflow")
 		}
 	}
-	return executeWeb(*config, *request, "grants."+op, b, "")
+	return executeWeb(*config, *request, "grants."+op, b, "", webListLimit(flags, *limit))
 }
 
 type grantWorkResult struct {

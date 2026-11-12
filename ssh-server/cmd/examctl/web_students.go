@@ -13,7 +13,7 @@ import (
 )
 
 func webStudentsHelp(out io.Writer) {
-	fmt.Fprintln(out, `Usage: sudo examctl web students list EXAM [--limit 100] [--after USER]
+	fmt.Fprintln(out, `Usage: sudo examctl web students list EXAM [--limit N] [--after USER]
        sudo examctl web students add EXAM USER [--duration-minutes N|inherit] [--webcam required|off|inherit] [DATES] [--definition-revision HASH]
        sudo examctl web students settings EXAM USER... SETTINGS
        sudo examctl web students remove EXAM USER --confirm USER
@@ -92,7 +92,7 @@ Lost reply: repeat identical arguments with the printed --request UUID and fresh
 nonce. Different intent: use a NEW ID. A new ID is also needed for refreshed reads.
 List and export use the same exam student list as the dashboard, including saved
 attempt/permission history. Being listed alone grants no permission or clock.
-List defaults to 100 rows, max 200; next is an exclusive username cursor. Other
+List returns all students automatically; --limit N caps output (1..200). Other
 inspection/mutation results are confirmed JSON, not proof of native execution.
 
 Examples:
@@ -104,7 +104,7 @@ Examples:
   sudo examctl web students remove midterm student01 --confirm student01
 
 Exit status: 0 confirmed result, 1 refusal/operational failure, 2 invalid syntax.`)
-	fmt.Fprintln(out, "Complete shell-friendly exports: examctl help scripting (--all/--format/--fields/--username).")
+	fmt.Fprintln(out, "Lists return all matches; --limit N caps output. Shell formats: examctl help scripting (--format/--fields/--username).")
 }
 
 func webStudentsMain(args []string) int {
@@ -116,7 +116,7 @@ func webStudentsMain(args []string) int {
 	flags.SetOutput(os.Stderr)
 	config := flags.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := flags.String("request", "", "durable intent UUID")
-	limit := flags.Int("limit", 100, "page size")
+	limit := flags.Int("limit", 100, "maximum returned rows 1..200; default all")
 	after := flags.String("after", "", "username cursor")
 	duration := flags.String("duration-minutes", "", "whole minutes or inherit")
 	webcam := flags.String("webcam", "", "required/off/inherit (optional is a compatibility alias for off)")
@@ -291,7 +291,7 @@ func webStudentsMain(args []string) int {
 		}
 		b["text"], b["mode"] = string(text), *mode
 	}
-	return executeWeb(*config, *request, "students."+w[1], b, csv)
+	return executeWeb(*config, *request, "students."+w[1], b, csv, webListLimit(flags, *limit))
 }
 
 // Old gateways accepted these operations but discarded unknown fields. Never

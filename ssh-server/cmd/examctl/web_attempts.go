@@ -9,7 +9,7 @@ import (
 )
 
 func webAttemptsHelp(out io.Writer) {
-	fmt.Fprintln(out, `Usage: sudo examctl web attempts list EXAM [--view VIEW] [--q USER] [--limit 100] [--after ATTEMPT]
+	fmt.Fprintln(out, `Usage: sudo examctl web attempts list EXAM [--view VIEW] [--q USER] [--limit N] [--after ATTEMPT]
        sudo examctl web attempts show ATTEMPT
 
 Read bounded current gateway attempt metadata through the existing signed root
@@ -21,9 +21,10 @@ list requires the exam ID; show takes the attempt ID from list, not an exam ID.
 VIEW: all (default), working, attention, secured, camera, no-camera, PREPARING,
 ACTIVE, LOCKED, FINALIZING, COMPLETED, COLLECTION_FAILED, CANCELLED_BEFORE_START.
 --q is the same username LIKE search as the dashboard (max 64 characters).
-limit bounds SCANNED rows (1..200); filtered pages may be empty with next set.
+Lists return all matching attempts automatically, including across empty filtered
+pages. --limit N returns at most N matches (1..200), not N scanned rows.
 --after is an exclusive attempt-ID cursor, ordered by ID, not start time. Keep
-the same exam/search/view while paging; start a fresh list for a new snapshot.
+the same exam/search/view if supplying it; omit it for the complete list.
 
 Output identifies gateway metadata, not fresh native verification. It includes
 frozen settings, current/original clocks, revision, current presence and pending
@@ -40,8 +41,9 @@ web attempts show SOURCE-ATTEMPT. Unused availability is separate from attempts;
 use web grants list EXAM --username USER, not the attempt state, to inspect it.
 
 Common flags: --config FILE (default /etc/exam-agent/agent.json), --request UUID.
-Use a NEW request ID for fresh reads. Reusing an ID intentionally returns its
-original snapshot. Missing/conflicting/offline results do not imply current state.
+Omit --request or use a NEW ID for fresh reads. For lists, it pins only the first
+page; subsequent pages use fresh IDs. Lists are not atomic snapshots.
+Missing/conflicting/offline results do not imply current state.
 Next: examctl web clocks help for reset/extend/default-batch/intent inspection.
 
 Examples:
@@ -63,7 +65,7 @@ func webAttemptsMain(args []string) int {
 	flags.SetOutput(os.Stderr)
 	config := flags.String("config", "/etc/exam-agent/agent.json", "root configuration")
 	request := flags.String("request", "", "durable read request UUID")
-	limit := flags.Int("limit", 100, "scanned page size")
+	limit := flags.Int("limit", 100, "maximum returned matches 1..200; default all")
 	after := flags.String("after", "", "attempt-ID cursor")
 	view := flags.String("view", "all", "dashboard view")
 	query := flags.String("q", "", "username LIKE search")
@@ -110,5 +112,5 @@ func webAttemptsMain(args []string) int {
 	default:
 		return usage("unsupported attempt inspection workflow")
 	}
-	return executeWeb(*config, *request, "attempts."+w[1], b, "")
+	return executeWeb(*config, *request, "attempts."+w[1], b, "", webListLimit(flags, *limit))
 }
