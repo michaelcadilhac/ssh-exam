@@ -143,3 +143,46 @@ Open choice: a nearby US runtime (preferred) versus keeping France administratio
 and developing the larger regional service. Host capacity/availability must be
 reviewed before implementation. No promise of a completion time or deployment
 readiness follows from this investigation.
+
+## csc-sys hosting feasibility: read-only inventory, November12
+
+The instructor proposed pointing the existing public hostname at csc-sys and
+adding a dedicated nginx virtual host. This is feasible in principle; no migration
+or installation has been authorized/executed. Read-only host evidence is in
+var/collection-tests/csc-web-feasibility.20261112/.
+
+Ubuntu24.04.4/x86-64 has4CPUs,7.7GiB RAM (5.2GiB available at inspection) and
+53.7GiB free on /var. These are snapshots, not load-test acceptance. Nginx1.24
+already serves HTTPS sites csc-sys.cdm.depaul.edu and mc.cdm.depaul.edu, and the
+existing exam relay remains on loopback9082. Loopback3000/3001 are not listening.
+A new hostname-specific HTTPS virtual host can proxy to an isolated app on3001
+without replacing the existing sites or relay. It needs a valid certificate for
+ssh-exam.cadilhac.name; the university hostname certificate is not sufficient.
+
+The current supported app recipe is a non-root Docker image/Compose service.
+Docker Engine, Compose, Podman and host Node are not installed; systemd-nspawn
+and certbot are available. Installing Docker/Compose would reuse the present
+application packaging/controller. Nspawn could host the application but needs a
+different qualified installation/update/recovery procedure. No package was
+installed or missing executable invoked. Node/FFmpeg are already in the app image.
+
+The current Compose limits are4GB/4CPUs. Those cannot be adopted blindly on this
+shared4CPU/8GiB host: qualify smaller bounded allocations, protect native roles
+and representative GCC/GDB work, and upgrade resources if acceptance fails.
+Container isolation does not remove shared-kernel, disk or host failure risks.
+
+Native callbacks use the unchanged public HTTPS origin. The running agent and
+watchdog have an HTTPS proxy; the agent has no NO_PROXY, and the watchdog/CLI
+bypasses cover only loopback names/addresses. Configure and qualify a local HTTPS
+route for the public hostname, including proxy bypass, so same-host callbacks do
+not depend on external DNS/NAT/proxy traversal. Preserve TLS/signatures/origin,
+not an unauthenticated HTTP shortcut. Account for live connection pools and any
+required drained native configuration reload during the migration rehearsal.
+
+Before DNS changes: stage and test the isolated app, configure dedicated HTTPS
+and local callbacks, arrange SMTP (marco's Unix socket cannot be copied as a live
+mail endpoint), prepare verified current data/keys, then perform a drained
+single-writer cutover. Update A and any AAAA routing consistently. Keep the old
+runtime fenced while DNS caches settle. Preserve all newer records on recovery;
+never reopen two independently writable databases. Nothing was started, restarted,
+installed or modified on either production host during this feasibility check.
