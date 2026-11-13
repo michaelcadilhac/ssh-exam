@@ -222,6 +222,48 @@ class FastUI(unittest.TestCase):
         self.assertEqual(self.history(),before);self.assertEqual(self.current,self.new['config_id'])
         self.assertEqual(result['video_pause']['status'],'RELEASED');self.assertTrue(self.running)
 
+    def containerd_engine(self):
+        original = self.command
+        identities = {image['config_id']: 'sha256:'+hashlib.sha256(('manifest:'+image['config_id']).encode()).hexdigest()
+                      for image in (self.old, self.new)}
+        def command(arguments, timeout=30):
+            result = original(arguments, timeout)
+            args = [str(value) for value in arguments]
+            if args[:3] == ['/usr/bin/docker', 'image', 'inspect']:
+                rows = json.loads(result)
+                for value in rows:
+                    value['Id'] = identities[value['Id']]
+                    value['Descriptor'] = {'digest': value['Id'], 'mediaType': 'application/vnd.oci.image.manifest.v1+json'}
+                return json.dumps(rows)
+            if args[:2] == ['/usr/bin/docker', 'inspect']:
+                rows = json.loads(result)
+                for value in rows:
+                    value['Image'] = identities.get(value['Image'], value['Image'])
+                return json.dumps(rows)
+            return result
+        self.command = command
+        def export(identity, config):
+            image = next(image for image in (self.old, self.new) if image['config_id'] == config)
+            self.assertEqual(identity, identities[config])
+            return {'rootfs': {'diff_ids': image['layers']}}
+        return patch.object(deploy.docker_image_identity, 'exported_config', side_effect=export)
+
+    def test_containerd_public_prepare_apply_preserves_current_authority(self):
+        before = self.history()
+        with self.containerd_engine() as export:
+            self.cli('prepare'); result, _ = self.cli('apply'); self.cli('resume')
+        self.assertEqual(result['phase'], 'ONLINE'); self.assertEqual(self.history(), before)
+        self.assertEqual(export.call_count, 2)
+        self.assertEqual(len(list(self.state.glob('image-identity-*.json'))), 2)
+
+    def test_containerd_failed_start_rollback_uses_verified_previous_tag(self):
+        before = self.history()
+        with self.containerd_engine():
+            self.cli('prepare'); self.fail_start = True; self.cli('apply', expect=1)
+            self.cli('rollback'); result, _ = self.cli('reopen')
+        self.assertEqual(result['phase'], 'ONLINE_ROLLED_BACK'); self.assertEqual(self.history(), before)
+        self.assertIn('EXAM_IMAGE='+self.old['tag'], self.environment.read_text())
+
     def capture_reader(self):
         self.recording_reader()
         self.release['fast_ui'].update(reviewed_scope='binary-vp9-capture-v1',previous_reader_policy_compatible=False)
@@ -254,7 +296,7 @@ class FastUI(unittest.TestCase):
     def test_capture_reader_forward_resume_refuses_an_unknown_running_image_without_stopping_it(self):
         self.capture_reader();self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)
         self.current='sha256:'+'7'*64;self.running=True;stops=len(self.stopped_calls())
-        _,error=self.cli('resume',expect=1);self.assertIn('Unknown forward-recovery image',error)
+        _,error=self.cli('resume',expect=1);self.assertIn('Container image is outside the qualified old/new image cohort',error)
         self.assertEqual(len(self.stopped_calls()),stops);self.assertTrue(self.running)
 
     def test_capture_reader_refuses_compatible_old_writer_attestation_before_pause(self):
@@ -697,6 +739,11 @@ class FastUI(unittest.TestCase):
         (self.bundle/'release.json').write_text(json.dumps(self.release))
 
     def actual_idle_sql(self):
+        for name, source in (('image-assets.json', self.bundle/'image-assets.json'),
+                             ('previous-image-assets.json', self.old_assets)):
+            target = self.state/name
+            if not target.exists():
+                target.write_bytes(source.read_bytes())
         original = self.command
         def query(arguments, timeout=30):
             args = [str(value) for value in arguments]
@@ -704,7 +751,11 @@ class FastUI(unittest.TestCase):
                 return original(arguments, timeout)
             text = io.StringIO()
             def host(arguments, **unused):
-                return json.dumps([{'Image':self.current,'State':{'Running':False}}]) if arguments[0]=='docker' else 'inactive\n'
+                if Path(str(arguments[0])).name == 'docker':
+                    if [str(v) for v in arguments[1:3]] == ['image', 'inspect']:
+                        return original(arguments)
+                    return json.dumps([{'Image':self.current,'State':{'Running':False}}])
+                return 'inactive\n'
             connections=[]; connect=sqlite3.connect
             def observed_connection(*values,**options):
                 connection=connect(*values,**options);connections.append(connection);return connection

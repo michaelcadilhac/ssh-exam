@@ -2,8 +2,14 @@ from pathlib import Path
 import datetime,hashlib,json,os,sqlite3,subprocess,time,urllib.request,sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import deployment_pause
+import docker_image_identity
 stage=Path(sys.argv[1]); release=json.loads((stage/'release.json').read_text()); settings=release['fast_ui']
 root=Path(settings['project'])
+def inspect_container():
+ def command(args):return subprocess.check_output(args,text=True,timeout=15)
+ value=json.loads(command(['docker','inspect','ssh-exam-app-1']))[0]
+ expected=[json.loads((stage/name).read_text())['release_image'] for name in ('image-assets.json','previous-image-assets.json')]
+ return docker_image_identity.container(command,value,expected,stage)
 expected_schema=int(sys.argv[2]);assert expected_schema == release['schema'] == release['old_schema']
 assert len(sys.argv) in (3,4) and (len(sys.argv)==3 or sys.argv[3]=='stopped')
 stopped=len(sys.argv)==4
@@ -66,7 +72,7 @@ if stopped:
  # applies. A stopped gateway cannot publish fresh callbacks; its caller MUST
  # also obtain the independent fresh pinned native guard before using this proof.
  db.rollback();db.close()
- container=json.loads(subprocess.check_output(['docker','inspect','ssh-exam-app-1'],timeout=15))[0]
+ container=inspect_container()
  assert not container['State']['Running'],'Unknown running gateway; do not take it over'
  assert subprocess.check_output(['systemctl','show','ssh-exam.service','-p','ActiveState','--value'],text=True,timeout=15).strip()=='inactive'
  print(json.dumps({'guard':'PASS','scope':'STOPPED','counts':counts,'video_pause':{'owned':pause,'stable_backlog':allowed_video} if present else None,'attempts':historical,'history_sha256':history_hash,'image':container['Image'],'fresh_native_guard_required':True,'production_writes':False}),flush=True)
@@ -75,7 +81,7 @@ snapshot=json.loads(db.execute('SELECT payload FROM agent_snapshot WHERE agent=?
 h=snapshot['health'];roles=h['native_roles'];age=now-roles['observed']
 assert h['production_ready'] and roles['complete'] and roles['retained_enabled'] and not h.get('missing') and -1000<=age<120000
 db.rollback();db.close()
-container=json.loads(subprocess.check_output(['docker','inspect','ssh-exam-app-1'],timeout=15))[0]
+container=inspect_container()
 assert container['State']['Running'] and container['State']['Health']['Status']=='healthy'
 assert container['Config']['User']=='10001:10001' and container['HostConfig']['ReadonlyRootfs'] and container['HostConfig']['CapDrop']==['ALL']
 pending=[container['State']['Pid']];pids=[];inodes=set()

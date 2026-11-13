@@ -47,6 +47,7 @@ import uuid
 
 from shared_backup import atomic_json, digest, monitoring_copy_scratch, private_directory, signature, sync_directory
 import deployment_pause
+import docker_image_identity
 import public_reopen_readiness
 
 SCRIPTS = Path(__file__).resolve().parent
@@ -346,7 +347,23 @@ class Rollout:
         return {'monitoring_files': files, 'already_recoverable_bytes': total, 'new_media_bytes_required': 0}
 
     def inspect_image(self, identity):
-        return json.loads(command(['/usr/bin/docker', 'image', 'inspect', identity]))[0]
+        for expected in self.expected_images():
+            if identity in (expected['config_id'], expected['tag']):
+                return docker_image_identity.inspect(command, expected, self.state)
+        raise ValueError('Image is outside the qualified old/new image cohort')
+
+    def expected_images(self):
+        previous = self.state/'previous-image-assets.json'
+        if not previous.exists():
+            previous = Path(self.settings['previous_image_assets'])
+        old = json.loads(previous.read_text())['release_image']
+        if old['config_id'] != self.release['old_image_config_id']:
+            raise ValueError('Previous asset manifest differs from the qualified Config digest')
+        return [self.image, old]
+
+    def inspect_container(self):
+        value = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        return docker_image_identity.container(command, value, self.expected_images(), self.state)
 
     def prepare(self, bundle):
         if self.record['phase'] != 'PREPARING':
@@ -458,7 +475,8 @@ class Rollout:
             command(arguments+(['--fence'] if fenced else []))
         sync_directory(self.state)
         inputs = [self.state/name for name in ('release.json', 'image-assets.json', 'previous-image-assets.json', 'previous-image.tar', 'normal.conf', 'fenced.conf', 'configuration.json')]
-        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'public_reopen_readiness.py')]
+        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'docker_image_identity.py', 'public_reopen_readiness.py')]
+        inputs += sorted(self.state.glob('image-identity-*.json'))
         if self.matched_native():
             inputs.append(SCRIPTS/'fresh_native_cohort_guard.py')
         inputs += [OPS/name for name in ('inventory-web.py', 'preservation.py', 'qualify-old-workers.py')]
@@ -534,7 +552,7 @@ class Rollout:
 
     def stopped(self):
         command(['/usr/bin/systemctl', 'stop', 'ssh-exam.service'], timeout=75)
-        container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        container = self.inspect_container()
         if container['State']['Running']:
             raise ValueError('Gateway still running; no stopped snapshot is authorized')
 
@@ -652,7 +670,7 @@ class Rollout:
         deadline = time.monotonic()+120
         while True:
             try:
-                container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+                container = self.inspect_container()
                 roles = self.roles()
                 if (container['State']['Running'] and container['State']['Health']['Status'] == 'healthy'
                         and container['Image'] == image and roles['complete'] and roles['retained_enabled']
@@ -767,7 +785,7 @@ class Rollout:
             self.inputs_unchanged(); self.configuration_unchanged(); self.coverage(); self.capacity(); self.native()
             if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
                 raise ValueError('Forward recovery requires the owned admission fence')
-            container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+            container = self.inspect_container()
             if container['Image'] not in (self.release['old_image_config_id'], self.image['config_id']):
                 raise ValueError('Unknown forward-recovery image; do not replace or interrupt it')
             guard = self.inventory(stopped=not container['State']['Running'])
@@ -799,7 +817,7 @@ class Rollout:
                     raise ValueError('Matched transition requires the exact admission fence')
                 self.native(after=True)
                 receipt, checksum = self.transition()
-                container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+                container = self.inspect_container()
                 guard = self.inventory(stopped=not container['State']['Running'])
                 if guard['history_sha256'] != self.record['guard']['history_sha256'] or guard['attempts'] != self.record['guard']['attempts']:
                     raise ValueError('CURRENT web history changed during the native transition')
@@ -825,7 +843,7 @@ class Rollout:
         if self.env.read_bytes() != (self.state/'environment-before').read_bytes():
             raise ValueError('Image selection changed; preserve state and inspect before retrying')
         if self.record['phase'] == 'FENCED':
-            container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+            container = self.inspect_container()
             if not container['State']['Running']:
                 if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
                     raise ValueError('Stopped admission fence changed; preserve state before retrying')
@@ -859,7 +877,7 @@ class Rollout:
         self.inputs_unchanged()
         if ('backup' not in self.record and self.record['phase'] == 'STOPPED'
                 and (self.state/'snapshot/snapshot.json').is_file()):
-            container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+            container = self.inspect_container()
             if container['State']['Running']:
                 raise ValueError('Unknown running gateway after crash; do not stop it without a fresh drain')
             backup = self.snapshot('snapshot')
@@ -871,7 +889,7 @@ class Rollout:
         if self.site.read_bytes() != (self.state/'fenced.conf').read_bytes():
             raise ValueError('Admission fence changed; preserve current work and reinventory before rollback')
         self.native(); self.preserved()
-        container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        container = self.inspect_container()
         guard = self.inventory(stopped=not container['State']['Running'])
         if guard['image'] not in (self.release['old_image_config_id'], self.image['config_id']):
             raise ValueError('Unknown running image; do not stop it or take over its work')
@@ -879,7 +897,7 @@ class Rollout:
             self.stopped()
         self.snapshot('rollback-current-snapshot')
         self.inspect_image(self.release['old_image_config_id'])
-        old_tag = self.release['old_image_config_id']
+        old_tag = self.expected_images()[1]['tag']
         self.save('ROLLING_BACK')
         proof = self.start(self.release['old_image_config_id'], old_tag)
         self.native()
@@ -917,13 +935,13 @@ class Rollout:
         self.inputs_unchanged(); self.configuration_unchanged()
         if (self.project/'deploy/config/config.json').read_bytes() != (self.state/'application-config-before.json').read_bytes():
             raise ValueError('Online application configuration changed; reinventory without stopping work')
-        tag = self.image['tag'] if image == self.image['config_id'] else self.release['old_image_config_id']
+        tag = self.image['tag'] if image == self.image['config_id'] else self.expected_images()[1]['tag']
         expected = selected_env((self.state/'environment-before').read_bytes(), tag)
         if image == self.release['old_image_config_id'] and self.env.read_bytes() == (self.state/'environment-before').read_bytes():
             expected = self.env.read_bytes()
         if self.env.read_bytes() != expected:
             raise ValueError('Online image selection changed; reinventory without stopping work')
-        container = json.loads(command(['/usr/bin/docker', 'inspect', 'ssh-exam-app-1']))[0]
+        container = self.inspect_container()
         if (container['Image'] != image or not container['State']['Running']
                 or container['State']['Health']['Status'] != 'healthy'
                 or container['Config']['User'] != '10001:10001'
