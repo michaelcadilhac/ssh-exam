@@ -1,36 +1,39 @@
-# Current checkpoint — csc-sys import COMPLETE; website IN MAINTENANCE
+# Current checkpoint — csc-sys ONLINE; activation complete
 
-Instructor authorized certificate, separate nginx virtual host, then complete
-configuration/data import. Subsequent instruction: correct agent-created test/
-verification mistakes autonomously; stop for genuine operation/guard failures.
+November12,19:25:21America/Chicago /November13,01:25:21UTC: public DNS/TLS and all
+nine exact assets verified externally. Website runs solely on csc-sys; Marco is
+fenced/stopped/disabled with originals retained. Instructor authorized activation
+and confirmed the one DePaul SMTP test received exactly once.
 
-November12,18:31Chicago: dedicated hostname certificate valid through February10,
-2027; institutional proxy persisted privately for renewal, timer active/enabled.
-Separate nginx site enabled through existing sites-enabled include. Main/default/
-relay and nginx master unchanged. Public DNS216.220.181.93, valid TLS and503/
-Retry-After60 maintenance response verified. No app has been started on csc-sys.
+Unchanged runtimeed09efc/schema37/Config1070db5eb056. Web service enabled,2CPU/2GiB/
+no swap; user10001/read-only/capability boundaries preserved. App trusts only the
+explicitly approved DePaul relay certificate; SMTP STARTTLS verification stays on.
+Agent/watchdog/source-worker/reconciler and CLI use local authenticated HTTPS with
+proxy bypass. SSH/relay unchanged; native control roles restarted for routing.
+All147web attempts/217native histories and41table preservation checks pass,
+including71strictly proved prior-tombstone physical absence rechecks. No histories,
+deadlines, grants or holds reset. Recording-worker pause RELEASED; admissions OPEN.
 
-Imported /opt/ssh-exam:11,911members/2,228,014,058logical bytes,147web attempts,
-unchanged schema37/DB and exact image Config1070db5eb056/rootfs. Destination
-Docker's OCI manifest ID differs correctly; cryptographic streamed export proves
-Config identity. Compose validated with the actual systemd EnvironmentFile.
-All three app/mail units copied inactive; app disabled. Both owned transport
-archives cleaned. Source original project, config and private cold DB/control
-copies retained; Marco is fenced/stopped/disabled to prevent competing writers.
-All217native histories, execution/watchdog/relay/source-worker PIDs and private
-configuration unchanged. No student records/deadlines/holds were modified.
+Local commit a507592: classic/containerd deployment identity correction;53controller
+and4stream regressions pass. Exact csc-sys startup/current-data recovery passes68.4s,
+including62s real publisher wait,60s nonce expiry, purge and11mutation refusals.
+16concurrent GCC/GDB jobs,64private PTYs and32VP9 sources pass bounded shared-host
+sizing. Prior native16/64protocol qualification reused for unchanged binaries;
+no new institutional SSH/MFA/media acceptance claimed. Actual mailTransport.verify,
+CLI notification test/show, instructor inbox confirmation and public Chromium load/
+first-field focus pass. Original16documentation screenshot hashes unchanged.
 
-No unresolved transfer failure. Own include-base, reload-readiness, Docker image-ID
-and Compose invocation errors were corrected with failed evidence retained; no
-repeat extraction, overwrite or relaxed guard. Detailed operations/recovery and
-remaining activation prerequisites:docs/csc-web-import.md. Private receipts:
-var/collection-tests/csc-web-migration.20261112/ and destination stage
-/var/tmp/ssh-exam-csc-migration-20261112-02838f27/.
+Own wrapper/fixture/Compose/PID-check errors and omitted reconciler routing were
+corrected without repeating completed mutations or replacing the snapshot. All
+90queued callbacks drained normally; no event was cleared/skipped. No idle guard or
+restart was applied after reopening. No deployment action remains pending.
 
-Next integrated milestone, if activating this imported runtime: arrange working
-local SMTP, qualify local authenticated HTTPS/proxy bypass and bounded shared-host
-resources, then qualify startup/recovery/reopening of the one authoritative app.
-Do not mistake import completion for a live migrated website or reopen implicitly.
-No design question is pending for the completed import. Original ten dirty images
-preserved (all16baseline image hashes unchanged). --all removal is locally tested,
-unpushed/undeployed; installed native CLI and protected archives are unchanged.
+Details/recovery:docs/csc-web-activation.md; earlier import:docs/csc-web-import.md.
+Private evidence:var/collection-tests/csc-web-activation.20261112/ and root stage
+/var/tmp/ssh-exam-csc-activation-20261112-e7dedea8/. Preserve CURRENT data for any
+future recovery; do not restore the old Marco or cold activation snapshot over it.
+
+Separate follow-ups: future release plans need csc-sys paths/certificate/override
+and external fence observation; known idle source-worker task:null diagnostic.
+--all removal remains locally tested/unpushed/undeployed, installed CLI47bda3d
+unchanged. Separate grading-helper installation remains pending. No source push.

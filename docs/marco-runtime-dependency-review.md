@@ -1,9 +1,9 @@
 # Reduce the France connection's effect on running exams
 
 Status update, November12: the instructor selected csc-sys. Its certificate,
-separate nginx site and full configuration/data import are verified. The app is
-inactive and public HTTPS serves maintenance; live regional operation remains
-unqualified. See [import and activation boundary](csc-web-import.md). Dated
+separate nginx site and full configuration/data import are verified, and the
+runtime is now ONLINE with local authenticated callbacks and DePaul SMTP.
+See [activation evidence](csc-web-activation.md). Dated
 proposal and read-only inventory statements below describe their original scope;
 Docker29.1.3/Compose2.40.3 were subsequently installed by the instructor.
 

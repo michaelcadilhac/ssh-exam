@@ -1,9 +1,12 @@
 # csc-sys web import, November12,2026
 
 The requested certificate, separate nginx virtual host and full configuration/data
-import are complete and verified. **The website remains in maintenance mode.**
-The imported application has never been started; this is not a completed runtime
-activation or a claim that regional live monitoring has been qualified.
+import were completed and verified before activation. **The website subsequently
+reopened on csc-sys November12,19:25:21Chicago.** Current state, SMTP/local callbacks,
+qualification and recovery: [activation record](csc-web-activation.md).
+
+The sections below record the import-only state at18:31Chicago, when the copied
+application had not yet started and activation checks remained pending.
 
 ## Installed and preserved
 

@@ -1,11 +1,11 @@
 # ssh-exam.cadilhac.name deployment
 
-November12: the certificate, separate nginx site, complete application configuration
-and data are now imported and verified on csc-sys. Both web applications are
-stopped/disabled; the public hostname serves maintenance. SMTP, local authenticated
-callbacks and resource/startup qualification remain before activation. This
-supersedes older claims of a currently online Marco service below. Exact state,
-preservation evidence and recovery: [csc-sys import](csc-web-import.md).
+November12,19:25:21Chicago: the existing web runtime and its data are now verified
+ONLINE on csc-sys. DePaul SMTP delivery, local authenticated native callbacks,
+bounded web resources, preservation and public/browser checks pass. Marco remains
+fenced/stopped/disabled as a retained recovery source. This supersedes older Marco
+installation/status claims below. Exact state and recovery:
+[csc-sys activation](csc-web-activation.md), [import](csc-web-import.md).
 
 November1 current release is deployed and online: b70a080/schema36, tag
 `ssh-exam-release:admin-editor-b70a080`, image Config `bffbfe1f…`. The web-only

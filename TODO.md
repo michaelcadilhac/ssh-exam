@@ -1,4 +1,17 @@
-# csc-sys migration — CERTIFICATE, NGINX AND IMPORT VERIFIED; APP INACTIVE
+# csc-sys migration — ACTIVATED AND VERIFIED ONLINE
+
+November12,19:25:21Chicago: public HTTPS is open on csc-sys, exact existing
+runtimeed09efc/schema37/Config1070db5eb056. DePaul SMTP uses the explicitly approved
+certificate with TLS verification enabled; instructor confirmed one test email
+received exactly once. Agent, watchdog, source worker and periodic reconciler use
+the local authenticated HTTPS route. Web resources bounded2CPU/2GiB/no swap.
+All147web attempts,217native histories and41authority-table checks preserved;
+71preauthorized physical-absence rechecks verified. Nine public asset hashes and
+Chromium welcome/initial focus pass. Source Marco remains fenced/stopped/disabled;
+SSH/relay were not restarted. Recording pause released. No push. Exact activation,
+qualification, recovery and remaining operational notes:docs/csc-web-activation.md.
+
+## Import completed before activation
 
 November12,18:31Chicago: dedicated certificate/renewal proxy and separate nginx
 site verified; existing main/default/relay unchanged. Complete configuration/data
@@ -12,7 +25,7 @@ guards. Source Marco and destination app remain stopped/disabled; public HTTPS
 serves maintenance. Activation still needs local SMTP, local HTTPS/proxy routing
 and resource qualification. No admissions reopened. See docs/csc-web-import.md.
 
-# Reduce live dependence on marco — HOST SELECTED; IMPORT COMPLETE, ACTIVATION PENDING
+# Reduce live dependence on marco — REGIONAL RUNTIME ACTIVE
 
 November12: current capture challenge/upload and one-Hz native evidence paths
 cross the webserver;60-second freshness charges network delay. Long WAN/backend
@@ -20,9 +33,12 @@ stalls can therefore cause technical holds despite healthy SSH; no particular
 incident was diagnosed. Recommend relocating the existing authoritative runtime
 near csc-sys and using France only for asynchronous copies, rather than building
 a distributed monitoring service first. The instructor selected csc-sys and
-authorized its certificate/site/import; that work is complete above. The runtime
-is still inactive, so regional live monitoring is not yet qualified or enabled.
-Alternatives/invariants:docs/marco-runtime-dependency-review.md.
+authorized its certificate/site/import and subsequent activation. The existing
+authoritative web runtime now runs there with verified local native callbacks;
+live web traffic and native callbacks no longer need Marco. Outbound email uses
+DePaul's relay; subsequent delivery follows the configured recipient's mail route.
+This does not diagnose past disconnects. Alternatives/invariants:
+docs/marco-runtime-dependency-review.md.
 
 # Remove redundant examctl --all — IMPLEMENTED/TESTED LOCALLY
 

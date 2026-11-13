@@ -712,11 +712,12 @@ Distinguish these guarantees in documentation:
 
 ## 4. Architecture
 
-November12 hosting status: the existing web runtime/configuration/data have been
-imported to csc-sys without a schema or protocol change. Both web services remain
-stopped and the public hostname serves maintenance. The diagram's Marco placement
-describes the previous live installation; regional runtime activation and local
-callback/resource qualification remain pending. See [import state and recovery](docs/csc-web-import.md).
+November12 hosting status: the existing web runtime/configuration/data are ONLINE
+on csc-sys without a schema or protocol change. Native callbacks use the public
+HTTPS origin over loopback with proxy bypass; web resources are bounded2CPU/2GiB.
+Notifications use DePaul's relay with an explicitly approved certificate and strict
+TLS verification. Marco is fenced/stopped and retained for recovery. See
+[activation and recovery](docs/csc-web-activation.md).
 
 ```text
 Student Chrome/Edge/Chromium
@@ -724,9 +725,9 @@ Student Chrome/Edge/Chromium
   ├─ Dedicated Web Worker: Go/WASM SSH client, two retained SSH transports
   │    └─ WSS csc-sys relay → institutional proxy → sshjump (password + MFA)
   │         └─ SSH-forwarded class connection → controlled terminal channels
-  └─ HTTPS/authenticated WebSockets to marco: authorization, status, images
+  └─ HTTPS/authenticated WebSockets to csc-sys: authorization, status, images
 
-marco web application (Docker behind nginx)
+csc-sys web application (bounded Docker service behind nginx)
   ├─ Student/instructor APIs, persistent attempt metadata and notifications
   ├─ Gateway-signed command and pane authorization carried by browser SSH
   ├─ Verifies class-agent signed account/transport/nonce/result receipts

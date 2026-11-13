@@ -144,6 +144,11 @@
   the known tag, not a Config digest assumed to be an engine ID; a streamed export
   can prove the loaded Config bytes. Validate Compose with the actual service's
   EnvironmentFile, not an invocation that silently selects default variables.
+  When changing callback routing, inventory the periodic reconciler as well as
+  agent, watchdog, source worker and CLI. Verify actual process environments and
+  callback delivery; a stale signed snapshot can reflect an old proxy/held delivery
+  lock. Preserve queued events. Await bounded active/PID readiness after systemd
+  operations rather than asserting every dependent PID immediately after return.
   Syntax-check generated operation scripts locally. Pass structured parameters;
   do not replace placeholder words across nested source strings. Read a failed
   prerequisite's result before launching a dependent operation, including within
