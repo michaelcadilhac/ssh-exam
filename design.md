@@ -712,6 +712,12 @@ Distinguish these guarantees in documentation:
 
 ## 4. Architecture
 
+November12 hosting status: the existing web runtime/configuration/data have been
+imported to csc-sys without a schema or protocol change. Both web services remain
+stopped and the public hostname serves maintenance. The diagram's Marco placement
+describes the previous live installation; regional runtime activation and local
+callback/resource qualification remain pending. See [import state and recovery](docs/csc-web-import.md).
+
 ```text
 Student Chrome/Edge/Chromium
   ├─ Fullscreen workspace, floating xterm terminals, screen/webcam capture

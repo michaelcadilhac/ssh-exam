@@ -22,6 +22,12 @@
 - csc-sys is authorized only for the agreed guarded, disposable qualification
   environment. Preserve the host installation and student data. A busy/uncertain
   guard means no test, not permission to clear records or relax the guard.
+- When instructed to stop on failure, distinguish a real operation or safety-guard
+  failure from an error in the agent's own command, path, test fixture or verifier.
+  Preserve the failed evidence, inspect actual state, correct the owned setup and
+  repeat bounded validation autonomously. Do not stop merely to request permission
+  for that correction. Never weaken a genuine guard, overwrite existing data or
+  repeat an uncertain mutation without first establishing its actual outcome.
 - Preserve protected submissions/history, original deadlines, account holds,
   credential cleanup and monitoring enforcement. A timeout is not proof of a
   student violation. Never enable an incomplete safety mechanism.
@@ -134,7 +140,10 @@
   and validate native probe JSON with a typed schema. Do not invent ticket fields,
   cgroup naming formats or object shapes from similarly named internal views.
   For Docker transfers, bind the target image to manifest.json's Config digest and
-  rootfs diff IDs; a source engine may display the OCI manifest ID instead.
+  rootfs diff IDs; either engine may display an OCI manifest ID instead. Inspect
+  the known tag, not a Config digest assumed to be an engine ID; a streamed export
+  can prove the loaded Config bytes. Validate Compose with the actual service's
+  EnvironmentFile, not an invocation that silently selects default variables.
   Syntax-check generated operation scripts locally. Pass structured parameters;
   do not replace placeholder words across nested source strings. Read a failed
   prerequisite's result before launching a dependent operation, including within

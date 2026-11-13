@@ -1,13 +1,28 @@
-# Reduce live dependence on marco — INVESTIGATED; PROPOSAL AWAITS DECISION
+# csc-sys migration — CERTIFICATE, NGINX AND IMPORT VERIFIED; APP INACTIVE
+
+November12,18:31Chicago: dedicated certificate/renewal proxy and separate nginx
+site verified; existing main/default/relay unchanged. Complete configuration/data
+import to /opt/ssh-exam verified:11,911members,147web attempts/schema37, exact
+release image Config/layers, private ownership/modes and service-equivalent Compose
+configuration. All217native histories and execution/watchdog/relay PIDs unchanged.
+Both owned1.87GBtransport archives removed; originals/private recovery retained.
+Agent-created include-base, reload-readiness, Docker image-ID and Compose-environment
+verification errors corrected without repeating completed mutations or bypassing
+guards. Source Marco and destination app remain stopped/disabled; public HTTPS
+serves maintenance. Activation still needs local SMTP, local HTTPS/proxy routing
+and resource qualification. No admissions reopened. See docs/csc-web-import.md.
+
+# Reduce live dependence on marco — HOST SELECTED; IMPORT COMPLETE, ACTIVATION PENDING
 
 November12: current capture challenge/upload and one-Hz native evidence paths
 cross the webserver;60-second freshness charges network delay. Long WAN/backend
 stalls can therefore cause technical holds despite healthy SSH; no particular
 incident was diagnosed. Recommend relocating the existing authoritative runtime
 near csc-sys and using France only for asynchronous copies, rather than building
-a distributed monitoring service first. Alternatives, invariants, migration and
-isolated acceptance plan:docs/marco-runtime-dependency-review.md. No runtime,
-configuration, student record or production change; not implemented or deployed.
+a distributed monitoring service first. The instructor selected csc-sys and
+authorized its certificate/site/import; that work is complete above. The runtime
+is still inactive, so regional live monitoring is not yet qualified or enabled.
+Alternatives/invariants:docs/marco-runtime-dependency-review.md.
 
 # Remove redundant examctl --all — IMPLEMENTED/TESTED LOCALLY
 

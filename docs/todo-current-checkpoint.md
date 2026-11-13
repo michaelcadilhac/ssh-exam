@@ -1,28 +1,36 @@
-# Current investigation — reduce live dependence on marco
+# Current checkpoint — csc-sys import COMPLETE; website IN MAINTENANCE
 
-Source inspection complete; proposal only. Capture challenge/upload verification
-and one-Hz native signed monitoring evidence still cross the webserver. Freshness
-is60seconds, charged from challenge issue including transit. This can expose a
-healthy SSH session to a long webserver/WAN stall; no actual route measurements
-or particular-incident diagnosis were made.
+Instructor authorized certificate, separate nginx virtual host, then complete
+configuration/data import. Subsequent instruction: correct agent-created test/
+verification mistakes autonomously; stop for genuine operation/guard failures.
 
-Preferred proposal: move the one existing authoritative web runtime/data near
-csc-sys; France receives asynchronous copies. Alternative: a substantially larger
-regional live verifier/control service with explicit ownership and management
-revision acknowledgements. Full protocol, preservation, migration/recovery and
-qualification boundaries:docs/marco-runtime-dependency-review.md.
+November12,18:31Chicago: dedicated hostname certificate valid through February10,
+2027; institutional proxy persisted privately for renewal, timer active/enabled.
+Separate nginx site enabled through existing sites-enabled include. Main/default/
+relay and nginx master unchanged. Public DNS216.220.181.93, valid TLS and503/
+Retry-After60 maintenance response verified. No app has been started on csc-sys.
 
-csc-sys hosting was inventoried read-only: nginx/HTTPS already available,3001 free;
-4CPUs/7.7GiB RAM,53.7GiB free /var. Docker/Compose/host Node absent; nspawn present.
-Existing Docker recipe needs package setup; nspawn needs a new qualified procedure.
-Native agent/watchdog use an HTTPS proxy, so same-host HTTPS routing/proxy bypass
-must be qualified. Capacity, TLS, SMTP and drained single-writer data migration
-remain prerequisites; no package/service/configuration/student record changed.
-Evidence:var/collection-tests/csc-web-feasibility.20261112/.
+Imported /opt/ssh-exam:11,911members/2,228,014,058logical bytes,147web attempts,
+unchanged schema37/DB and exact image Config1070db5eb056/rootfs. Destination
+Docker's OCI manifest ID differs correctly; cryptographic streamed export proves
+Config identity. Compose validated with the actual systemd EnvironmentFile.
+All three app/mail units copied inactive; app disabled. Both owned transport
+archives cleaned. Source original project, config and private cold DB/control
+copies retained; Marco is fenced/stopped/disabled to prevent competing writers.
+All217native histories, execution/watchdog/relay/source-worker PIDs and private
+configuration unchanged. No student records/deadlines/holds were modified.
 
-Await implementation/hosting authorization and runtime setup choice. No runtime/tests/deploy
-changed for this investigation. The prior --all removal remains locally tested
-at dc15f46, unpushed; installed CLI47bda3d/webed09efc/schema37 remain the last
-verified production cohort. Next deployment must migrate bundled script calls.
-Original ten dirty documentation screenshots preserved. Separate grading-helper
-installation and idle task:null diagnostic remain pending as previously recorded.
+No unresolved transfer failure. Own include-base, reload-readiness, Docker image-ID
+and Compose invocation errors were corrected with failed evidence retained; no
+repeat extraction, overwrite or relaxed guard. Detailed operations/recovery and
+remaining activation prerequisites:docs/csc-web-import.md. Private receipts:
+var/collection-tests/csc-web-migration.20261112/ and destination stage
+/var/tmp/ssh-exam-csc-migration-20261112-02838f27/.
+
+Next integrated milestone, if activating this imported runtime: arrange working
+local SMTP, qualify local authenticated HTTPS/proxy bypass and bounded shared-host
+resources, then qualify startup/recovery/reopening of the one authoritative app.
+Do not mistake import completion for a live migrated website or reopen implicitly.
+No design question is pending for the completed import. Original ten dirty images
+preserved (all16baseline image hashes unchanged). --all removal is locally tested,
+unpushed/undeployed; installed native CLI and protected archives are unchanged.
