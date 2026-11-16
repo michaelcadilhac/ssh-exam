@@ -26,6 +26,14 @@ func workspaceFixture(t *testing.T) (*Engine, string) {
 	if err := os.WriteFile(filepath.Join(template, "src", "main.c"), []byte("original starter\n"), 0751); err != nil {
 		t.Fatal(err)
 	}
+	// Author the metadata under test independently of the caller's umask.
+	starter := filepath.Join(template, "src", "main.c")
+	if err := os.Chmod(starter, 0751); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(starter); err != nil || info.Mode().Perm() != 0751 {
+		t.Fatal("starter fixture does not have its authored permissions", err)
+	}
 	modified := time.Date(2024, 1, 2, 3, 4, 5, 123456789, time.UTC)
 	if err := os.Chtimes(filepath.Join(template, "src", "main.c"), modified, modified); err != nil {
 		t.Fatal(err)

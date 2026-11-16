@@ -426,7 +426,10 @@ func TestMonitoringPublicationStorageRefusesLinksAndUnexpectedFiles(t *testing.T
 			case "temp-fifo":
 				errSetup = syscall.Mkfifo(path, 0600)
 			case "temp-public":
-				errSetup = os.WriteFile(path, nil, 0644)
+				errSetup = os.WriteFile(path, nil, 0600)
+				if errSetup == nil {
+					errSetup = os.Chmod(path, 0644)
+				}
 			case "final-directory":
 				errSetup = os.Mkdir(path, 0700)
 			case "final-oversize":
@@ -434,6 +437,12 @@ func TestMonitoringPublicationStorageRefusesLinksAndUnexpectedFiles(t *testing.T
 			}
 			if errSetup != nil {
 				t.Fatal(errSetup)
+			}
+			if mode == "temp-public" {
+				info, err := os.Stat(path)
+				if err != nil || info.Mode().Perm() != 0644 {
+					t.Fatal("public-inode fixture was made private by umask", err)
+				}
 			}
 			if err := storeMonitoringPublication(dir, ticket.publication, nil); err != errMonitoringPublishIO {
 				t.Fatal("unsafe staging/final target changed", err)

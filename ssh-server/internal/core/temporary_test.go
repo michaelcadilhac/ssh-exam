@@ -92,7 +92,16 @@ func TestTemporaryStorageRejectsLinksAndUnsafeParents(t *testing.T) {
 		})
 	}
 	e, _ := New(Config{State: t.TempDir()})
-	os.Mkdir(filepath.Join(e.Config.State, "temporary"), 0755)
+	parent := filepath.Join(e.Config.State, "temporary")
+	if err := os.Mkdir(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(parent); err != nil || info.Mode().Perm() != 0755 {
+		t.Fatal("traversable-parent fixture was made private by umask", err)
+	}
 	if _, err := e.prepareTemporary(&Attempt{ID: finalID}, false); err == nil {
 		t.Fatal("accepted traversable parent")
 	}

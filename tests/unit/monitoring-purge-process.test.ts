@@ -142,7 +142,13 @@ it.skipIf(process.platform !== "linux")(
       for (const make of [
         () => symlinkSync(f.protectedPath, lock),
         () => linkSync(f.protectedPath, lock),
-        () => writeFileSync(lock, "", { mode: 0o644 }),
+        () => {
+          writeFileSync(lock, "", { mode: 0o600 });
+          // The manual suite deliberately inherits umask077. Establish the
+          // unsafe inode explicitly, instead of letting umask make it safe.
+          chmodSync(lock, 0o644);
+          expect(statSync(lock).mode & 0o777).toBe(0o644);
+        },
         () => execFileSync("mkfifo", [lock]),
       ]) {
         make();

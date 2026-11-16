@@ -234,8 +234,14 @@ func TestNativePaneAuditFailureCannotRevokeAndPartialTailIsPreserved(t *testing.
 					t.Fatal(err)
 				}
 			case "public":
-				if err := os.WriteFile(path, []byte("preserve"), 0644); err != nil {
+				if err := os.WriteFile(path, []byte("preserve"), 0600); err != nil {
 					t.Fatal(err)
+				}
+				if err := os.Chmod(path, 0644); err != nil {
+					t.Fatal(err)
+				}
+				if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0644 {
+					t.Fatal("public-audit fixture was made private by umask", err)
 				}
 			case "partial":
 				if err := os.WriteFile(path, []byte(`{"incomplete":`), 0600); err != nil {
