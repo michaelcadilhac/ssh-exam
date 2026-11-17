@@ -3,7 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { simulatedMedia, ready, readyTerminal } from "./transition-fixture.js";
 import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
-import { openUnauthenticatedStressWelcome } from "../fixtures/stress-navigation.js";
+import { openUnauthenticatedStressWelcome, waitForStressStartResponse } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
@@ -118,6 +118,8 @@ test(
     let recovering = false;
     let bootstrap = async (): Promise<unknown> => null;
     let signInEvents: { event: string; path: string; type?: string }[] = [];
+    let setupStudent = "";
+    let setupNetwork: { event: string; path: string; elapsed_ms: number; status?: number }[] = [];
     const fleet: {
       context: BrowserContext;
       page: Page;
@@ -220,6 +222,22 @@ test(
         });
         const events: typeof signInEvents = [];
         signInEvents = events;
+        const setupEvents: typeof setupNetwork = [];
+        setupNetwork = setupEvents;
+        setupStudent = student.username;
+        const setupStarted = performance.now();
+        let observingSetup = true;
+        if (stressRun) {
+          const record = (event: string, url: string, status?: number) => {
+            const path = new URL(url).pathname;
+            if (!observingSetup || !/^\/api\/student\/attempts\/[^/]+\/(?:frames(?:\/(?:challenge|challenged))?|monitoring-readiness|begin)$/.test(path)) return;
+            if (setupEvents.length >= 64) setupEvents.shift();
+            setupEvents.push({ event, path, elapsed_ms: Math.round(performance.now() - setupStarted), ...(status === undefined ? {} : { status }) });
+          };
+          page.on("request", request => record("requested", request.url()));
+          page.on("response", response => record("response", response.url(), response.status()));
+          page.on("requestfailed", request => record("failed", request.url()));
+        }
         page.on("websocket", (socket) => {
           const path = new URL(socket.url()).pathname;
           const note = (event: string, type?: unknown) => {
@@ -337,20 +355,26 @@ test(
         }
         await ready(page, !!stressRun);
         for (let retry = 0; retry < 3; retry++) {
-          const result = page.waitForResponse(
-            (response) =>
-              new URL(response.url()).pathname.endsWith("/begin") &&
-              response.request().method() === "POST",
-            { timeout: 30000 },
-          );
-          await page
-            .getByRole("button", { name: "Start exam", exact: true })
-            .click();
-          await page
-            .getByRole("dialog")
-            .getByRole("button", { name: "Start exam", exact: true })
-            .click();
-          const response = await result;
+          const result = stressRun
+            ? waitForStressStartResponse(page, console.log)
+            : page.waitForResponse(
+                (response) =>
+                  new URL(response.url()).pathname.endsWith("/begin") &&
+                  response.request().method() === "POST",
+                { timeout: 30000 },
+              );
+          const [response] = await Promise.all([
+            result,
+            (async () => {
+              await page
+                .getByRole("button", { name: "Start exam", exact: true })
+                .click();
+              await page
+                .getByRole("dialog")
+                .getByRole("button", { name: "Start exam", exact: true })
+                .click();
+            })(),
+          ]);
           if (response.ok()) break;
           const current = (
             await (await page.request.get("/api/student/exam")).json()
@@ -383,6 +407,7 @@ test(
           // The next actual Start performs fresh capture/native verification.
           await page.waitForTimeout(250);
         }
+        observingSetup = false;
         await expect
           .poll(
             async () =>
@@ -1063,6 +1088,7 @@ test(
         JSON.stringify({
           error: String(error).slice(0, 1200),
           signInEvents,
+          setupDiagnostics: { username: setupStudent, requests: setupNetwork },
           wasmBootstrap: await bootstrap(),
           publicStates,
           recoveryReplies: fleet.map((entry) => ({

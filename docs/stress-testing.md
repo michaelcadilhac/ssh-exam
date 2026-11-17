@@ -26,7 +26,7 @@ Production state, deadlines, services and submissions remain untouched.
    under var/stress/RUN/. Commit coherent validated suite/docs locally; no push/deploy.
 
 Current status: 861 application checks pass, with three normally gated real
-CLI/export/bwrap entries passing separately. Harness 73 checks, native races,
+CLI/export/bwrap entries passing separately. Harness 83 checks, native races,
 16-client WASM sign-in and native editor/timer/recovery/collector-crash workflows
 pass. Prof's rendered review is complete. The corrected full browser run completed
 360 passed, three failed and five explicit skips. The failures remain recorded;
@@ -38,7 +38,14 @@ The seventh rehearsal safely refused further load at22students/88terminals when
 the generator's available RAM fell below768MiB. All22attempts were ACTIVE;
 there is no70-student or90-minute pass. The instructor selected Marco as the larger
 browser generator; its live two-context smoke and independently verified cleanup
-pass. The current harness passes83 checks. The70-person rehearsal is next.
+pass. Rehearsal10 reached39students/156panes with GCC/GDB, then its old30s Start
+observer timed out. The existing attempts were ACTIVE/generation0 at failure;
+later locks followed context teardown. Capture preparation versus pending HTTP
+response is not established by that receipt. The corrected observer gives each
+stage the existing60s operation budget, with ten focused checks/typecheck and
+bounded setup-network diagnostics. Exact guest/browser/local cleanup is verified.
+The full70-person/90-minute attempt is next; it includes the remaining ramp and
+completion path. All failed rehearsals remain failed, not promoted to full runs.
 Independent functional/fault phases continue. The installed32-connection limit
 is below the70-student target; the isolated candidate uses96 with compiled
 connection workers. This is a test configuration, not a production change.

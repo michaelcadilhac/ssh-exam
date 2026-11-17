@@ -6,7 +6,7 @@ four terminals each, 90 real minutes and simultaneous protected submission. No
 institutional MFA, real student accounts or external email. Guarded disposable
 csc-sys testing is authorized; no product deployment is requested.
 
-Harness 73 checks, 861 application checks and three normally gated actual
+Harness 83 checks, 861 application checks and three normally gated actual
 CLI/export/bwrap workflows pass. Native races pass after four permission-fixture
 corrections. Prof's rendered review is complete with open wording findings.
 The narrow admin bulk-target fix passes the real cancel/import/bulk-edit workflow
@@ -23,6 +23,12 @@ The latest rehearsal stopped safely at 22 active students/88 panes on the genera
 memory floor. The instructor selected Marco as generator; live isolation/media/
 HTTP/WebSocket smoke and independent worker/browser/tunnel cleanup pass. Harness
 now passes83 checks. The70-person rehearsal and90-minute peak remain outstanding.
+November17: Marco rehearsal10 reached39students/156panes with GCC/GDB; old30s
+Start response observation timed out, with existing attempts still ACTIVE/gen0.
+The stopped fixtures are independently verified clean with FULL native preservation.
+The observer now separates preparation/response60s budgets; ten focused checks and
+typecheck pass. Full70-person/90-minute attempt is next. No product fix or root
+cause is inferred from that observer timeout; later teardown locks are expected.
 Confirmed P1 baselines: installed 32-connection ceiling is below 70, and the shared
 anonymous 180/minute bucket rejects 30 of 210 minimal cold-load requests. Neither
 is changed in production; the isolated candidate uses 96 compiled workers.

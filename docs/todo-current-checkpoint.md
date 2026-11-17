@@ -39,38 +39,30 @@ Playwright server, loopback-only SSH forwards, fresh profiles, 20 GiB memory cap
 no swap, 8 CPU quota, 4096 tasks, three-hour lifetime. Actual kernel limits,
 ancestor memory headroom, listener addresses and exact-process cleanup are checked.
 Seven controller and ten runner contracts pass; harness 9 passes all 83 checks.
-RPC syntax and fixture types pass. Actual Marco smoke 3 passes two simultaneous
-isolated cookie contexts, synthetic video, reverse HTTP/text+binary WebSocket and
-browser-server reuse. Cleanup and independent observation prove the exact worker
-inactive/dead/MainPID 0, browser PID absent, private listeners closed and retired
-web service unchanged. Earlier temporary-file, echo-fixture and closing-socket
-verifier failures remain recorded; corrections change no product behavior.
-Rehearsal 8 stopped before the fourth welcome page on Chromium ERR_NETWORK_CHANGED;
-all three admitted students remained ACTIVE/generation 0 with GCC/GDB verified.
-Both hosts' exact worker/guest cleanup and FULL native preservation are verified.
-One logged retry of that exact unauthenticated welcome GET cancellation is now
-covered by six focused tests and fixture typecheck; no exam operation is retried.
-Its initiating network-change cause remains unproven. Rehearsal 9 reached nine
-students/36 panes with GCC/GDB, then was intentionally stopped to correct Chromium's
-deleted shared pages using scarce root-disk scratch. Exact private abort/local
-fixture termination and independent native FULL preservation/Marco cleanup pass;
-runner exit alone had left these fixtures active. Preserve that cleanup limitation.
-The worker now uses existing tmpfs /dev/shm, charged to the same memory cgroup,
-with 12GiB startup/4GiB live shared-memory headroom. Actual argv and kernel checks,
-smoke 5 and independent cleanup pass. Smoke 4's leftover local-listener refusal
-remains recorded. No current test is active; next is rehearsal 10 using Marco and
-the unchanged v10 guest bundle, followed by full peak after receipt/cleanup review.
-Freeze source during each run. All earlier source input
-manifests and failed rehearsals remain authoritative for their own revisions.
-Rehearsal 7 stopped safely at 22 ACTIVE/88 panes on the old local generator floor;
-there is not yet a 70-student ramp/90-minute peak/70-way completion.
+Smoke 5 passes simultaneous cookie isolation, synthetic capture, reverse HTTP/
+text+binary WebSocket and server reuse. Shared pages now use tmpfs under the same
+memory cgroup; 12GiB startup/4GiB live shared-memory headroom is required.
+Generator milestone: local `d97a3c4`. Ten focused welcome/Start observer checks and
+fixture typecheck pass. No Start is retried by the new observer: preparation and
+HTTP response each use the existing60s budget and have separate diagnostics.
+
+Rehearsal 10 FAILED at the40th Start observer after39students/156panes passed
+GCC/GDB. The old compound30s response wait was below the individual60s operation
+contract; its logs do not distinguish capture preparation from a pending Start.
+Failure snapshot: all39 existing attempts ACTIVE/generation0; later locks followed
+context teardown, not an established spontaneous failure. Independent exact guest,
+Marco browser/forwards and local fixture cleanup pass; native preservation FULL.
+All tests are currently stopped. Earlier network/scratch/interruption failures
+and manual-cleanup limitation remain in the report. No70/90/completion pass.
 
 Confirmed P1 findings remain unfixed: installed worker limit 32 < 70; shared
 anonymous 180/minute bucket rejects 30/210 minimal cold-load requests. Isolated
 candidate 96 workers does not qualify production co-location capacity.
 
-Next: qualify the Marco generator, rehearse 70 students, then execute 5,400 peak
-seconds and protected submission with the existing audited v10 bundle. Correct and
+Next: run the full70-student/5,400-second peak and protected submission directly
+with the corrected observer and existing v10 bundle; it also qualifies the remaining
+ramp/completion path. Freeze source during execution. Retain all failed rehearsals.
+Correct and
 qualify the two P1 findings before any readiness claim. No push/deploy authorized.
 Manual entry/plan: `docs/stress-testing.md`; report and suggested fixes:
 `reports/stress/20261116T194355Z/report.md`; raw receipts `var/stress/20261116T194355Z/`.
