@@ -133,12 +133,15 @@ type Client struct {
 	panes          map[string]*Pane
 	opening        map[string]*pendingPane
 	commands       map[string]*pendingCommand
+	commandSlots   chan struct{}
+	ordinarySlots  chan struct{}
 	Emit           func(any)
 }
 
 func New(emit func(any)) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Client{ctx: ctx, cancel: cancel, panes: map[string]*Pane{}, opening: map[string]*pendingPane{}, Emit: emit}
+	return &Client{ctx: ctx, cancel: cancel, panes: map[string]*Pane{}, opening: map[string]*pendingPane{},
+		commandSlots: make(chan struct{}, 3), ordinarySlots: make(chan struct{}, 2), Emit: emit}
 }
 func (c *Client) Close() {
 	c.cancel()
@@ -335,7 +338,7 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	// Only an exact gateway-issued command nonce can cancel this channel.
 	// Legacy frames without a signed envelope retain their existing behavior.
 	var envelope struct{ Payload string }
-	var request struct{ Nonce string }
+	var request struct{ Nonce, Op string }
 	if len(frame) <= 4*1024*1024 && json.Unmarshal(frame, &envelope) == nil {
 		if payload, err := base64.StdEncoding.DecodeString(envelope.Payload); err == nil {
 			_ = json.Unmarshal(payload, &request)
@@ -347,7 +350,8 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 		if c.commands == nil {
 			c.commands = map[string]*pendingCommand{}
 		}
-		if c.commands[request.Nonce] != nil || len(c.commands) >= 64 {
+		if c.commands[request.Nonce] != nil || len(c.commands) >= 64 ||
+			(request.Op != "renew-execution-lease" && len(c.commands) >= 63) {
 			c.mu.Unlock()
 			return nil, errors.New("command already pending or command capacity reached")
 		}
@@ -360,6 +364,27 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 			}
 			c.mu.Unlock()
 		}()
+	}
+	// Four exam panes must not compete with a burst of diagnostic commands for
+	// the class server's eight SSH sessions. Reserve one command lane/queue slot
+	// for live lease renewal and leave channel-opening/closing headroom. Queue
+	// time remains charged to the ORIGINAL command context and signed expiry.
+	if request.Op != "renew-execution-lease" {
+		select {
+		case c.ordinarySlots <- struct{}{}:
+			defer func() { <-c.ordinarySlots }()
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	select {
+	case c.commandSlots <- struct{}{}:
+		defer func() { <-c.commandSlots }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	s, err := c.session()
 	if err != nil {

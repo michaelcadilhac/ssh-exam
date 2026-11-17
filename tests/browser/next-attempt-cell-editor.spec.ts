@@ -908,6 +908,9 @@ for (const width of [320, 430, 1280])
         await expect(
           editor.getByText("Start window", { exact: true }),
         ).toHaveCount(0);
+        await expect(
+          editor.getByText("Start dates", { exact: true }),
+        ).toHaveCount(0);
       } else {
         const unit = page.locator(".next-time .direct-time-value > span");
         await expect(unit).toHaveText("min");
@@ -1250,7 +1253,7 @@ test("bulk next-attempt editing exposes the same four field groups and no shared
     dialog.getByRole("combobox", { name: "Webcam", exact: true }),
   ).toBeVisible();
   await expect(
-    dialog.getByRole("combobox", { name: "Start window", exact: true }),
+    dialog.getByRole("combobox", { name: "Start dates", exact: true }),
   ).toBeVisible();
   await expect(
     dialog.getByRole("combobox", { name: "Starting files", exact: true }),

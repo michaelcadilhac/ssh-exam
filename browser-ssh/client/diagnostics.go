@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/coder/websocket"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"net"
 	"syscall"
@@ -16,6 +17,7 @@ const OperationTimeout = 60 * time.Second
 func FailureCause(err error) string {
 	var timeout net.Error
 	var exit interface{ ExitStatus() int }
+	var channel *ssh.OpenChannelError
 	switch {
 	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &timeout) && timeout.Timeout():
 		return "timeout"
@@ -31,6 +33,8 @@ func FailureCause(err error) string {
 		return "reset"
 	case errors.Is(err, syscall.EPIPE):
 		return "broken-pipe"
+	case errors.As(err, &channel) && channel.Reason == ssh.ResourceShortage:
+		return "channel-capacity"
 	case errors.As(err, &exit):
 		return "remote-exit"
 	default:

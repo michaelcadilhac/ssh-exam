@@ -1,5 +1,5 @@
 import { useExamDates } from "./exam-timezone.js";
-import { useEffect, useState, useId } from "react";
+import { useEffect, useState, useId, useRef } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import {
@@ -158,10 +158,12 @@ export function GrantIssuanceDialog({
   const issuanceReason = "Allow exam attempt";
   const [saved] = useState(() => readCache(cacheKey, initial.id, names));
   const formId = useId();
+  const validationAlert = useRef<HTMLParagraphElement>(null);
   const [review, setReview] = useState<any>(null),
     [pending, setPending] = useState<Intent | null>(saved?.pending ?? null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
+    [validationError, setValidationError] = useState(""),
     [recovering, setRecovering] = useState(!!saved?.review),
     [earliest, setEarliest] = useState(
       localDateTime(singleSettings?.earliest ?? initial.earliest),
@@ -175,6 +177,7 @@ export function GrantIssuanceDialog({
       Record<string, { duration: string; webcam: string }>
     >({}),
     [workMode, setWorkMode] = useState("latest"),
+    [changingSource, setChangingSource] = useState(false),
     [workName, setWorkName] = useState(initial.template),
     [workHash, setWorkHash] = useState(initial.template_version ?? ""),
     [exams, setExams] = useState<any[]>([]),
@@ -405,12 +408,15 @@ export function GrantIssuanceDialog({
   const perform = async (operation: Intent["operation"]) => {
     if (busy) return;
     setError("");
+    setValidationError("");
     const retrying = !!pending;
+    let validatingDraft = false;
     try {
       let intent = pending;
       if (!intent) {
         let body: any;
         if (operation === "preview") {
+          validatingDraft = true;
           if (
             !names.length ||
             names.length > 200 ||
@@ -473,6 +479,7 @@ export function GrantIssuanceDialog({
             });
             if (overrides.length) body.student_settings = overrides;
           }
+          validatingDraft = false;
         } else {
           if (!review)
             throw Error("Load the original review before continuing.");
@@ -530,7 +537,15 @@ export function GrantIssuanceDialog({
         setPending(null);
         remember(review?.id);
       }
-      setError((e as Error).message);
+      if (validatingDraft) {
+        setValidationError((e as Error).message);
+        requestAnimationFrame(() => {
+          const alert = validationAlert.current;
+          if (!alert?.isConnected) return;
+          alert.focus();
+          alert.scrollIntoView({ block: "nearest" });
+        });
+      } else setError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -540,6 +555,7 @@ export function GrantIssuanceDialog({
     setReview(null);
     setPending(null);
     setError("");
+    setValidationError("");
     setRecovering(false);
   };
   const close = () => {
@@ -597,7 +613,7 @@ export function GrantIssuanceDialog({
             ))}
           </select>
         </label>
-        {row.work && (
+        {names.length > 1 && row.work && (
           <p style={{ overflowWrap: "anywhere" }}>
             {sourceLabel({ username, work: row.work })}
           </p>
@@ -628,6 +644,19 @@ export function GrantIssuanceDialog({
       ? `Saved work: ${savedWorkLabel(source, [...attempts, ...Object.values(sourceDetails)])}`
       : "Saved work · Source details unavailable";
   };
+  const singleSource = names.length === 1 ? rowSource(names[0]) : null;
+  const singleSourceSummary =
+    workMode === "latest"
+      ? sourceLoading
+        ? "Loading saved work…"
+        : sourceError
+          ? "Could not load saved work."
+          : singleSource?.work
+            ? sourceLabel({ username: names[0], work: singleSource.work })
+            : singleSource?.error || "Choose starting files."
+      : workMode === "empty"
+        ? "Empty folder"
+        : `Starter files: ${workMode === "materials" ? initial.template : workName}`;
   if (resumeOnly && !review && !pending && !recovering)
     return (
       <Modal title="Saved request" onClose={close}>
@@ -655,6 +684,11 @@ export function GrantIssuanceDialog({
         {!review && !!excludedStudents.length && (
           <p className="muted">
             Already has a next attempt: {excludedStudents.join(", ")}.
+          </p>
+        )}
+        {validationError && (
+          <p ref={validationAlert} role="alert" className="warn" tabIndex={-1}>
+            {validationError}
           </p>
         )}
         {error && (
@@ -776,128 +810,148 @@ export function GrantIssuanceDialog({
                       </label>
                     </>
                   )}
-                  <label>
-                    Start with
-                    <select
-                      value={workMode}
-                      onChange={(e) => {
-                        if (
-                          e.target.value === "latest" &&
-                          workMode !== "latest"
-                        )
-                          setSourceLoading(true);
-                        setWorkMode(e.target.value);
-                      }}
-                    >
-                      <option value="latest">
-                        Latest saved work; starter files if never started
-                      </option>
-                      <option value="materials">Exam starter files</option>
-                      <option value="template">Other starter files</option>
-                      <option value="empty">Empty folder</option>
-                    </select>
-                  </label>
-                  {workMode === "template" && (
-                    <TemplatePicker
-                      name={workName}
-                      hash={workHash}
-                      onChange={(n, h) => {
-                        setWorkName(n);
-                        setWorkHash(h);
-                      }}
-                    />
+                  {names.length === 1 && (
+                    <div className="starting-source-summary">
+                      <p style={{ overflowWrap: "anywhere" }}>
+                        {singleSourceSummary}
+                      </p>
+                      <button
+                        type="button"
+                        aria-expanded={changingSource}
+                        aria-controls={`${formId}-file-choices`}
+                        onClick={() => setChangingSource((value) => !value)}
+                      >
+                        Change starting files
+                      </button>
+                    </div>
                   )}
-                  {workMode === "latest" && (
-                    <>
-                      <details>
-                        <summary>
-                          Saved work from{" "}
-                          {sourceExams
-                            .map((id) =>
-                              examChoiceLabel(
-                                exams.find((e) => e.id === id) ?? { id },
-                              ),
-                            )
-                            .join(", ") || "no exam selected"}
-                        </summary>
-                        <fieldset>
-                          <legend>Choose source exams</legend>
-                          {(exams.length ? exams : [initial]).map((exam) => (
-                            <label key={exam.id}>
-                              <input
-                                type="checkbox"
-                                checked={sourceExams.includes(exam.id)}
-                                onChange={(e) => {
-                                  setSourceChoices({});
-                                  setSourceLoading(true);
-                                  setSourceExams((old) =>
-                                    e.target.checked
-                                      ? [...old, exam.id]
-                                      : old.filter((id) => id !== exam.id),
-                                  );
-                                }}
-                              />
-                              {examChoiceLabel(exam)}
-                            </label>
-                          ))}
-                        </fieldset>
-                      </details>
-                      {!sourceExams.length ? (
-                        <p role="alert">Choose at least one source exam.</p>
-                      ) : sourceLoading ? (
-                        <p role="status">Loading saved work…</p>
-                      ) : sourceError ? (
-                        <div role="alert">
-                          <p>Could not load saved work.</p>
-                          <details>
-                            <summary>Details</summary>
-                            <p>{sourceError}</p>
-                          </details>
-                          <RefreshButton
-                            label="Refresh saved work"
-                            onClick={() => {
-                              setSourceLoading(true);
-                              setSourceReload((n) => n + 1);
-                            }}
-                          />
-                        </div>
-                      ) : names.length === 1 ? (
-                        sourceRow(names[0])
-                      ) : (
-                        <>
-                          <p>
-                            Saved work:{" "}
-                            {
-                              names.filter(
-                                (n) => rowSource(n).work?.kind === "saved",
-                              ).length
-                            }{" "}
-                            · Starter files:{" "}
-                            {
-                              names.filter(
-                                (n) => rowSource(n).work?.kind === "template",
-                              ).length
-                            }
-                            {names.some(
-                              (n) => rowSource(n).work?.kind === "empty",
-                            )
-                              ? ` · Empty folders: ${names.filter((n) => rowSource(n).work?.kind === "empty").length}`
-                              : ""}
-                            {unresolvedSources.length
-                              ? ` · Needs review: ${unresolvedSources.length}`
-                              : ""}
-                          </p>
-                          {blockedSources.map(sourceRow)}
-                          <details>
-                            <summary>Individual starting files</summary>
-                            {names
-                              .filter((n) => !blockedSources.includes(n))
-                              .map(sourceRow)}
-                          </details>
-                        </>
-                      )}
-                    </>
-                  )}
+                  <div
+                    id={`${formId}-file-choices`}
+                    hidden={names.length === 1 && !changingSource}
+                  >
+                    <label>
+                      Start with
+                      <select
+                        value={workMode}
+                        onChange={(e) => {
+                          if (
+                            e.target.value === "latest" &&
+                            workMode !== "latest"
+                          )
+                            setSourceLoading(true);
+                          setWorkMode(e.target.value);
+                        }}
+                      >
+                        <option value="latest">
+                          Latest saved work; starter files if never started
+                        </option>
+                        <option value="materials">Exam starter files</option>
+                        <option value="template">Other starter files</option>
+                        <option value="empty">Empty folder</option>
+                      </select>
+                    </label>
+                    {workMode === "template" && (
+                      <TemplatePicker
+                        name={workName}
+                        hash={workHash}
+                        onChange={(n, h) => {
+                          setWorkName(n);
+                          setWorkHash(h);
+                        }}
+                      />
+                    )}
+                    {workMode === "latest" && (
+                      <>
+                        <details>
+                          <summary>
+                            Saved work from{" "}
+                            {sourceExams
+                              .map((id) =>
+                                examChoiceLabel(
+                                  exams.find((e) => e.id === id) ?? { id },
+                                ),
+                              )
+                              .join(", ") || "no exam selected"}
+                          </summary>
+                          <fieldset>
+                            <legend>Choose source exams</legend>
+                            {(exams.length ? exams : [initial]).map((exam) => (
+                              <label key={exam.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={sourceExams.includes(exam.id)}
+                                  onChange={(e) => {
+                                    setSourceChoices({});
+                                    setSourceLoading(true);
+                                    setSourceExams((old) =>
+                                      e.target.checked
+                                        ? [...old, exam.id]
+                                        : old.filter((id) => id !== exam.id),
+                                    );
+                                  }}
+                                />
+                                {examChoiceLabel(exam)}
+                              </label>
+                            ))}
+                          </fieldset>
+                        </details>
+                        {!sourceExams.length ? (
+                          <p role="alert">Choose at least one source exam.</p>
+                        ) : sourceLoading ? (
+                          <p role="status">Loading saved work…</p>
+                        ) : sourceError ? (
+                          <div role="alert">
+                            <p>Could not load saved work.</p>
+                            <details>
+                              <summary>Details</summary>
+                              <p>{sourceError}</p>
+                            </details>
+                            <RefreshButton
+                              label="Refresh saved work"
+                              onClick={() => {
+                                setSourceLoading(true);
+                                setSourceReload((n) => n + 1);
+                              }}
+                            />
+                          </div>
+                        ) : names.length === 1 ? (
+                          sourceRow(names[0])
+                        ) : (
+                          <>
+                            <p>
+                              Saved work:{" "}
+                              {
+                                names.filter(
+                                  (n) => rowSource(n).work?.kind === "saved",
+                                ).length
+                              }{" "}
+                              · Starter files:{" "}
+                              {
+                                names.filter(
+                                  (n) => rowSource(n).work?.kind === "template",
+                                ).length
+                              }
+                              {names.some(
+                                (n) => rowSource(n).work?.kind === "empty",
+                              )
+                                ? ` · Empty folders: ${names.filter((n) => rowSource(n).work?.kind === "empty").length}`
+                                : ""}
+                              {unresolvedSources.length
+                                ? ` · Needs review: ${unresolvedSources.length}`
+                                : ""}
+                            </p>
+                            {blockedSources.map(sourceRow)}
+                            <details>
+                              <summary>Individual starting files</summary>
+                              {names
+                                .filter((n) => !blockedSources.includes(n))
+                                .map(sourceRow)}
+                            </details>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </>
               ) : (
                 <p>
@@ -906,7 +960,7 @@ export function GrantIssuanceDialog({
                 </p>
               )}
               <fieldset>
-                <legend>Start window</legend>
+                <legend>Start dates</legend>
                 <LocalDateTimeInput
                   label="Opens"
                   value={earliest}
@@ -1008,7 +1062,7 @@ export function GrantIssuanceDialog({
               )}
             {sharedWindow && (
               <p>
-                Start window:{" "}
+                Start dates:{" "}
                 {windowLabel(
                   review.rows[0].settings.earliest,
                   review.rows[0].settings.latest,

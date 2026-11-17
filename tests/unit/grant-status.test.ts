@@ -28,7 +28,7 @@ it("keeps claims, closed windows and final states ahead of pending update labels
   expect(
     grantStatus({ ...revised, claims: [{ state: "PREPARING" }] }, 100),
   ).toBe("Setup in progress");
-  expect(grantStatus(revised, 201)).toBe("Start window closed");
+  expect(grantStatus(revised, 201)).toBe("Start deadline passed");
   expect(grantStatus({ ...revised, status: "REVOKED" }, 100)).toBe("Cancelled");
   expect(grantStatus({ ...revised, status: "CONSUMED" }, 100)).toBe("Started");
 });

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const message =
-  "The exam website is temporarily unavailable. Please try again shortly. If your exam was already running, its countdown continues.";
+  "The exam website is temporarily unavailable. Please try again shortly. If your exam was already running, contact your instructor to check its status.";
 
 for (const instructor of [false, true]) {
   test(`${instructor ? "instructor" : "student"} sign-in displays retryable maintenance without starting an exam`, async ({
@@ -61,6 +61,9 @@ for (const instructor of [false, true]) {
       .getByRole("button", { name: "Sign in", exact: true })
       .click({ timeout: 3000 });
     await expect(page.getByRole("alert")).toContainText(message);
+    await expect(page.getByRole("alert")).not.toContainText(
+      "its countdown continues",
+    );
     await expect(
       page.getByRole("button", { name: "Sign in", exact: true }),
     ).toBeEnabled();

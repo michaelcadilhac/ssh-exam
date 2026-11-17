@@ -480,7 +480,7 @@ export function Workspace({
       }
     } else if (lost === null) {
       focusLostAt.current = performance.now();
-      setFocusSeconds(20);
+      setFocusSeconds(FOCUS_GRACE_MS / 1000);
       send({ type: "focus", focused: false });
     }
   };

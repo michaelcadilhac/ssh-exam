@@ -36,6 +36,11 @@ export async function additionalDraft(
     await dialog
       .getByLabel("Time limit (minutes)", { exact: true })
       .fill(minutes);
+  const changeFiles = dialog.getByRole("button", {
+    name: "Change starting files",
+    exact: true,
+  });
+  if (await changeFiles.count()) await changeFiles.click({ timeout: 3000 });
   await dialog
     .getByRole("combobox", { name: "Start with", exact: true })
     .selectOption(work);
@@ -125,6 +130,15 @@ export async function chooseSavedSource(
   username: string,
   attempt: string,
 ) {
+  const changeFiles = dialog.getByRole("button", {
+    name: "Change starting files",
+    exact: true,
+  });
+  if (
+    (await changeFiles.count()) &&
+    (await changeFiles.getAttribute("aria-expanded")) === "false"
+  )
+    await changeFiles.click({ timeout: 3000 });
   const choice = dialog.getByRole("combobox", {
     name: `Starting files for ${username}`,
     exact: true,

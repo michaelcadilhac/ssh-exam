@@ -105,7 +105,7 @@ export function AttemptProvenance({
           <dd>{g.settings.webcam ? "Required" : "Off"}</dd>
         </div>
         <div>
-          <dt>Start window</dt>
+          <dt>Start dates</dt>
           <dd>
             {dateTime(g.settings.earliest)} — {dateTime(g.settings.latest)}
           </dd>

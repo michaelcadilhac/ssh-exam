@@ -48,7 +48,30 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
 - Milestone 2 implemented/tested locally: 26 focused API/capture checks, current
   build/typecheck and two browser challenge/upload cancellation cases pass. One
   selected stream, no stale modal/incident/clock; cancellation releases late media.
-- Current milestone: 3, affected instructor/browser workflows (running); then
-  stable private Marco network and native capacity/pane-refusal investigation.
+- Milestone 3 implemented/tested locally: Prof reviewed desktop and 375px flows.
+  Separate bulk cancellation, concise sources, date terms, initial focus, visible
+  validation, completed connection status, sandbox/pause explanations and neutral
+  maintenance copy are fixed. The affected suite passed 162 cases; three stale
+  expectations were repaired and passed separately. Subsequent mobile validation,
+  plural cancellation and 60-second focus-display regressions pass on rebuilt
+  assets. Real local nginx/TLS maintenance checks pass. Original failed receipts
+  and the separate follow-up results remain distinct.
+- Milestone 4: the owned Marco browser now has an isolated loopback-only network
+  namespace with private Unix-socket forwarding. A 190-second steady probe passed
+  2,054 requests without failures across eight host interface-creation events;
+  independent exact process/cgroup/tunnel cleanup passes. No host networking changed.
+  Actual encrypted synthetic SSH reproduced eight-session exhaustion under
+  concurrent commands. Bounded command concurrency/queueing reserves a live-renewal
+  lane; 63 queued commands, exact queued cancellation and all four panes pass,
+  as do browser-SSH races. This is a confirmed failure path, not proof of the cause
+  of the old sanitized fourth-pane refusal. Native UI qualification is next.
+- Full application checks pass: 910 tests/three explicitly gated skips. Latest
+  build and typecheck pass. Two native editor attempts were blocked before Start:
+  the loopback-only namespace made Chromium report offline despite working HTTP.
+  A separate real-browser check reproduced this. Exact fixture cleanup and zero
+  clock/consumption evidence are retained. The corrected private namespace has
+  only its closed veth pair and loopback, without host/external connectivity or
+  navigator overrides; a fresh steady/online smoke is running before native retry.
+- Current milestone: native editor/recovery/capacity qualification through Marco.
 - Decisions: none pending. Installation sizing will be recorded as a candidate
   until actual combined-capacity qualification, never represented as deployed.

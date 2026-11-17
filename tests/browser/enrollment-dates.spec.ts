@@ -145,7 +145,7 @@ async function captureDatesDialog(
   dialog: Locator,
   info: TestInfo,
   prefix: string,
-  groupName = "First attempt start dates",
+  groupName = "Start dates",
 ) {
   const dates = dialog.getByRole("group", { name: groupName, exact: true });
   for (const width of [1280, 430]) {

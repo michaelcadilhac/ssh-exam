@@ -987,6 +987,12 @@ export function Admin({
                   </button>
                 </div>
               )}
+              {exam === "sandbox" && (
+                <p id="sandbox-practice-settings">
+                  Practice settings are fixed: 5 minutes, webcam off, 4
+                  terminals.
+                </p>
+              )}
               {loading && !data ? (
                 <p className="admin-loading" role="status">
                   Loading students…
@@ -1185,7 +1191,16 @@ export function Admin({
                                           s.unusedAttempt.id,
                                           "webcam",
                                         )}
-                                        aria-label={`Change webcam for ${s.username}`}
+                                        aria-label={
+                                          exam === "sandbox"
+                                            ? `Webcam off for ${s.username} (fixed practice setting)`
+                                            : `Change webcam for ${s.username}`
+                                        }
+                                        aria-describedby={
+                                          exam === "sandbox"
+                                            ? "sandbox-practice-settings"
+                                            : undefined
+                                        }
                                         aria-pressed={
                                           !!s.unusedAttempt.settings.webcam
                                         }
@@ -1222,7 +1237,16 @@ export function Admin({
                                           s.unusedAttempt.id,
                                           "duration",
                                         )}
-                                        aria-label={`Change time limit for ${s.username}`}
+                                        aria-label={
+                                          exam === "sandbox"
+                                            ? `Time limit for ${s.username} (fixed practice setting)`
+                                            : `Change time limit for ${s.username}`
+                                        }
+                                        aria-describedby={
+                                          exam === "sandbox"
+                                            ? "sandbox-practice-settings"
+                                            : undefined
+                                        }
                                         disabled={
                                           stale ||
                                           !!inlineAttempt ||
@@ -1886,7 +1910,10 @@ export function Admin({
               if (!timerBusy) setPausingTimer(null);
             }}
           >
-            <p>The student's remaining time will stay fixed.</p>
+            <p>
+              The student's remaining time will stay fixed. Terminal work can
+              continue while the countdown is paused.
+            </p>
             <label>
               <input
                 type="checkbox"

@@ -16,7 +16,7 @@ export function grantStatus(grant: any, now = Date.now()) {
     !Number.isFinite(grant.settings.latest)
   )
     return "Needs review";
-  if (now > grant.settings.latest) return "Start window closed";
+  if (now > grant.settings.latest) return "Start deadline passed";
   if (grant.status === "PENDING_NATIVE")
     return pendingGrantLabel(grant.revision);
   if (now < grant.settings.earliest) return "Available later";

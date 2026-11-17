@@ -616,15 +616,17 @@ export function AdminReview({
           <dt>Deadline</dt>
           <dd>{timerPaused(a) ? "Countdown paused" : dateTime(a.deadline)}</dd>
         </div>
-        <div>
-          <dt>Connection</dt>
-          <dd>
-            {a.connected === true ? "Connected" : "Connection unconfirmed"}
-            {Number.isFinite(a.terminalCount)
-              ? ` · ${a.terminalCount} ${a.terminalCount === 1 ? "terminal" : "terminals"}`
-              : ""}
-          </dd>
-        </div>
+        {!(a.state === "COMPLETED" && hasProtectedFiles(a)) && (
+          <div>
+            <dt>Connection</dt>
+            <dd>
+              {a.connected === true ? "Connected" : "Connection unconfirmed"}
+              {Number.isFinite(a.terminalCount)
+                ? ` · ${a.terminalCount} ${a.terminalCount === 1 ? "terminal" : "terminals"}`
+                : ""}
+            </dd>
+          </div>
+        )}
       </dl>
       <details className="review-timing-details">
         <summary>Timing details</summary>

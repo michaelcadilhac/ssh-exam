@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"strings"
 	"testing"
@@ -43,6 +44,9 @@ func TestCurrentSSHCloseReportsOneSanitizedCause(t *testing.T) {
 	}
 }
 func TestTransportFailureCategoriesNeverCopyErrors(t *testing.T) {
+	if cause := FailureCause(&ssh.OpenChannelError{Reason: ssh.ResourceShortage, Message: "PRIVATE server detail"}); cause != "channel-capacity" {
+		t.Fatal("channel capacity was not categorized safely", cause)
+	}
 	for _, err := range []error{errors.New("password=PRIVATE-MFA"), io.EOF, context.DeadlineExceeded, context.Canceled} {
 		cause := FailureCause(err)
 		if strings.Contains(cause, "PRIVATE") || cause == err.Error() {

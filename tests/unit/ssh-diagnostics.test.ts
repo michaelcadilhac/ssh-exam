@@ -6,6 +6,9 @@ import {
 it("accepts only bounded failure categories, never raw error or credential fields", () => {
   const diagnostic = { stage: "ssh-wait", cause: "eof" };
   expect(safeSSHDiagnostic(diagnostic)).toEqual(diagnostic);
+  expect(
+    safeSSHDiagnostic({ stage: "open", cause: "channel-capacity" }),
+  ).toEqual({ stage: "open", cause: "channel-capacity" });
   for (const value of [
     { ...diagnostic, password: "SECRET" },
     { ...diagnostic, cause: "password=SECRET" },

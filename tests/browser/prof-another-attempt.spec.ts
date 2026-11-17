@@ -280,7 +280,7 @@ for (const width of [1280, 430])
         name: "Starting files for student01",
         exact: true,
       }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       dialog.getByText("Individual starting files", { exact: true }),
     ).toHaveCount(0);
@@ -288,6 +288,13 @@ for (const width of [1280, 430])
       /^Saved work: Midterm \(prof-another\) · Attempt 1 ·/,
     );
     await expect(sourceIdentity).toBeVisible();
+    await expect(dialog.locator(".starting-source-summary")).toHaveCount(1);
+    await expect(
+      dialog.getByRole("button", {
+        name: "Change starting files",
+        exact: true,
+      }),
+    ).toHaveAttribute("aria-expanded", "false");
     await expect(sourceIdentity).not.toContainText(f.state.attempts[0].id);
     await sourceIdentity.scrollIntoViewIfNeeded();
     await page.screenshot({
@@ -324,11 +331,17 @@ test("source exams show their recognizable code even when the display name is ge
   page,
 }) => {
   const f = await fixture(page, 1, true, "Programming exam"),
-    dialog = await f.open(),
-    source = dialog.getByText(
-      "Saved work from Programming exam · prof-another",
-      { exact: true },
-    );
+    dialog = await f.open();
+  await expect(dialog.locator(".starting-source-summary")).toContainText(
+    "Programming exam (prof-another) · Attempt 1",
+  );
+  await dialog
+    .getByRole("button", { name: "Change starting files", exact: true })
+    .click({ timeout: 3000 });
+  const source = dialog.getByText(
+    "Saved work from Programming exam · prof-another",
+    { exact: true },
+  );
   await expect(source).toBeVisible({ timeout: 3000 });
   await source.click({ timeout: 3000 });
   await expect(
@@ -344,7 +357,7 @@ test("source exams show their recognizable code even when the display name is ge
 test("another attempt uses two screens with fetched mixed sources and exact per-student settings", async ({
   page,
 }, info) => {
-  await page.setViewportSize({ width: 430, height: 1000 });
+  await page.setViewportSize({ width: 375, height: 812 });
   const f = await fixture(page),
     dialog = await f.open();
   await expect(dialog.getByLabel("Starting files for student01")).toContainText(
@@ -362,6 +375,24 @@ test("another attempt uses two screens with fetched mixed sources and exact per-
     .fill(localDateTime(Date.now() - 2 * 86400000));
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   expect(f.state.previews).toHaveLength(0);
+  const validation = dialog.getByText(
+    "Choose a closing time after the opening time, in the future.",
+    { exact: true },
+  );
+  await expect(validation).toBeFocused();
+  await expect(validation).toBeInViewport({ ratio: 1 });
+  await page.screenshot({
+    path: info.outputPath("validation-visible-mobile.png"),
+    fullPage: true,
+  });
+  await dialog.getByLabel("Closes", { exact: true }).scrollIntoViewIfNeeded();
+  await expect(validation).not.toBeInViewport();
+  // Submit the SAME error again: focusing cannot depend only on a changed string.
+  await dialog.getByRole("button", { name: "Review", exact: true }).click();
+  await expect(validation).toBeFocused();
+  await expect(validation).toBeInViewport({ ratio: 1 });
+  expect(f.state.previews).toHaveLength(0);
+  await expect(dialog.getByRole("alert").locator("details")).toHaveCount(0);
   await expect(dialog.getByLabel("Opens", { exact: true })).toHaveValue(opens);
   await dialog
     .getByLabel("Closes", { exact: true })
@@ -522,6 +553,9 @@ test("a disabled review explains missing published exam files", async ({
 }) => {
   const f = await fixture(page, 1, false),
     dialog = await f.open();
+  await dialog
+    .getByRole("button", { name: "Change starting files", exact: true })
+    .click({ timeout: 3000 });
   await dialog
     .getByRole("combobox", { name: "Start with", exact: true })
     .selectOption("empty");

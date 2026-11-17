@@ -26,13 +26,13 @@ test("Add student contains single entry and CSV upload with a downloadable examp
   });
   await expect(
     dialog.getByRole("textbox", { name: "Username", exact: true }),
-  ).toBeVisible();
+  ).toBeFocused();
   await expect(
     dialog.getByRole("button", { name: "One student", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
     dialog.getByRole("group", {
-      name: "First attempt start dates",
+      name: "Start dates",
       exact: true,
     }),
   ).toBeVisible();
@@ -64,6 +64,19 @@ test("Add student contains single entry and CSV upload with a downloadable examp
     .getByRole("group", { name: "Add students using" })
     .getByRole("button", { name: "CSV file", exact: true })
     .click();
+  await expect(dialog.getByLabel("CSV file", { exact: true })).toBeFocused();
+  await dialog
+    .getByRole("button", { name: "One student", exact: true })
+    .click({ timeout: 3000 });
+  await expect(dialog.getByLabel("Username", { exact: true })).toBeFocused();
+  await expect(dialog.getByLabel("Closes", { exact: true })).toHaveValue(
+    nativeDates[0],
+  );
+  await dialog
+    .getByRole("group", { name: "Add students using" })
+    .getByRole("button", { name: "CSV file", exact: true })
+    .click({ timeout: 3000 });
+  await expect(dialog.getByLabel("CSV file", { exact: true })).toBeFocused();
   await expect(
     dialog.getByRole("textbox", { name: "Username", exact: true }),
   ).toHaveCount(0);

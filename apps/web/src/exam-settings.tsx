@@ -321,7 +321,7 @@ export function ExamSettings({
             <legend>Defaults for new attempts</legend>
             <fieldset className="admin-form-group">
               <legend>
-                {initial.id ? "Default start dates" : "Start window"}
+                {initial.id ? "Default start dates" : "Start dates"}
               </legend>
               <div className="admin-form-grid">
                 <LocalDateTimeInput
@@ -348,7 +348,9 @@ export function ExamSettings({
               <small>Students may start between these times.</small>
             </fieldset>
             {isSandbox(form.id) && (
-              <p>Practice: 5 minutes, no webcam, 4 terminals.</p>
+              <p>
+                Practice settings are fixed: 5 minutes, webcam off, 4 terminals.
+              </p>
             )}
             <div className="admin-form-grid">
               <label>

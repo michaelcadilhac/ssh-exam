@@ -1,4 +1,4 @@
-# Current checkpoint — stress remediation active, milestone 3
+# Current checkpoint — stress remediation, native requalification
 
 User authorized implementing the stress report's fixes. Local development/tests/
 commits only; no push, deployment, production configuration or student changes.
@@ -15,17 +15,37 @@ browser challenge/upload cancellation cases pass after current build/typecheck.
 Selected streams retry with fresh verification; no stale modal/incident/clock,
 no authority bypass; late cancelled media is stopped.
 
-Current next action: collect affected Prof UI/browser suite (session55045),
-read results before edits. App/UI/affected tests are frozen. Prof edits are stable
-and real local nginx maintenance smoke passed. Then qualify the owned Marco
-network namespace (installed rootless unshare was positively verified), investigate
-native pane refusal and combined capacity, then new full 70×4×90-minute run.
-Installed 32-worker ceiling and prior failed qualification remain production gates.
+Prof's remaining changes pass rendered desktop/375px review and focused browser
+regressions, including repeated offscreen validation, separate bulk cancellation,
+plural wording and correct initial 60-second focus warning. Real local nginx/TLS
+maintenance smoke passes. Affected suite: 162 passes/three stale expectations;
+those three pass separately after correction. Do not call that a full rerun.
+
+Marco's private loopback-only network namespace passed 190 seconds/2,054 requests
+with zero failures across eight host interface events; independent owned cleanup
+passes. Actual encrypted SSH reproduces eight-session exhaustion. Bounded command
+queue/concurrency now preserves four panes, one monitoring-renewal lane and exact
+queued cancellation. Focused pressure tests, SSH races, build/typecheck pass.
+Historical fourth-pane refusal attribution remains unproved.
+
+Full application suite passes: 910 tests/three gated skips,149 files passing.
+Two new Marco/native editor attempts refused before Start: Chromium reported
+offline in the loopback-only namespace. Both native clocks stayed zero; exact
+native/Marco/local cleanup and original host preservation pass. Metadata-only
+socket evidence and a separate real-browser online-indicator reproducer are kept.
+The private namespace now contains a closed veth pair, with no host/external link,
+instead of overriding navigator.onLine or relaxing application checks.
+
+Active: corrected 190-second network/online smoke (session99596), plus fixture
+typecheck (session86468). Harness source is frozen until smoke completion.
+Next: verify both and cleanup, repeat native editor with the corrected private
+network, then timer/16/64 fault phases, combined sizing and fresh70×4×90-minute run.
+Installed32workers and co-located resource sizing remain open.
 
 Historical report: [20261116T194355Z](../reports/stress/20261116T194355Z/report.md).
 Its native/Marco/local fixtures are fully stopped with preserved host authority.
-No new native/Marco run active. No open user decision. Prof completed read-only
-approval of remaining UX fixes; main agent owns implementation.
+No open user decision. Prof's current rendered report is
+reports/stress/20261117-remediation/ui-ux-review.md. No production changes.
 
 ## Deployed baseline
 

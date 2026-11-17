@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   fixture,
+  begin,
   gate,
   openPreflight,
   ready,
@@ -60,9 +61,7 @@ test("one password and MFA sign-in, one preflight, automatic protected SSH hando
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("temporary-access");
   await page.getByLabel("Username").fill("policytest01");
-  await page
-    .getByRole("button", { name: "Sign in", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
@@ -129,6 +128,15 @@ test("brief focus loss during slow activation gets the existing grace period", a
     .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await page.evaluate(() => {
+    (window as any).__initialFocusWarnings = [];
+    new MutationObserver(() => {
+      const text = document.querySelector(".focus-warning")?.textContent;
+      if (text) (window as any).__initialFocusWarnings.push(text);
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
     Object.defineProperty(document, "hasFocus", {
       value: () => false,
       configurable: true,
@@ -141,6 +149,9 @@ test("brief focus loss during slow activation gets the existing grace period", a
     page.getByRole("button", { name: "Finish exam", exact: true }),
   ).toBeEnabled();
   await expect(page.locator(".focus-warning")).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as any).__initialFocusWarnings[0]),
+  ).toMatch(/(?:59|60)s before work pauses/);
   expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(0);
   await page.evaluate(() => {
     Object.defineProperty(document, "hasFocus", {
@@ -150,6 +161,36 @@ test("brief focus loss during slow activation gets the existing grace period", a
     window.dispatchEvent(new Event("focus"));
   });
   await expect(page.locator(".focus-warning")).toHaveCount(0);
+});
+
+test("active focus warning starts at the actual sixty-second grace instead of the old twenty-second display", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await begin(page, f);
+  await page.evaluate(() => {
+    (window as any).__activeFocusWarnings = [];
+    new MutationObserver(() => {
+      const text = document.querySelector(".focus-warning")?.textContent;
+      if (text) (window as any).__activeFocusWarnings.push(text);
+    }).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+    Object.defineProperty(document, "hasFocus", {
+      value: () => false,
+      configurable: true,
+    });
+    window.dispatchEvent(new Event("blur"));
+  });
+  await expect(page.locator(".focus-warning")).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as any).__activeFocusWarnings[0]),
+  ).toContain("60s before work pauses");
+  expect(
+    f.model.messages.filter((message) => message.type === "incident"),
+  ).toEqual([]);
 });
 
 test("activation reports the specific lost condition in the UI and incident log", async ({

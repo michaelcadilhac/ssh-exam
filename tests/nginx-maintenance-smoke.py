@@ -143,6 +143,8 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                 assert status == 503, (site, fenced, path, status, body)
                 assert headers['Retry-After'] == '60' and headers['Cache-Control'] == 'no-store', headers
                 assert 'X-Synthetic-Upstream' not in headers
+                assert b'contact your instructor to check its status' in body
+                assert b'its countdown continues' not in body
                 if re.sub('%61', 'a', path).startswith('/api/'):
                     assert headers['Content-Type'].startswith('application/json'), headers
                     message = json.loads(body)

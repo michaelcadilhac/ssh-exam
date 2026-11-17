@@ -143,7 +143,9 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           }
         }),
       );
-      await page.setExtraHTTPHeaders({"X-Forwarded-For":`198.51.100.${140+index}`});
+      await page.setExtraHTTPHeaders({
+        "X-Forwarded-For": `198.51.100.${140 + index}`,
+      });
       const origin = baseURL!,
         exam = `timezone-${index + 1}`,
         username = `timezone${index + 1}`;
@@ -156,7 +158,10 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
       });
       try {
         const login = await admin.post("/api/admin/login", {
-          data: { username: `timezone_instructor_${index+1}`, password: "fixture-password" },
+          data: {
+            username: `timezone_instructor_${index + 1}`,
+            password: "fixture-password",
+          },
         });
         expect(login.ok()).toBe(true);
         const { csrf } = await login.json(),
@@ -216,7 +221,7 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
           }),
         ).toBeVisible();
         const startWindow = page.locator("details").filter({
-          has: page.getByText("Start window", { exact: true }),
+          has: page.getByText(/^(Start window|Start dates)$/),
         });
         await expect(startWindow).toHaveCount(0);
         await expect(page.locator("main")).toContainText(
@@ -261,9 +266,10 @@ for (const [index, [timezoneId, localStartUTC]] of zones.entries()) {
         );
         expect(reset.ok()).toBe(true);
         await expect
-          .poll(async () =>
-            (await (await page.request.get("/api/student/exam")).json())
-              .attempt.clock_revision,
+          .poll(
+            async () =>
+              (await (await page.request.get("/api/student/exam")).json())
+                .attempt.clock_revision,
           )
           .toBe(1);
         const current = (

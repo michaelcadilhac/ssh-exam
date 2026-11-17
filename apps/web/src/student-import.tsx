@@ -1,5 +1,5 @@
 import { useExamDates } from "./exam-timezone.js";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
@@ -37,6 +37,11 @@ export function StudentImport({
     revision: defaultRevision,
   }));
   const [method, setMethod] = useState<"single" | "csv">("single");
+  const usernameInput = useRef<HTMLInputElement>(null);
+  const csvInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    (method === "single" ? usernameInput : csvInput).current?.focus();
+  }, [method]);
   const [preview, setPreview] = useState<any>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -129,7 +134,7 @@ export function StudentImport({
         <p>Practice dates come from Exam defaults.</p>
       ) : (
         <fieldset className="admin-form-group" disabled={busy}>
-          <legend>First attempt start dates</legend>
+          <legend>Start dates</legend>
           <div className="admin-form-grid">
             <LocalDateTimeInput
               label="Opens"
@@ -184,6 +189,8 @@ export function StudentImport({
           <label>
             Username
             <input
+              ref={usernameInput}
+              data-initial-focus
               required
               disabled={busy}
               pattern="[a-zA-Z][a-zA-Z0-9_\-]{0,31}"
@@ -253,6 +260,8 @@ export function StudentImport({
           <label>
             CSV file
             <input
+              ref={csvInput}
+              data-initial-focus
               type="file"
               disabled={busy}
               accept=".csv,text/csv"

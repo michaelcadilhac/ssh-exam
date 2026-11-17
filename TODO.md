@@ -4,8 +4,13 @@ November 17: classroom bootstrap now has a separate bounded public-read budget.
 Seventy same-NAT cold loads, bounded read abuse and unchanged credential/API
 refusals pass through real middleware; 16 affected security/integration checks,
 typecheck and the original baseline pass. No production limit has changed.
-Next: capture setup recovery, remaining Prof fixes, stable generator networking,
-pane-refusal diagnosis and shared-host/full endurance qualification.
+Capture setup recovery and remaining Prof fixes are implemented/tested locally.
+The isolated Marco network passed 2,054 steady requests across eight host network
+events with zero failures and verified cleanup. A real SSH regression reproduced
+session exhaustion; bounded command concurrency now preserves four panes and a
+monitoring-renewal lane. SSH races, current build/typecheck and focused UI checks
+pass. Native/browser requalification is in progress; shared-host sizing and the
+70-student/90-minute target remain open. No fixes are deployed.
 [Durable plan](docs/stress-remediation.md).
 
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED

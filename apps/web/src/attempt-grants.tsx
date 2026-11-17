@@ -976,7 +976,7 @@ export function AttemptGrantsDialog({
           {g.settings.webcam ? "required" : "off"}
         </p>
         <p>
-          Start window: {windowLabel(g.settings.earliest, g.settings.latest)}
+          Start dates: {windowLabel(g.settings.earliest, g.settings.latest)}
         </p>
         <p>
           Starting files:{" "}
@@ -1500,7 +1500,11 @@ export function AttemptGrantsDialog({
         ))}
         <div className="modal-actions">
           <button type="button" disabled={busy} onClick={keep}>
-            {hasResults ? "Close" : "Keep attempt"}
+            {hasResults
+              ? "Close"
+              : names.length > 1
+                ? "Keep attempts"
+                : "Keep attempt"}
           </button>
           {!!pendingRows.length && (
             <button
@@ -1609,7 +1613,8 @@ export function AttemptGrantsDialog({
                 >
                   {exam === "sandbox" && (
                     <p>
-                      Practice uses five minutes, webcam off and four terminals.
+                      Practice settings are fixed: 5 minutes, webcam off, 4
+                      terminals.
                     </p>
                   )}
                   {showField("duration") && (
@@ -1674,7 +1679,7 @@ export function AttemptGrantsDialog({
                     <>
                       {!editingGrant && (
                         <label>
-                          Start window
+                          Start dates
                           <select
                             value={windowMode}
                             onChange={(e) => setWindowMode(e.target.value)}
@@ -1686,7 +1691,7 @@ export function AttemptGrantsDialog({
                       )}
                       {windowMode === "set" && (
                         <fieldset>
-                          {!editField && <legend>Start window</legend>}
+                          {!editField && <legend>Start dates</legend>}
                           <LocalDateTimeInput
                             label="Opens"
                             value={opens}
@@ -2086,19 +2091,6 @@ export function AttemptGrantsDialog({
             >
               {inlineField ? "Save" : "Review changes"}
             </button>
-            {!username && (
-              <button
-                disabled={
-                  busy ||
-                  !catalogReady ||
-                  !selectedGrants.length ||
-                  selectedGrants.length > 200
-                }
-                onClick={() => void makeReview("revoke")}
-              >
-                Review cancellation
-              </button>
-            )}
           </>
         )}
         {review && !!pendingRows.length && (
@@ -2152,11 +2144,15 @@ export function AttemptGrantsDialog({
         )}
         {!review && editingGrant ? (
           <button disabled={busy} onClick={cancelEditing}>
-            {editField ? "Cancel" : "Cancel editing"}
+            Cancel
           </button>
         ) : (
           <button disabled={busy} onClick={close}>
-            {review && !pendingRows.length ? "Done" : "Close"}
+            {!review && !username
+              ? "Cancel"
+              : review && !pendingRows.length
+                ? "Done"
+                : "Close"}
           </button>
         )}
       </div>

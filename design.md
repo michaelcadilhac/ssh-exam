@@ -5,6 +5,28 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 17 local remediation: SSH command capacity and instructor clarity
+
+The browser SSH client admits at most three concurrent signed command channels,
+including at most two ordinary commands. Live execution-lease renewals have a
+reserved lane and one reserved pending slot; the total pending queue is bounded
+at 64. Waiting commands retain their original timeout and signed payload, remain
+individually cancellable, and are never sent after cancellation. This preserves
+headroom for four panes within the shipped eight-session SSH budget. No command,
+authentication or signed authorization is regenerated or replayed. Resource-shortage
+diagnostics use a fixed category without copying server messages. Encrypted local
+SSH pressure/cancellation and race checks pass; native capacity remains separate.
+
+Instructor bulk editing and cancellation are separate workflows. Known draft
+validation receives focus and scrolls into view, including repeated failures on
+narrow displays; unknown server outcomes retain reconciliation. Starting files
+show one fetched summary with same-dialog choices. Date controls say Start dates;
+add-student focus follows its entry mode. Completed protected reviews omit live
+connection status; practice and timer-pause constraints are explained beside their
+controls. The initial focus warning displays the existing 60-second grace.
+Maintenance messages make no promise about uninterrupted exams. These changes
+are implemented/tested locally, not deployed; see docs/stress-remediation.md.
+
 ## November 17 local remediation: recover initial capture verification
 
 A selected live screen/camera stream survives a temporary initial transport or
@@ -987,7 +1009,7 @@ deleted, and an already committed interval is never reset by this correction.
 
 Monitoring socket liveness and exam-state ordering are separate checks. Each bind and two-second preflight/heartbeat request uses a one-use connection-local confirmation value; the gateway echoes it only on the authenticated, page-owned socket. A reply within 15 seconds refreshes liveness even if a newer HTTP snapshot has overtaken its state. Apply state through the existing monotonic snapshot/generation checks independently. HTTP replies, unknown/replayed confirmations, replies from a retired socket and replies at or beyond the timeout cannot renew liveness, bind a replacement page or unlock a paused attempt. Before committing a new start, require a currently confirmed monitoring connection. Timeout diagnostics record only numeric acknowledgment age and rejected-snapshot counts, never confirmation values or credentials.
 
-Activation diagnostics must name the failed conditions (monitoring binding/acknowledgment, offline browser, SSH control, fullscreen, keyboard lock, visibility and required capture) in both the student error and durable server audit/log. Focus lost during activation uses the same 20-second grace as active work. A later watchdog acknowledgment of the same pause must retain the initiating reason and record its own cause separately; lease expiry and server reboot are distinct reasons.
+Activation diagnostics must name the failed conditions (monitoring binding/acknowledgment, offline browser, SSH control, fullscreen, keyboard lock, visibility and required capture) in both the student error and durable server audit/log. Focus lost during activation uses the same 60-second grace as active work. A later watchdog acknowledgment of the same pause must retain the initiating reason and record its own cause separately; lease expiry and server reboot are distinct reasons.
 
 Persist an operation/attempt identifier before making the remote activation request. After a timeout or lost response, query that operation instead of creating another attempt. A server-committed start remains started even if the browser never receives the acknowledgment. In that case, recover to a locked attempt with the original deadline, not to a fresh preflight.
 

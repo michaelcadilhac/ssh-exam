@@ -18,7 +18,8 @@ import (
 )
 
 type testHosts struct {
-	sessionFn func(ssh.Channel, <-chan *ssh.Request)
+	sessionFn    func(ssh.Channel, <-chan *ssh.Request)
+	sessionLimit atomic.Int32
 
 	handoffCA             ssh.PublicKey
 	certCalls             atomic.Int32
@@ -112,6 +113,7 @@ func hosts(t *testing.T, mixed, reject, repeat bool) *testHosts {
 					}
 					defer conn.Close()
 					go ssh.DiscardRequests(reqs)
+					var sessions atomic.Int32
 					for ch := range chs {
 						if jump && ch.ChannelType() == "direct-tcpip" {
 							out, err := net.Dial("tcp", net.JoinHostPort(h.class.Host, itoa(h.class.Port)))
@@ -127,21 +129,30 @@ func hosts(t *testing.T, mixed, reject, repeat bool) *testHosts {
 							go ssh.DiscardRequests(r)
 							go func() { defer out.Close(); defer stream.Close(); go io.Copy(out, stream); io.Copy(stream, out) }()
 						} else if !jump && ch.ChannelType() == "session" {
+							count := sessions.Add(1)
+							if limit := h.sessionLimit.Load(); limit > 0 && count > limit {
+								sessions.Add(-1)
+								ch.Reject(ssh.ResourceShortage, "synthetic MaxSessions budget")
+								continue
+							}
 							s, r, err := ch.Accept()
 							if err == nil {
 								h.mu.Lock()
 								handler := h.sessionFn
 								h.mu.Unlock()
 								if handler != nil {
-									go handler(s, r)
+									go func() { defer sessions.Add(-1); handler(s, r) }()
 									continue
 								}
 								go func() {
+									defer sessions.Add(-1)
 									for q := range r {
 										q.Reply(true, nil)
 									}
 									s.Close()
 								}()
+							} else {
+								sessions.Add(-1)
 							}
 						} else {
 							ch.Reject(ssh.UnknownChannelType, "unavailable")

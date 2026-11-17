@@ -670,7 +670,7 @@ for (const width of [1280, 430])
     await expect(
       grants.getByText("1 attempt for 1 student selected", { exact: true }),
     ).toHaveCount(0);
-    await expect(currentGrant.getByText(/^Start window:/)).toBeVisible();
+    await expect(currentGrant.getByText(/^Start dates:/)).toBeVisible();
     await expect(currentGrant.getByText(/^Reference /)).not.toBeVisible();
     await currentGrant.getByText("Technical details", { exact: true }).click();
     await expect(currentGrant.getByText(/^Reference /)).toBeVisible();
@@ -879,6 +879,9 @@ test("ordinary timing and date controls keep technical references out of the use
     .first()
     .click();
   const review = page.getByRole("dialog");
+  await expect(
+    review.getByText("Connection", { exact: true }).locator(".."),
+  ).toContainText("Connected");
   await review.getByText("Timing details", { exact: true }).click();
   await expect(review.locator(".review-attempt-id")).not.toBeVisible();
   const timing = review.locator(".review-timing-details");
@@ -1087,6 +1090,9 @@ test("stopped students can pause countdown manually with a steady displayed rema
     name: "Pause countdown for bob",
     exact: true,
   });
+  await expect(pauseDialog).toContainText(
+    "Terminal work can continue while the countdown is paused.",
+  );
   await expect(pauseDialog.getByRole("checkbox")).not.toBeChecked();
   await pauseDialog
     .getByRole("button", { name: "Pause countdown", exact: true })
@@ -1400,7 +1406,9 @@ for (const width of [1280, 430])
       .getByRole("group", { name: "Confirm resume approval", exact: true })
       .getByRole("button", { name: "Allow resume", exact: true })
       .click();
-    await expect(dialog.getByRole("alert")).toContainText(/fetch|network/i);
+    await expect(dialog.getByRole("alert")).toContainText(
+      "The server could not be reached. Check your connection and try again.",
+    );
     expect(s.calls).toHaveLength(1);
     const original = s.calls[0].body;
     expect(original).toMatchObject({
@@ -3332,6 +3340,8 @@ test("review shows preflight, finished duration, access failures, clock changes 
     .first()
     .click();
   const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Connection", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByText(/Connection unconfirmed/)).toHaveCount(0);
   await expect(
     dialog.getByText("Setup started", { exact: true }).locator(".."),
   ).toContainText("9:58:00 AM CDT");

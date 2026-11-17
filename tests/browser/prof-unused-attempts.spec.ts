@@ -495,31 +495,71 @@ test("bulk changes use each selected student's sole unused attempt without a sec
   await expect(dialog).toContainText("No next attempt for: carol.");
   expect(f.state.writes).toHaveLength(0);
   expect(f.state.grants).toEqual(f.original);
-  for (const name of ["Review changes", "Review cancellation"])
-    await expect(
-      dialog.getByRole("button", { name, exact: true }),
-    ).toBeEnabled();
+  await expect(
+    dialog.getByRole("button", { name: "Review changes", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    dialog.getByRole("button", { name: "Review cancellation", exact: true }),
+  ).toHaveCount(0);
   await dialog
-    .getByRole("button", { name: "Review cancellation", exact: true })
-    .click();
-  const review = dialog.getByRole("region", {
-    name: "Review unused changes",
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click({ timeout: 3000 });
+  expect(f.state.writes).toHaveLength(0);
+  expect(f.state.grants).toEqual(f.original);
+  await page
+    .getByRole("button", { name: "Selected students", exact: true })
+    .click({ timeout: 3000 });
+  await page
+    .getByRole("menuitem", { name: "Cancel next attempts", exact: true })
+    .click({ timeout: 3000 });
+  const cancellation = page.getByRole("dialog", {
+    name: "Cancel next attempts?",
     exact: true,
   });
-  await expect(review.getByRole("article")).toHaveCount(2);
-  await expect(review).toContainText("amy · Attempt");
-  await expect(review).toContainText("bob · Attempt");
-  await expect(review).toContainText(
-    "Cancel this unused attempt. Saved files and history are kept.",
+  await expect(
+    cancellation.getByRole("button", { name: "Keep attempts", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    cancellation.getByRole("button", { name: "Keep attempt", exact: true }),
+  ).toHaveCount(0);
+  await expect(cancellation).toContainText("No next attempt for: carol.");
+  await expect(cancellation).toContainText(
+    "Previous attempts and saved files are kept.",
   );
   await expect(
-    dialog.getByRole("button", {
+    cancellation.getByRole("button", {
       name: "Cancel selected attempts",
       exact: true,
     }),
   ).toBeEnabled();
   expect(f.state.writes).toHaveLength(0);
   expect(f.state.grants).toEqual(f.original);
+  await cancellation
+    .getByRole("button", { name: "Cancel selected attempts", exact: true })
+    .click({ timeout: 3000 });
+  await expect(cancellation).toHaveCount(0);
+  for (const username of ["amy", "bob"]) {
+    await expect(
+      page.getByRole("row", {
+        name: `Next attempt for ${username}`,
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", {
+        name: `Add next attempt for ${username}`,
+        exact: true,
+      }),
+    ).toBeEnabled();
+  }
+  expect(f.state.writes).toHaveLength(1);
+  expect(f.state.writes[0].rows.map((row: any) => row.operation)).toEqual([
+    "revoke",
+    "revoke",
+  ]);
+  expect(f.state.grants[0]).toEqual({ ...f.original[0], status: "REVOKED" });
+  expect(f.state.grants[1]).toEqual({ ...f.original[1], status: "REVOKED" });
+  expect(f.state.grants[2]).toEqual(f.original[2]);
 });
 
 test("main-page webcam click preserves exact seconds, dates and files without separate student defaults", async ({
@@ -726,7 +766,7 @@ test("editing only a closing time uses the chosen repeated hour and preserves ev
   }
   const dialog = await f.open();
   await dialog
-    .getByRole("combobox", { name: "Start window", exact: true })
+    .getByRole("combobox", { name: "Start dates", exact: true })
     .selectOption("set");
   await dialog
     .getByRole("textbox", { name: "Closes", exact: true })
@@ -800,6 +840,12 @@ test("saved-work retrieval is retryable and sandbox fixed settings cannot be cha
 }) => {
   const f = await fixture(page, "source", true),
     dialog = await f.open();
+  await expect(page.locator("#sandbox-practice-settings")).toHaveText(
+    "Practice settings are fixed: 5 minutes, webcam off, 4 terminals.",
+  );
+  await expect(dialog).toContainText(
+    "Practice settings are fixed: 5 minutes, webcam off, 4 terminals.",
+  );
   await expect(
     dialog.getByRole("spinbutton", {
       name: "Time limit (minutes)",
@@ -1035,6 +1081,12 @@ test("personal saved-file choices explain an empty completed list without blocki
     name: "Cancel next attempt for amy?",
     exact: true,
   });
+  await expect(
+    cancellation.getByRole("button", { name: "Keep attempt", exact: true }),
+  ).toBeEnabled();
+  await expect(
+    cancellation.getByRole("button", { name: "Keep attempts", exact: true }),
+  ).toHaveCount(0);
   await expect(
     cancellation.getByRole("button", { name: "Cancel attempt", exact: true }),
   ).toBeEnabled();
