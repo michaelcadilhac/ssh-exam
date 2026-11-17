@@ -155,7 +155,7 @@ class BrowserBridgeTests(unittest.TestCase):
             outage.assert_not_called()
             snapshots[ids[0]]['kernel'].append({'populated':'1','frozen':'0'})
             self.assertEqual(invoke(fixture,{'attempts':ids,'recovery':'start'}),{'phase':'offline'})
-            outage.assert_called_once_with(seconds=35,all_proof_paths=True,transport_only=True,role_ready=None)
+            outage.assert_called_once_with(seconds=75,all_proof_paths=True,transport_only=True,role_ready=None)
             self.assertEqual(invoke(fixture,{'attempts':list(reversed(ids)),'recovery':'status'}),{'phase':'offline'})
             with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids[:-1],'recovery':'status'})
             with self.assertRaises(AssertionError): invoke(fixture,{'attempts':ids,'recovery':'start'})
@@ -313,6 +313,29 @@ class BrowserBridgeTests(unittest.TestCase):
                 for fd in opened:
                     with self.assertRaises(OSError): real_fstat(fd)
 
+    def test_mutable_snapshot_recovers_a_bounded_real_replacement_burst(self):
+        real_open, real_fstat = os.open, os.fstat
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'state.json'; path.write_text('{"revision":0}')
+            replacement = Path(directory)/'next.json'
+            opened = []
+            def replacing_open(name, *args, **kwargs):
+                fd = real_open(name, *args, **kwargs); opened.append(fd)
+                if len(opened) <= 4:
+                    replacement.write_text(json.dumps({'revision':len(opened)}))
+                    os.replace(replacement, path)
+                return fd
+            def root_stat(fd):
+                info = real_fstat(fd)
+                return types.SimpleNamespace(st_mode=info.st_mode, st_uid=0,
+                                             st_nlink=info.st_nlink, st_size=info.st_size)
+            with mock.patch.object(bridge.os, 'open', side_effect=replacing_open), \
+                 mock.patch.object(bridge.os, 'fstat', side_effect=root_stat):
+                self.assertEqual(bridge.private_json(path, atomic_snapshot=True), {'revision':4})
+            self.assertEqual(len(opened),5)
+            for fd in opened:
+                with self.assertRaises(OSError): real_fstat(fd)
+
     def test_mutable_snapshot_refuses_continuous_replacement_and_hard_links(self):
         real_open, real_fstat = os.open, os.fstat
         with tempfile.TemporaryDirectory() as directory:
@@ -331,7 +354,8 @@ class BrowserBridgeTests(unittest.TestCase):
                  mock.patch.object(bridge.os, 'fstat', side_effect=root_stat):
                 with self.assertRaisesRegex(RuntimeError, 'kept changing'):
                     bridge.private_json(path, atomic_snapshot=True)
-            self.assertEqual(len(opened), 3)
+            self.assertGreater(len(opened), 3)
+            self.assertLessEqual(len(opened), 20)
             for fd in opened:
                 with self.assertRaises(OSError): real_fstat(fd)
             os.link(path, Path(directory)/'hard-link')
@@ -635,9 +659,36 @@ class BrowserBridgeTests(unittest.TestCase):
         self.assertEqual(len(set(names)), 16)
         self.assertEqual(names[0], 'examq')
         self.assertEqual(names[-1], 'examq15')
-        for count in (0, 2, 17):
+        stress = bridge.fixture_accounts(70)
+        self.assertEqual(len(set(stress)), 70)
+        self.assertEqual(stress[-1], 'examq69')
+        with mock.patch.object(bridge, 'private_json', return_value={'browser_students':70}):
+            fixture = bridge.GuestBridge({})
+        self.assertEqual(fixture.requests.maxsize, 210)
+        attempt = {'start':1000,'original_deadline':10801000,'deadline':10801000,
+                   'settings':{'duration':10800},'access_state':'HELD'}
+        bridge.verify_fixture_clock(attempt, 70)
+        with self.assertRaises(AssertionError):
+            bridge.verify_fixture_clock(attempt, 16)
+        for count in (0, 2, 17, 71):
             with self.subTest(count=count), self.assertRaises(AssertionError):
                 bridge.fixture_accounts(count)
+
+    def test_stress_export_checks_every_panes_saved_work_and_wrong_student(self):
+        for corrupt in (False, True):
+            with self.subTest(corrupt=corrupt), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / 'stress.tar.gz'
+                files = {'fleet-proof.txt':b'FLEET-examq69-END\n',
+                         **{f'pane-{i}.txt':f'WORK-examq69-{i}\n'.encode() for i in range(4)}}
+                if corrupt: files['pane-3.txt'] = b'WORK-examq68-3\n'
+                with tarfile.open(path,'w:gz') as archive:
+                    for name,data in files.items():
+                        member=tarfile.TarInfo(name);member.size=len(data)
+                        archive.addfile(member,io.BytesIO(data))
+                if corrupt:
+                    with self.assertRaises(AssertionError):bridge.verify_stress_archive(path,'examq69')
+                else:
+                    self.assertEqual(len(bridge.verify_stress_archive(path,'examq69')),5)
 
     def test_export_checks_exact_saved_work_and_rejects_missing_or_linked_proofs(self):
         with tempfile.TemporaryDirectory() as directory:

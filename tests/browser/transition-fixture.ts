@@ -73,22 +73,44 @@ export async function onlyScreens(page: Page, allowed: string[]) {
     ),
   ).toEqual([]);
 }
-export async function simulatedMedia(page: Page) {
-  await page.addInitScript(() => {
+export async function simulatedMedia(page: Page, webcam = false) {
+  await page.addInitScript((webcam) => {
     Object.defineProperty(document, "hasFocus", {
       value: () => true,
       configurable: true,
     });
-    const stream = () => {
+    const stream = (source = "screen") => {
       const canvas = document.createElement("canvas");
-      canvas.width = 640;
-      canvas.height = 480;
+      canvas.width = webcam ? (source === "screen" ? 960 : 480) : 640;
+      canvas.height = webcam ? (source === "screen" ? 540 : 360) : 480;
       const ctx = canvas.getContext("2d")!;
-      setInterval(() => {
+      let tick = 0;
+      const paint = () => {
         ctx.fillStyle = "#123456";
-        ctx.fillRect(0, 0, 640, 480);
-      }, 100);
-      const media = canvas.captureStream(10),
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (webcam && source === "screen") {
+          ctx.font = "15px monospace";
+          ctx.fillStyle = "#e8eef7";
+          for (let row = 0; row < 30; row++)
+            ctx.fillText(
+              `terminal${(row % 4) + 1} stress.c:${row} value=${Math.imul(tick + row, 7919) >>> 0} gcc -g stress.c -o program`,
+              10,
+              18 + row * 17,
+            );
+        } else if (webcam) {
+          for (let y = 0; y < 24; y++)
+            for (let x = 0; x < 32; x++) {
+              const n =
+                (Math.imul(x + y * 32 + tick, 2654435761) >>> 8) & 0xffffff;
+              ctx.fillStyle = `#${n.toString(16).padStart(6, "0")}`;
+              ctx.fillRect(x * 15, y * 15, 15, 15);
+            }
+        }
+        tick++;
+      };
+      paint();
+      setInterval(paint, webcam ? 1000 : 100);
+      const media = canvas.captureStream(webcam ? 2 : 10),
         track = media.getVideoTracks()[0];
       const settings = track.getSettings.bind(track);
       track.getSettings = () => ({ ...settings(), displaySurface: "monitor" });
@@ -101,10 +123,14 @@ export async function simulatedMedia(page: Page) {
         return stream();
       },
     });
+    if (webcam)
+      Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+        value: async () => stream("webcam"),
+      });
     Object.defineProperty(navigator, "keyboard", {
       value: { lock: async () => {}, unlock: () => {} },
     });
-  });
+  }, webcam);
 }
 export async function fixture(
   page: Page,
@@ -391,11 +417,18 @@ export async function openPreflight(
     page.getByRole("button", { name: "Practice terminal", exact: true }),
   ).toBeEnabled();
 }
-export async function ready(page: Page) {
+export async function ready(page: Page, webcam = false) {
   await page.getByRole("button", { name: "1. Share entire screen" }).click();
-  await page.getByRole("button", { name: "2. Enter fullscreen" }).click();
+  if (webcam)
+    await page.getByRole("button", { name: "2. Enable webcam" }).click();
   await page
-    .getByRole("button", { name: "3. Lock keyboard", exact: true })
+    .getByRole("button", { name: `${webcam ? 3 : 2}. Enter fullscreen` })
+    .click();
+  await page
+    .getByRole("button", {
+      name: `${webcam ? 4 : 3}. Lock keyboard`,
+      exact: true,
+    })
     .click();
 }
 // Window creation precedes the verified open/input acknowledgment. Pin the

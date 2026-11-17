@@ -33,6 +33,13 @@ const guest = await nativeGuest(
   students,
   large,
 );
+const gatewayPort = guest.httpPort;
+const connectionWorkerEntry = new URL(
+  "../../dist/apps/server/src/connection-worker.js",
+  import.meta.url,
+);
+// The same compiled worker as production; do not charge70 TS loaders to capacity.
+readFileSync(connectionWorkerEntry);
 let cleanup = async () => {
   await guest.close();
 };
@@ -97,9 +104,10 @@ const tls = {
 const gatewayConfig: Parameters<typeof createApp>[0] = {
   mode: "development",
   origin,
-  port: 3100,
+  port: gatewayPort,
   data,
   maintenance: false,
+  connectionWorkers: students === 70 ? 96 : 32,
   jump: h.jump,
   class: h.class,
   agent: {
@@ -114,11 +122,9 @@ const gatewayConfig: Parameters<typeof createApp>[0] = {
 };
 const gateway =
   process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1"
-    ? browserGatewayProcess(
-        gatewayConfig,
-        new URL("../../apps/server/src/connection-worker.ts", import.meta.url),
-        { detached: true },
-      )
+    ? browserGatewayProcess(gatewayConfig, connectionWorkerEntry, {
+        detached: true,
+      })
     : undefined;
 if (gateway) {
   const previousCleanup = cleanup;
@@ -135,7 +141,9 @@ if (gateway) {
   };
   await gateway.initialized;
 }
-const localApplication = gateway ? undefined : await createApp(gatewayConfig);
+const localApplication = gateway
+  ? undefined
+  : await createApp(gatewayConfig, { connectionWorkerEntry });
 const { app, store } = gateway ?? localApplication!;
 store.db
   .prepare("INSERT INTO admins VALUES(?,?,?)")
@@ -149,6 +157,8 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     releaseNative: metadata.releaseNative === true,
     uid: metadata.uid,
     students: metadata.students,
+    candidateConnectionWorkers: gatewayConfig.connectionWorkers,
+    compiledConnectionWorkers: true,
     large,
     gatewayProcess: !!gateway,
     gateStall: process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1",
@@ -369,7 +379,7 @@ if (gateway) {
     return { previous };
   });
 }
-await app.listen({ host: "127.0.0.1", port: 3100 });
+await app.listen({ host: "127.0.0.1", port: gatewayPort });
 // The optional child owns the real application/IPC; parent TLS, relay and SSH
 // stay alive across its replacement. Original HTTP/WS headers/bytes are kept.
 const web = https.createServer(tls, (req, res) => {
@@ -380,7 +390,7 @@ const web = https.createServer(tls, (req, res) => {
   const upstream = http.request(
     {
       host: "127.0.0.1",
-      port: 3100,
+      port: gatewayPort,
       path: req.url,
       method: req.method,
       headers: req.headers,
@@ -402,7 +412,7 @@ web.on("upgrade", (req, socket, head) => {
     app.server.emit("upgrade", req, socket, head);
     return;
   }
-  const upstream = net.connect(3100, "127.0.0.1", () => {
+  const upstream = net.connect(gatewayPort, "127.0.0.1", () => {
     upstream.write(`${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`);
     for (let i = 0; i < req.rawHeaders.length; i += 2)
       upstream.write(`${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`);
@@ -421,7 +431,7 @@ const listenWeb = () =>
     web.listen(9444, "127.0.0.1", resolve);
   });
 // Parent-owned fixture routes have no Fastify reply object. Keep the TLS ready
-// URL unavailable until setup is complete in child mode; callbacks use3100.
+// URL unavailable until setup is complete in child mode; callbacks use the private HTTP port.
 if (!gateway) await listenWeb();
 const relayServer = https.createServer(tls),
   relay = new WebSocketServer({ server: relayServer });
@@ -547,9 +557,12 @@ for (const [url, payload] of [
       id: "native-browser",
       name: "Private native browser qualification",
       earliest: Date.now() - 1000,
-      latest: Date.now() + 600000,
-      duration: 5400,
-      webcam: false,
+      latest: Date.now() + (students === 70 ? 7200000 : 600000),
+      // Three-hour allowance covers the measured sequential ramp plus90 real
+      // minutes at peak, without spending that peak interval during setup.
+      // No clock reset or fake clock is used by the endurance test.
+      duration: students === 70 ? 10800 : 5400,
+      webcam: students === 70,
       terminals: 4,
       template: "native-browser",
       template_version: metadata.template,

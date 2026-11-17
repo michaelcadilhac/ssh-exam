@@ -21,7 +21,8 @@
     "doctor": "tsx scripts/doctor.ts",
     "postinstall": "node scripts/patch-ssh2.cjs",
     "format": "prettier --write apps packages scripts tests *.ts *.json compose.yaml",
-    "test:load": "tsx tests/load.ts"
+    "test:load": "tsx tests/load.ts",
+    "test:stress": "python3 scripts/stress-test.py"
   },
   "dependencies": {
     "@fastify/cookie": "11.0.2",

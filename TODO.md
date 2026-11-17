@@ -1,3 +1,32 @@
+# Manual pre-final stress suite — FULL RUN INCOMPLETE
+
+November 16: manually invoked stress suite and agent-written report per full run,
+including independent Prof UI/UX review. Approved target: 70 synthetic students,
+four terminals each, 90 real minutes and simultaneous protected submission. No
+institutional MFA, real student accounts or external email. Guarded disposable
+csc-sys testing is authorized; no product deployment is requested.
+
+Harness 73 checks, 861 application checks and three normally gated actual
+CLI/export/bwrap workflows pass. Native races pass after four permission-fixture
+corrections. Prof's rendered review is complete with open wording findings.
+The narrow admin bulk-target fix passes the real cancel/import/bulk-edit workflow
+and all 30 editor guards. Fresh 16-client WASM sign-in and native editor, timer,
+16-student recovery and collector-crash workflows pass, with independent cleanup
+and preservation receipts. Earlier failures and unexplained extra-expiry
+observations remain documented. The corrected full browser suite completed with
+360 passed, three failed and five explicit skips. Later HTTP 429 responses support
+the shared-IP rate finding; three relay scenarios pass separately in a fresh
+five-case run that also verifies both local UI fixes. Neither fresh success nor
+fixture repairs erase the failed full-run receipts. All original images preserved.
+
+The latest rehearsal stopped safely at 22 active students/88 panes on the generator
+memory floor. No 70-student/90-minute pass; larger-generator decision pending.
+Confirmed P1 baselines: installed 32-connection ceiling is below 70, and the shared
+anonymous 180/minute bucket rejects 30 of 210 minimal cold-load requests. Neither
+is changed in production; the isolated candidate uses 96 compiled workers.
+Plan: docs/stress-testing.md. Reports: reports/stress/; private evidence: var/stress/.
+No production configuration, services or student data changed; nothing deployed.
+
 # csc-sys migration — ACTIVATED AND VERIFIED ONLINE
 
 November12,19:25:21Chicago: public HTTPS is open on csc-sys, exact existing

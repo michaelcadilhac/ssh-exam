@@ -141,14 +141,62 @@ def profile_files(profile, native_relay=False):
     return files
 
 
-def candidate_command(unit, guest, inputs, output, students=1, storage=None, profile='enforcement', native_relay=False):
-    assert students in (1, 16)
+def debugger_sources():
+    """Reuse installed public code; never install packages or replace guest libraries."""
+    sources = {'gdb': Path('/usr/bin/gdb').resolve(strict=True)}
+    result = subprocess.run(['ldd', '/usr/bin/gdb'], check=True, capture_output=True, text=True, timeout=10,
+                            env={'PATH':'/usr/sbin:/usr/bin:/sbin:/bin','LC_ALL':'C'})
+    for value in re.findall(r'(?:=>\s+)?(/[^\s()]+)', result.stdout):
+        assert value.startswith(('/lib/', '/lib64/', '/usr/lib/', '/usr/lib64/'))
+        path = Path(value)
+        name = 'ld.so' if path.name.startswith('ld-linux-') else path.name
+        assert name not in sources
+        sources[name] = path.resolve(strict=True)
+    assert 'ld.so' in sources
+    data = Path('/usr/share/gdb')
+    for path in data.rglob('*'):
+        assert not path.is_symlink()
+        if path.is_file(): sources['share/' + str(path.relative_to(data))] = path
+    assert len(sources) <= 4096 and sum(path.stat().st_size for path in sources.values()) <= 64 * 1024**2
+    for path in sources.values():
+        info = path.stat()
+        assert stat.S_ISREG(info.st_mode) and info.st_uid == 0 and not info.st_mode & 0o022
+    return sources
+
+
+def write_debugger_inputs(inputs, sources):
+    runtime = inputs / 'gdb-runtime'
+    runtime.mkdir(mode=0o755)
+    manifest, total = {}, 0
+    assert len(sources) <= 4096
+    for name, source in sources.items():
+        relative = Path(name)
+        assert not relative.is_absolute() and '..' not in relative.parts
+        with source.open('rb') as stream: data = stream.read(64 * 1024**2 + 1)
+        total += len(data)
+        assert total <= 64 * 1024**2
+        target = runtime / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data); target.chmod(0o755 if name in ('gdb','ld.so') else 0o644)
+        manifest[name] = hashlib.sha256(data).hexdigest()
+    for directory in runtime.rglob('*'):
+        if directory.is_dir(): directory.chmod(0o755)
+    raw = json.dumps(manifest, sort_keys=True).encode()
+    (inputs / 'debugger.json').write_bytes(raw)
+    wrapper = inputs / 'gdb-wrapper'
+    wrapper.write_text('#!/bin/sh\nexec /usr/lib/ssh-exam-stress-gdb/ld.so --library-path /usr/lib/ssh-exam-stress-gdb /usr/lib/ssh-exam-stress-gdb/gdb --data-directory=/usr/lib/ssh-exam-stress-gdb/share "$@"\n')
+    wrapper.chmod(0o755)
+    return hashlib.sha256(raw).hexdigest()
+
+
+def candidate_command(unit, guest, inputs, output, students=1, storage=None, profile='enforcement', native_relay=False, debugger=False):
+    assert students in (1, 16, 70)
     command = [
         'systemd-run', '--quiet', '--wait', '--pipe', '--collect',
         '--service-type=exec', '--unit=' + unit,
-        '--property=Delegate=yes', '--property=MemoryMax=' + ('3G' if students == 16 else '1G'),
-        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('2048' if students == 16 else '512'),
-        '--property=CPUQuota=' + ('200%' if students == 16 else '50%'), '--property=RuntimeMaxSec=900',
+        '--property=Delegate=yes', '--property=MemoryMax=' + ('3G' if students > 1 else '1G'),
+        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('4096' if students == 70 else '2048' if students == 16 else '512'),
+        '--property=CPUQuota=' + ('200%' if students > 1 else '50%'), '--property=RuntimeMaxSec=' + ('10800' if students == 70 else '900'),
         '--property=TimeoutStopSec=10s', '--property=KillMode=control-group',
         '--property=OOMPolicy=kill', '--', 'systemd-nspawn',
         '--directory=' + str(guest), '--machine=' + unit.removesuffix('.service'),
@@ -161,7 +209,7 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
         '--console=pipe', '--bind-ro=' + str(inputs) + ':/run/ssh-exam-qualification-input',
         '--bind=' + str(output) + ':/run/ssh-exam-qualification-output',
     ]
-    if students == 16:
+    if students > 1:
         assert storage and set(storage) == {'work', 'state'}
         for name, target in storage.items():
             assert Path(target).is_absolute() and '..' not in Path(target).parts
@@ -178,6 +226,10 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
     if native_relay:
         assert profile == 'native-install'
         command.append('--bind-ro=' + str(inputs / 'nginx-runtime') + ':/run/ssh-exam-nginx-runtime')
+    if debugger:
+        assert students == 70 and profile == 'retained-policy'
+        command.extend(('--bind-ro=' + str(inputs / 'gdb-runtime') + ':/usr/lib/ssh-exam-stress-gdb',
+                        '--bind-ro=' + str(inputs / 'gdb-wrapper') + ':/usr/bin/gdb'))
     command.append('--bind-ro=' + str(inputs / 'test.service') + ':/etc/systemd/system/' + SERVICE)
     return command
 
@@ -288,6 +340,11 @@ def run_locked(args):
         'etc/exam-agent/agent.json', 'var/lib/exam-agent/state.json',
         'etc/passwd', 'etc/group', 'etc/shadow', 'etc/ssh/sshd_config',
         *(target.lstrip('/') for target, _ in files.values() if target))]
+    debugger = debugger_sources() if getattr(args, 'browser_students', 1) == 70 else {}
+    if debugger:
+        assert args.profile == 'retained-policy' and args.username == 'examq' and args.browser_gateway_public_key
+        host_paths.extend(debugger.values())
+        guest_paths.extend((guest / 'usr/bin/gdb', guest / 'usr/lib/ssh-exam-stress-gdb'))
     preserved = digest(host_paths + guest_paths)
     stage = Path(tempfile.mkdtemp(prefix='ssh-exam-overlay-', dir='/var/tmp'))
     unit = 'ssh-exam-qualification-' + uuid.uuid4().hex + '.service'
@@ -330,7 +387,7 @@ def run_locked(args):
         large = getattr(args, 'browser_large', False)
         assert not large or students == 16
         storage = None
-        if students == 16:
+        if students > 1:
             assert marker.get('driver') == 'browser'
             assert shutil.disk_usage(stage).free >= (5 if large else 4) * 1024**3, 'Private capacity scratch unavailable; no test'
             memory = dict(row.split(':', 1) for row in Path('/proc/meminfo').read_text().splitlines())
@@ -364,15 +421,17 @@ def run_locked(args):
             marker['native_sha256'] = {name: manifest[name] for name in NATIVE_BINARIES}
             (inputs / 'native-bootstrap.service').write_text(NATIVE_BOOTSTRAP_UNIT)
             (inputs / 'native-bootstrap.conf').write_text(NATIVE_BOOTSTRAP_DEPENDENCY)
+        if debugger:
+            marker['debugger_manifest_sha256'] = write_debugger_inputs(inputs, debugger)
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
-        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=840') if students == 16 else UNIT)
-        command = candidate_command(unit, guest, inputs, output, students, storage, args.profile, native_relay)
+        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=10740' if students == 70 else 'TimeoutStartSec=840') if students > 1 else UNIT)
+        command = candidate_command(unit, guest, inputs, output, students, storage, args.profile, native_relay, bool(debugger))
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        deadline = time.monotonic() + 930
+        deadline = time.monotonic() + (10830 if students == 70 else 930)
         activation_deadline = time.monotonic() + 60
         activated = False
         while process.poll() is None:
@@ -440,8 +499,8 @@ if __name__ == '__main__':
     parser.add_argument('--username', default='examq')
     parser.add_argument('--browser-gateway-public-key', type=Path,
                         help='Private browser driver only: PUBLIC signing key; never supply a private key')
-    parser.add_argument('--browser-students', type=int, choices=(1, 16), default=1,
-                        help='Private browser capacity target; sixteen uses only owned disk binds and bounded3GiB/2CPU/2048tasks')
+    parser.add_argument('--browser-students', type=int, choices=(1, 16, 70), default=1,
+                        help='Private browser target;70 is the explicitly requested endurance mode (3GiB/2CPU/4096tasks/180min); owned disk binds only')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--native-relay', action='store_true', help='Native-install only: also rehearse the matched relay/proxy update using isolated installed nginx code')

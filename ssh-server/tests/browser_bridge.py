@@ -39,13 +39,17 @@ def private_json(path, *, atomic_snapshot=False):
     # inode can therefore have zero links before fstat. Retry that exact benign
     # race only for explicitly mutable snapshots; never accept an unlinked,
     # hard-linked, foreign-owned or oversized file as the observation.
-    for _ in range(3):
+    retries = 20 if atomic_snapshot else 1
+    for attempt in range(retries):
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, 'rb') as stream:
             info = os.fstat(stream.fileno())
             assert stat.S_ISREG(info.st_mode) and info.st_uid == 0
             assert info.st_size <= MAX_FRAME
             if atomic_snapshot and info.st_nlink == 0:
+                # A recovering cohort can replace several snapshots in a row.
+                # Yield only for that benign race, with at most95ms of retry delay.
+                if attempt + 1 < retries: time.sleep(.005)
                 continue
             assert info.st_nlink == 1
             return json.loads(stream.read(MAX_FRAME + 1))
@@ -67,8 +71,8 @@ def guest_identity():
 
 
 def fixture_accounts(count):
-    assert count in (1, 16)
-    return ['examq'] + (['examq%02d' % value for value in range(1, 16)] if count == 16 else [])
+    assert count in (1, 16, 70)
+    return ['examq'] + ['examq%02d' % value for value in range(1, count)]
 
 
 def line(stream):
@@ -143,6 +147,25 @@ def verify_fixture_archive(path, expected=None):
                 assert stream.read(1025) == expected[member.name]
             found.add(member.name)
     assert found == set(expected), 'Protected export lacks the exact saved browser/editor work'
+    return sorted(found)
+
+
+def verify_stress_archive(path, username):
+    assert username in fixture_accounts(70)
+    found = set()
+    with tarfile.open(path, 'r:gz') as archive:
+        for member in archive.getmembers():
+            if member.name == 'fleet-proof.txt':
+                assert member.isfile() and member.size <= 128 and member.name not in found
+                assert archive.extractfile(member).read(129) == ('FLEET-' + username + '-END\n').encode()
+                found.add(member.name)
+            elif re.fullmatch(r'pane-[0-3]\.txt', member.name):
+                assert member.isfile() and 0 < member.size <= 1024**2 and member.name not in found
+                expected = ('WORK-' + username + '-' + member.name[5] + '\n').encode()
+                raw = archive.extractfile(member).read(1024**2 + 1)
+                assert raw and all(line == expected for line in raw.splitlines(keepends=True))
+                found.add(member.name)
+    assert found == {'fleet-proof.txt', *(f'pane-{i}.txt' for i in range(4))}
     return sorted(found)
 
 
@@ -347,10 +370,15 @@ class CoordinatorOutage:
         assert self.status()['phase'] == 'restored', 'Owned coordinator restore failed; preserve private evidence'
 
 
-def verify_fixture_clock(attempt):
+def verify_fixture_clock(attempt, students=1):
     """Private browser acceptance: exact original/reset or pause/edit/resume."""
     start, original = attempt['start'], attempt['original_deadline']
-    assert attempt['access_state'] == 'HELD' and original - start == 5400000
+    assert students in (1, 16, 70)
+    expected = 10800000 if students == 70 else 5400000
+    assert attempt['access_state'] == 'HELD' and original - start == expected
+    if students == 70:
+        assert attempt['settings']['duration'] == 10800
+        assert not attempt.get('clock_resets')
     resets = attempt.get('clock_resets', [])
     if not resets:
         assert attempt.get('clock_revision', 0) == 0 and attempt['deadline'] == original
@@ -393,8 +421,9 @@ class GuestBridge:
         # The16-student fixture carries32 simultaneous native proof requests,
         # plus16 SSH links,16 bounded relay workers and inspection/Begin traffic.
         # These private transport bounds do not change native authority limits.
-        self.requests = queue.Queue(maxsize=48 if self.students == 16 else 16)
-        self.slots = threading.BoundedSemaphore(96 if self.students == 16 else 32)
+        assert self.students in (1, 16, 70)
+        self.requests = queue.Queue(maxsize=210 if self.students == 70 else 48 if self.students == 16 else 16)
+        self.slots = threading.BoundedSemaphore(420 if self.students == 70 else 96 if self.students == 16 else 32)
         self.failures = []
         self.collection_operation = None
         self.collection_lock = threading.Lock()
@@ -416,7 +445,7 @@ class GuestBridge:
         server = socket.socket(socket.AF_UNIX)
         server.bind(str(OUTPUT / name))
         os.chmod(OUTPUT / name, 0o600)
-        server.listen(64 if self.students == 16 else 16)
+        server.listen(256 if self.students == 70 else 64 if self.students == 16 else 16)
         server.settimeout(.5)
         def accept():
             try:
@@ -474,7 +503,7 @@ class GuestBridge:
     def ssh(self, client):
         with socket.create_connection(('127.0.0.1', 22), timeout=5) as upstream:
             upstream.settimeout(5)
-            copy_streams(client, upstream, timeout=900 if self.students == 16 else 600)
+            copy_streams(client, upstream, timeout=10800 if self.students == 70 else 900 if self.students == 16 else 600)
 
     def http(self, client):
         with client.makefile('rwb', buffering=0) as stream:
@@ -865,11 +894,11 @@ class GuestBridge:
                 return
             if 'attempts' in request:
                 ids = request['attempts']
-                assert self.students == 16 and len(ids) == 16 and len(set(ids)) == 16
+                assert self.students in (16, 70) and len(ids) == self.students and len(set(ids)) == self.students
                 snapshots = [self.snapshot(attempt) for attempt in ids]
-                assert {entry['attempt']['username'] for entry in snapshots} == set(fixture_accounts(16))
+                assert {entry['attempt']['username'] for entry in snapshots} == set(fixture_accounts(self.students))
                 if 'recovery' in request:
-                    assert not self.large and not request.get('finish')
+                    assert self.students == 16 and not self.large and not request.get('finish')
                     assert request['recovery'] in ('start', 'status', 'restore')
                     if request['recovery'] == 'start':
                         assert self.coordinator_fault is None and self.gate_fault is None
@@ -879,19 +908,30 @@ class GuestBridge:
                                    len(entry['kernel']) == 4 and all(row['populated'] == '1' and row['frozen'] == '0' for row in entry['kernel'])
                                    for entry in snapshots)
                         self.coordinator_attempts = frozenset(ids)
-                        # Transport-only: no service stop/restart.35s permits
-                        # independent observation of all64 physically held panes.
-                        self.coordinator_fault = CoordinatorOutage(seconds=35, all_proof_paths=True, transport_only=True, role_ready=self.role_ready)
+                        # Transport-only: no service stop/restart. The production
+                        # evidence window is60s; keep the fault offline long enough
+                        # to observe all64 physically held panes after it expires.
+                        self.coordinator_fault = CoordinatorOutage(seconds=75, all_proof_paths=True, transport_only=True, role_ready=self.role_ready)
                     assert self.coordinator_fault is not None and self.coordinator_attempts == frozenset(ids)
                     if request['recovery'] == 'restore': self.coordinator_fault.cancel()
                     send(stream, self.coordinator_fault.status())
                     return
+                verified = {}
                 if request.get('finish'):
                     for entry in snapshots:
                         attempt = entry['attempt']
                         assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
-                        verify_fixture_clock(attempt)
-                send(stream, {'snapshots': snapshots, 'private_guest': True})
+                        verify_fixture_clock(attempt, self.students)
+                        if self.students == 70:
+                            exported = OUTPUT / ('stress-' + attempt['id'] + '.tar.gz')
+                            root_command('examctl', 'export', attempt['id'], '--output', str(exported))
+                            verified[attempt['username']] = verify_stress_archive(exported, attempt['username'])
+                resources = {}
+                if self.students == 70:
+                    for name in ('memory.current', 'memory.peak', 'pids.current', 'cpu.stat'):
+                        path = Path('/sys/fs/cgroup') / name
+                        resources[name] = path.read_text().strip() if path.is_file() else None
+                send(stream, {'snapshots': snapshots, 'private_guest': True, 'verified':verified, 'resources':resources})
                 if request.get('finish'): self.done.set()
                 return
             assert re.fullmatch(r'[a-f0-9-]{36}', request['attempt'])
@@ -986,7 +1026,7 @@ def run_guest(config, prepare_roles, role_snapshot):
                 raise
             time.sleep(.5)
     print('BROWSER_NATIVE_SOURCE_SYNCED', flush=True)
-    if not bridge.done.wait(780 if bridge.students == 16 else 540):
+    if not bridge.done.wait(10680 if bridge.students == 70 else 780 if bridge.students == 16 else 540):
         raise TimeoutError('Actual browser/native qualification did not finish')
     if bridge.gate_fault is not None: bridge.gate_fault.cancel()
     if bridge.coordinator_fault is not None:
@@ -1027,7 +1067,7 @@ def host_bridge(stage, mode):
         client.settimeout(6)
         client.connect(str(target))
         # Stdio uses separate fds. Do not buffer or interpret SSH bytes.
-        lifetime = (900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else (125 if mode == 'operator' else 8)
+        lifetime = (10800 if marker.get('browser_students') == 70 else 900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else (200 if mode == 'inspect' and marker.get('browser_students') == 70 else 125 if mode == 'operator' else 8)
         deadline = time.monotonic() + lifetime
         while time.monotonic() < deadline:
             ready, _, _ = select.select((sys.stdin.buffer, client), (), (), .5)

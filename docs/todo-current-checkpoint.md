@@ -1,4 +1,49 @@
-# Current checkpoint — csc-sys ONLINE; activation complete
+# Current checkpoint — stress report saved; 70-student run BLOCKED
+
+November 16: approved target 70 synthetic students/four terminals each, 90 real
+minutes at peak, simultaneous protected submission. No institutional MFA, actual
+student accounts or external email. No production change, push or deployment.
+All owned test fixtures are stopped; 16 original documentation images unchanged.
+Local UI/browser fixes: commit `8a42483`; permission fixtures: `c9f421c`.
+The manual suite and report are committed locally (see git log); nothing pushed.
+
+Collected: build 5/typecheck; 861 application passes plus three normally gated real
+CLI/export/zsh-bwrap passes; native race 3 (both packages, zero failures/races;
+event totals include subcases); harness 7 passes 73 checks. Fresh 16-client WASM
+sign-in passes without clock starts. Native editor, timer/files-only recovery,
+16-student/64-pane recovery and fatal-collector isolation/protected retry pass.
+Exact guests independently inactive/dead/MainPID 0 with FULL preservation.
+
+Browser 2 completed 360 passed/three failed/five explicit skips. Remaining relay
+failures are consistent with the confirmed shared anonymous-IP budget; later raw
+429s are direct evidence, first lookup attribution is inferred. Fresh final five
+cases pass (both UI fixes + three relay protocols), inputs unchanged. No full-final-
+candidate browser pass claimed. Native recovery 4 proves 16 protected completions,
+all generation 1 and exactly 16 initial holds. Earlier failures/extra-expiry
+observations remain documented; no backend timing fix or confirmed cause claimed.
+Prof's rendered UX review and available-evidence synthesis are saved in the report.
+
+Current audited bundle (no speculative rebuild/upload needed):
+`/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v10_jjaru6f1`
+19 verified files; product native binaries unchanged from v8. Each phase retains
+its exact input/bundle identity. Audit: `var/stress/native-upload-v10.json`.
+
+**Open resource dialog:** 24 GiB available on euler/another generator, or explicit
+70-protocol-client/smaller-browser coverage choice. Euler heavy work has not been
+authorized or started. Rehearsal 7 stopped safely at 22 ACTIVE/88 panes on the memory
+floor; no 70-student ramp, 90-minute peak or 70-way completion exists.
+
+Confirmed P1 findings remain unfixed: installed worker limit 32 < 70; shared
+anonymous 180/minute bucket rejects 30/210 minimal cold-load requests. Isolated
+candidate 96 workers does not qualify production co-location capacity.
+
+Next: receive generator choice, verify its headroom and exact candidate, rehearse
+70 students then execute 5,400 peak seconds and protected submission. Correct and
+qualify the two P1 findings before any readiness claim. No push/deploy authorized.
+Manual entry/plan: `docs/stress-testing.md`; report and suggested fixes:
+`reports/stress/20261116T194355Z/report.md`; raw receipts `var/stress/20261116T194355Z/`.
+
+## Deployed baseline
 
 November12,19:25:21America/Chicago /November13,01:25:21UTC: public DNS/TLS and all
 nine exact assets verified externally. Website runs solely on csc-sys; Marco is

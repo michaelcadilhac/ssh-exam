@@ -112,6 +112,45 @@ class OverlayTests(unittest.TestCase):
             with self.subTest(storage=storage), self.assertRaises(AssertionError):
                 overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), 16, storage)
 
+    def test_manual_seventy_student_mode_retains_containment_and_has_finite_endurance(self):
+        storage = {'work': '/srv/exam-workspace/work', 'state': '/var/lib/exam-agent'}
+        command = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), 70, storage)
+        for value in ('--property=MemoryMax=3G', '--property=MemorySwapMax=0', '--property=TasksMax=4096',
+                      '--property=CPUQuota=200%', '--property=RuntimeMaxSec=10800', '--private-network',
+                      '--read-only', '--volatile=overlay', '--drop-capability=CAP_SYS_TIME',
+                      '--bind=/output/work:/srv/exam-workspace/work', '--bind=/output/state:/var/lib/exam-agent'):
+            self.assertIn(value, command)
+        with self.assertRaises(AssertionError):
+            overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), 70, {'work':'/','state':'/var/lib/exam-agent'})
+        with self.assertRaises(AssertionError):
+            overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), 71, storage)
+        debug = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'),
+                                          70, storage, profile='retained-policy', debugger=True)
+        self.assertIn('--bind-ro=/input/gdb-runtime:/usr/lib/ssh-exam-stress-gdb', debug)
+        self.assertIn('--bind-ro=/input/gdb-wrapper:/usr/bin/gdb', debug)
+        self.assertNotIn('--bind=/input/gdb-runtime:/usr/lib/ssh-exam-stress-gdb', debug)
+        with self.assertRaises(AssertionError):
+            overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'),
+                                      16, storage, profile='retained-policy', debugger=True)
+
+    def test_debugger_hashes_do_not_overflow_the_existing_readiness_marker(self):
+        inputs = self.root / 'input'; inputs.mkdir()
+        source = self.root / 'public-code'; source.write_bytes(b'public synthetic code')
+        sources = {f'share/python/gdb/code-{i}.py':source for i in range(100)}
+        digest = overlay.write_debugger_inputs(inputs, sources)
+        self.assertEqual(len(digest),64)
+        self.assertLess(len(json.dumps({'debugger_manifest_sha256':digest})),4096)
+        self.assertGreater((inputs/'debugger.json').stat().st_size,4096)
+        self.assertEqual((inputs/'gdb-runtime/share/python/gdb').stat().st_mode & 0o777,0o755)
+        self.assertEqual(set(json.loads((inputs/'debugger.json').read_text())),set(sources))
+
+    def test_debugger_copy_refuses_paths_outside_its_public_runtime(self):
+        inputs = self.root / 'input'; inputs.mkdir()
+        source = self.root / 'public-code'; source.write_bytes(b'code')
+        with self.assertRaises(AssertionError):
+            overlay.write_debugger_inputs(inputs, {'../escape':source})
+        self.assertFalse((inputs/'escape').exists())
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

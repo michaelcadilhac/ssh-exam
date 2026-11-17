@@ -1,0 +1,192 @@
+{
+  "run": "20261116T194355Z-rehearsal",
+  "started": "2026-11-16T19:54:27.076129+00:00",
+  "phases": [
+    {
+      "phase": "endurance",
+      "attempt": 1,
+      "started": "2026-11-16T19:54:27.076530+00:00",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 1.266
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-1",
+      "finished": "2026-11-16T19:54:28.343377+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 2,
+      "started": "2026-11-16T19:55:27.583685+00:00",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 15.199
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-2",
+      "finished": "2026-11-16T19:55:42.784109+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 3,
+      "started": "2026-11-16T19:58:11.805516+00:00",
+      "source": "533271e7c737cccc102d0a8028e419a86b6f23ce",
+      "source_diff_sha256": "8318ba2f5b81b9c5999c9b98a1a8b5dda5c6d4e5cd5663b5763f6f9bb8c3e375",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 67.585
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-3",
+      "finished": "2026-11-16T19:59:19.392788+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 4,
+      "started": "2026-11-16T20:09:24.134405+00:00",
+      "source": "533271e7c737cccc102d0a8028e419a86b6f23ce",
+      "source_diff_sha256": "19d049da116d1e5713b38564bca8c53e1c2911f2e36b3aeb6986a16fc6e04fa5",
+      "inputs_sha256": "5d40b59acf80e45f8a9e57ccd3dc56ab8363da5d89774d6496306ee718539a58",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 42.969
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-4",
+      "finished": "2026-11-16T20:10:07.106266+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 5,
+      "started": "2026-11-16T20:25:31.945625+00:00",
+      "source": "533271e7c737cccc102d0a8028e419a86b6f23ce",
+      "source_diff_sha256": "70b6000d5da98c8aa01d9eac1872b41820aa540e64fc6d2fcb0f7905784b49cc",
+      "inputs_sha256": "5165c5ac5022b7ca7512526520d2ba1776f14630e65167d2e0f08819dcb52e19",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v4_oZL0fjcC",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 7.381
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-5",
+      "finished": "2026-11-16T20:25:39.329789+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 6,
+      "started": "2026-11-16T20:40:08.252454+00:00",
+      "source": "533271e7c737cccc102d0a8028e419a86b6f23ce",
+      "source_diff_sha256": "9657065613ecf5301c9561e1fdc038aeb4cdc740d38ad9eab00426888a2206fc",
+      "inputs_sha256": "5e8ce82a6c55aedb54ba5300d3ae217ca0fbbd02dfe709d83769760df0ebe77e",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v5_omh4hpyo",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 39.35
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-6",
+      "finished": "2026-11-16T20:40:47.605823+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 7,
+      "started": "2026-11-16T20:44:28.867888+00:00",
+      "source": "533271e7c737cccc102d0a8028e419a86b6f23ce",
+      "source_diff_sha256": "6a2e94ccb8ce5ea86d700af8e6bcfa77a6772f2e8b2241fd0806ff5c37dd2386",
+      "inputs_sha256": "9281132091f02819ad211e9c4f2f1f2610101042a7512fcdb2726a298fa7bd9f",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v5_omh4hpyo",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 795.03
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z-rehearsal/endurance-7",
+      "finished": "2026-11-16T20:57:43.925977+00:00"
+    }
+  ],
+  "students": 70,
+  "terminals": 280,
+  "endurance_seconds": 30,
+  "source": "533271e7c737cccc102d0a8028e419a86b6f23ce",
+  "source_diff_sha256": "40efeb8524a90962a7482534ebdc0d0aedd24a6a5522175834a21e4facbbe90f",
+  "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_4S2tmCZm",
+  "mfa": false,
+  "real_student_accounts": false,
+  "outbound_mail": false,
+  "environment": "isolated local gateway/browser + guarded private csc-sys guest",
+  "limitations": [
+    "Browser screen/camera/keyboard permissions and jump authentication are synthetic; institutional MFA is excluded.",
+    "The gateway is local; this does not certify production gateway co-location resource capacity."
+  ],
+  "status": "AUTOMATED_FAILED"
+}

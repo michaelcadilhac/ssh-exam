@@ -105,8 +105,13 @@ export async function nativeGuest(
   students = 1,
   large = false,
 ) {
-  if (![1, 16].includes(students))
-    throw Error("Private native capacity must be1or16");
+  if (![1, 16, 70].includes(students))
+    throw Error("Private native capacity must be1,16or70");
+  if (students === 70 && !process.env.EXAM_STRESS_RUN)
+    throw Error(
+      "Seventy-student endurance requires an explicit manual stress run",
+    );
+  const httpPort = students === 70 ? 3102 : 3100;
   if (large && students !== 16)
     throw Error("Large private workload requires16students");
   if (
@@ -228,6 +233,7 @@ export async function nativeGuest(
   };
   let completion: Promise<number | null> | undefined;
   return {
+    httpPort,
     target,
     async start(publicKey: string) {
       const digest = createHash("sha256").update(publicKey).digest("hex");
@@ -350,7 +356,7 @@ export async function nativeGuest(
                 headers.delete("host");
                 headers.delete("content-length");
                 const response = await fetch(
-                  "http://127.0.0.1:3100" + request.path,
+                  `http://127.0.0.1:${httpPort}` + request.path,
                   {
                     method: "POST",
                     headers,
@@ -467,15 +473,16 @@ export async function nativeGuest(
       recovery?: "start" | "status" | "restore",
     ) {
       if (
-        students !== 16 ||
-        attempts.length !== 16 ||
-        new Set(attempts).size !== 16
+        ![16, 70].includes(students) ||
+        attempts.length !== students ||
+        new Set(attempts).size !== students
       )
-        throw Error("Exact private16-attempt fleet required");
+        throw Error("The complete exact synthetic fleet is required");
       const value = JSON.parse(
         await collect(
           bridge("inspect"),
           JSON.stringify({ attempts, finish, recovery }) + "\n",
+          students === 70 ? 180000 : 10000,
         ),
       );
       if (value.bridge_error)

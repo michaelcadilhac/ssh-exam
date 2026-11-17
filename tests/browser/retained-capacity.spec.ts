@@ -1,10 +1,23 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { z } from "zod";
-import { mkdir, writeFile } from "node:fs/promises";
-import { simulatedMedia, ready } from "./transition-fixture.js";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { simulatedMedia, ready, readyTerminal } from "./transition-fixture.js";
 import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
+import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
+import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
 const origin = "https://127.0.0.1:9444";
+const stressRun = process.env.EXAM_STRESS_RUN;
+const fleetCount = stressRun ? 70 : 16;
+async function generatorHeadroom() {
+  const memory = await readFile("/proc/meminfo", "utf8");
+  const available = Number(/MemAvailable:\s+(\d+)/.exec(memory)?.[1]) * 1024;
+  if (!Number.isFinite(available) || available < 768 * 1024 * 1024)
+    throw Error(
+      "Load-generator memory headroom is below768MiB; abort only the owned synthetic test before affecting other applications",
+    );
+  return available;
+}
 const shellQuote = (value: string) =>
   "'" + value.replaceAll("'", "'\\''") + "'";
 const snapshot = z.object({
@@ -48,442 +61,835 @@ const snapshot = z.object({
   ),
 });
 
-test("sixteen actual native students keep sixty-four monitored SSH terminals and secure independent submissions", async ({
-  browser,
-  request,
-}) => {
-  test.skip(
-    !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
-      process.env.EXAM_BROWSER_NATIVE_STUDENTS !== "16",
-    "Requires the exact guarded16-student native capacity fixture",
-  );
-  const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
-  const recovery = process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1";
-  expect(large && recovery).toBe(false);
-  test.setTimeout(large ? 780000 : recovery ? 660000 : 480000);
-  const metadata = await (
-    await request.get("/api/fixture/native-ready")
-  ).json();
-  expect(metadata.privateGuest).toBe(true);
-  expect(metadata.large).toBe(large);
-  expect(metadata.capacityRecovery).toBe(recovery);
-  const students = z
-    .array(z.object({ username: z.string(), uid: z.number().int().min(1000) }))
-    .length(16)
-    .parse(metadata.students);
-  expect(new Set(students.map((student) => student.uid)).size).toBe(16);
-  const login = await request.post("/api/admin/login", {
-    headers: { origin },
-    data: { username: "instructor", password: "fixture-password" },
-  });
-  expect(login.ok(), await login.text()).toBe(true);
-  const headers = { origin, "x-csrf-token": (await login.json()).csrf };
-  let measuring = false;
-  let recovering = false;
-  let bootstrap = async (): Promise<unknown> => null;
-  let signInEvents: { event: string; path: string; type?: string }[] = [];
-  const fleet: {
-    context: BrowserContext;
-    page: Page;
-    id: string;
-    username: string;
-    opened: Set<string>;
-    unexpectedLocks: unknown[];
-    timing: {
-      contacts: number;
-      states: number;
-      maxContactMs: number;
-      maxStateMs: number;
-    };
-  }[] = [];
-  const inspect = async (finish = false) => {
-    const response = await request.post("/api/fixture/native-fleet", {
-      headers,
-      data: { attempts: fleet.map((entry) => entry.id), finish },
-      timeout: 30000,
-    });
-    expect(response.ok(), await response.text()).toBe(true);
-    const value = await response.json();
-    return {
-      ...value,
-      snapshots: z.array(snapshot).length(16).parse(value.snapshots),
-    };
-  };
-  const collection = async (action: "observe" | "kill" | "retry-verify") => {
-    const response = await request.post("/api/fixture/native-collection", {
-      headers,
-      data: { attempts: fleet.slice(0, 2).map((entry) => entry.id), action },
-      timeout: 15000,
-    });
-    expect(response.ok(), await response.text()).toBe(true);
-    return response.json();
-  };
-  const command = async (
-    entry: (typeof fleet)[number],
-    pane: number,
-    text: string,
-    marker: string,
-    timeout = 10000,
-  ) => {
-    const input = entry.page.locator(".xterm-helper-textarea").nth(pane);
-    await input.focus();
-    await expect(input).toBeFocused();
-    await entry.page.keyboard.type(text, { delay: 25 });
-    await entry.page.keyboard.press("Enter");
-    await expect(entry.page.locator(".xterm-rows").nth(pane)).toContainText(
-      marker,
-      { timeout },
+test(
+  stressRun
+    ? "seventy native students sustain280 terminals for90 minutes and submit together"
+    : "sixteen actual native students keep sixty-four monitored SSH terminals and secure independent submissions",
+  async ({ browser, request }) => {
+    test.skip(
+      !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
+        process.env.EXAM_BROWSER_NATIVE_STUDENTS !== String(fleetCount),
+      "Requires the exact guarded16-student native capacity fixture",
     );
-    await expect(
-      entry.page.getByText(/Recent terminal input was not sent/),
-    ).toHaveCount(0);
-  };
-  try {
-    for (const student of students) {
-      const context = await browser.newContext({ ignoreHTTPSErrors: true }),
-        page = await context.newPage(),
-        opened = new Set<string>(),
-        unexpectedLocks: unknown[] = [],
-        confirmations = new Map<string, number>(),
-        timing = { contacts: 0, states: 0, maxContactMs: 0, maxStateMs: 0 };
-      page.setDefaultTimeout(10000);
-      bootstrap = await observeWasmBootstrap(page);
-      await simulatedMedia(page);
-      const events: typeof signInEvents = [];
-      signInEvents = events;
-      page.on("websocket", (socket) => {
-        const path = new URL(socket.url()).pathname;
-        const note = (event: string, type?: unknown) => {
-          if (events.length >= 64) return;
-          events.push({
-            event,
-            path,
-            ...(typeof type === "string" && /^[a-z-]{1,40}$/.test(type)
-              ? { type }
-              : {}),
-          });
-        };
-        note("opened");
-        socket.once("close", () => note("closed"));
-        socket.once("socketerror", () => note("socket-error"));
-        socket.on("framereceived", ({ payload }) => {
-          try {
-            note("reply", JSON.parse(String(payload)).type);
-          } catch {}
-        });
-        if (path !== "/api/student/session") return;
-        socket.on("framesent", ({ payload }) => {
-          try {
-            const message = JSON.parse(String(payload));
-            if (
-              measuring &&
-              message.type === "heartbeat" &&
-              message.confirmation
-            ) {
-              confirmations.set(message.confirmation, performance.now());
-              if (confirmations.size > 32)
-                confirmations.delete(confirmations.keys().next().value!);
-            }
-          } catch {}
-        });
-        socket.on("framereceived", ({ payload }) => {
-          try {
-            const message = JSON.parse(String(payload));
-            if (message.type === "opened" && message.input?.protocol === "v1")
-              opened.add(message.pane);
-            if (
-              !recovering &&
-              message.type === "state" &&
-              message.attempt?.state === "LOCKED"
-            )
-              unexpectedLocks.push({
-                state: message.attempt.state,
-                generation: message.attempt.generation,
-              });
-            const sent = confirmations.get(message.confirmation);
-            if (sent !== undefined && message.type === "monitoring-contact") {
-              timing.contacts++;
-              timing.maxContactMs = Math.max(
-                timing.maxContactMs,
-                performance.now() - sent,
-              );
-            } else if (sent !== undefined && message.type === "state") {
-              timing.states++;
-              timing.maxStateMs = Math.max(
-                timing.maxStateMs,
-                performance.now() - sent,
-              );
-              confirmations.delete(message.confirmation);
-            }
-          } catch {}
-        });
-      });
-      await page.goto(origin);
-      await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
-      await page.getByLabel("Username").fill(student.username);
-      await page.getByRole("button", { name: "Sign in", exact: true }).click();
-      await page
-        .getByLabel("Password", { exact: true })
-        .fill("shared-password");
-      await page.getByRole("button", { name: "Continue", exact: true }).click();
-      for (let retry = 0; retry < 3; retry++) {
-        const result = page.waitForResponse(
-          (response) =>
-            new URL(response.url()).pathname === "/api/student/preflight" &&
-            response.request().method() === "POST",
-          { timeout: 30000 },
-        );
-        await page
-          .getByRole("button", {
-            name: "Check setup and practice",
-            exact: true,
-          })
-          .click();
-        const response = await result;
-        if (response.ok()) break;
-        const body = await response.json();
-        expect(body.error).toMatch(
-          /^native readiness verification already in progress;/,
-        );
-        const current = (
-          await (await page.request.get("/api/student/exam")).json()
-        ).attempt;
-        expect(
-          current ?? null,
-          "Health refused before creating or reserving setup",
-        ).toBeNull();
-        expect(
-          retry,
-          "Readiness busy did not settle within bounded setup retries",
-        ).toBeLessThan(2);
-        await page.waitForTimeout(250);
-      }
-      await ready(page);
-      for (let retry = 0; retry < 3; retry++) {
-        const result = page.waitForResponse(
-          (response) =>
-            new URL(response.url()).pathname.endsWith("/begin") &&
-            response.request().method() === "POST",
-          { timeout: 30000 },
-        );
-        await page
-          .getByRole("button", { name: "Start exam", exact: true })
-          .click();
-        await page
-          .getByRole("dialog")
-          .getByRole("button", { name: "Start exam", exact: true })
-          .click();
-        const response = await result;
-        if (response.ok()) break;
-        const current = (
-          await (await page.request.get("/api/student/exam")).json()
-        ).attempt;
-        const inspected = await request.get(
-          `/api/fixture/native-state?attempt=${encodeURIComponent(current.id)}`,
-          { headers },
-        );
-        expect(inspected.ok(), await inspected.text()).toBe(true);
-        const view = await inspected.json();
-        // A no-wait health observation can overlap its own background probe.
-        // Only its positively unstarted, unconsumed refusal may be retried.
-        expect(view.gateway_start).toMatchObject({
-          state: "PREPARING",
-          start: null,
-          deadline: null,
-          permission_status: "AVAILABLE",
-          retry_reason: "native-readiness-busy",
-        });
-        expect(view.attempt.state).toBe("PREPARING");
-        expect(view.attempt.start).toBe(0);
-        expect(
-          retry,
-          "Readiness busy did not settle within the bounded fresh-Start workflow",
-        ).toBeLessThan(2);
-        await page
-          .getByRole("dialog", { name: "Workspace error" })
-          .getByRole("button", { name: "Close", exact: true })
-          .click({ timeout: 5000 });
-        // The next actual Start performs fresh capture/native verification.
-        await page.waitForTimeout(250);
-      }
-      await expect
-        .poll(
-          async () =>
-            (await (await page.request.get("/api/student/exam")).json()).attempt
-              ?.state,
-          { timeout: 20000 },
-        )
-        .toBe("ACTIVE");
-      const attempt = (
-        await (await page.request.get("/api/student/exam")).json()
-      ).attempt;
-      const entry = {
-        context,
-        page,
-        id: attempt.id,
-        username: student.username,
-        opened,
-        unexpectedLocks,
-        timing,
+    const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
+    const recovery = process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1";
+    expect(large && recovery).toBe(false);
+    test.setTimeout(
+      stressRun ? 10500000 : large ? 780000 : recovery ? 660000 : 480000,
+    );
+    if (stressRun) expect(large || recovery).toBe(false);
+    const metadata = await (
+      await request.get("/api/fixture/native-ready")
+    ).json();
+    expect(metadata.privateGuest).toBe(true);
+    expect(metadata.large).toBe(large);
+    expect(metadata.capacityRecovery).toBe(recovery);
+    expect(metadata.compiledConnectionWorkers).toBe(true);
+    expect(metadata.candidateConnectionWorkers).toBe(stressRun ? 96 : 32);
+    const students = z
+      .array(
+        z.object({ username: z.string(), uid: z.number().int().min(1000) }),
+      )
+      .length(fleetCount)
+      .parse(metadata.students);
+    expect(new Set(students.map((student) => student.uid)).size).toBe(
+      fleetCount,
+    );
+    const login = await request.post("/api/admin/login", {
+      headers: { origin },
+      data: { username: "instructor", password: "fixture-password" },
+    });
+    expect(login.ok(), await login.text()).toBe(true);
+    const headers = { origin, "x-csrf-token": (await login.json()).csrf };
+    let measuring = false;
+    let recovering = false;
+    let bootstrap = async (): Promise<unknown> => null;
+    let signInEvents: { event: string; path: string; type?: string }[] = [];
+    const fleet: {
+      context: BrowserContext;
+      page: Page;
+      id: string;
+      username: string;
+      panes: string[];
+      opened: Set<string>;
+      unexpectedLocks: unknown[];
+      recoveryReplies: unknown[];
+      timing: {
+        contacts: number;
+        states: number;
+        maxContactMs: number;
+        maxStateMs: number;
       };
-      fleet.push(entry);
-      await expect.poll(() => opened.size, { timeout: 15000 }).toBe(1);
-      for (let pane = 1; pane < 4; pane++) {
+    }[] = [];
+    const inspect = async (finish = false) => {
+      const response = await request.post("/api/fixture/native-fleet", {
+        headers,
+        data: { attempts: fleet.map((entry) => entry.id), finish },
+        timeout: stressRun ? 190000 : 30000,
+      });
+      expect(response.ok(), await response.text()).toBe(true);
+      const value = await response.json();
+      return {
+        ...value,
+        snapshots: z.array(snapshot).length(fleetCount).parse(value.snapshots),
+      };
+    };
+    const collection = async (action: "observe" | "kill" | "retry-verify") => {
+      const response = await request.post("/api/fixture/native-collection", {
+        headers,
+        data: { attempts: fleet.slice(0, 2).map((entry) => entry.id), action },
+        timeout: 15000,
+      });
+      expect(response.ok(), await response.text()).toBe(true);
+      return response.json();
+    };
+    const command = async (
+      entry: (typeof fleet)[number],
+      pane: number,
+      text: string,
+      marker: string,
+      timeout = 10000,
+    ) => {
+      const id = entry.panes[pane];
+      expect(id).toMatch(/^[a-zA-Z0-9_-]+$/);
+      const terminal = entry.page.locator(`.winbox[id="${id}"]`);
+      await expect(terminal.locator(".terminal[aria-busy]")).toHaveAttribute(
+        "aria-busy",
+        "false",
+      );
+      const input = terminal.locator(".xterm-helper-textarea");
+      await expect(input).toBeEnabled();
+      await input.focus();
+      await expect(input).toBeFocused();
+      // Paste a normal command through the real terminal input path. Artificial
+      // per-character delays make fleet ramp time measure the generator instead.
+      await entry.page.keyboard.insertText(text);
+      await entry.page.keyboard.press("Enter");
+      await expect(terminal.locator(".xterm-rows")).toContainText(marker, {
+        timeout,
+      });
+      await expect(
+        entry.page.getByText(/Recent terminal input was not sent/),
+      ).toHaveCount(0);
+    };
+    try {
+      for (const student of students) {
+        if (stressRun) await generatorHeadroom();
+        const context = await browser.newContext({ ignoreHTTPSErrors: true }),
+          page = await context.newPage(),
+          opened = new Set<string>(),
+          unexpectedLocks: unknown[] = [],
+          recoveryReplies: unknown[] = [],
+          confirmations = new Map<string, number>(),
+          timing = { contacts: 0, states: 0, maxContactMs: 0, maxStateMs: 0 };
+        page.setDefaultTimeout(10000);
+        bootstrap = await observeWasmBootstrap(page);
+        await simulatedMedia(page, !!stressRun);
+        page.on("response", async (response) => {
+          if (!recovering) return;
+          const path = new URL(response.url()).pathname;
+          if (!/\/attempts\/[^/]+\/(status|continue)$/.test(path)) return;
+          try {
+            const value = await response.json();
+            if (recoveryReplies.length >= 64) recoveryReplies.shift();
+            recoveryReplies.push({
+              path,
+              status: response.status(),
+              state: value.attempt?.state,
+              generation: value.attempt?.generation,
+              automaticTechnical: value.automaticTechnical,
+              error:
+                typeof value.error === "string"
+                  ? value.error.slice(0, 1200)
+                  : undefined,
+            });
+          } catch {}
+        });
+        const events: typeof signInEvents = [];
+        signInEvents = events;
+        page.on("websocket", (socket) => {
+          const path = new URL(socket.url()).pathname;
+          const note = (event: string, type?: unknown) => {
+            if (events.length >= 64) return;
+            events.push({
+              event,
+              path,
+              ...(typeof type === "string" && /^[a-z-]{1,40}$/.test(type)
+                ? { type }
+                : {}),
+            });
+          };
+          note("opened");
+          socket.once("close", () => note("closed"));
+          socket.once("socketerror", () => note("socket-error"));
+          socket.on("framereceived", ({ payload }) => {
+            try {
+              note("reply", JSON.parse(String(payload)).type);
+            } catch {}
+          });
+          if (path !== "/api/student/session") return;
+          socket.on("framesent", ({ payload }) => {
+            try {
+              const message = JSON.parse(String(payload));
+              if (
+                measuring &&
+                message.type === "heartbeat" &&
+                message.confirmation
+              ) {
+                confirmations.set(message.confirmation, performance.now());
+                if (confirmations.size > 32)
+                  confirmations.delete(confirmations.keys().next().value!);
+              }
+            } catch {}
+          });
+          socket.on("framereceived", ({ payload }) => {
+            try {
+              const message = JSON.parse(String(payload));
+              if (message.type === "opened" && message.input?.protocol === "v1")
+                opened.add(message.pane);
+              if (
+                !recovering &&
+                message.type === "state" &&
+                message.attempt?.state === "LOCKED"
+              )
+                unexpectedLocks.push({
+                  state: message.attempt.state,
+                  generation: message.attempt.generation,
+                });
+              const sent = confirmations.get(message.confirmation);
+              if (sent !== undefined && message.type === "monitoring-contact") {
+                timing.contacts++;
+                timing.maxContactMs = Math.max(
+                  timing.maxContactMs,
+                  performance.now() - sent,
+                );
+              } else if (sent !== undefined && message.type === "state") {
+                timing.states++;
+                timing.maxStateMs = Math.max(
+                  timing.maxStateMs,
+                  performance.now() - sent,
+                );
+                confirmations.delete(message.confirmation);
+              }
+            } catch {}
+          });
+        });
+        await page.goto(origin);
         await page
-          .getByRole("button", { name: "New terminal", exact: true })
+          .getByLabel("Exam ID", { exact: true })
+          .fill("native-browser");
+        await page.getByLabel("Username").fill(student.username);
+        await page
+          .getByRole("button", { name: "Sign in", exact: true })
           .click();
-        await expect.poll(() => opened.size, { timeout: 15000 }).toBe(pane + 1);
-      }
-      await expect(page.locator(".xterm-helper-textarea")).toHaveCount(4);
-      for (let pane = 0; pane < 4; pane++) {
-        await command(
-          entry,
-          pane,
-          `capacity_buffer='${student.username}-${pane}'; printf 'CAPACITY-%s-END\\n' "$capacity_buffer"`,
-          `CAPACITY-${student.username}-${pane}-END`,
+        await page
+          .getByLabel("Password", { exact: true })
+          .fill("shared-password");
+        await page
+          .getByRole("button", { name: "Continue", exact: true })
+          .click();
+        for (let retry = 0; retry < 3; retry++) {
+          const result = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname === "/api/student/preflight" &&
+              response.request().method() === "POST",
+            { timeout: 30000 },
+          );
+          await page
+            .getByRole("button", {
+              name: "Check setup and practice",
+              exact: true,
+            })
+            .click();
+          const response = await result;
+          if (response.ok()) break;
+          const body = await response.json();
+          expect(body.error).toMatch(
+            /^native readiness verification already in progress;/,
+          );
+          const current = (
+            await (await page.request.get("/api/student/exam")).json()
+          ).attempt;
+          expect(
+            current ?? null,
+            "Health refused before creating or reserving setup",
+          ).toBeNull();
+          expect(
+            retry,
+            "Readiness busy did not settle within bounded setup retries",
+          ).toBeLessThan(2);
+          await page.waitForTimeout(250);
+        }
+        await ready(page, !!stressRun);
+        for (let retry = 0; retry < 3; retry++) {
+          const result = page.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname.endsWith("/begin") &&
+              response.request().method() === "POST",
+            { timeout: 30000 },
+          );
+          await page
+            .getByRole("button", { name: "Start exam", exact: true })
+            .click();
+          await page
+            .getByRole("dialog")
+            .getByRole("button", { name: "Start exam", exact: true })
+            .click();
+          const response = await result;
+          if (response.ok()) break;
+          const current = (
+            await (await page.request.get("/api/student/exam")).json()
+          ).attempt;
+          const inspected = await request.get(
+            `/api/fixture/native-state?attempt=${encodeURIComponent(current.id)}`,
+            { headers },
+          );
+          expect(inspected.ok(), await inspected.text()).toBe(true);
+          const view = await inspected.json();
+          // A no-wait health observation can overlap its own background probe.
+          // Only its positively unstarted, unconsumed refusal may be retried.
+          expect(view.gateway_start).toMatchObject({
+            state: "PREPARING",
+            start: null,
+            deadline: null,
+            permission_status: "AVAILABLE",
+            retry_reason: "native-readiness-busy",
+          });
+          expect(view.attempt.state).toBe("PREPARING");
+          expect(view.attempt.start).toBe(0);
+          expect(
+            retry,
+            "Readiness busy did not settle within the bounded fresh-Start workflow",
+          ).toBeLessThan(2);
+          await page
+            .getByRole("dialog", { name: "Workspace error" })
+            .getByRole("button", { name: "Close", exact: true })
+            .click({ timeout: 5000 });
+          // The next actual Start performs fresh capture/native verification.
+          await page.waitForTimeout(250);
+        }
+        await expect
+          .poll(
+            async () =>
+              (await (await page.request.get("/api/student/exam")).json())
+                .attempt?.state,
+            { timeout: 20000 },
+          )
+          .toBe("ACTIVE");
+        const attempt = (
+          await (await page.request.get("/api/student/exam")).json()
+        ).attempt;
+        const entry = {
+          context,
+          page,
+          id: attempt.id,
+          username: student.username,
+          panes: [] as string[],
+          opened,
+          unexpectedLocks,
+          recoveryReplies,
+          timing,
+        };
+        fleet.push(entry);
+        await expect.poll(() => opened.size, { timeout: 15000 }).toBe(1);
+        for (let pane = 1; pane < 4; pane++) {
+          await page
+            .getByRole("button", { name: "New terminal", exact: true })
+            .click();
+          await expect
+            .poll(() => opened.size, { timeout: 15000 })
+            .toBe(pane + 1);
+        }
+        await expect(page.locator(".xterm-helper-textarea")).toHaveCount(4);
+        await page
+          .getByRole("button", { name: "Arrange terminals", exact: true })
+          .click();
+        await readyTerminal(page, 4, 0);
+        entry.panes = await page
+          .locator(".winbox")
+          .evaluateAll((windows) => windows.map((window) => window.id));
+        for (let pane = 0; pane < 4; pane++) {
+          await command(
+            entry,
+            pane,
+            `capacity_buffer='${student.username}-${pane}'; printf 'CAPACITY-%s-END\\n' "$capacity_buffer"${stressRun ? `; (while sleep 5; do printf 'WORK-%s\\n' "$capacity_buffer" | tee -a /work/pane-${pane}.txt; done) &` : ""}`,
+            `CAPACITY-${student.username}-${pane}-END`,
+          );
+        }
+        if (stressRun) {
+          await command(
+            entry,
+            0,
+            `printf 'int main(){return 0;}\\n' > /work/stress.c; gcc -g /work/stress.c -o /work/stress-bin && gdb -nx -q -batch -ex run /work/stress-bin && printf 'BUILD-%s-OK\\n' '${entry.username}'`,
+            `BUILD-${entry.username}-OK`,
+            30000,
+          );
+          await command(
+            entry,
+            1,
+            "gdb -nx -q -ex 'break main' -ex run /work/stress-bin",
+            "Breakpoint 1, main",
+            30000,
+          );
+        }
+        // Check each real native boundary while the class grows. A per-student
+        // refusal should not be hidden until all sixty-four panes have opened.
+        const probe = await request.get("/api/fixture/native-state", {
+          params: { attempt: entry.id },
+          timeout: 10000,
+        });
+        expect(probe.ok(), await probe.text()).toBe(true);
+        const observed = snapshot.parse(await probe.json());
+        expect(observed.attempt).toMatchObject({
+          id: entry.id,
+          state: "ACTIVE",
+          generation: 0,
+        });
+        expect(observed.supervisor).toMatchObject({
+          ssh_peer: "pinned-live",
+          attached_panes: 4,
+        });
+        expect(observed.kernel.length).toBe(4);
+        expect(
+          observed.kernel.every(
+            (unit) => unit.populated === "1" && unit.frozen === "0",
+          ),
+        ).toBe(true);
+        console.log(
+          JSON.stringify({
+            phase: "ramp-progress",
+            students: fleet.length,
+            terminals: fleet.length * 4,
+            gcc_gdb_verified: !!stressRun,
+          }),
         );
       }
-      // Check each real native boundary while the class grows. A per-student
-      // refusal should not be hidden until all sixty-four panes have opened.
-      const probe = await request.get("/api/fixture/native-state", {
-        params: { attempt: entry.id },
-        timeout: 10000,
-      });
-      expect(probe.ok(), await probe.text()).toBe(true);
-      const observed = snapshot.parse(await probe.json());
-      expect(observed.attempt).toMatchObject({
-        id: entry.id,
-        state: "ACTIVE",
-        generation: 0,
-      });
-      expect(observed.supervisor).toMatchObject({
-        ssh_peer: "pinned-live",
-        attached_panes: 4,
-      });
-      expect(observed.kernel.length).toBe(4);
+      let before = await inspect();
+      measuring = true;
       expect(
-        observed.kernel.every(
-          (unit) => unit.populated === "1" && unit.frozen === "0",
+        new Set(
+          before.snapshots.map(
+            (entry: z.infer<typeof snapshot>) => entry.supervisor?.pid,
+          ),
+        ).size,
+      ).toBe(fleetCount);
+      expect(
+        before.snapshots.every(
+          (entry: z.infer<typeof snapshot>) =>
+            entry.attempt.state === "ACTIVE" &&
+            entry.supervisor?.ssh_peer === "pinned-live" &&
+            entry.supervisor.attached_panes === 4 &&
+            entry.kernel.length === 4 &&
+            entry.kernel.every(
+              (unit) => unit.frozen === "0" && unit.populated === "1",
+            ),
         ),
       ).toBe(true);
-    }
-    let before = await inspect();
-    measuring = true;
-    expect(
-      new Set(
-        before.snapshots.map(
-          (entry: z.infer<typeof snapshot>) => entry.supervisor?.pid,
-        ),
-      ).size,
-    ).toBe(16);
-    expect(
-      before.snapshots.every(
-        (entry: z.infer<typeof snapshot>) =>
-          entry.attempt.state === "ACTIVE" &&
-          entry.supervisor?.ssh_peer === "pinned-live" &&
-          entry.supervisor.attached_panes === 4 &&
-          entry.kernel.length === 4 &&
-          entry.kernel.every(
-            (unit) => unit.frozen === "0" && unit.populated === "1",
-          ),
-      ),
-    ).toBe(true);
-    for (const entry of fleet) {
-      await command(
-        entry,
-        0,
-        `printf 'FLEET-%s-END\\n' '${entry.username}' | tee /work/fleet-proof.txt`,
-        `FLEET-${entry.username}-END`,
-      );
-    }
-    if (recovery) {
-      const evidence = async (entry: (typeof fleet)[number]) => {
-        const response = await request.get("/api/fixture/native-evidence", {
-          params: { attempt: entry.id },
-          timeout: 5000,
-        });
-        expect(response.ok(), await response.text()).toBe(true);
-        return z
-          .object({
-            state: z.literal("fresh"),
-            coverageEpoch: z.string().regex(/^[a-f0-9]{64}$/),
-            sequence: z.number().int().positive(),
-            gaps: z.literal(0),
-            remainingMS: z.number().positive(),
-          })
-          .parse(await response.json());
-      };
-      const original = before;
-      const coverage = await Promise.all(fleet.map(evidence));
-      const fault = async (action: "start" | "status") => {
-        const response = await request.post("/api/fixture/native-fleet", {
-          headers,
-          data: { attempts: fleet.map((entry) => entry.id), recovery: action },
-          timeout: 30000,
-        });
-        expect(response.ok(), await response.text()).toBe(true);
-        return response.json();
-      };
-      recovering = true;
-      const started = await fault("start");
-      expect(started.error).toBeNull();
-      // Positively observe all64 populated kernel scopes held before restoring
-      // proof transport. A browser overlay alone is not a freeze oracle.
-      await expect
-        .poll(
-          async () => {
-            const held = await inspect();
-            return held.snapshots.filter(
-              (entry: z.infer<typeof snapshot>) =>
-                entry.attempt.state === "LOCKED" &&
-                entry.attempt.monitoring_hold_kind === "technical" &&
-                entry.attempt.retained_hold === "held" &&
-                entry.supervisor?.ssh_peer === "pinned-live" &&
-                entry.kernel.length === 4 &&
-                entry.kernel.every(
-                  (unit) => unit.frozen === "1" && unit.populated === "1",
-                ),
-            ).length;
-          },
-          { timeout: 28000 },
-        )
-        .toBe(16);
-      expect((await fault("status")).phase).toBe("offline");
-      const heldCoverage = await Promise.all(fleet.map(evidence));
-      for (let i = 0; i < fleet.length; i++) {
-        expect(heldCoverage[i].coverageEpoch).toBe(coverage[i].coverageEpoch);
-        expect(heldCoverage[i].sequence).toBeGreaterThan(coverage[i].sequence);
+      for (const entry of fleet) {
+        await command(
+          entry,
+          0,
+          `printf 'FLEET-%s-END\\n' '${entry.username}' | tee /work/fleet-proof.txt`,
+          `FLEET-${entry.username}-END`,
+        );
       }
-      await expect
-        .poll(async () => (await fault("status")).phase, {
-          timeout: 40000,
-        })
-        .toBe("restored");
-      const restored = await fault("status");
-      expect(restored.error).toBeNull();
-      expect(restored.after).toBe(started.before);
-      expect(restored.watchdog_after).toBe(started.watchdog);
-      await expect
-        .poll(
-          async () => {
-            const active = await inspect();
-            return active.snapshots.filter(
-              (entry: z.infer<typeof snapshot>) =>
-                entry.attempt.state === "ACTIVE" &&
-                entry.attempt.monitoring_resume_kind === "technical" &&
-                entry.supervisor?.ssh_peer === "pinned-live" &&
-                entry.kernel.length === 4 &&
-                entry.kernel.every(
-                  (unit) => unit.frozen === "0" && unit.populated === "1",
-                ),
-            ).length;
-          },
-          { timeout: 30000 },
-        )
-        .toBe(16);
-      before = await inspect();
-      for (const old of original.snapshots) {
-        const current = before.snapshots.find(
+      if (recovery) {
+        const evidence = async (entry: (typeof fleet)[number]) => {
+          const response = await request.get("/api/fixture/native-evidence", {
+            params: { attempt: entry.id },
+            timeout: 5000,
+          });
+          expect(response.ok(), await response.text()).toBe(true);
+          return z
+            .object({
+              state: z.literal("fresh"),
+              coverageEpoch: z.string().regex(/^[a-f0-9]{64}$/),
+              sequence: z.number().int().positive(),
+              gaps: z.literal(0),
+              remainingMS: z.number().positive(),
+            })
+            .parse(await response.json());
+        };
+        const original = before;
+        const coverage = await Promise.all(fleet.map(evidence));
+        const fault = async (action: "start" | "status") => {
+          const response = await request.post("/api/fixture/native-fleet", {
+            headers,
+            data: {
+              attempts: fleet.map((entry) => entry.id),
+              recovery: action,
+            },
+            timeout: 30000,
+          });
+          expect(response.ok(), await response.text()).toBe(true);
+          return response.json();
+        };
+        recovering = true;
+        const started = await fault("start");
+        expect(started.error).toBeNull();
+        // Positively observe all64 populated kernel scopes held before restoring
+        // proof transport. A browser overlay alone is not a freeze oracle.
+        await expect
+          .poll(
+            async () => {
+              const held = await inspect();
+              return held.snapshots.filter(
+                (entry: z.infer<typeof snapshot>) =>
+                  entry.attempt.state === "LOCKED" &&
+                  entry.attempt.monitoring_hold_kind === "technical" &&
+                  entry.attempt.retained_hold === "held" &&
+                  entry.supervisor?.ssh_peer === "pinned-live" &&
+                  entry.kernel.length === 4 &&
+                  entry.kernel.every(
+                    (unit) => unit.frozen === "1" && unit.populated === "1",
+                  ),
+              ).length;
+            },
+            { timeout: MONITORING_EVIDENCE_WINDOW_MS + 10000 },
+          )
+          .toBe(16);
+        expect((await fault("status")).phase).toBe("offline");
+        const heldCoverage = await Promise.all(fleet.map(evidence));
+        for (let i = 0; i < fleet.length; i++) {
+          expect(heldCoverage[i].coverageEpoch).toBe(coverage[i].coverageEpoch);
+          expect(heldCoverage[i].sequence).toBeGreaterThan(
+            coverage[i].sequence,
+          );
+        }
+        await expect
+          .poll(async () => (await fault("status")).phase, {
+            timeout: 40000,
+          })
+          .toBe("restored");
+        const restored = await fault("status");
+        expect(restored.error).toBeNull();
+        expect(restored.after).toBe(started.before);
+        expect(restored.watchdog_after).toBe(started.watchdog);
+        await expect
+          .poll(
+            async () => {
+              const active = await inspect();
+              return active.snapshots.filter(
+                (entry: z.infer<typeof snapshot>) =>
+                  entry.attempt.state === "ACTIVE" &&
+                  entry.attempt.monitoring_resume_kind === "technical" &&
+                  entry.supervisor?.ssh_peer === "pinned-live" &&
+                  entry.kernel.length === 4 &&
+                  entry.kernel.every(
+                    (unit) => unit.frozen === "0" && unit.populated === "1",
+                  ),
+              ).length;
+            },
+            { timeout: 30000 },
+          )
+          .toBe(16);
+        before = await inspect();
+        for (const old of original.snapshots) {
+          const current = before.snapshots.find(
+            (entry: z.infer<typeof snapshot>) =>
+              entry.attempt.id === old.attempt.id,
+          )!;
+          expect(current.attempt).toMatchObject({
+            start: old.attempt.start,
+            deadline: old.attempt.deadline,
+            original_deadline: old.attempt.original_deadline,
+            transport: old.attempt.transport,
+            grant: old.attempt.grant,
+            generation: old.attempt.generation + 1,
+            access_state: "HELD",
+          });
+          expect(current.supervisor).toMatchObject({
+            pid: old.supervisor!.pid,
+            attached_panes: 4,
+          });
+        }
+        // Exercise browser epoch agreement and every original shell's memory,
+        // rather than treating native ACTIVE metadata as proof of usable input.
+        for (const entry of fleet) {
+          // Native ACTIVE precedes the browser's verified epoch handoff. Wait
+          // for the actual student input barrier, never click Resume to bypass it.
+          await expect(entry.page.locator(".lock-overlay")).toHaveCount(0, {
+            timeout: OPERATION_TIMEOUT_MS,
+          });
+          await readyTerminal(entry.page, 4, 0);
+          for (let pane = 0; pane < 4; pane++) {
+            await command(
+              entry,
+              pane,
+              `printf 'RECOVERED-%s-END\\n' "$capacity_buffer"`,
+              `RECOVERED-${entry.username}-${pane}-END`,
+            );
+          }
+        }
+        const usable = await inspect();
+        for (const old of before.snapshots) {
+          const current: z.infer<typeof snapshot> = usable.snapshots.find(
+            (entry: z.infer<typeof snapshot>) =>
+              entry.attempt.id === old.attempt.id,
+          )!;
+          expect(current.attempt).toMatchObject({
+            state: "ACTIVE",
+            generation: old.attempt.generation,
+            deadline: old.attempt.deadline,
+            original_deadline: old.attempt.original_deadline,
+          });
+          expect(
+            current.kernel.every(
+              (unit) => unit.frozen === "0" && unit.populated === "1",
+            ),
+          ).toBe(true);
+        }
+        recovering = false;
+      }
+      if (large) {
+        for (const entry of fleet.slice(0, 2)) {
+          expect(
+            before.snapshots.find(
+              (value: z.infer<typeof snapshot>) =>
+                value.attempt.id === entry.id,
+            )!.attempt.settings,
+          ).toMatchObject({
+            collection_file_mib: 128,
+            collection_total_mib: 512,
+          });
+          // 508MiB plus the small proof/template files remains below the512MiB
+          // snapshot. Repeated1MiB random blocks exceed gzip's match window.
+          const program =
+            "import os; block=os.urandom(1024*1024); " +
+            "[(lambda f: ([f.write(block) for _ in range(127)], f.flush(), os.fsync(f.fileno()), f.close()))(open('/work/large-%d.bin'%n,'xb')) for n in range(4)]; print('LARGE-'+'READY',flush=True)";
+          await command(
+            entry,
+            0,
+            "python3 -c " + shellQuote(program),
+            "LARGE-READY",
+            40000,
+          );
+        }
+      }
+      // Finish a pair while the remaining14 must still accept new real input.
+      const finish = async (entry: (typeof fleet)[number]) => {
+        await entry.page
+          .getByRole("button", { name: "Finish exam", exact: true })
+          .click();
+        await entry.page
+          .getByRole("dialog")
+          .getByRole("button", { name: "Finish exam", exact: true })
+          .click();
+      };
+      if (stressRun) {
+        const seconds = Number(process.env.EXAM_STRESS_SECONDS || "5400");
+        if (![30, 5400].includes(seconds))
+          throw Error(
+            "Only the30s rehearsal or90-minute full endurance is supported",
+          );
+        const started = performance.now();
+        expect(
+          Math.min(
+            ...before.snapshots.map(
+              (entry: z.infer<typeof snapshot>) => entry.attempt.deadline,
+            ),
+          ) - Date.now(),
+        ).toBeGreaterThan(seconds * 1000 + 120000);
+        const samples: unknown[] = [];
+        const output = test.info().outputPath("endurance-progress.json");
+        await mkdir(test.info().outputDir, { recursive: true });
+        console.log(
+          JSON.stringify({
+            phase: "peak-start",
+            students: fleet.length,
+            terminals: fleet.length * 4,
+            seconds,
+          }),
+        );
+        while (performance.now() - started < seconds * 1000) {
+          await new Promise((resolve) =>
+            setTimeout(
+              resolve,
+              Math.min(30000, seconds * 1000 - (performance.now() - started)),
+            ),
+          );
+          const generatorAvailable = await generatorHeadroom();
+          const current = await inspect();
+          for (let i = 0; i < fleet.length; i++) {
+            const entry: z.infer<typeof snapshot> = current.snapshots.find(
+              (value: z.infer<typeof snapshot>) =>
+                value.attempt.id === fleet[i].id,
+            )!;
+            const old = before.snapshots.find(
+              (value: z.infer<typeof snapshot>) =>
+                value.attempt.id === fleet[i].id,
+            )!;
+            expect(entry.attempt).toMatchObject({
+              state: "ACTIVE",
+              generation: 0,
+              start: old.attempt.start,
+              deadline: old.attempt.deadline,
+              original_deadline: old.attempt.original_deadline,
+            });
+            expect(entry.supervisor).toMatchObject({
+              pid: old.supervisor!.pid,
+              ssh_peer: "pinned-live",
+              attached_panes: 4,
+            });
+            expect(entry.kernel).toHaveLength(4);
+            expect(
+              entry.kernel.every(
+                (unit) => unit.populated === "1" && unit.frozen === "0",
+              ),
+            ).toBe(true);
+          }
+          expect(fleet.flatMap((entry) => entry.unexpectedLocks)).toEqual([]);
+          const sample = {
+            elapsed_seconds: (performance.now() - started) / 1000,
+            students: fleet.length,
+            terminals: fleet.length * 4,
+            guest_resources: current.resources,
+            generator_available_bytes: generatorAvailable,
+            test_runner_rss: process.memoryUsage().rss,
+            timing: fleet.map((entry) => ({
+              username: entry.username,
+              ...entry.timing,
+            })),
+          };
+          samples.push(sample);
+          await writeFile(output, JSON.stringify({ run: stressRun, samples }), {
+            mode: 0o600,
+          });
+          console.log(
+            JSON.stringify({
+              phase: "peak-progress",
+              elapsed_seconds: sample.elapsed_seconds,
+              students: fleet.length,
+            }),
+          );
+        }
+        const peakSeconds = (performance.now() - started) / 1000;
+        for (const entry of fleet) {
+          await command(entry, 1, "print 2 + 2", "$1 = 4");
+          await command(
+            entry,
+            3,
+            `printf 'ENDURANCE-%s-END\\n' "$capacity_buffer"`,
+            `ENDURANCE-${entry.username}-3-END`,
+          );
+        }
+        const submissionStarted = performance.now();
+        await Promise.all(fleet.map(finish));
+        await expect
+          .poll(
+            async () => {
+              const response = await request.get("/api/admin/attempts", {
+                params: { q: "examq" },
+              });
+              return (await response.json()).attempts.filter(
+                (entry: any) =>
+                  fleet.some((owned) => owned.id === entry.id) &&
+                  entry.state === "COMPLETED" &&
+                  entry.protected,
+              ).length;
+            },
+            { timeout: 120000 },
+          )
+          .toBe(fleetCount);
+        const completed = await inspect(true);
+        expect(completed.preservation).toBe("FULL");
+        expect(Object.keys(completed.verified).length).toBe(fleetCount);
+        expect(
+          completed.snapshots.every(
+            (entry: z.infer<typeof snapshot>) =>
+              entry.attempt.protected &&
+              entry.attempt.access_state === "HELD" &&
+              entry.attempt.checksum.length > 0,
+          ),
+        ).toBe(true);
+        expect(fleet.flatMap((entry) => entry.unexpectedLocks)).toEqual([]);
+        await writeFile(
+          test.info().outputPath("endurance-result.json"),
+          JSON.stringify(
+            {
+              run: stressRun,
+              students: fleet.length,
+              terminals: fleet.length * 4,
+              requested_seconds: seconds,
+              peak_seconds: peakSeconds,
+              measured_seconds: (performance.now() - started) / 1000,
+              submission_seconds:
+                (performance.now() - submissionStarted) / 1000,
+              preservation: completed.preservation,
+              protected: completed.snapshots.length,
+              simulated_media: true,
+              institutional_mfa: false,
+              timing: fleet.map((entry) => ({
+                username: entry.username,
+                ...entry.timing,
+              })),
+            },
+            null,
+            2,
+          ),
+          { mode: 0o600 },
+        );
+        return;
+      }
+      await Promise.all(fleet.slice(0, 2).map(finish));
+      if (large) {
+        const worker = z.object({
+          attempt: z.string().uuid(),
+          unit: z.string(),
+          pid: z.number().int().positive(),
+          writing: z.boolean(),
+        });
+        await expect
+          .poll(
+            async () => {
+              const observed = await collection("observe");
+              return z
+                .array(worker)
+                .parse(observed.workers)
+                .filter((entry) => entry.writing).length;
+            },
+            { timeout: 15000 },
+          )
+          .toBe(2);
+        const killed = await collection("kill");
+        expect(killed.status).toBe("killed");
+        expect(
+          z
+            .array(worker)
+            .length(2)
+            .parse(killed.workers)
+            .every((entry) => entry.writing),
+        ).toBe(true);
+        await expect
+          .poll(
+            async () => {
+              const status = await request.get("/api/fixture/native-state", {
+                params: { attempt: fleet[0].id },
+              });
+              const value = snapshot.parse(await status.json());
+              expect(value.attempt).toMatchObject({
+                start: before.snapshots[0].attempt.start,
+                deadline: before.snapshots[0].attempt.deadline,
+                access_state: "HELD",
+              });
+              return value.attempt.state;
+            },
+            { timeout: 15000 },
+          )
+          .toBe("COLLECTION_FAILED");
+        expect((await collection("retry-verify")).status).toBe("pending");
+      }
+      for (const entry of fleet.slice(2)) {
+        await command(
+          entry,
+          3,
+          `printf 'PEER-%s-END\\n' '${entry.username}'`,
+          `PEER-${entry.username}-END`,
+        );
+      }
+      const during = await inspect();
+      for (const old of before.snapshots) {
+        const current = during.snapshots.find(
           (entry: z.infer<typeof snapshot>) =>
             entry.attempt.id === old.attempt.id,
         )!;
@@ -493,281 +899,183 @@ test("sixteen actual native students keep sixty-four monitored SSH terminals and
           original_deadline: old.attempt.original_deadline,
           transport: old.attempt.transport,
           grant: old.attempt.grant,
-          generation: old.attempt.generation + 1,
-          access_state: "HELD",
+          generation: old.attempt.generation,
         });
-        expect(current.supervisor).toMatchObject({
-          pid: old.supervisor!.pid,
-          attached_panes: 4,
-        });
+        if (!fleet.slice(0, 2).some((entry) => entry.id === old.attempt.id))
+          expect(current.supervisor).toMatchObject({
+            pid: old.supervisor!.pid,
+            ssh_peer: "pinned-live",
+            attached_panes: 4,
+          });
       }
-      // Exercise browser epoch agreement and every original shell's memory,
-      // rather than treating native ACTIVE metadata as proof of usable input.
-      for (const entry of fleet) {
-        for (let pane = 0; pane < 4; pane++) {
+      if (large) {
+        await expect
+          .poll(
+            async () => {
+              const operation = await collection("retry-verify");
+              expect(operation.status, JSON.stringify(operation)).not.toBe(
+                "failed",
+              );
+              return operation.status;
+            },
+            { timeout: 300000 },
+          )
+          .toBe("complete");
+        const operation = await collection("retry-verify");
+        expect(Object.keys(operation.verified).sort()).toEqual(
+          fleet
+            .slice(0, 2)
+            .map((entry) => entry.id)
+            .sort(),
+        );
+        expect(
+          Object.values(operation.verified).every(
+            (files) =>
+              JSON.stringify(files) ===
+              JSON.stringify([
+                "large-0.bin",
+                "large-1.bin",
+                "large-2.bin",
+                "large-3.bin",
+              ]),
+          ),
+        ).toBe(true);
+        // Fresh post-retry input proves the14 peers survived the entire fault /
+        // large compression/export interval, not merely its first milliseconds.
+        for (const entry of fleet.slice(2)) {
           await command(
             entry,
-            pane,
-            `printf 'RECOVERED-%s-END\\n' "$capacity_buffer"`,
-            `RECOVERED-${entry.username}-${pane}-END`,
+            3,
+            `printf 'AFTER-LARGE-%s-END\\n' '${entry.username}'`,
+            `AFTER-LARGE-${entry.username}-END`,
           );
         }
       }
-      recovering = false;
-    }
-    if (large) {
-      for (const entry of fleet.slice(0, 2)) {
-        expect(
-          before.snapshots.find(
-            (value: z.infer<typeof snapshot>) => value.attempt.id === entry.id,
-          )!.attempt.settings,
-        ).toMatchObject({
-          collection_file_mib: 128,
-          collection_total_mib: 512,
-        });
-        // 508MiB plus the small proof/template files remains below the512MiB
-        // snapshot. Repeated1MiB random blocks exceed gzip's match window.
-        const program =
-          "import os; block=os.urandom(1024*1024); " +
-          "[(lambda f: ([f.write(block) for _ in range(127)], f.flush(), os.fsync(f.fileno()), f.close()))(open('/work/large-%d.bin'%n,'xb')) for n in range(4)]; print('LARGE-'+'READY',flush=True)";
-        await command(
-          entry,
-          0,
-          "python3 -c " + shellQuote(program),
-          "LARGE-READY",
-          40000,
-        );
+      await Promise.all(fleet.slice(2).map(finish));
+      await expect
+        .poll(
+          async () => {
+            const result = await request.get("/api/admin/attempts", {
+              params: { q: "examq" },
+            });
+            const attempts = (await result.json()).attempts;
+            return attempts.filter(
+              (entry: any) =>
+                fleet.some((owned) => owned.id === entry.id) &&
+                entry.state === "COMPLETED" &&
+                !!entry.protected,
+            ).length;
+          },
+          { timeout: 60000 },
+        )
+        .toBe(16);
+      const completed = await inspect(true);
+      expect(fleet.flatMap((entry) => entry.unexpectedLocks)).toEqual([]);
+      if (large) {
+        for (const entry of fleet.slice(2)) {
+          expect(entry.timing.contacts).toBeGreaterThanOrEqual(3);
+          expect(entry.timing.states).toBeGreaterThanOrEqual(3);
+          // Existing privileged workload acceptance uses a5s healthy-control
+          // budget. This records BOTH immediate contact and public state replies;
+          // neither receipt is independently work permission.
+          expect(entry.timing.maxContactMs).toBeLessThan(5000);
+          expect(entry.timing.maxStateMs).toBeLessThan(5000);
+        }
       }
-    }
-    // Finish a pair while the remaining14 must still accept new real input.
-    const finish = async (entry: (typeof fleet)[number]) => {
-      await entry.page
-        .getByRole("button", { name: "Finish exam", exact: true })
-        .click();
-      await entry.page
-        .getByRole("dialog")
-        .getByRole("button", { name: "Finish exam", exact: true })
-        .click();
-    };
-    await Promise.all(fleet.slice(0, 2).map(finish));
-    if (large) {
-      const worker = z.object({
-        attempt: z.string().uuid(),
-        unit: z.string(),
-        pid: z.number().int().positive(),
-        writing: z.boolean(),
-      });
-      await expect
-        .poll(
-          async () => {
-            const observed = await collection("observe");
-            return z
-              .array(worker)
-              .parse(observed.workers)
-              .filter((entry) => entry.writing).length;
-          },
-          { timeout: 15000 },
-        )
-        .toBe(2);
-      const killed = await collection("kill");
-      expect(killed.status).toBe("killed");
-      expect(
-        z
-          .array(worker)
-          .length(2)
-          .parse(killed.workers)
-          .every((entry) => entry.writing),
-      ).toBe(true);
-      await expect
-        .poll(
-          async () => {
-            const status = await request.get("/api/fixture/native-state", {
-              params: { attempt: fleet[0].id },
-            });
-            const value = snapshot.parse(await status.json());
-            expect(value.attempt).toMatchObject({
-              start: before.snapshots[0].attempt.start,
-              deadline: before.snapshots[0].attempt.deadline,
-              access_state: "HELD",
-            });
-            return value.attempt.state;
-          },
-          { timeout: 15000 },
-        )
-        .toBe("COLLECTION_FAILED");
-      expect((await collection("retry-verify")).status).toBe("pending");
-    }
-    for (const entry of fleet.slice(2)) {
-      await command(
-        entry,
-        3,
-        `printf 'PEER-%s-END\\n' '${entry.username}'`,
-        `PEER-${entry.username}-END`,
+      await mkdir(test.info().outputDir, { recursive: true });
+      const metrics = test.info().outputPath("capacity-metrics.json");
+      await writeFile(
+        metrics,
+        JSON.stringify(
+          fleet.map((entry) => ({ username: entry.username, ...entry.timing })),
+        ),
+        { mode: 0o600 },
       );
-    }
-    const during = await inspect();
-    for (const old of before.snapshots) {
-      const current = during.snapshots.find(
-        (entry: z.infer<typeof snapshot>) =>
-          entry.attempt.id === old.attempt.id,
-      )!;
-      expect(current.attempt).toMatchObject({
-        start: old.attempt.start,
-        deadline: old.attempt.deadline,
-        original_deadline: old.attempt.original_deadline,
-        transport: old.attempt.transport,
-        grant: old.attempt.grant,
-        generation: old.attempt.generation,
+      await test.info().attach("capacity-metrics", {
+        path: metrics,
+        contentType: "application/json",
       });
-      if (!fleet.slice(0, 2).some((entry) => entry.id === old.attempt.id))
-        expect(current.supervisor).toMatchObject({
-          pid: old.supervisor!.pid,
-          ssh_peer: "pinned-live",
-          attached_panes: 4,
-        });
-    }
-    if (large) {
-      await expect
-        .poll(
-          async () => {
-            const operation = await collection("retry-verify");
-            expect(operation.status, JSON.stringify(operation)).not.toBe(
-              "failed",
-            );
-            return operation.status;
-          },
-          { timeout: 300000 },
-        )
-        .toBe("complete");
-      const operation = await collection("retry-verify");
-      expect(Object.keys(operation.verified).sort()).toEqual(
-        fleet
-          .slice(0, 2)
-          .map((entry) => entry.id)
-          .sort(),
-      );
+      expect(completed.preservation).toBe("FULL");
       expect(
-        Object.values(operation.verified).every(
-          (files) =>
-            JSON.stringify(files) ===
-            JSON.stringify([
-              "large-0.bin",
-              "large-1.bin",
-              "large-2.bin",
-              "large-3.bin",
-            ]),
+        completed.snapshots.every(
+          (entry: z.infer<typeof snapshot>) =>
+            entry.attempt.protected &&
+            entry.attempt.access_state === "HELD" &&
+            entry.attempt.checksum.length > 0,
         ),
       ).toBe(true);
-      // Fresh post-retry input proves the14 peers survived the entire fault /
-      // large compression/export interval, not merely its first milliseconds.
-      for (const entry of fleet.slice(2)) {
-        await command(
-          entry,
-          3,
-          `printf 'AFTER-LARGE-%s-END\\n' '${entry.username}'`,
-          `AFTER-LARGE-${entry.username}-END`,
-        );
-      }
-    }
-    await Promise.all(fleet.slice(2).map(finish));
-    await expect
-      .poll(
-        async () => {
-          const result = await request.get("/api/admin/attempts", {
-            params: { q: "examq" },
-          });
-          const attempts = (await result.json()).attempts;
-          return attempts.filter(
-            (entry: any) =>
-              fleet.some((owned) => owned.id === entry.id) &&
-              entry.state === "COMPLETED" &&
-              !!entry.protected,
-          ).length;
-        },
-        { timeout: 60000 },
-      )
-      .toBe(16);
-    const completed = await inspect(true);
-    expect(fleet.flatMap((entry) => entry.unexpectedLocks)).toEqual([]);
-    if (large) {
-      for (const entry of fleet.slice(2)) {
-        expect(entry.timing.contacts).toBeGreaterThanOrEqual(3);
-        expect(entry.timing.states).toBeGreaterThanOrEqual(3);
-        // Existing privileged workload acceptance uses a5s healthy-control
-        // budget. This records BOTH immediate contact and public state replies;
-        // neither receipt is independently work permission.
-        expect(entry.timing.maxContactMs).toBeLessThan(5000);
-        expect(entry.timing.maxStateMs).toBeLessThan(5000);
-      }
-    }
-    await mkdir(test.info().outputDir, { recursive: true });
-    const metrics = test.info().outputPath("capacity-metrics.json");
-    await writeFile(
-      metrics,
-      JSON.stringify(
-        fleet.map((entry) => ({ username: entry.username, ...entry.timing })),
-      ),
-      { mode: 0o600 },
-    );
-    await test.info().attach("capacity-metrics", {
-      path: metrics,
-      contentType: "application/json",
-    });
-    expect(completed.preservation).toBe("FULL");
-    expect(
-      completed.snapshots.every(
-        (entry: z.infer<typeof snapshot>) =>
-          entry.attempt.protected &&
-          entry.attempt.access_state === "HELD" &&
-          entry.attempt.checksum.length > 0,
-      ),
-    ).toBe(true);
-  } catch (error) {
-    await mkdir(test.info().outputDir, { recursive: true });
-    const failure = test.info().outputPath("capacity-failure.json");
-    const publicStates = await Promise.all(
-      fleet.map(async (entry) => {
-        try {
-          const response = await entry.page.request.get("/api/student/exam", {
-            timeout: 3000,
-          });
-          const value = (await response.json()).attempt;
-          return {
+    } catch (error) {
+      await mkdir(test.info().outputDir, { recursive: true });
+      const failure = test.info().outputPath("capacity-failure.json");
+      const publicStates = await Promise.all(
+        fleet.map(async (entry) => {
+          const browser = await entry.page
+            .evaluate(() => ({
+              focused: document.hasFocus(),
+              visible: document.visibilityState,
+              fullscreen: !!document.fullscreenElement,
+              activeTag: document.activeElement?.tagName,
+              activeLabel: document.activeElement?.getAttribute("aria-label"),
+              overlays: [
+                ...document.querySelectorAll<HTMLElement>(".lock-overlay"),
+              ].map((element) => element.innerText.slice(0, 1600)),
+              panes: [
+                ...document.querySelectorAll<HTMLElement>(".terminal"),
+              ].map((element) => ({
+                busy: element.getAttribute("aria-busy"),
+                inert: !!element.closest("[inert]"),
+              })),
+            }))
+            .catch(() => ({ unavailable: true }));
+          try {
+            const response = await entry.page.request.get("/api/student/exam", {
+              timeout: 3000,
+            });
+            const value = (await response.json()).attempt;
+            return {
+              username: entry.username,
+              state: value?.state,
+              generation: value?.generation,
+              browser,
+            };
+          } catch {
+            return { username: entry.username, unavailable: true, browser };
+          }
+        }),
+      );
+      await writeFile(
+        failure,
+        JSON.stringify({
+          error: String(error).slice(0, 1200),
+          signInEvents,
+          wasmBootstrap: await bootstrap(),
+          publicStates,
+          recoveryReplies: fleet.map((entry) => ({
             username: entry.username,
-            state: value?.state,
-            generation: value?.generation,
-          };
-        } catch {
-          return { username: entry.username, unavailable: true };
-        }
-      }),
-    );
-    await writeFile(
-      failure,
-      JSON.stringify({
-        error: String(error).slice(0, 1200),
-        signInEvents,
-        wasmBootstrap: await bootstrap(),
-        publicStates,
-      }),
-      { mode: 0o600 },
-    );
-    await test.info().attach("capacity-failure", {
-      path: failure,
-      contentType: "application/json",
-    });
-    if (fleet.length === 16) {
-      try {
-        const path = test.info().outputPath("native-fleet-failure.json");
-        await writeFile(path, JSON.stringify(await inspect()), { mode: 0o600 });
-        await test.info().attach("native-fleet-failure", {
-          path,
-          contentType: "application/json",
-        });
-      } catch {}
+            replies: entry.recoveryReplies,
+          })),
+        }),
+        { mode: 0o600 },
+      );
+      await test.info().attach("capacity-failure", {
+        path: failure,
+        contentType: "application/json",
+      });
+      if (fleet.length === 16) {
+        try {
+          const path = test.info().outputPath("native-fleet-failure.json");
+          await writeFile(path, JSON.stringify(await inspect()), {
+            mode: 0o600,
+          });
+          await test.info().attach("native-fleet-failure", {
+            path,
+            contentType: "application/json",
+          });
+        } catch {}
+      }
+      throw error;
+    } finally {
+      await Promise.all(fleet.map((entry) => entry.context.close()));
     }
-    throw error;
-  } finally {
-    await Promise.all(fleet.map((entry) => entry.context.close()));
-  }
-});
+  },
+);
