@@ -40,6 +40,8 @@ const diagnosticAccounts = {
   relaydiag02: 10048,
   relaydiag03: 10049,
 };
+const setupHealthAccounts = { setupbusy01: 12050, setupbusy02: 12051 };
+const setupHealthFailures = new Map<string, string>();
 // Fault-isolation intentionally leaves paused accounts held. Never reuse those
 // identities in another spec's fresh sandbox preflight.
 const isolationAccounts = { isolation01: 10015, isolation02: 10016 };
@@ -287,6 +289,7 @@ const fixtureCall = async function (op: string, b: any = {}): Promise<any> {
       ...capacityAccounts,
       ...cleanupAccounts,
       ...diagnosticAccounts,
+      ...setupHealthAccounts,
       ...isolationAccounts,
       ...closureAccounts,
       ...monitoringAccounts,
@@ -810,6 +813,7 @@ store.db.prepare("INSERT INTO agent_snapshot VALUES(?,?,?)").run(
       ...capacityAccounts,
       ...cleanupAccounts,
       ...diagnosticAccounts,
+      ...setupHealthAccounts,
       ...isolationAccounts,
       ...closureAccounts,
       policytest01: 12001,
@@ -906,6 +910,13 @@ h.control.dropReply = (frame) =>
   frame.username === "receipt01" &&
   frame.op.includes("receipted-execution-lease");
 h.control.command = async (op, b, frame) => {
+  if (op === "health" && frame?.username) {
+    const failure = setupHealthFailures.get(frame.username);
+    if (failure) {
+      setupHealthFailures.delete(frame.username);
+      throw Error(failure);
+    }
+  }
   if (frame?.username === "recovery01") {
     if (recoveryRoleOperations.length < 128) recoveryRoleOperations.push(op);
     if (op === "health" && recoveryRoleMissing) {
@@ -1495,6 +1506,43 @@ initialRoster.add(
   "fixture-operator",
 );
 // Disposable browser-test instrumentation only; never part of the production app.
+app.post("/api/fixture/setup-health", async (req) => {
+  const { username, mode } = req.body as any;
+  if (
+    !Object.hasOwn(setupHealthAccounts, username) ||
+    !["busy", "different"].includes(mode)
+  )
+    throw Error("Explicit owned setup-health fault required");
+  setupHealthFailures.set(
+    username,
+    mode === "busy"
+      ? "native readiness verification already in progress; retry health/preflight after it settles; operators can inspect examctl agent status without restarting exams. This is unavailable observation, not a policy violation or new permission/clock change"
+      : "Synthetic different fault: native readiness verification already in progress;",
+  );
+  return { armed: true };
+});
+app.get("/api/fixture/setup-health", async (req) => {
+  const username = String((req.query as any).username);
+  if (!Object.hasOwn(setupHealthAccounts, username))
+    throw Error("Owned setup-health account required");
+  return {
+    attempts: store.db
+      .prepare(
+        "SELECT state,start,deadline FROM attempts WHERE exam='sandbox' AND username=?",
+      )
+      .all(username),
+    grants: store.db
+      .prepare(
+        "SELECT status FROM attempt_grants WHERE exam='sandbox' AND username=?",
+      )
+      .all(username),
+    audits: store.db
+      .prepare(
+        "SELECT action,detail FROM audit WHERE actor=? AND action='preflight-health-busy'",
+      )
+      .all(username),
+  };
+});
 app.post("/api/fixture/diagnostic-relay-close", async (req) => {
   const username = (req.body as any).username;
   if (

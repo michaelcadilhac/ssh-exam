@@ -122,3 +122,23 @@ diagnosis, then a new full run after focused evidence. Production remains unchan
 32 workers and shared-host capacity are not qualified for the class target. Exact
 running/cleanup state belongs in [the checkpoint](todo-current-checkpoint.md);
 the [agent report](../reports/stress/20261117T174000Z/report.md) retains each scope.
+
+The ordinary browser run on f76aaf9 was interrupted after 156 successful logged
+cases of 377 declared; no final JSON or exit status was produced. Its exact
+orphaned fixture received a verified-PID graceful shutdown; owned processes and
+ports are gone and source/built inputs stayed unchanged. This is incomplete
+verification, not a complete pass or an attributed product failure. A bounded
+local user-service runner smoke passes with durable output and explicit cleanup;
+the next broad run will use it rather than depending on the tool-session lifetime.
+
+Two endurance preflight refusals also exposed a raw operator-oriented native
+readiness message to students. Prof approved the concise inline replacement:
+“The server is checking exam setup. Wait a moment, then try again.” Only the
+recognized busy-health condition on the student preflight route receives public
+409/EXAM_SETUP_BUSY; the original detail is privately audited and CLI health is
+unchanged. Two actual packaged-WASM/signed synthetic SSH/public-route browser
+checks pass in 12.4 seconds: no attempt/permission/clock consumed, same sign-in,
+private diagnostic retained, explicit healthy retry; a different error is not
+misclassified. Seven affected HTTP checks, typecheck and build pass. The first
+two regression setup failures (missing CSRF, fault identity dropped by a wrapper)
+are retained separately; the third red run actually reproduced the raw message.

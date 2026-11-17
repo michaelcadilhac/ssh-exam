@@ -28,6 +28,14 @@ refusal remain open. No 70-student/90-minute pass exists. Exact cleanup/evidence
 [checkpoint](docs/todo-current-checkpoint.md),
 [proof timing](docs/technical-resume-timing.md).
 
+The ordinary browser run was interrupted after 156 successful cases without a
+final receipt; its exact orphaned fixture is stopped. A durable local runner is
+smoke-tested for the next run. The known busy preflight message is now concise,
+with an unchanged sign-in and explicit retry, private operator diagnostics and
+no consumed attempt/permission/clock; two real-browser and seven affected HTTP
+checks, build and typecheck pass locally. Different errors remain distinct.
+Current [agent report](reports/stress/20261117T174000Z/report.md).
+
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
 Approved target: 70 synthetic students, four terminals each, 90 real peak minutes

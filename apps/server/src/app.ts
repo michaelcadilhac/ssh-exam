@@ -1017,7 +1017,8 @@ export async function createApp(
         ? { code: error.code }
         : {}),
       ...(err.code === "ATTEMPT_UNAVAILABLE" ||
-      err.code === "ROSTER_REVIEW_REQUIRED"
+      err.code === "ROSTER_REVIEW_REQUIRED" ||
+      err.code === "EXAM_SETUP_BUSY"
         ? { code: err.code }
         : {}),
       error:
@@ -1705,7 +1706,28 @@ export async function createApp(
       throw Error(
         "Sign in through SSH again to verify your course-server identity.",
       );
-    const h = await conn.command("health");
+    const h = await conn.command("health").catch((error: unknown) => {
+      if (
+        !(error instanceof Error) ||
+        !error.message.startsWith(
+          "native readiness verification already in progress;",
+        )
+      )
+        throw error;
+      store.audit(
+        s.username,
+        "preflight-health-busy",
+        s.exam!,
+        error.message.slice(0, 4096),
+      );
+      throw Object.assign(
+        new Error(
+          "The server is checking exam setup. Wait a moment, then try again.",
+          { cause: error },
+        ),
+        { statusCode: 409, code: "EXAM_SETUP_BUSY" },
+      );
+    });
     if (
       config.browserSSH &&
       ![

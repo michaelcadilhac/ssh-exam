@@ -573,9 +573,8 @@ test(
           const response = await result;
           if (response.ok()) break;
           const body = await response.json();
-          expect(body.error).toMatch(
-            /^native readiness verification already in progress;/,
-          );
+          expect(response.status()).toBe(409);
+          expect(body.code).toBe("EXAM_SETUP_BUSY");
           const current = (
             await (await page.request.get("/api/student/exam")).json()
           ).attempt;

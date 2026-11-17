@@ -1,56 +1,60 @@
-# Current checkpoint — stress remediation; sign-in driver corrected
+# Current checkpoint — stress remediation; scoped setup-busy UX qualified
 
 Local development/testing/commits only. No push/deployment, production settings,
-student records, institutional MFA or external email. Preserve the ten original
-modified documentation PNGs; 16 original image hashes were verified unchanged.
-No missing package. No native guest or Marco generator is running.
+student records, institutional MFA or external email. Preserve ten original dirty
+PNG files;16 original hashes verified unchanged. No missing package. No native
+guest, Marco generator or ordinary browser fixture is running now.
 
-Main eb282d2 integrates the approved remediation: public bootstrap budget, capture
-recovery, Prof UI fixes, bounded SSH commands/channel retirement, isolated Marco
-networking, runner guards, technical proof v2 and pane-local feedback. Native v16
-is unchanged at /var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec
-(19 files/65,421,056 bytes). Native-recovery-6 passes actual16/64/75-second outage,
-preserved shells/clocks/SSH/supervisors and16 protected completions. Collection-1
-passes two508MiB collections, exact fatal worker fault and protected retry while
-14 peers continue. Both exact guests stopped with FULL original preservation.
+Mainf76aaf9 atop eb282d2 includes bootstrap/capture/Prof UX/SSH retirement/private
+Marco networking/proofv2/pane feedback, plus a qualified60s stress Password wait
+and current notice selector. Exactv16native bundle unchanged:
+/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec.
+Actual native-recovery-6 passes16students/64panes/75soutage/preserved shells,
+SSH/supervisors/clocks/grants and16protected completions. Collection-1 passes two
+508MiB collections/fatal exactworker/protectedretry while14peers continue. Exact
+native stages stopped/FULLoriginalpreservation. Earlier915application/threegated
+skips,17affectedbrowser,threeactualCLI/export/zsh-bwrapflows and native races remain
+separately scoped; no additive coverage totals. New app copy needs broad recheck.
 
-Current main application:915 pass/three gated skips;17 affected browser cases and
-three actual CLI/export/zsh-bwrap workflows pass. All-native race result:1,709 pass
-and137 explicit skip events. These are separately scoped, not additive feature
-counts. Docs:stress-remediation.md, technical-resume-timing.md, pane-refusal-feedback.md.
+Endurance-1 FAILED before peak at61verified students/244panes (5,228.876s command).
+Next studentexamq61 stayed Connecting when driver hit10sPassword wait. Its delay
+cause unproved. A healthy16sWASM/SSH startup reproduced premature test refusal;
+corrected60swait passes3realrelay browsers/42units/typecheck,11terminal cases.
+No pane refusal recorded. Failure snapshot26ACTIVE0/35unavailable under3sread bound;
+visibleinputs enabled. Later61LOCKED1webrows are teardown. Startmax57.783s;
+first10median12.8875s,last10median42.204s. No70/90pass or production sizing claim.
+Nativeujfqp3d8 unitinactive/dead/PID0/FULLpreservation; Marco/browser/listenersgone;
+ownedlocalprocesses/3102,9444,9445gone; source/built stayedunchanged before edits.
+Private current-agent-journal.log excludes oldbaseentries. Evidence:var/stress/
+20261117T174000Z/endurance-1/. Installed32workers/2GiBweb and combined4CPU/~8GiBhost
+capacity remain unqualified. Gateway/native were on separatehosts in this run.
 
-Endurance-1 FAILED before peak at61 verified students/244 panes, after5,228.876s
-command time. Student examq61 stayed on Connecting to the server when Password
-locator hit the driver's10s default. No sign-in bootstrap/network event was
-captured for that student; actual delay cause unproved. No pane refusal captured.
-Failure public snapshot:26 ACTIVE/gen0,35 unavailable under3s diagnostic bound;
-visible terminal inputs enabled. Later61 LOCKED1 rows are teardown, not attribution.
-Start max57.783s; high CPU pressure/resource sizing remain open. No70/90 pass.
-Private evidence:var/stress/20261117T174000Z/endurance-1/; new report in reports/stress/.
+Ordinaryfullbrowser f76aaf9 INTERRUPTED156successful logs/377declared, no finalJSON
+or exitstatus. Rootrunner disappeared; four exactowned orphanfixture processes
+received PID/start-verifiedSIGTERM; allgone/3100,3101free, source/built unchanged.
+Do NOT countcompletepass or attributeproductfailure. Completion in var/stress-
+remediation/20261117/browser-complete-f76aaf9/. New local user-service smoke proves
+durable execution/output, active/exitedstatus and exactunitstop. Itsidentityand
+completion:durable-runner-smoke/. Use boundedowneduserservices for nextlongruns.
 
-Exact native stage /var/tmp/ssh-exam-overlay-ujfqp3d8, unit
-ssh-exam-qualification-b602dc8890484cf3b3e1801e00ae68cc.service is inactive/dead/PID0
-with FULL files/authority preservation. Exact Marco browser/unit/listeners stopped;
-owned local processes gone/3102,9444,9445 free. Independent receipts are inphase.
-Source/built manifests were unchanged at cleanup before the current test-only edit.
-Private logs copied; use current-agent-journal.log, not old prepared-base entries.
-At50 students:private native~2.1GiB,gateway process-treePSS~1.5GiB on separate hosts.
-Marco generatorpeak19,563,266,048bytes under20GiB cap; teardown status isn't peak.
-Installed32workers/2GiB web budget and combined roughly8GiB host remain unqualified.
+Current qualified uncommitted increment:student preflight known nativehealth-busy
+prefix ->409EXAM_SETUP_BUSY with concise Prof-approved inline copy; raw cause
+privatelyaudited;CLIhealthunchanged. Same sign-in/existingexplicitsetupretry,
+no automaticauth/Start. Differentnativeerrors notmisclassified. ActualWASM/
+signedsyntheticSSH/publicroute cases2PASS12.4s,7affectedHTTP/build/typecheckPASS.
+Prof approves actual430pxbusyand1280pxnegative screenshots. Raw error truly
+reproduced byred3; earlierred1CSRFmistake/red2droppedfaultidentity are fixture
+failures, notproductoracles. Evidence:var/stress-remediation/20261117/setup-health-*.
+Sources:app.ts, browser/server.ts, newsetup-health.spec.ts, capacityretrycodecheck.
+Docs/TODOupdated; Prof updates only reports/stress/20261117T174000Z/report.md.
 
-Current bounded test-only correction:waitForStressPasswordPrompt uses existing60s
-operation budget, logs elapsed time, never retries auth. Real healthy16sWASM/SSH
-startup reproduced the old10s failure (password-wait-red). Corrected three real
-relay browsers pass86.30s,42 focused units pass, typecheck passes.11 current terminal
-browser cases pass40.42s; cohort observes current Terminal notice instead of old
-Terminal error modal. Evidence:var/stress-remediation/20261117/password-wait-*.
-No product binaries/protocol/timeout/security settings changed by this increment.
-
-Next: commit this coherent local driver correction; freeze source/artifacts for a
-complete ordinary browser run on3100/3101 using direct npm run test:browser and a
-separate receipt (never concurrent stress-test.py writers). Then diagnose pressure
-with bounded focused evidence before another70 ramp. Historical native third-pane
-refusal remains unexplained. A successful subsequent pass must not erase failures.
+Next: commit scopedcopy increment after Prof reportupdate; freeze source/built.
+Launch fullapplication and ordinarybrowser on uniquely named boundedlocaluser
+services (nottool-sessionchildren), save exactunit/argv/manifests/resultreceipts.
+Capture actualcompletion andownedcleanup, then pressurediagnosis and fresh70ramp
+with existingguards/resources. Never alterproduction or blindly repeatknownfailures.
+Historical native third-pane refusal remains unexplained. No policydecision blocks
+currentlocaltests; no resource increase or deployment is authorized.
 
 ## Deployed baseline
 

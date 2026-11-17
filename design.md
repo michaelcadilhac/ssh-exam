@@ -20,6 +20,15 @@ See [timing/state review and qualification](docs/technical-resume-timing.md).
 
 ## November 17 local remediation: SSH command capacity and instructor clarity
 
+Student preflight translates only the known native readiness-check contention
+into HTTP409/EXAM_SETUP_BUSY with “The server is checking exam setup. Wait a
+moment, then try again.” The existing inline alert and explicit setup retry keep
+the authenticated sign-in; no automatic authentication or Start retry is added.
+The original operator diagnostic is retained in the private audit, and CLI health
+keeps its actionable error. Different native errors are not classified as busy.
+Real WASM/signed-SSH browser tests verify no attempt, grant or clock consumption
+on refusal and a healthy explicit retry. Implemented/tested locally only.
+
 Pane-opening failures have a scoped nonmodal notice. A fixed native gate/channel
 refusal on the exact open operation can offer the existing explicit New terminal
 action; timeout, receipt/ownership mismatch and unknown outcomes cannot. Unconfirmed
