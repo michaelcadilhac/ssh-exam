@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,54 @@ import (
 	"testing"
 	"time"
 )
+
+func TestNativeGateRefusalIsTypedWithoutClosingHealthySiblings(t *testing.T) {
+	c := cleanupClient(t, func(s ssh.Channel, requests <-chan *ssh.Request) {
+		defer s.Close()
+		for request := range requests {
+			request.Reply(true, nil)
+			if request.Type != "exec" {
+				continue
+			}
+			var command struct{ Command string }
+			ssh.Unmarshal(request.Payload, &command)
+			reader := bufio.NewReader(s)
+			if command.Command == "exam-gateway" {
+				io.WriteString(s, "EXAM-GATE/1\n")
+				line, _ := reader.ReadString('\n')
+				if strings.Contains(line, "healthy") {
+					io.WriteString(s, "EXAM-READY {}\n")
+					io.Copy(io.Discard, reader)
+				} else {
+					io.WriteString(s, "EXAM-ERROR: PRIVATE native detail\n")
+				}
+			} else {
+				reader.ReadString('\n')
+				io.WriteString(s, "{}\n")
+			}
+			return
+		}
+	}, func(any) {})
+	if _, err := c.Open("one", "healthy"); err != nil {
+		t.Fatal(err)
+	}
+	_, err := c.Open("two", "refuse")
+	if err == nil || FailureCause(err) != "admission-refused" || strings.Contains(err.Error(), "PRIVATE") {
+		t.Fatal("native gate refusal was absent, untyped or leaked", err)
+	}
+	c.mu.Lock()
+	healthy := c.class != nil && len(c.panes) == 1 && c.panes["one"] != nil
+	c.mu.Unlock()
+	if !healthy {
+		t.Fatal("one refusal lost healthy sibling ownership")
+	}
+	if _, err := c.Command(json.RawMessage(`{}`)); err != nil {
+		t.Fatal("one refusal closed the authenticated SSH", err)
+	}
+	if FailureCause(errors.New("session admission rejected")) == "admission-refused" {
+		t.Fatal("raw text was treated as definite native refusal")
+	}
+}
 
 func TestCurrentSSHCloseReportsOneSanitizedCause(t *testing.T) {
 	h := hosts(t, false, false, false)

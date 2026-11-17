@@ -24,18 +24,18 @@ export async function recoverRefusedStressPane(options: {
   record: () => Promise<void>;
 }) {
   const { page, attempt, opened, expected, record } = options;
-  const dialog = page.getByRole("dialog", {
-    name: "Terminal error",
+  const notice = page.getByRole("alert", {
+    name: "Terminal notice",
     exact: true,
   });
-  if (!(await dialog.isVisible()))
+  if (
+    !(await notice.isVisible()) ||
+    (await notice.getAttribute("data-open-outcome")) !== "refused"
+  )
     throw Error("No confirmed terminal refusal; no retry");
   if (opened() !== expected - 1)
     throw Error("Pane ownership changed; no retry");
   await record(); // Persist failure evidence before any recovery action.
-  const text = await dialog.innerText();
-  if (!text.includes("This terminal could not open. Try again."))
-    throw Error("Unrecognized terminal error; no retry");
   const response = await page.request.get("/api/student/exam", {
     timeout: 5000,
   });
@@ -49,8 +49,8 @@ export async function recoverRefusedStressPane(options: {
     throw Error("Attempt changed or requires review; no retry");
   if (opened() !== expected - 1)
     throw Error("Pane ownership changed; no retry");
-  await dialog
-    .getByRole("button", { name: "Close", exact: true })
+  await notice
+    .getByRole("button", { name: "Dismiss terminal notice", exact: true })
     .click({ timeout: 5000 });
   await page
     .getByRole("button", { name: "New terminal", exact: true })

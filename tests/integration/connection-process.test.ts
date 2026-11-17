@@ -14,6 +14,59 @@ const exited = async (c: IsolatedConnection) =>
     },
     { timeout: 5000 },
   );
+it("pane refusal evidence survives only its exact open IPC operation", async () => {
+  const h = await hosts({ mfaDelayMs: 10 });
+  const config: any = {
+    mode: "development",
+    jump: h.jump,
+    class: h.class,
+    agent: h.agentConfig,
+  };
+  const c = new IsolatedConnection(
+    "student",
+    "e",
+    config,
+    new Agent(config.agent),
+  );
+  try {
+    await c.connect(async (_, __, prompts) =>
+      prompts.map(() => "shared-password"),
+    );
+    const messages: any[] = [];
+    const post = vi
+      .spyOn(c, "post")
+      .mockImplementation((message) => messages.push(message));
+    try {
+      for (const [op, evidence, expected] of [
+        ["open", true, true],
+        ["command", true, false],
+        ["open", "true", false],
+        ["open", undefined, false],
+      ] as const) {
+        const result = c.rpc(op, []);
+        (c as any).receiveWorker({
+          kind: "reply",
+          id: messages.at(-1).id,
+          alive: true,
+          error: {
+            message: "synthetic operation refused",
+            paneOpenRefused: evidence,
+          },
+        });
+        await expect(result).rejects.toMatchObject({
+          paneOpenRefused: expected,
+        });
+      }
+    } finally {
+      post.mockRestore();
+    }
+    expect(c.alive).toBe(true);
+  } finally {
+    c.close();
+    await exited(c);
+    await h.close();
+  }
+});
 it("an isolated SSH worker obtains current command authority from its owning parent and survives a refusal", async () => {
   const h = await hosts({ mfaDelayMs: 10 });
   const config: any = {

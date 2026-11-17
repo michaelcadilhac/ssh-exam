@@ -36,6 +36,7 @@ export const sshDiagnostic = z
       "broken-pipe",
       "remote-exit",
       "channel-capacity",
+      "admission-refused",
       "operation-rejected",
       "worker-error",
       "peer-close",

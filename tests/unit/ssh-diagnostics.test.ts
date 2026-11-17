@@ -9,6 +9,9 @@ it("accepts only bounded failure categories, never raw error or credential field
   expect(
     safeSSHDiagnostic({ stage: "open", cause: "channel-capacity" }),
   ).toEqual({ stage: "open", cause: "channel-capacity" });
+  expect(
+    safeSSHDiagnostic({ stage: "open", cause: "admission-refused" }),
+  ).toEqual({ stage: "open", cause: "admission-refused" });
   for (const value of [
     { ...diagnostic, password: "SECRET" },
     { ...diagnostic, cause: "password=SECRET" },

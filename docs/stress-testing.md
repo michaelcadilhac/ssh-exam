@@ -75,6 +75,14 @@ typecheck pass. The first UI-only fixture bypassed its declared page routing;
 that failure is retained, and the corrected browser-fetch fixture passes. The
 underlying real native refusal remains unproved until another observed event.
 
+November17 follow-up: the current full70-person workflow preserves a new terminal
+refusal and native snapshot, then stops before the90-minute peak for focused
+diagnosis using the retained private agent log. It does not spend endurance time
+on a candidate already known to fail clean acceptance. The separate public-retry
+test still exercises one explicit Dismiss/New action after typed refusal and
+fresh same-attempt verification. Unconfirmed admissions never retry. Historical
+campaigns retain their original continuation policy and failed receipts.
+
 Full8 also failed: seven students/28panes passed before the eighth setup displayed
 Workspace error/Failed to fetch over the webcam control. A capture-challenge
 request was cancelled; later samples succeeded but the modal remained. The clock

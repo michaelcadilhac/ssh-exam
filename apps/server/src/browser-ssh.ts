@@ -471,8 +471,18 @@ export class BrowserConnection extends Connection {
       };
       this.observe(diagnostic, p.args?.pane);
       p.reject(
-        Error(
-          `Browser SSH operation failed (${diagnostic.stage}/${diagnostic.cause})`,
+        Object.assign(
+          Error(
+            `Browser SSH operation failed (${diagnostic.stage}/${diagnostic.cause})`,
+          ),
+          {
+            paneOpenRefused:
+              p.op === "open" &&
+              diagnostic.stage === "open" &&
+              ["admission-refused", "channel-capacity"].includes(
+                diagnostic.cause,
+              ),
+          },
         ),
       );
     } else p.resolve(m.result);

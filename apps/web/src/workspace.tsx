@@ -48,6 +48,7 @@ type Pane = {
   element: HTMLDivElement;
   opening: HTMLDivElement;
   opened: boolean;
+  openingFailed?: boolean;
   input?: CapturedPaneInput;
   outputEpoch?: string;
 };
@@ -139,6 +140,11 @@ export function Workspace({
     [clock, setClock] = useState(Date.now()),
     [message, setMessage] = useState(""),
     [inputNotice, setInputNotice] = useState(false),
+    [paneNotice, setPaneNotice] = useState<{
+      pane: string;
+      name: string;
+      refused: boolean;
+    } | null>(null),
     [captureDelayed, setCaptureDelayed] = useState(false),
     [resumedGeneration, setResumedGeneration] = useState<number | null>(null),
     [dialog, setDialog] = useState<any>(null),
@@ -758,6 +764,7 @@ export function Workspace({
         (executionPolicyRef.current?.terminals ?? settings.terminals)
     )
       return;
+    setPaneNotice((notice) => (notice?.refused ? null : notice));
     const pane = crypto.randomUUID();
     send({ type: "open", pane });
     addPane(pane);
@@ -785,6 +792,7 @@ export function Workspace({
     p.observer.disconnect();
     p.term.dispose();
     panes.current.delete(pane);
+    setPaneNotice((notice) => (notice?.pane === pane ? null : notice));
     if (active.current === pane) {
       const next = [...panes.current.values()].at(-1);
       active.current = next?.id || "";
@@ -1072,6 +1080,7 @@ export function Workspace({
           const p = panes.current.get(m.pane);
           if (
             p &&
+            !p.openingFailed &&
             ![
               "FINALIZING",
               "COMPLETED",
@@ -1127,6 +1136,7 @@ export function Workspace({
           const p = panes.current.get(m.pane);
           if (
             p &&
+            !p.openingFailed &&
             (interaction() ||
               (attemptRef.current.monitoring_mode === "v1" &&
                 ["ACTIVE", "LOCKED"].includes(attemptRef.current.state)))
@@ -1135,10 +1145,28 @@ export function Workspace({
         }
         if (m.type === "closed") remove(m.pane);
         if (m.type === "error") {
-          if (m.pane) remove(m.pane);
-          setMessage(m.error);
-          if (m.code === "page-ownership") incident(m.error);
-          else setDialog({ kind: "error", message: m.error });
+          if (m.code === "page-ownership") {
+            if (m.pane) remove(m.pane);
+            setMessage(m.error);
+            incident(m.error);
+          } else if (m.pane && !panes.current.get(m.pane)?.opened) {
+            const p = panes.current.get(m.pane);
+            if (!p) return; // A closed/retired opening cannot cover healthy work.
+            const refused = m.open_outcome === "refused";
+            if (refused) remove(m.pane);
+            else {
+              p.openingFailed = true;
+              p.term.options.disableStdin = true;
+              if (p.term.element) p.term.element.inert = true;
+              if (p.term.textarea) p.term.textarea.disabled = true;
+              p.opening.textContent = "Terminal unavailable";
+              p.element.append(p.opening);
+            }
+            setPaneNotice({ pane: m.pane, name: p.name, refused });
+          } else {
+            setMessage(m.error);
+            setDialog({ kind: "error", message: m.error });
+          }
         }
       };
       s.onclose = () => {
@@ -1178,6 +1206,7 @@ export function Workspace({
         const p = panes.current.get(m.pane);
         if (
           p &&
+          !p.openingFailed &&
           (interaction() ||
             (attemptRef.current.monitoring_mode === "v1" &&
               ["ACTIVE", "LOCKED"].includes(attemptRef.current.state)))
@@ -1436,6 +1465,11 @@ export function Workspace({
         p.box.top = rect.top;
         p.box.bottom = window.innerHeight - rect.bottom;
         if (p.box.max) p.box.resize(rect.width, rect.height).move(0, rect.top);
+        else if (p.box.y < rect.top) {
+          if (p.box.min)
+            p.box.y = rect.top; // Preserve the visible minimized stack.
+          else p.box.move(p.box.x, rect.top);
+        }
       }
     });
     observer.observe(area.current!);
@@ -1800,6 +1834,26 @@ export function Workspace({
           </button>
         )}
       </header>
+      {paneNotice && !covered && (
+        <div
+          className="pane-notice"
+          role="alert"
+          aria-label="Terminal notice"
+          data-open-outcome={paneNotice.refused ? "refused" : "unconfirmed"}
+        >
+          <span>
+            {paneNotice.refused
+              ? `${paneNotice.name} could not open. ${[...panes.current.values()].some((pane) => pane.opened) ? "You can use your other terminals. " : ""}Choose New terminal to try again.`
+              : `${paneNotice.name} is unavailable. Keep this page open and ask your instructor for help.`}
+          </span>
+          <button
+            aria-label="Dismiss terminal notice"
+            onClick={() => setPaneNotice(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {inputNotice && !covered && (
         <div className="status warn" role="status">
           Recent terminal input was not sent. Wait for terminal output, then

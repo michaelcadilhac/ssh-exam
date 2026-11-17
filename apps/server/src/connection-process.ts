@@ -148,6 +148,7 @@ export class IsolatedConnection implements ConnectionHandle {
   private replies = new Map<
     number,
     {
+      op: string;
       resolve: (v: any) => void;
       reject: (e: Error) => void;
       timer: NodeJS.Timeout;
@@ -342,7 +343,7 @@ export class IsolatedConnection implements ConnectionHandle {
           }),
         OPERATION_TIMEOUT_MS,
       );
-      this.replies.set(id, { resolve, reject, timer });
+      this.replies.set(id, { op, resolve, reject, timer });
       this.post({ kind: "rpc", id, op, args });
     });
   }
@@ -404,6 +405,8 @@ export class IsolatedConnection implements ConnectionHandle {
         Object.assign(error, {
           publicMessage: m.error.publicMessage,
           authenticationStage: m.error.authenticationStage,
+          paneOpenRefused:
+            pending.op === "open" && m.error.paneOpenRefused === true,
         });
         pending.reject(error);
       } else pending.resolve(m.result);

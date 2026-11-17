@@ -3,6 +3,43 @@ import { EventEmitter } from "node:events";
 import { BrowserConnection } from "../../apps/server/src/browser-ssh.js";
 
 afterEach(() => vi.useRealTimers());
+it("only explicit opening refusals carry retry evidence, preserving healthy siblings", async () => {
+  const { conn, socket, command } = await setup();
+  const original = conn.panes.get("pane");
+  const send = socket.send.bind(socket);
+  for (const [stage, cause, refused] of [
+    ["open", "admission-refused", true],
+    ["open", "channel-capacity", true],
+    ["open", "timeout", false],
+    ["open", "operation-rejected", false],
+    ["command", "admission-refused", false],
+    ["open", "PRIVATE raw error", false],
+  ] as const) {
+    socket.send = (data: string) => {
+      const message = JSON.parse(data);
+      if (message.type === "browser-request" && message.op === "open")
+        conn.receive({
+          type: "browser-result",
+          id: message.id,
+          error: true,
+          diagnostic: { stage, cause },
+        });
+      else send(data);
+    };
+    try {
+      await expect(conn.open("attempt", "refused")).rejects.toMatchObject({
+        paneOpenRefused: refused,
+      });
+      expect(conn.alive).toBe(true);
+      expect(conn.panes.get("pane")).toBe(original);
+      expect(conn.panes.has("refused")).toBe(false);
+    } finally {
+      socket.send = send;
+    }
+  }
+  expect(command).toHaveBeenCalledTimes(7); // Initial healthy pane plus six explicit requests.
+  conn.close();
+});
 it("restores the same retained SSH while its countdown is paused beyond the old deadline, but refuses an elapsed unpaused timer", async () => {
   const { conn, command, authority } = await setup();
   authority.confirmRegisteredPaneOwner.mockClear();

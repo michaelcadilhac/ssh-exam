@@ -13,6 +13,10 @@ import (
 
 const OperationTimeout = 60 * time.Second
 
+// Only the native gate's explicit refusal BEFORE EXAM-READY produces this.
+// Missing replies and invalid receipts remain unconfirmed operations.
+var errPaneAdmissionRefused = errors.New("session admission rejected")
+
 // Fixed categories only: SSH/MFA/server error strings may contain private data.
 func FailureCause(err error) string {
 	var timeout net.Error
@@ -35,6 +39,8 @@ func FailureCause(err error) string {
 		return "broken-pipe"
 	case errors.As(err, &channel) && channel.Reason == ssh.ResourceShortage:
 		return "channel-capacity"
+	case errors.Is(err, errPaneAdmissionRefused):
+		return "admission-refused"
 	case errors.As(err, &exit):
 		return "remote-exit"
 	default:

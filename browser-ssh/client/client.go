@@ -535,7 +535,7 @@ func (c *Client) open(pane, token, epoch string) (json.RawMessage, error) {
 			break
 		}
 		if strings.HasPrefix(line, "EXAM-ERROR") {
-			return nil, errors.New("session admission rejected")
+			return nil, errPaneAdmissionRefused
 		}
 	}
 	if result == nil {

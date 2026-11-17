@@ -10,6 +10,8 @@ describe("recorded synthetic terminal retry", () => {
       visible: true,
       count: 3,
       responseOK: true,
+      outcome: "refused",
+      recordError: false,
       text: "This terminal could not open. Try again.",
       current: { id: "owned", state: "ACTIVE", generation: 0 },
       ...overrides,
@@ -23,11 +25,12 @@ describe("recorded synthetic terminal retry", () => {
     const dialog = {
       isVisible: async () => options.visible,
       innerText: async () => options.text,
+      getAttribute: async () => options.outcome,
       getByRole: () => ({ click: close }),
     };
     const page = {
       getByRole: (role: string) =>
-        role === "dialog" ? dialog : { click: open },
+        role === "alert" ? dialog : { click: open },
       request: {
         get: vi.fn(async () => {
           order.push("read");
@@ -51,20 +54,31 @@ describe("recorded synthetic terminal retry", () => {
           expected: 4,
           record: async () => {
             order.push("record");
+            if (options.recordError)
+              throw Error("Captured failure; stop cohort");
           },
         }),
     };
   }
-  it("records the refusal before fresh read and public Close/New terminal", async () => {
+  it("records the refusal before fresh read and public Dismiss/New terminal", async () => {
     const f = fixture();
     await f.run();
     expect(f.order).toEqual(["record", "read", "close", "open"]);
+  });
+  it("stops immediately when the cohort preserves a refusal for diagnosis", async () => {
+    const f = fixture({ recordError: true });
+    await expect(f.run()).rejects.toThrow("stop cohort");
+    expect(f.order).toEqual(["record"]);
+    expect(f.close).not.toHaveBeenCalled();
+    expect(f.open).not.toHaveBeenCalled();
   });
   it.each([
     { visible: false },
     { count: 4 },
     { responseOK: false },
-    { text: "Existing page owns attempt" },
+    { outcome: "unconfirmed" },
+    { outcome: undefined },
+    { outcome: "page-ownership" },
     { current: null },
     { current: { id: "other", state: "ACTIVE", generation: 0 } },
     { current: { id: "owned", state: "LOCKED", generation: 1 } },

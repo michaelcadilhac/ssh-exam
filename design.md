@@ -20,6 +20,16 @@ See [timing/state review and qualification](docs/technical-resume-timing.md).
 
 ## November 17 local remediation: SSH command capacity and instructor clarity
 
+Pane-opening failures have a scoped nonmodal notice. A fixed native gate/channel
+refusal on the exact open operation can offer the existing explicit New terminal
+action; timeout, receipt/ownership mismatch and unknown outcomes cannot. Unconfirmed
+windows stay unavailable and ignore late opening replies. Healthy siblings keep
+their existing input checks; Dismiss is presentation only. Ordinary/minimized
+window positions respect changing toolbar/notice bounds without changing pane
+identity or input authority. Desktop/375px and actual SSH/IPC regressions pass,
+and Prof approves the rendered result locally. No schema or monitoring policy
+change: [terminal feedback](docs/pane-refusal-feedback.md).
+
 The browser SSH client admits at most three concurrent signed command channels,
 including at most two ordinary commands. Live execution-lease renewals have a
 reserved lane and one reserved pending slot; the total pending queue is bounded

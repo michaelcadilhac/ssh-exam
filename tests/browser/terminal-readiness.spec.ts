@@ -9,6 +9,174 @@ import {
   selectVerifiedTerminal,
 } from "./transition-fixture.js";
 
+for (const outcome of ["refused", "unconfirmed"] as const) {
+  test(`a ${outcome} third terminal leaves both healthy terminals usable and never retries automatically`, async ({
+    page,
+  }, info) => {
+    const f = await fixture(page);
+    await begin(page, f);
+    await readyTerminal(page, 1, 0);
+    await page
+      .getByRole("button", { name: "New terminal", exact: true })
+      .click();
+    await readyTerminal(page, 2, 1);
+    const original = { ...f.model.attempt };
+    const healthy = f.model.messages
+      .filter((message) => message.type === "open")
+      .map((message) => message.pane);
+    const ids = await page
+      .locator(".winbox")
+      .evaluateAll((elements) => elements.map((element) => element.id));
+    const firstTitle = page.locator(`.winbox[id="${ids[0]}"] .wb-title`);
+    await page
+      .getByRole("button", { name: "Minimize Terminal 1", exact: true })
+      .click({ timeout: 5000 });
+    const minimizedTop = (await firstTitle.boundingBox())!.y;
+    const titlesBelowToolbar = async () => {
+      const top = await page
+        .locator(".window-area")
+        .evaluate((element) => element.getBoundingClientRect().top);
+      for (const id of ids)
+        await expect
+          .poll(
+            async () =>
+              (
+                await page
+                  .locator(`.winbox[id="${id}"] .wb-title`)
+                  .boundingBox()
+              )?.y ?? -1,
+            { timeout: 3000 },
+          )
+          .toBeGreaterThanOrEqual(top);
+    };
+    let failedPane = "";
+    let lateReply = () => {};
+    f.model.onOpen = async (socket, message) => {
+      failedPane = message.pane;
+      socket.send(
+        JSON.stringify({
+          type: "error",
+          pane: message.pane,
+          open_outcome: outcome,
+          error: "Private server details must not become retry evidence",
+        }),
+      );
+      lateReply = () =>
+        socket.send(JSON.stringify({ type: "opened", pane: message.pane }));
+    };
+    await page
+      .getByRole("button", { name: "New terminal", exact: true })
+      .click();
+    const notice = page.getByRole("alert", {
+      name: "Terminal notice",
+      exact: true,
+    });
+    await expect(notice).toBeVisible();
+    await expect(notice).toHaveAttribute("data-open-outcome", outcome);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.locator(".exam-toolbar")).not.toHaveAttribute(
+      "inert",
+      "",
+    );
+    await expect(page.locator(".winbox")).toHaveCount(
+      outcome === "refused" ? 2 : 3,
+    );
+    expect((await firstTitle.boundingBox())!.y).toBeCloseTo(minimizedTop, 1);
+    await page.locator(".workspace-tools > summary").click({ timeout: 5000 });
+    await page
+      .getByLabel("Open terminals")
+      .getByRole("button", { name: "Terminal 1 (minimized)", exact: true })
+      .click({ timeout: 5000 });
+    for (let index = 0; index < ids.length; index++) {
+      const pane = page.locator(`.winbox[id="${ids[index]}"]`);
+      await selectVerifiedTerminal(page, pane);
+      await page.keyboard.type(index === 0 ? "FIRST" : "SECOND");
+      await expect
+        .poll(() =>
+          f.model.messages
+            .filter(
+              (message) =>
+                message.type === "input" && message.pane === healthy[index],
+            )
+            .map((message) => message.data)
+            .join(""),
+        )
+        .toBe(index === 0 ? "FIRST" : "SECOND");
+    }
+    expect(
+      f.model.messages.filter((message) => message.type === "open"),
+    ).toHaveLength(3);
+    await titlesBelowToolbar();
+    expect(
+      f.model.messages.filter((message) => message.type === "incident"),
+    ).toEqual([]);
+    expect(f.model.attempt).toMatchObject({
+      start: original.start,
+      deadline: original.deadline,
+      generation: original.generation,
+    });
+    await page.screenshot({
+      path: info.outputPath(`${outcome}-terminal-notice.png`),
+    });
+    const viewport = page.viewportSize()!;
+    await page.setViewportSize({ width: 375, height: 900 });
+    await expect(notice).toBeVisible();
+    await titlesBelowToolbar();
+    await notice
+      .getByRole("button", { name: "Dismiss terminal notice", exact: true })
+      .click({ trial: true, timeout: 5000 });
+    await page.screenshot({
+      path: info.outputPath(`${outcome}-terminal-notice-375.png`),
+    });
+    await page.setViewportSize(viewport);
+    if (outcome === "unconfirmed") {
+      await expect(notice).toContainText("ask your instructor");
+      await expect(notice).not.toContainText("try again");
+      lateReply();
+      await expect(
+        page.getByRole("status").filter({ hasText: "Terminal unavailable" }),
+      ).toBeVisible();
+      await expect(
+        page.locator(".xterm-helper-textarea").nth(2),
+      ).toBeDisabled();
+      await page
+        .getByRole("button", { name: "Close Terminal 3", exact: true })
+        .click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Close terminal", exact: true })
+        .click();
+      lateReply();
+      await expect(page.locator(".winbox")).toHaveCount(2);
+      await titlesBelowToolbar();
+      expect(
+        f.model.messages.filter(
+          (message) => message.type === "close" && message.pane === failedPane,
+        ),
+      ).toHaveLength(1);
+    } else {
+      await notice
+        .getByRole("button", { name: "Dismiss terminal notice", exact: true })
+        .click();
+      await titlesBelowToolbar();
+      expect(
+        f.model.messages.filter((message) => message.type === "open"),
+      ).toHaveLength(3);
+      f.model.onOpen = async (socket, message) =>
+        socket.send(JSON.stringify({ type: "opened", pane: message.pane }));
+      await page
+        .getByRole("button", { name: "New terminal", exact: true })
+        .click();
+      await readyTerminal(page, 3, 2);
+      const opens = f.model.messages.filter(
+        (message) => message.type === "open",
+      );
+      expect(opens).toHaveLength(4);
+      expect(opens.at(-1).pane).not.toBe(failedPane);
+    }
+  });
+}
+
 test("manual stress records a refused pane and exercises one ordinary public retry", async ({
   page,
 }) => {
@@ -24,6 +192,7 @@ test("manual stress records a refused pane and exercises one ordinary public ret
         JSON.stringify({
           type: "error",
           pane: message.pane,
+          open_outcome: "refused",
           error:
             "This terminal could not open. Try again. If it still fails, contact your instructor.",
         }),
@@ -35,7 +204,7 @@ test("manual stress records a refused pane and exercises one ordinary public ret
   };
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
   await expect(
-    page.getByRole("dialog", { name: "Terminal error", exact: true }),
+    page.getByRole("alert", { name: "Terminal notice", exact: true }),
   ).toBeVisible();
   await recoverRefusedStressPane({
     // This UI fixture intercepts browser fetch, not Playwright APIRequestContext.

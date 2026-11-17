@@ -734,6 +734,12 @@ test(
                       ...refusal,
                     }),
                   );
+                  // Stop before spending the90-minute peak on a candidate
+                  // already known to fail clean acceptance. Teardown retains
+                  // private native logs for focused diagnosis; no blind ramp.
+                  throw Error(
+                    "Confirmed terminal refusal recorded; stop this cohort for native diagnosis before endurance",
+                  );
                 },
               });
           }

@@ -4426,6 +4426,11 @@ export async function createApp(
         send(ws, {
           type: "error",
           code: pageOwnershipFailure ? "page-ownership" : undefined,
+          open_outcome: openingPane
+            ? paneAdmissionFailure && (e as any).paneOpenRefused === true
+              ? "refused"
+              : "unconfirmed"
+            : undefined,
           error: paneAdmissionFailure
             ? "This terminal could not open. Try again. If it still fails, contact your instructor."
             : (e as Error).message,

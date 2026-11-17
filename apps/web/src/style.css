@@ -915,6 +915,27 @@ summary {
   pointer-events: none;
 }
 
+.pane-notice {
+  position: relative;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 18px;
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.pane-notice > span {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.pane-notice > button {
+  padding: 4px 8px;
+}
+
 .focus-warning {
   position: fixed;
   top: 88px;

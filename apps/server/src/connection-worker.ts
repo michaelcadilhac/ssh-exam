@@ -282,6 +282,7 @@ process.on("message", async (m: any) => {
               : undefined,
           publicMessage: error.publicMessage,
           authenticationStage: error.authenticationStage,
+          paneOpenRefused: m.op === "open" && error.paneOpenRefused === true,
         },
         alive: connection?.alive,
         transport: connection?.transport,
