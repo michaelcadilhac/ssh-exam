@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
-import { fixture, begin, gate, readyTerminal } from "./transition-fixture.js";
+import { fixture, begin, gate, readyTerminal, selectVerifiedTerminal } from "./transition-fixture.js";
 
 for (const framed of [false, true]) {
   test(`${framed ? "framed" : "legacy"} terminal blocks early keys and preserves the first key after its actual open acknowledgement`, async ({
@@ -177,12 +177,15 @@ test("terminal selection reaches an earlier pane while another window covers it"
   });
   expect(coveredBy).toBe(ids[1]);
   await page.screenshot({ path: info.outputPath("overlapping-terminals.png") });
-  await readyTerminal(page, 2, 0);
-  await page.keyboard.type("first-only");
-  await expect.poll(() => f.model.messages.filter(message => message.type === "input").map(message => message.data).join("")).toBe("first-only");
   const opened = f.model.messages.filter(message => message.type === "open");
   expect(opened).toHaveLength(2);
-  expect(f.model.messages.filter(message => message.type === "input").every(message => message.pane === opened[0].pane)).toBe(true);
+  for (const [index, text] of [[0, "first-only"], [1, "second-only"], [0, "first-again"]] as const) {
+    const before = f.model.messages.filter(message => message.type === "input").length;
+    await selectVerifiedTerminal(page, page.locator(`.winbox[id="${ids[index]}"]`));
+    await page.keyboard.type(text);
+    await expect.poll(() => f.model.messages.filter(message => message.type === "input").slice(before).map(message => message.data).join("")).toBe(text);
+    expect(f.model.messages.filter(message => message.type === "input").slice(before).every(message => message.pane === opened[index].pane)).toBe(true);
+  }
   await page.screenshot({ path: info.outputPath("selected-earlier-terminal.png") });
   await expect(page.locator(".winbox")).toHaveCount(2);
 });

@@ -26,7 +26,7 @@ Production state, deadlines, services and submissions remain untouched.
    under var/stress/RUN/. Commit coherent validated suite/docs locally; no push/deploy.
 
 Current status: 861 application checks pass, with three normally gated real
-CLI/export/bwrap entries passing separately. Harness 83 checks, native races,
+CLI/export/bwrap entries passing separately. Harness 86 checks, native races,
 16-client WASM sign-in and native editor/timer/recovery/collector-crash workflows
 pass. Prof's rendered review is complete. The corrected full browser run completed
 360 passed, three failed and five explicit skips. The failures remain recorded;
@@ -50,8 +50,16 @@ Full attempt1 then stopped early on the driver's covered-pane click after two
 GCC/GDB students; all three started attempts were ACTIVE/gen0 at failure. Actual
 overlap RED→GREEN and all six terminal-readiness UI checks qualify selection via
 the existing visible Terminals menu. Exact native/browser/local cleanup passes.
-This corrects the test workflow, not the product Arrange behavior. Full attempt2
-is next; there is still no70-person/90-minute pass.
+This corrects the test workflow, not the product Arrange behavior. Full2 reached
+52GCC/GDB students/208panes;53rdStart succeeded, then one command echo was absent.
+All53 failure states were ACTIVE/gen0. Concurrent/tmp user-quota exhaustion and
+fixture diagnostic failure are confirmed; their causality for missing input is
+unproved. Exact cleanup passes. Both large failed scratch trees were hash-verified
+onto workspace storage before removing their temporary originals; raw evidence
+remains private in each phase's local-fixture-archive. New startup/live local-disk
+guards, per-command public pane selection and matched finite four-hour bounds
+pass86harness/10observer/sixUI checks, types and actual Marco/workspace smoke6.
+Full attempt3 is next; there is still no70-person/90-minute pass.
 Independent functional/fault phases continue. The installed32-connection limit
 is below the70-student target; the isolated candidate uses96 with compiled
 connection workers. This is a test configuration, not a production change.
@@ -86,7 +94,7 @@ Use `--generator marco` with `--phase endurance` (or `all`) for the approved lar
 generator. It transfers only the existing Playwright runtime and synthetic worker
 to a fresh private Marco directory. Installed Node/Chromium run in an owned user
 service:20GiB maximum RAM,18GiB high watermark, no swap,8CPU quota,4096tasks and a
-three-hour lifetime. Fresh profiles, actual cgroup bounds, ancestor headroom and
+four-hour lifetime. Fresh profiles, actual cgroup bounds, ancestor headroom and
 loopback-only listeners are verified. Chromium shared pages use existing tmpfs
 under the same memory cgroup;12GiB startup and4GiB live shared-memory headroom
 are required, as well as the independent root-disk guard. Private SSH forwards carry browser traffic
@@ -100,6 +108,13 @@ fixture termination, then retain preservation/stop receipts before another run.
 This topology includes an
 intercontinental test-generator link; it does not certify co-located production
 web/native capacity or campus latency.
+
+The runner creates a fresh private workspace `temporary` directory for each
+endurance attempt and supplies it as TMPDIR. A real child-Node routing probe runs
+before the guest. Require40GiB free before launch and8GiB live headroom: retained
+raw synthetic recording data hit the development/tmp user quota at53starts.
+No recording or enforcement failure is ignored to get a pass. Preserve failed
+data and receipts; relocate only exact stopped test scratch after hash verification.
 
 The installed-capacity phase reads only the installed connection-worker limit and
 fails when it is below70. It never changes the installation to obtain a pass.
@@ -129,11 +144,13 @@ After each native phase, independently verify its exact owned unit is inactive
 with MainPID0 and its private preservation receipt is unchanged. A wrapper exit
 alone is insufficient. Never stop installed exam services as test cleanup.
 
-The endurance uses a three-hour synthetic allowance so ramp-up can precede90full
+The endurance uses a four-hour synthetic allowance so ramp-up can precede90full
 minutes at peak without clock resets or weakened deadlines. This is a90-minute
 peak-load endurance test, not70 exactly simultaneous90-minute countdown starts.
-The70-person guest and its bridges have a finite180-minute lifetime to contain
-the measured sequential ramp plus that peak;1/16-person bounds stay unchanged.
+The70-person guest/browser/bridges have finite240-minute lifetimes; the scenario
+is bounded to235minutes. This covers the measured ramp,90-minute peak and exports
+without resetting a clock. Earlier runs retain their three-hour settings;
+1/16-person bounds stay unchanged.
 Both media streams are synthetic; the real application/browser WASM/SSH, private
 native roles/PAM/cgroups, GCC/GDB, independent shell state, saved files, collection
 and export interfaces are exercised. Four background writers per student create

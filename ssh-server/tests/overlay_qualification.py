@@ -196,7 +196,7 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
         '--service-type=exec', '--unit=' + unit,
         '--property=Delegate=yes', '--property=MemoryMax=' + ('3G' if students > 1 else '1G'),
         '--property=MemorySwapMax=0', '--property=TasksMax=' + ('4096' if students == 70 else '2048' if students == 16 else '512'),
-        '--property=CPUQuota=' + ('200%' if students > 1 else '50%'), '--property=RuntimeMaxSec=' + ('10800' if students == 70 else '900'),
+        '--property=CPUQuota=' + ('200%' if students > 1 else '50%'), '--property=RuntimeMaxSec=' + ('14400' if students == 70 else '900'),
         '--property=TimeoutStopSec=10s', '--property=KillMode=control-group',
         '--property=OOMPolicy=kill', '--', 'systemd-nspawn',
         '--directory=' + str(guest), '--machine=' + unit.removesuffix('.service'),
@@ -425,13 +425,13 @@ def run_locked(args):
             marker['debugger_manifest_sha256'] = write_debugger_inputs(inputs, debugger)
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
-        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=10740' if students == 70 else 'TimeoutStartSec=840') if students > 1 else UNIT)
+        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=14340' if students == 70 else 'TimeoutStartSec=840') if students > 1 else UNIT)
         command = candidate_command(unit, guest, inputs, output, students, storage, args.profile, native_relay, bool(debugger))
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        deadline = time.monotonic() + (10830 if students == 70 else 930)
+        deadline = time.monotonic() + (14430 if students == 70 else 930)
         activation_deadline = time.monotonic() + 60
         activated = False
         while process.poll() is None:

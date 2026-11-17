@@ -665,8 +665,8 @@ class BrowserBridgeTests(unittest.TestCase):
         with mock.patch.object(bridge, 'private_json', return_value={'browser_students':70}):
             fixture = bridge.GuestBridge({})
         self.assertEqual(fixture.requests.maxsize, 210)
-        attempt = {'start':1000,'original_deadline':10801000,'deadline':10801000,
-                   'settings':{'duration':10800},'access_state':'HELD'}
+        attempt = {'start':1000,'original_deadline':14401000,'deadline':14401000,
+                   'settings':{'duration':14400},'access_state':'HELD'}
         bridge.verify_fixture_clock(attempt, 70)
         with self.assertRaises(AssertionError):
             bridge.verify_fixture_clock(attempt, 16)

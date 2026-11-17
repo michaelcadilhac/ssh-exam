@@ -6,7 +6,7 @@ four terminals each, 90 real minutes and simultaneous protected submission. No
 institutional MFA, real student accounts or external email. Guarded disposable
 csc-sys testing is authorized; no product deployment is requested.
 
-Harness 83 checks, 861 application checks and three normally gated actual
+Harness 86 checks, 861 application checks and three normally gated actual
 CLI/export/bwrap workflows pass. Native races pass after four permission-fixture
 corrections. Prof's rendered review is complete with open wording findings.
 The narrow admin bulk-target fix passes the real cancel/import/bulk-edit workflow
@@ -34,6 +34,16 @@ passed GCC/GDB; all three started attempts were ACTIVE/gen0. Exact cleanup/FULL
 preservation pass. The driver now uses the visible Terminals menu; focused
 RED→GREEN, all six terminal-readiness UI cases and typecheck pass. No product
 Arrange fix is claimed. Full attempt2 is next;70/90/protected completion is open.
+Full2 failed55.3min after52GCC/GDB students/208panes;53rdStart succeeded but one
+command echo was absent. All53 failure states ACTIVE/gen0. Concurrent/tmp user
+quota/diagnostic failure confirmed; primary input cause unproved. All exact cleanup
+passes;118,474 raw files from two stopped failed fixtures were hash-verified onto
+workspace disk before removing only their/tmp originals. New private workspace
+scratch (40GiB startup/8GiB live), per-command public pane selection and matched
+finite four-hour test bounds pass86harness/10observer/sixUI checks, typecheck and
+actual Marco/workspace smoke6. Peak remains90real minutes; earlier clocks/records
+unchanged. Current v11 updates only two fixture scripts/checksums;382native inputs
+and16reused files unchanged. Next full attempt3; no70/90pass or deployment.
 Confirmed P1 baselines: installed 32-connection ceiling is below 70, and the shared
 anonymous 180/minute bucket rejects 30 of 210 minimal cold-load requests. Neither
 is changed in production; the isolated candidate uses 96 compiled workers.

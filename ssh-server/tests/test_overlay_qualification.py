@@ -116,7 +116,7 @@ class OverlayTests(unittest.TestCase):
         storage = {'work': '/srv/exam-workspace/work', 'state': '/var/lib/exam-agent'}
         command = overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'), 70, storage)
         for value in ('--property=MemoryMax=3G', '--property=MemorySwapMax=0', '--property=TasksMax=4096',
-                      '--property=CPUQuota=200%', '--property=RuntimeMaxSec=10800', '--private-network',
+                      '--property=CPUQuota=200%', '--property=RuntimeMaxSec=14400', '--private-network',
                       '--read-only', '--volatile=overlay', '--drop-capability=CAP_SYS_TIME',
                       '--bind=/output/work:/srv/exam-workspace/work', '--bind=/output/state:/var/lib/exam-agent'):
             self.assertIn(value, command)

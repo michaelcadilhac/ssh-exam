@@ -9,7 +9,9 @@ import os
 from pathlib import Path
 import re
 import shlex
+import shutil
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -28,6 +30,28 @@ def source_manifest():
         raw=os.readlink(path).encode() if path.is_symlink() else path.read_bytes()
         result[name]={'sha256':hashlib.sha256(raw).hexdigest(),'mode':path.lstat().st_mode}
     return result
+
+
+def local_scratch(output):
+    scratch = output / 'temporary'
+    try:
+        scratch.mkdir(mode=0o700)
+    except FileExistsError as error:
+        raise RuntimeError('Owned stress scratch already exists; preserve it and use a new phase attempt') from error
+    info = scratch.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+        raise RuntimeError('Private stress scratch ownership/mode refused')
+    if shutil.disk_usage(scratch).free < 40 * 1024**3:
+        raise RuntimeError('The70-person run needs40GiB free in its private workspace scratch; /tmp is unsuitable for the measured raw recordings')
+    probe = scratch / 'write-probe'
+    fd = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(b'private synthetic scratch\n')
+            stream.flush();os.fsync(stream.fileno())
+    finally:
+        probe.unlink()
+    return scratch
 
 
 def endurance_receipt(output,seconds):
@@ -161,7 +185,7 @@ sys.exit(0 if limit>=70 else 1)
                        EXAM_STRESS_SECONDS='30' if args.rehearsal else '5400',
                        EXAM_BROWSER_NATIVE_BUNDLE=args.native_bundle,EXAM_BROWSER_NATIVE_STUDENTS='70',
                        EXAM_BROWSER_NATIVE_RELEASE='1')
-            commands=[(['npm','run','test:browser','--','--config','tests/stress.config.ts'],ROOT,10800)]
+            commands=[(['npm','run','test:browser','--','--config','tests/stress.config.ts'],ROOT,14400)]
         state['status']='RUNNING';save()
         current_diff = subprocess.check_output(['git','diff','--','apps','packages','ssh-server','tests','scripts'], cwd=ROOT)
         inputs=source_manifest()
@@ -178,6 +202,10 @@ sys.exit(0 if limit>=70 else 1)
         cleanup_error = None
         row['generator'] = args.generator if phase == 'endurance' else 'local'
         try:
+            if phase == 'endurance':
+                scratch = local_scratch(output)
+                env.update(TMPDIR=str(scratch), EXAM_STRESS_LOCAL_SCRATCH=str(scratch))
+                row['local_scratch'] = str(scratch)
             if phase == 'endurance' and args.generator == 'marco':
                 generator = marco_generator(output)
                 env.update(generator.start())

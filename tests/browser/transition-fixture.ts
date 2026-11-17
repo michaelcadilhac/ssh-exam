@@ -4,6 +4,7 @@ import {
   type Route,
   type WebSocketRoute,
   type Dialog,
+  type Locator,
 } from "@playwright/test";
 import { createHash } from "node:crypto";
 
@@ -433,6 +434,18 @@ export async function ready(page: Page, webcam = false) {
 }
 // Window creation precedes the verified open/input acknowledgment. Pin the
 // intended windows and wait for that real boundary before driving a keyboard.
+export async function selectVerifiedTerminal(page: Page, pane: Locator) {
+  await expect(pane.locator(".terminal[aria-busy]")).toHaveAttribute("aria-busy", "false", { timeout: 10000 });
+  const input = pane.locator(".xterm-helper-textarea");
+  await expect(input).toBeEnabled();
+  const name = (await pane.locator(".wb-title").textContent())?.trim() || "";
+  expect(name).not.toBe("");
+  await page.locator(".workspace-tools > summary").click({ timeout: 5000 });
+  await page.getByLabel("Open terminals").getByRole("button", { name, exact: true }).click({ timeout: 5000 });
+  await expect(input).toBeFocused();
+  return pane;
+}
+
 export async function readyTerminal(
   page: Page,
   count: number,
@@ -456,10 +469,7 @@ export async function readyTerminal(
   }
   const pane = page.locator(`.winbox[id="${ids[index]}"]`);
   if (count > 1) {
-    const name = (await pane.locator(".wb-title").textContent())?.trim() || "";
-    expect(name).not.toBe("");
-    await page.locator(".workspace-tools > summary").click({ timeout: 5000 });
-    await page.getByLabel("Open terminals").getByRole("button", { name, exact: true }).click({ timeout: 5000 });
+    await selectVerifiedTerminal(page, pane);
   } else {
     await pane.locator(".xterm-screen").click({ timeout: 5000 });
   }

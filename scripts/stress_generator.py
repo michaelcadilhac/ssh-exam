@@ -42,7 +42,7 @@ def free_ports(ports=(9444,9445)):
    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
    s.bind(('127.0.0.1',port))
 def unit_state(unit):
- return dict(line.split('=',1) for line in command(['systemctl','--user','show',unit,'--property=ActiveState,SubState,MainPID,ControlGroup,MemoryCurrent,MemoryPeak,MemoryHigh,MemoryMax,MemorySwapMax,TasksCurrent,TasksMax']).splitlines())
+ return dict(line.split('=',1) for line in command(['systemctl','--user','show',unit,'--property=ActiveState,SubState,MainPID,ControlGroup,MemoryCurrent,MemoryPeak,MemoryHigh,MemoryMax,MemorySwapMax,TasksCurrent,TasksMax,RuntimeMaxUSec']).splitlines())
 def verify_process(state,root):
  pid=state['MainPID'];assert int(pid)>1
  p=Path('/proc')/pid;assert p.stat().st_uid==uid
@@ -119,7 +119,7 @@ else:
   free_ports()
   command(['systemd-run','--user','--quiet','--collect','--service-type=exec','--unit='+unit,
     '--property=MemoryHigh=18G','--property=MemoryMax=20G','--property=MemorySwapMax=0',
-    '--property=CPUQuota=800%','--property=TasksMax=4096','--property=RuntimeMaxSec=10800',
+    '--property=CPUQuota=800%','--property=TasksMax=4096','--property=RuntimeMaxSec=14400',
     '--property=TimeoutStopSec=30','--property=KillMode=control-group','--property=UMask=0077','--property=Restart=no',
     '--property=StandardOutput=append:'+str(root/'worker.log'),
     '--property=StandardError=append:'+str(root/'worker.log'),
@@ -130,6 +130,7 @@ else:
   result={'active':active,'unit_state':state,'available_bytes':memory(),'scratch_free_bytes':shutil.disk_usage(root).free,'shared_memory_free_bytes':shared_memory(),'web_service':web()}
   if active:
    assert int(state['MemoryMax'])==20*1024**3 and int(state['MemoryHigh'])==18*1024**3 and state['MemorySwapMax']=='0' and state['TasksMax']=='4096'
+   assert state['RuntimeMaxUSec']=='4h','Private browser lifetime must be finite and match the measured ramp plus90-minute peak budget'
    verify_process(state,root)
    group=Path('/sys/fs/cgroup')/state['ControlGroup'].lstrip('/')
    bounds={n:(group/n).read_text().strip() for n in ('memory.max','memory.high','memory.swap.max','pids.max','cpu.max')}

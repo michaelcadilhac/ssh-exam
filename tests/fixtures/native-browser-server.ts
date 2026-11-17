@@ -561,7 +561,7 @@ for (const [url, payload] of [
       // Three-hour allowance covers the measured sequential ramp plus90 real
       // minutes at peak, without spending that peak interval during setup.
       // No clock reset or fake clock is used by the endurance test.
-      duration: students === 70 ? 10800 : 5400,
+      duration: students === 70 ? 14400 : 5400,
       webcam: students === 70,
       terminals: 4,
       template: "native-browser",

@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 spec = importlib.util.spec_from_file_location('manual_stress',Path(__file__).resolve().parents[1]/'scripts/stress-test.py')
@@ -21,6 +22,7 @@ class ManualStressTests(unittest.TestCase):
         self.bundle='/var/tmp/ssh-exam-browser-native-upload.synthetic'
         self.child=mock.Mock(pid=999999,wait=mock.Mock(return_value=0))
         self.proof=True
+        self.scratch_free=80*1024**3
 
     def invoke(self,*args):
         def git(command,**kw):
@@ -36,11 +38,38 @@ class ManualStressTests(unittest.TestCase):
             return self.child
         with mock.patch.object(runner,'ROOT',self.root), \
              mock.patch.object(runner.sys,'argv',['stress','--native-bundle',self.bundle,'--run-id',self.run,*args]), \
+             mock.patch.object(runner.shutil,'disk_usage',return_value=SimpleNamespace(free=self.scratch_free)), \
              mock.patch.object(runner.subprocess,'check_output',side_effect=git), \
              mock.patch.object(runner.subprocess,'Popen',side_effect=launch) as launched:
             code=runner.main()
         state=json.loads((self.root/'var/stress'/self.run/'run.json').read_text())
         return code,state,launched
+
+    def test_endurance_uses_private_workspace_scratch_and_a_finite_full_run_budget(self):
+        code,state,launched=self.invoke('--phase','endurance')
+        self.assertEqual(code,0)
+        scratch=Path(launched.call_args.kwargs['env']['TMPDIR'])
+        self.assertEqual(scratch,self.root/'var/stress'/self.run/'endurance-1/temporary')
+        self.assertEqual(str(scratch),launched.call_args.kwargs['env']['EXAM_STRESS_LOCAL_SCRATCH'])
+        self.assertEqual(scratch.stat().st_mode&0o777,0o700)
+        self.assertFalse((scratch/'write-probe').exists())
+        self.child.wait.assert_called_with(timeout=14400)
+
+    def test_low_disk_refusal_is_durable_before_any_browser_or_guest_launch(self):
+        self.scratch_free=39*1024**3
+        with mock.patch.object(runner,'marco_generator') as generator:
+            code,state,launched=self.invoke('--phase','endurance','--generator','marco')
+        self.assertEqual(code,1);launched.assert_not_called();generator.assert_not_called()
+        self.assertEqual(state['phases'][0]['status'],'FAILED')
+        self.assertIn('40GiB',state['phases'][0]['reason'])
+
+    def test_scratch_refuses_a_preexisting_symlink_without_touching_its_target(self):
+        target=self.root/'untouched';target.mkdir();(target/'sentinel').write_text('preserve')
+        (self.root/'temporary').symlink_to(target,target_is_directory=True)
+        with self.assertRaisesRegex(RuntimeError,'already exists'):
+            runner.local_scratch(self.root)
+        self.assertEqual((target/'sentinel').read_text(),'preserve')
+        self.assertEqual([p.name for p in target.iterdir()],['sentinel'])
 
     def test_failed_command_is_a_durable_failed_run_not_a_successful_report(self):
         self.child.wait.return_value=42

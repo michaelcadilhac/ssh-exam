@@ -1,7 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { z } from "zod";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { simulatedMedia, ready, readyTerminal } from "./transition-fixture.js";
+import { mkdir, readFile, statfs, writeFile } from "node:fs/promises";
+import { simulatedMedia, ready, readyTerminal, selectVerifiedTerminal } from "./transition-fixture.js";
 import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
 import { openUnauthenticatedStressWelcome, waitForStressStartResponse } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
@@ -17,6 +17,11 @@ async function generatorHeadroom() {
     throw Error(
       "Load-generator memory headroom is below768MiB; abort only the owned synthetic test before affecting other applications",
     );
+  const scratch = process.env.EXAM_STRESS_LOCAL_SCRATCH;
+  if (!scratch) throw Error("The70-person run requires its private workspace scratch; use the manual stress runner");
+  const filesystem = await statfs(scratch);
+  if (Number(filesystem.bavail) * Number(filesystem.bsize) < 8 * 1024**3)
+    throw Error("Local stress scratch has less than8GiB headroom; stop only the owned synthetic test before recording writes fail");
   const remote = process.env.EXAM_STRESS_GENERATOR_STATUS;
   if (remote) {
     const status = z.object({
@@ -88,7 +93,7 @@ test(
     const recovery = process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1";
     expect(large && recovery).toBe(false);
     test.setTimeout(
-      stressRun ? 10500000 : large ? 780000 : recovery ? 660000 : 480000,
+      stressRun ? 14100000 : large ? 780000 : recovery ? 660000 : 480000,
     );
     if (stressRun) expect(large || recovery).toBe(false);
     const metadata = await (
@@ -120,6 +125,7 @@ test(
     let signInEvents: { event: string; path: string; type?: string }[] = [];
     let setupStudent = "";
     let setupNetwork: { event: string; path: string; elapsed_ms: number; status?: number }[] = [];
+    let lastCommand: { student: string; window: string; pane: number; marker: string; stage: string } | null = null;
     const fleet: {
       context: BrowserContext;
       page: Page;
@@ -167,25 +173,21 @@ test(
     ) => {
       const id = entry.panes[pane];
       expect(id).toMatch(/^[a-zA-Z0-9_-]+$/);
-      const terminal = entry.page.locator(`.winbox[id="${id}"]`);
-      await expect(terminal.locator(".terminal[aria-busy]")).toHaveAttribute(
-        "aria-busy",
-        "false",
-      );
-      const input = terminal.locator(".xterm-helper-textarea");
-      await expect(input).toBeEnabled();
-      await input.focus();
-      await expect(input).toBeFocused();
+      lastCommand = { student: entry.username, window: id, pane, marker, stage: "selecting" };
+      const terminal = await selectVerifiedTerminal(entry.page, entry.page.locator(`.winbox[id="${id}"]`));
       // Paste a normal command through the real terminal input path. Artificial
       // per-character delays make fleet ramp time measure the generator instead.
+      lastCommand.stage = "typing";
       await entry.page.keyboard.insertText(text);
       await entry.page.keyboard.press("Enter");
+      lastCommand.stage = "waiting-output";
       await expect(terminal.locator(".xterm-rows")).toContainText(marker, {
         timeout,
       });
       await expect(
         entry.page.getByText(/Recent terminal input was not sent/),
       ).toHaveCount(0);
+      lastCommand.stage = "verified";
     };
     try {
       for (const student of students) {
@@ -1047,6 +1049,8 @@ test(
     } catch (error) {
       await mkdir(test.info().outputDir, { recursive: true });
       const failure = test.info().outputPath("capacity-failure.json");
+      const failedEntry = fleet.find(entry => entry.username === lastCommand?.student);
+      if (failedEntry) await failedEntry.page.screenshot({ path: test.info().outputPath("last-command-page.png"), timeout: 5000 }).catch(() => {});
       const publicStates = await Promise.all(
         fleet.map(async (entry) => {
           const browser = await entry.page
@@ -1056,6 +1060,8 @@ test(
               fullscreen: !!document.fullscreenElement,
               activeTag: document.activeElement?.tagName,
               activeLabel: document.activeElement?.getAttribute("aria-label"),
+              activeWindow: document.activeElement?.closest(".winbox")?.id,
+              feedback: [...document.querySelectorAll<HTMLElement>('[role="status"]')].filter(element => element.getClientRects().length).map(element => element.innerText.slice(0, 400)),
               overlays: [
                 ...document.querySelectorAll<HTMLElement>(".lock-overlay"),
               ].map((element) => element.innerText.slice(0, 1600)),
@@ -1064,6 +1070,9 @@ test(
               ].map((element) => ({
                 busy: element.getAttribute("aria-busy"),
                 inert: !!element.closest("[inert]"),
+                window: element.closest(".winbox")?.id,
+                inputDisabled: element.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea")?.disabled,
+                outputTail: element.querySelector(".xterm-rows")?.textContent?.slice(-1200),
               })),
             }))
             .catch(() => ({ unavailable: true }));
@@ -1089,6 +1098,7 @@ test(
           error: String(error).slice(0, 1200),
           signInEvents,
           setupDiagnostics: { username: setupStudent, requests: setupNetwork },
+          lastCommand,
           wasmBootstrap: await bootstrap(),
           publicStates,
           recoveryReplies: fleet.map((entry) => ({

@@ -24,10 +24,12 @@ all generation 1 and exactly 16 initial holds. Earlier failures/extra-expiry
 observations remain documented; no backend timing fix or confirmed cause claimed.
 Prof's rendered UX review and available-evidence synthesis are saved in the report.
 
-Current audited bundle (no speculative rebuild/upload needed):
-`/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v10_jjaru6f1`
-19 verified files; product native binaries unchanged from v8. Each phase retains
-its exact input/bundle identity. Audit: `var/stress/native-upload-v10.json`.
+Current audited bundle:
+`/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v11_qld3jxyy`
+19 verified files; only two fixture scripts/checksums updated for the measured ramp.
+16 files reused;382 native inputs unchanged. Product binaries retain prior race/
+interface evidence. Each older phase retains its own bundle identity.
+Audit: `var/stress/native-upload-v11.json`.
 
 **Selected generator:** instructor authorized Marco. Read-only inventory: 12 CPUs,
 31.24 GiB RAM/24.24 GiB available, Node 26.4 and Chromium 149 installed; retired
@@ -36,15 +38,17 @@ with its verified runtime environment. No package installation required.
 
 Current milestone: `test:stress --phase endurance --generator marco`. Private
 Playwright server, loopback-only SSH forwards, fresh profiles, 20 GiB memory cap,
-no swap, 8 CPU quota, 4096 tasks, three-hour lifetime. Actual kernel limits,
+no swap, 8 CPU quota, 4096 tasks, four-hour lifetime. Actual kernel limits,
 ancestor memory headroom, listener addresses and exact-process cleanup are checked.
-Seven controller and ten runner contracts pass; harness 9 passes all 83 checks.
-Smoke 5 passes simultaneous cookie isolation, synthetic capture, reverse HTTP/
-text+binary WebSocket and server reuse. Shared pages now use tmpfs under the same
-memory cgroup; 12GiB startup/4GiB live shared-memory headroom is required.
-Generator milestone: local `d97a3c4`. Ten focused welcome/Start observer checks and
-fixture typecheck pass. No Start is retried by the new observer: preparation and
-HTTP response each use the existing60s budget and have separate diagnostics.
+Harness10 passes86 checks (30overlay/36bridge/13runner/7generator). Smoke6 proves
+actual four-hour worker/kernel bounds, private workspace TMPDIR routing, cookie
+isolation, synthetic capture, HTTP/WebSocket, reuse and independent cleanup.
+Local scratch requires40GiB free before launch/8GiB live headroom; it stays on the
+workspace disk, not quota-limited /tmp. Ten observer tests, six affected UI checks
+and typecheck pass. Every command now selects its verified-open pane through the
+visible menu. Preparation and Start response retain separate60s budgets; the new
+observer itself retries no Start. Existing readiness-busy retries require strict
+unstarted/unused reconciliation. No production enforcement is changed.
 
 Rehearsal 10 FAILED at the40th Start observer after39students/156panes passed
 GCC/GDB. The old compound30s response wait was below the individual60s operation
@@ -59,18 +63,21 @@ Confirmed P1 findings remain unfixed: installed worker limit 32 < 70; shared
 anonymous 180/minute bucket rejects 30/210 minimal cold-load requests. Isolated
 candidate 96 workers does not qualify production co-location capacity.
 
-Full attempt1 FAILED on a covered-pane click: first2students/8panes GCC/GDB passed;
-third Start succeeded and all3failure states were ACTIVE/gen0. Exact native/Marco/
-local cleanup and FULL preservation pass. The driver now selects the verified-open
-pane through the existing Terminals menu. Actual focused RED→GREEN reproduction,
-all6 terminal-readiness UI checks and fixture typecheck pass. A first green attempt
-had a corrected DOM-ID/wire-UUID oracle error; retain it. No product UI/Arrange fix
-is claimed. All tests currently stopped. Next: full attempt2, existing v10 bundle,
-same70/5,400-second/70-protected acceptance. Freeze source during execution, then
-inspect the actual receipt and independently verify native/Marco/local cleanup.
-Retain all failed runs/rehearsals.
-Correct and
-qualify the two P1 findings before any readiness claim. No push/deploy authorized.
+Full1 failed covered-pane interaction (public-menu regression now passes; no product
+Arrange fix claimed). Full2 FAILED55.3min after52GCC/GDB students/208panes;53rd
+Start succeeded, then one command echo was absent. All53 failure states ACTIVE/gen0.
+Concurrent local tmpfs user-quota exhaustion/diagnostic crash is confirmed; its
+causality for missing input is UNPROVEN. Exact native/Marco/local cleanup FULL.
+Raw failed scratch migrated byte-for-byte: rehearsal10 38,087files/1.58GB, full2
+80,387files/3.35GB; manifests and archive-progress receipts prove copy/verification
+before removing only temporary originals. Data remains in each phase's private
+local-fixture-archive. No70/90/completion pass. All tests currently stopped.
+
+Next: commit the validated fixture-only increment, then full attempt3 with v11,
+new private workspace scratch and fresh four-hour synthetic allowances/lifetimes.
+The real peak remains5,400s; no clock resets/edits to make it pass. Freeze source
+during execution; inspect unique70-protected receipt and exact cleanup afterward.
+Correct/qualify both P1 findings before any readiness claim. No push/deploy.
 Manual entry/plan: `docs/stress-testing.md`; report and suggested fixes:
 `reports/stress/20261116T194355Z/report.md`; raw receipts `var/stress/20261116T194355Z/`.
 

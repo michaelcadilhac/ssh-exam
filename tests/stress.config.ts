@@ -6,6 +6,8 @@ if (!process.env.EXAM_STRESS_RUN || !process.env.EXAM_STRESS_OUTPUT)
   throw Error("Use the explicitly invoked manual stress runner");
 if (process.env.EXAM_BROWSER_NATIVE_STUDENTS !== "70")
   throw Error("The manual fleet requires70 synthetic students");
+if (!process.env.EXAM_STRESS_LOCAL_SCRATCH || process.env.TMPDIR !== process.env.EXAM_STRESS_LOCAL_SCRATCH)
+  throw Error("Use the manual runner's private workspace scratch for the70-person recording load");
 if (!base.webServer || Array.isArray(base.webServer))
   throw Error("Expected the single existing isolated browser fixture");
 

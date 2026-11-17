@@ -1,6 +1,9 @@
 // Verify the owned remote browser and both reverse forwards before any guest starts.
 const assert = require('node:assert/strict');
 const http = require('node:http');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { chromium } = require('playwright-core');
 const { WebSocketServer } = require('ws');
 
@@ -11,8 +14,16 @@ const { WebSocketServer } = require('ws');
     res.setHeader('content-type', 'text/html');
     res.end(req.url === '/echo' ? req.headers.cookie || '' : '<title>Private synthetic generator</title>');
   });
-  let browser, relay;
+  let browser, relay, localScratchChecked = false;
   try {
+    if (process.env.EXAM_STRESS_LOCAL_SCRATCH) {
+      const probe = fs.mkdtempSync(path.join(os.tmpdir(), 'stress-scratch-routing-'));
+      try {
+        assert.equal(path.dirname(probe), fs.realpathSync(process.env.EXAM_STRESS_LOCAL_SCRATCH));
+        fs.writeFileSync(path.join(probe, 'probe'), 'private synthetic scratch', { mode: 0o600 });
+        localScratchChecked = true;
+      } finally { fs.rmSync(probe, { recursive: true }); }
+    }
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(9444, '127.0.0.1', resolve); });
     relay = new WebSocketServer({ host: '127.0.0.1', port: 9445 });
     relay.on('connection', socket => socket.on('message', (data, binary) => socket.send(data, { binary })));
@@ -64,7 +75,7 @@ const { WebSocketServer } = require('ws');
     await fresh.close();
     console.log(JSON.stringify({ remoteBrowserVersion: browser.version(), contexts: 2,
       isolatedCookies: true, reverseHTTP: true, reverseWebSocket: true,
-      syntheticCapture: true, serverReusable: true }));
+      syntheticCapture: true, serverReusable: true, localScratchChecked }));
   } finally {
     if (browser) await browser.close();
     if (relay) await new Promise(resolve => relay.close(resolve));
