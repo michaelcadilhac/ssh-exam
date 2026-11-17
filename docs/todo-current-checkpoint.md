@@ -52,16 +52,23 @@ contract; its logs do not distinguish capture preparation from a pending Start.
 Failure snapshot: all39 existing attempts ACTIVE/generation0; later locks followed
 context teardown, not an established spontaneous failure. Independent exact guest,
 Marco browser/forwards and local fixture cleanup pass; native preservation FULL.
-All tests are currently stopped. Earlier network/scratch/interruption failures
-and manual-cleanup limitation remain in the report. No70/90/completion pass.
+Earlier network/scratch/interruption failures and manual-cleanup limitation remain
+in the report. No70/90/completion pass.
 
 Confirmed P1 findings remain unfixed: installed worker limit 32 < 70; shared
 anonymous 180/minute bucket rejects 30/210 minimal cold-load requests. Isolated
 candidate 96 workers does not qualify production co-location capacity.
 
-Next: run the full70-student/5,400-second peak and protected submission directly
-with the corrected observer and existing v10 bundle; it also qualifies the remaining
-ramp/completion path. Freeze source during execution. Retain all failed rehearsals.
+Full attempt1 FAILED on a covered-pane click: first2students/8panes GCC/GDB passed;
+third Start succeeded and all3failure states were ACTIVE/gen0. Exact native/Marco/
+local cleanup and FULL preservation pass. The driver now selects the verified-open
+pane through the existing Terminals menu. Actual focused RED→GREEN reproduction,
+all6 terminal-readiness UI checks and fixture typecheck pass. A first green attempt
+had a corrected DOM-ID/wire-UUID oracle error; retain it. No product UI/Arrange fix
+is claimed. All tests currently stopped. Next: full attempt2, existing v10 bundle,
+same70/5,400-second/70-protected acceptance. Freeze source during execution, then
+inspect the actual receipt and independently verify native/Marco/local cleanup.
+Retain all failed runs/rehearsals.
 Correct and
 qualify the two P1 findings before any readiness claim. No push/deploy authorized.
 Manual entry/plan: `docs/stress-testing.md`; report and suggested fixes:

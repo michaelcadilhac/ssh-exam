@@ -29,6 +29,11 @@ The stopped fixtures are independently verified clean with FULL native preservat
 The observer now separates preparation/response60s budgets; ten focused checks and
 typecheck pass. Full70-person/90-minute attempt is next. No product fix or root
 cause is inferred from that observer timeout; later teardown locks are expected.
+The first full attempt then failed on a covered-pane driver click. Two students
+passed GCC/GDB; all three started attempts were ACTIVE/gen0. Exact cleanup/FULL
+preservation pass. The driver now uses the visible Terminals menu; focused
+RED→GREEN, all six terminal-readiness UI cases and typecheck pass. No product
+Arrange fix is claimed. Full attempt2 is next;70/90/protected completion is open.
 Confirmed P1 baselines: installed 32-connection ceiling is below 70, and the shared
 anonymous 180/minute bucket rejects 30 of 210 minimal cold-load requests. Neither
 is changed in production; the isolated candidate uses 96 compiled workers.

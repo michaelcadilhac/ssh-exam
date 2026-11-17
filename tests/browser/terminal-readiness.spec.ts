@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
-import { fixture, begin, gate } from "./transition-fixture.js";
+import { fixture, begin, gate, readyTerminal } from "./transition-fixture.js";
 
 for (const framed of [false, true]) {
   test(`${framed ? "framed" : "legacy"} terminal blocks early keys and preserves the first key after its actual open acknowledgement`, async ({
@@ -162,4 +162,27 @@ test("Enter while a new terminal is opening cannot activate New terminal again",
   } finally {
     reply.release();
   }
+});
+
+test("terminal selection reaches an earlier pane while another window covers it", async ({ page }, info) => {
+  const f = await fixture(page);
+  await begin(page, f);
+  await readyTerminal(page, 1);
+  await page.getByRole("button", { name: "New terminal", exact: true }).click();
+  await expect(page.locator('.terminal[aria-busy="false"]')).toHaveCount(2);
+  const ids = await page.locator(".winbox").evaluateAll(elements => elements.map(element => element.id));
+  const coveredBy = await page.locator(`.winbox[id="${ids[0]}"] .xterm-screen`).evaluate(element => {
+    const r = element.getBoundingClientRect();
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest(".winbox")?.id;
+  });
+  expect(coveredBy).toBe(ids[1]);
+  await page.screenshot({ path: info.outputPath("overlapping-terminals.png") });
+  await readyTerminal(page, 2, 0);
+  await page.keyboard.type("first-only");
+  await expect.poll(() => f.model.messages.filter(message => message.type === "input").map(message => message.data).join("")).toBe("first-only");
+  const opened = f.model.messages.filter(message => message.type === "open");
+  expect(opened).toHaveLength(2);
+  expect(f.model.messages.filter(message => message.type === "input").every(message => message.pane === opened[0].pane)).toBe(true);
+  await page.screenshot({ path: info.outputPath("selected-earlier-terminal.png") });
+  await expect(page.locator(".winbox")).toHaveCount(2);
 });

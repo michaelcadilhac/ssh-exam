@@ -455,7 +455,14 @@ export async function readyTerminal(
     await expect(pane.locator(".xterm-helper-textarea")).toBeEnabled();
   }
   const pane = page.locator(`.winbox[id="${ids[index]}"]`);
-  await pane.locator(".xterm-screen").click();
+  if (count > 1) {
+    const name = (await pane.locator(".wb-title").textContent())?.trim() || "";
+    expect(name).not.toBe("");
+    await page.locator(".workspace-tools > summary").click({ timeout: 5000 });
+    await page.getByLabel("Open terminals").getByRole("button", { name, exact: true }).click({ timeout: 5000 });
+  } else {
+    await pane.locator(".xterm-screen").click({ timeout: 5000 });
+  }
   await expect(pane.locator(".xterm-helper-textarea")).toBeFocused();
   await expect(windows).toHaveCount(count);
   return pane;

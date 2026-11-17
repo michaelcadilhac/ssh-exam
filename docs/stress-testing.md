@@ -46,6 +46,12 @@ stage the existing60s operation budget, with ten focused checks/typecheck and
 bounded setup-network diagnostics. Exact guest/browser/local cleanup is verified.
 The full70-person/90-minute attempt is next; it includes the remaining ramp and
 completion path. All failed rehearsals remain failed, not promoted to full runs.
+Full attempt1 then stopped early on the driver's covered-pane click after two
+GCC/GDB students; all three started attempts were ACTIVE/gen0 at failure. Actual
+overlap RED→GREEN and all six terminal-readiness UI checks qualify selection via
+the existing visible Terminals menu. Exact native/browser/local cleanup passes.
+This corrects the test workflow, not the product Arrange behavior. Full attempt2
+is next; there is still no70-person/90-minute pass.
 Independent functional/fault phases continue. The installed32-connection limit
 is below the70-student target; the isolated candidate uses96 with compiled
 connection workers. This is a test configuration, not a production change.
