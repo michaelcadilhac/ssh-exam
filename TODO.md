@@ -1,36 +1,39 @@
-# Manual pre-final stress suite — FULL RUN INCOMPLETE
+# Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
-Target:70 synthetic students/four terminals each,90 real peak minutes and
-simultaneous protected submission. Marco generates browsers; csc-sys hosts only
-the guarded disposable native guest. No institutional MFA, actual student
-accounts, external email, production change, push or deployment.
+Approved target: 70 synthetic students, four terminals each, 90 real peak minutes
+and simultaneous protected submission. Marco generated browsers; csc-sys hosted
+only guarded disposable guests. No institutional MFA, actual student account,
+external email, production change, push or deployment.
 
-Collected:861 application checks/three real CLI-export-bwrap entries for unchanged
-runtime; native races;86 harness checks;16-client WASM sign-in; editor/timer/
-recovery/collector-crash interfaces with original preservation and exact cleanup.
-Prof reviewed28 rendered screens. Full browser2:360passed/threefailed/fiveskipped;
-fresh5 cases pass separately. No full-final-candidate browser pass claimed.
-Original documentation images and earlier failure evidence remain preserved.
+- Manual runner and durable per-run results/report are implemented locally.
+  Application, integration, build, native race, 16-student browser/native fault
+  checks and Prof's 28 rendered UI reviews provide separately scoped evidence.
+- The requested endurance target FAILED. Latest attempt 8 verified seven students /
+  28 panes before the eighth setup displayed “Failed to fetch”; no clock started
+  for that student. Earlier attempts reached at most 52 students / 208 panes.
+  No 70-student / 90-minute / 70-protected-submission pass exists.
+- Production blockers: installed 32-worker ceiling; the shared anonymous request
+  budget rejected 30 of 210 minimal classroom loads. Candidate 96-worker tests
+  neither change production nor qualify co-location on the 8-GiB host.
+- Bounded diagnosis reproduced 17 Marco network cancellations during 95 seconds
+  of steady HTTP/HTTPS traffic without navigation or a native guest. These closely
+  followed virtual-interface events. This invalidates earlier attribution solely
+  to page/TLS initialization; it does not explain every historical failure.
+  An earlier explicit fourth-terminal refusal remains unexplained.
+- One ordinary pane retry is qualified for diagnostic use only: persist refusal,
+  verify unchanged ACTIVE/generation 0 ownership, then use Close/New terminal.
+  Pending operations are never replayed. Any refusal still fails clean acceptance
+  and the independent receipt validator. 37 unit, 14 runner and 14 browser checks
+  plus typechecking pass. Student instructions were corrected with Prof.
+- Native, Marco and local cleanup, unchanged original host files/authority and all
+  16 original documentation images are verified. All failures/skips are retained.
+  No further blind full-cohort retries in this campaign. Next: bounded remediation
+  and resource qualification, then a new full run after focused regressions pass.
 
-Endurance7 FAILED after42.3min:38 GCC/GDB students/152panes verified;39th actual
-fourth-pane refusal (SSH open/operation-rejected), not merely a pending timeout.
-All39 failure snapshotsACTIVE/gen0. Native/Marco/local independent cleanup FULL;
-original installation/authority unchanged. Actual8192tasks/3GiB/2CPU/fourhours
-verified. No70-student/90-minute/protected-completion pass exists.
-
-Despite all70 welcome pages being preloaded and no late main-frame navigation,
-194 network-change cancellations occurred. Small worker-initialization probe had
-zero errors and does not explain them. Underlying pane error was not retained.
-Next bounded increment retains private pane-only WASM causes/native snapshot and
-exercises one ordinary public retry after a confirmed refusal. Every recovered
-refusal still FAILS clean-run acceptance, including the independent receipt check;
-no uncertain open, authentication, Start, clock or permission is replayed.
-
-Open P1s:installed32workers<70; shared anonymous180/minute bucket rejects30/210
-minimal cold loads. Isolated96workers/paced warmup do not fix those baselines or
-qualify production co-location. Plan:docs/stress-testing.md;
-checkpoint:docs/todo-current-checkpoint.md;
-report:reports/stress/20261116T194355Z/report.md; raw:var/stress/20261116T194355Z/.
+[Agent report](reports/stress/20261116T194355Z/report.md),
+[plan and operation](docs/stress-testing.md),
+[current checkpoint](docs/todo-current-checkpoint.md).
+Private evidence: var/stress/20261116T194355Z/ and var/stress/context-net-11/.
 
 # csc-sys migration — ACTIVATED AND VERIFIED ONLINE
 

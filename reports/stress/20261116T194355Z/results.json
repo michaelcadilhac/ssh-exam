@@ -1668,6 +1668,52 @@
       "generator": "marco",
       "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-7/temporary",
       "finished": "2026-11-17T11:11:03.927531+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 8,
+      "started": "2026-11-17T11:30:54.350798+00:00",
+      "source": "3a9a3f44f9cbc1410440a7fe0f28a58253093335",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "bd5026487c5ad1bd0e93bd760cc2f57885f3dfcb50d52b18c712d04a92953abe",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v13_t7wdue97",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.23
+        },
+        {
+          "argv": [
+            "node",
+            "--import",
+            "tsx",
+            "tests/fixtures/stress-https-smoke.ts"
+          ],
+          "exit": 0,
+          "seconds": 33.659
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 647.776
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-8",
+      "generator": "marco",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-8/temporary",
+      "finished": "2026-11-17T11:42:28.211395+00:00"
     }
   ],
   "students": 70,

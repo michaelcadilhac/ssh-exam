@@ -1,51 +1,41 @@
-# Current checkpoint — full70-person endurance7 FAILED/CLEANED
+# Current checkpoint — stress report delivered; 70-student target NOT QUALIFIED
 
-Approved:70 synthetic students/four terminals each,90 real peak minutes and
-simultaneous protected submission. Marco browsers, guarded disposable csc-sys
-guest. No institutional MFA/actual student accounts/external email/production
-change/push/deployment. Preserve original documentation images and failed evidence.
+The requested manual stress campaign used Marco browsers and guarded disposable
+csc-sys guests. No actual student account, institutional MFA, external email,
+production change, push or deployment. All owned fixtures are stopped; original
+host files/authority and all 16 documentation images are preserved.
 
-Source365f1db/v13. Run20261116T194355Z; private output
-var/stress/20261116T194355Z/endurance-7/. Completed exit1 after42.3min:
-38 GCC/GDB students/152panes verified;39th examq38 Start200, fourth pane refused
-with an actual Terminal error dialog. This is not merely a15s pending timeout.
-Audit1794913839457:attempt7ea1cdd6-6f14-4907-8ca9-e119b7275c0c,
-pane5c6c78e2-1f99-4fc2-a541-ce221993c1ea,stage=open,cause=operation-rejected.
-Underlying native reason was sanitized/not retained; do not speculate as fact.
-All39 failure snapshotsACTIVE/gen0; teardown locks are separate. No70/90pass.
+Read [the agent report](../reports/stress/20261116T194355Z/report.md) and
+[manual suite instructions](stress-testing.md). Run: `20261116T194355Z`.
+Validated runner source: `3a9a3f4`, unchanged native bundle v13. Final follow-up
+changes only documentation, evidence and a corrected explanatory code comment.
 
-Private native stage:/var/tmp/ssh-exam-overlay-n5s7h4cn; unit
-ssh-exam-qualification-f1c0ce28cac8458791c029f9aa87dc17.service.
-Actual kernel8192tasks/3GiB/no-swap/2CPU/fourhours verified.
-Independent native/Marco/local cleanup FULL: exact guest dead/MainPID0,
-original files/authority unchanged; local fixture1613125 gone and3100/3102/9444/
-9445 absent. functions stressActive now failed-cleaned. Native bundle unchanged:
-/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v13_t7wdue97.
+Latest endurance attempt 8 failed: seven GCC/GDB students / 28 terminals verified;
+eighth setup showed a blocking “Failed to fetch” dialog. Its clock never started.
+All seven failure snapshots were ACTIVE/generation 0. Exact native/Marco/local
+cleanup and the 822-file input manifest were independently verified. Largest
+prior partial: 52 students / 208 terminals. No 70-student / 90-minute result exists.
 
-All70welcome pages were preloaded/public0attempts before sign-in and late main
-frame navigation remained0. Nevertheless272transport events included194network-
-change cancellations,74video-fallback409s,two setup400s/two replaced-page409s.
-Preloading does NOT solve all fixture cancellations. The bounded Marco worker-initialization probe(context-net-10) had0errors and
-independent FULL cleanup; it does not diagnose fleet cancellations. Private
-pane-only RPC diagnostics and native snapshot now precede one ordinary public
-retry after confirmed refusal. Any refusal remains a final clean-run failure and
-fails the independent receipt validator.37unit/14runner/14browser cases and final
-typecheck pass. The UI fixture's first read wrongly bypassed its page routing;
-failed receipt retained, declared browser-fetch transport corrected. No product
-change. Next:local commit, freeze inputs and start full endurance8 using v13.
-No production safety/permission/clock change is authorized by these findings.
+Open blockers:
+- Installed worker ceiling is 32, below 70; isolated candidate uses 96 only.
+- Shared anonymous 180-request/minute budget rejected 30 of 210 classroom loads.
+- Marco's steady-traffic probe reproduced 17 cancellations (14 HTTPS, three HTTP)
+  in 95 seconds, with no navigation or native guest. Bursts closely followed
+  virtual-interface events. Network causation of every earlier failure is unproved.
+- Prior fourth-terminal refusal remains unexplained; preflight recovery UX failed.
 
-Validated unchanged-runtime evidence:861application/3real CLI-export-bwrap,
-build/native races,16-clientWASM/editor/timer/recovery/collector-crash passes.
-Full browser2:360passed/3failed/5skips; fresh5cases pass separately. Prof28rendered
-UXscreens.86harness12 checks,27navigation guards/typecheck, smoke8 detects12late
-navigations; smoke9 passes161measuredHTTPS requests, no failures. Small smoke is
-not a full70-client pass. Earlier weak mutation and allfailed runs retained.
-Open P1s:production32workers<70; anonymous180/min rejects30/210. Candidate96/
-paced warmup do not fix those or qualify co-location on8GiBcsc-sys.
-Topology:Marco→private forwards→local gateway→csc guest. Baselineed09efc/schema37.
-Plan:docs/stress-testing.md; agent report:reports/stress/20261116T194355Z/report.md.
-Prof edits only report.md. No open user decision. No push/deploy.
+Completed separate evidence: application/integration/build/native races; actual
+16-student WASM, editor/timer/recovery and collector-crash workflows; Prof's 28
+rendered UI reviews. Latest private retry changes passed 37 unit, 14 runner and
+14 browser checks plus typechecking. Student instructions corrected with Prof;
+all changes remain local. Historical failures/skips are retained in the report.
+
+Next milestone: focused remediation, not another blind full ramp. Stabilize the
+private generator network and qualify a several-cycle preflight; repair classroom
+admission budgets and the preflight recovery workflow; diagnose pane refusal;
+then qualify combined web/native capacity before one new full endurance run.
+No user decision is pending. No test process remains running. Preserve private
+`var/stress/20261116T194355Z/`, `var/stress/context-net-11/` and remote stage evidence.
 
 ## Deployed baseline
 

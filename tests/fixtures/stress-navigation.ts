@@ -68,9 +68,9 @@ export function watchStressNavigation(
   });
 }
 
-// Ignored synthetic certificates can make a shared Chromium process cancel
-// other contexts' requests during document initialization/navigation. Prepare
-// every real welcome page before any clock starts; later use the existing SPA.
+// Separate document startup from ongoing work: prepare every real welcome page
+// before clocks, then use the existing SPA. This is not a network-error fix:
+// Marco also cancelled steady HTTP/HTTPS requests without any navigation.
 export async function prepareStressPages<T>(options: {
   browser: Pick<Browser, "newContext">;
   origin: string;

@@ -64,6 +64,25 @@ typecheck pass. The first UI-only fixture bypassed its declared page routing;
 that failure is retained, and the corrected browser-fetch fixture passes. The
 underlying real native refusal remains unproved until another observed event.
 
+Full8 also failed: seven students/28panes passed before the eighth setup displayed
+Workspace error/Failed to fetch over the webcam control. A capture-challenge
+request was cancelled; later samples succeeded but the modal remained. The clock
+never started. All seven failure snapshots were ACTIVE/gen0; native/Marco/local
+cleanup and original preservation pass. No further full-cohort retries were run.
+
+The bounded steady-traffic diagnostic reproduced17network-change cancellations
+without navigation or a native guest:14HTTPS and3HTTP in95seconds. They clustered
+67–78ms after Marco logged new virtual interfaces, with further cancellations
+following. Existing WebSockets stayed connected. This demonstrates generator-side
+interference independent of page creation; it is not an error-free qualification
+or proof of the cause of every historical error. Earlier short TLS/page controls
+were temporally confounded and do not establish that ignored certificates caused
+those failures. Neither preloading nor the small preflight fixes this instability.
+Next remediation should isolate the generator's network and observe steady
+traffic across several62-second cycles before allocating a native guest. No
+global network configuration or unrelated job was changed. Details and suggested
+fixes are in the agent report. The70-student/90-minute target remains unqualified.
+
 Confirmed P1 baselines remain open:installed32workers<70; shared anonymous
 180requests/minute bucket rejects30of210minimal cold loads. Isolated96workers
 does not fix production or qualify co-location on the8GiB class server.
@@ -154,8 +173,8 @@ Before the first sign-in, the endurance prepares all70real welcome pages with
 media/bootstrap observers already installed. Four-second spacing preserves normal
 anonymous limits; the separately failed cold-burst baseline remains failed.
 The public attempt list must still be empty. Authentication/setup/work then use
-the existing SPA pages: creating/navigating later documents would inject a shared-
-Chromium fixture fault. Own every context before page creation so partial warmup
+the existing SPA pages, keeping document startup separate from measured work.
+Own every context before page creation so partial warmup
 is cleanable. The70-person native parent has8192tasks/3GiB/no-swap/2CPU/fourhours;
 its actual kernel bounds are checked at startup. Smaller cohort bounds and all
 native student-policy limits remain unchanged. These are isolated test budgets,

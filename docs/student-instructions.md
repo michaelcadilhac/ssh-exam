@@ -1,6 +1,6 @@
 # Student instructions
 
-> Updated October 31, 2026.
+> Updated November 17, 2026.
 
 An **attempt** is one timed sitting of an exam, with its own time limit and
 opening/closing times.
@@ -15,12 +15,12 @@ opening/closing times.
    your password when asked. It is reused for the class server, then
    discarded. Keep the page open; the number for your phone app may take a moment
    to appear.
-3. When a phone-approval number appears, enter it in your Authenticator app on
-   your phone and approve sign-in. Then choose **I approved on my phone** on the
-   exam page. Do not type that number into the exam page. For a different
-   verification-code prompt, follow the displayed instructions instead.
-4. Check the exam name, time limit and webcam requirement. If several attempts
-   are offered, choose the one you intend to start. Choose **Check setup and
+3. Approve the current sign-in request on your phone and keep this page open.
+   Sign-in continues when approval is confirmed. If the page shows **I approved
+   on my phone**, choose it after approving. Do not enter the phone approval
+   number on the exam page; follow the displayed instructions for other
+   verification-code prompts.
+4. Check the exam name, time limit and webcam requirement. Choose **Check setup and
    practice**, then complete the numbered buttons in order:
    - **Share entire screen:** select the display containing the exam, not a tab
      or window. Browser checks cannot verify all additional displays.
@@ -46,9 +46,12 @@ when starting succeeds; no second password or phone approval is normally needed.
 If the result is unclear, check the current status before trying again. A delayed
 reply does not reset a clock that already started.
 
-**The clock keeps running during pauses, disconnections and instructor review.**
-Time is not added automatically. Opening/closing times control when you can start,
-not the deadline after starting.
+The countdown normally continues during disconnections and instructor review.
+Check **Time remaining** or **Countdown paused**. Your instructor may pause the
+countdown, including automatically during review. Pausing the countdown alone
+does not stop terminal work; other exam checks still apply. Time is not added
+automatically. Opening/closing times control when you can start, not the deadline
+after starting.
 
 Save answers in the directory shown in the toolbar, normally **`/work`**. Read
 provided files in **`/materials`**. Use `exam-info` to check your deadline and work
@@ -71,20 +74,21 @@ temporary update or monitoring delay may recover automatically while the origina
 page and connection still work. A delay or timeout alone is not a misconduct finding.
 
 If the exam loses focus while remaining fullscreen and visible, a warning counts
-down **20 seconds**. Return before it reaches zero to avoid a pause. Leaving
+down **60 seconds**. Return before it reaches zero to avoid a pause. Leaving
 fullscreen or hiding the exam page pauses work immediately. Missing screen/webcam
-sharing or other required checks can also pause input. The exam clock continues.
+sharing or other required checks can also pause input. Check whether the countdown
+is running or paused.
 
 Request instructor review when asked. After approval, restore missing screen/webcam
 sharing, fullscreen and keyboard checks, then choose **Resume exam**. This uses the
 same attempt if the original page and connection still work; no time is added. A
 pause can preserve terminals and unsaved editor changes; save regularly anyway.
 
-If the original page or SSH connection is lost after a reload or laptop crash,
-tell your instructor. You may need a **new attempt from verified saved files**,
-with a time limit and start times your instructor chooses. This does not reopen a
-finished attempt or restore unsaved editor changes. Earlier deadlines, restrictions
-and history remain; no time is refunded automatically.
+If the page or SSH connection is lost, ask your instructor to approve resuming.
+Sign in again when asked. Saved files reopen in new terminals; running programs
+and unsaved edits are not restored. Your deadline stays the same unless your
+instructor changes it. A finished attempt cannot resume. Your instructor may
+instead allow a new attempt from saved files, with a separate time limit.
 
 ## Finish and file collection
 
@@ -94,7 +98,7 @@ changes are excluded.
 
 **Finish exam** is optional. Save first: confirming it closes your terminals,
 collects saved files and signs you out. That attempt cannot be reopened. Closing
-the browser alone does not finish the exam or stop its clock.
+the browser does not finish the exam. Do not assume it pauses the countdown.
 
 **Files saved** confirms a protected copy. If saving/protection needs attention,
 contact your instructor; do not submit another copy yourself. Capture stops when
