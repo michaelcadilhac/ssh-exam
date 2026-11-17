@@ -55,6 +55,16 @@ All8affected readiness cases and final typecheck pass. The next endurance record
 timestamped input-gate transitions and selection waits;
 it does not silently convert monitoring delays into a pass or student violation.
 
+Full5 failed13.6min after16GCC/GDB students/64panes. Seventeenth SSH authenticated,
+then a read failed with Failed to fetch; the existing Retry opening exam button
+was not driven. All16failure states ACTIVE/gen0; exact cleanup/preservation FULL.
+Five5.25–5.53s capture-verification pauses recovered without policy locks. The
+stress driver now uses that read retry once only after acknowledged auth completion,
+fresh exact session and absent attempt, with no credentials/setup/Start replay.
+22unit guards, real SSH completion/retry and all5session-transition cases/typecheck
+pass. Lifetime API failures/current setup screenshots join input-gate telemetry.
+No historical network/capture cause or product fix is inferred. Next:full6.
+
 Confirmed P1 baselines remain open:installed32connection workers<70; shared
 anonymous180requests/minute bucket rejects30of210minimal cold-load requests.
 The isolated96worker candidate is a test configuration, not a production fix or

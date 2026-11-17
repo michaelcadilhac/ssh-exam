@@ -20,13 +20,23 @@ Eight-context/four-arranged-pane control and delayed-capture recovery pass local
 and on Marco (remote108.03s total); all8readiness regressions and final typecheck
 pass. Exact Marco cleanup verified. First remote focus failed before tests on an
 overlong synthetic SMTP Unix-socket path; shortening only owned scratch fixed it.
-Current sources are frozen for the next full endurance attempt.
+Full endurance5 FAILED13.6min after16GCC/GDB students/64panes. Seventeenth SSH
+was authenticated; later read failed with Failed to fetch and the supported
+Retry opening exam button. Driver assumed summary, so no setup click existed.
+All16failure snapshots ACTIVE/gen0; exact native/Marco/local cleanup FULL.
+Input-gate telemetry records five5.25–5.53s captureDelayed pauses, all recovered
+without incident/policy lock. One Start readiness-busy400 reconciled unused/
+unstarted before200 retry. These delays/errors remain findings, not erased passes.
+Evidence:var/stress/20261116T194355Z/endurance-5/. Source a803e19/v12.
 
-Next:commit the validated fixture increment locally, then run full endurance5.
-New native bundle is NOT required for these browser-only edits.
-Current v12:/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j
-(source/bundle audit var/stress/native-upload-v12.json). Current base commit917387a
-plus browser-only driver/regression/telemetry edits. Native binaries unchanged.
+Current:driver supports the existing read retry once, only after authcomplete200,
+fresh exact student/exam session and null attempt. No credentials/auth completion/
+setup/Start replay. It records lifetime API transport errors and current setup
+screenshots as well as input gates. Focused real SSH completion/recovery4.8s and
+22unit guards/typecheck pass. All5session-transition cases pass9.9s. Next:commit coherent fixture increment
+locally, then start full endurance6. Native binaries remain unchanged;
+reuse v12:/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j
+(audit var/stress/native-upload-v12.json). No new bundle or product change.
 
 Collected:861application passes/three explicit real CLI/export/bwrap passes;
 build/typecheck; native races without failures/races;86harness checks;16-client

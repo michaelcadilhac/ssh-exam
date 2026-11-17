@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { waitForStressExamSummary } from "../fixtures/stress-navigation.js";
 
 function deferred() {
   let release!: () => void;
@@ -164,6 +165,15 @@ test("SSH completion retains its dialog through delayed session/exam loading and
   let completing = false,
     detailRequests = 0,
     completeRequests = 0;
+  let acknowledgedAuthentication = false;
+  const notes: string[] = [];
+  page.on("response", (response) => {
+    if (
+      new URL(response.url()).pathname === "/api/auth/complete" &&
+      response.ok()
+    )
+      acknowledgedAuthentication = true;
+  });
   await watchSignIn(page);
   await page.route("**/api/auth/complete", async (route) => {
     completing = true;
@@ -225,14 +235,30 @@ test("SSH completion retains its dialog through delayed session/exam loading and
       "Exam service unavailable",
     );
     await stillAuthenticating();
-    await page.getByRole("button", { name: "Retry opening exam" }).click();
+    const recovered = waitForStressExamSummary(
+      page,
+      { username: "student10", exam: "sandbox" },
+      () => acknowledgedAuthentication,
+      (note) => notes.push(note),
+    );
     await expect.poll(() => detailRequests).toBe(2);
     await stillAuthenticating();
     retryDetails.release();
+    await recovered;
     await expect(
       page.getByRole("button", { name: "Check setup and practice" }),
     ).toBeVisible();
     expect(completeRequests).toBe(1);
+    expect(notes.map((note) => JSON.parse(note))).toEqual([
+      {
+        phase: "exam-summary-read-retry",
+        username: "student10",
+        exam: "sandbox",
+        retries: 1,
+        acknowledged_authentication: true,
+        no_attempt: true,
+      },
+    ]);
     expect(await page.evaluate(() => (window as any).__signInFrames)).toEqual(
       [],
     );

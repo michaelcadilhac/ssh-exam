@@ -11,6 +11,7 @@ import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js"
 import {
   openUnauthenticatedStressWelcome,
   waitForStressStartResponse,
+  waitForStressExamSummary,
 } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
@@ -146,6 +147,18 @@ test(
     let bootstrap = async (): Promise<unknown> => null;
     let signInEvents: { event: string; path: string; type?: string }[] = [];
     let setupStudent = "";
+    let setupPage: Page | undefined;
+    const transportFailures = {
+      total: 0,
+      events: [] as {
+        username: string;
+        path: string;
+        event: string;
+        elapsed_ms: number;
+        status?: number;
+        error?: string;
+      }[],
+    };
     let setupNetwork: {
       event: string;
       path: string;
@@ -307,14 +320,71 @@ test(
         const setupEvents: typeof setupNetwork = [];
         setupNetwork = setupEvents;
         setupStudent = student.username;
+        setupPage = page;
         const setupStarted = performance.now();
         let observingSetup = true;
+        let acknowledgedAuthentication = false;
+        page.on("response", (response) => {
+          if (
+            new URL(response.url()).pathname === "/api/auth/complete" &&
+            response.ok()
+          )
+            acknowledgedAuthentication = true;
+        });
         if (stressRun) {
+          const failure = (
+            event: string,
+            url: string,
+            status?: number,
+            error?: string,
+          ) => {
+            const parsed = new URL(url);
+            if (
+              parsed.origin !== origin ||
+              !parsed.pathname.startsWith("/api/")
+            )
+              return;
+            transportFailures.total++;
+            if (transportFailures.events.length >= 512)
+              transportFailures.events.shift();
+            const value = {
+              username: student.username,
+              path: parsed.pathname,
+              event,
+              elapsed_ms: Math.round(performance.now() - setupStarted),
+              status,
+              error,
+            };
+            transportFailures.events.push(value);
+            return value;
+          };
+          page.on("requestfailed", (request) =>
+            failure(
+              "failed",
+              request.url(),
+              undefined,
+              request.failure()?.errorText,
+            ),
+          );
+          page.on("response", async (response) => {
+            if (response.status() < 400) return;
+            const value = failure(
+              "response",
+              response.url(),
+              response.status(),
+            );
+            if (!value) return;
+            try {
+              const body = await response.json();
+              if (typeof body.error === "string")
+                value.error = body.error.slice(0, 400);
+            } catch {}
+          });
           const record = (event: string, url: string, status?: number) => {
             const path = new URL(url).pathname;
             if (
               !observingSetup ||
-              !/^\/api\/student\/attempts\/[^/]+\/(?:frames(?:\/(?:challenge|challenged))?|monitoring-readiness|begin)$/.test(
+              !/^\/api\/student\/attempts\/[^/]+\/(?:frames(?:\/(?:binary|challenged))?|capture-challenges|monitoring-readiness|begin)$/.test(
                 path,
               )
             )
@@ -418,6 +488,13 @@ test(
         await page
           .getByRole("button", { name: "Continue", exact: true })
           .click();
+        if (stressRun)
+          await waitForStressExamSummary(
+            page,
+            { username: student.username, exam: "native-browser" },
+            () => acknowledgedAuthentication,
+            console.log,
+          );
         for (let retry = 0; retry < 3; retry++) {
           const result = page.waitForResponse(
             (response) =>
@@ -956,6 +1033,7 @@ test(
               protected: completed.snapshots.length,
               simulated_media: true,
               institutional_mfa: false,
+              transport_failures: transportFailures,
               input_gates: await Promise.all(
                 fleet.map(async (entry) => ({
                   username: entry.username,
@@ -1152,6 +1230,13 @@ test(
     } catch (error) {
       await mkdir(test.info().outputDir, { recursive: true });
       const failure = test.info().outputPath("capacity-failure.json");
+      if (setupPage)
+        await setupPage
+          .screenshot({
+            path: test.info().outputPath("setup-page.png"),
+            timeout: 5000,
+          })
+          .catch(() => {});
       const failedEntry = fleet.find(
         (entry) => entry.username === lastCommand?.student,
       );
@@ -1239,6 +1324,7 @@ test(
           signInEvents,
           setupDiagnostics: { username: setupStudent, requests: setupNetwork },
           lastCommand,
+          transportFailures,
           wasmBootstrap: await bootstrap(),
           publicStates,
           recoveryReplies: fleet.map((entry) => ({

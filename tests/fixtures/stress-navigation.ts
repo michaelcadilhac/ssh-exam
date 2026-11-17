@@ -1,6 +1,67 @@
 import type { Page } from "@playwright/test";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
+// Use the existing read-recovery button only after acknowledged authentication
+// and fresh read-only proof of the same signed-in, unstarted synthetic account.
+// This never repeats SSH credentials, auth completion, setup or Start.
+export async function waitForStressExamSummary(
+  page: Pick<Page, "getByRole" | "request">,
+  identity: { username: string; exam: string },
+  completionAccepted: () => boolean,
+  note: (message: string) => void,
+) {
+  const deadline = Date.now() + OPERATION_TIMEOUT_MS;
+  const remaining = () => Math.max(1, deadline - Date.now());
+  const summary = page.getByRole("button", {
+    name: "Check setup and practice",
+    exact: true,
+  });
+  const retry = page.getByRole("button", {
+    name: "Retry opening exam",
+    exact: true,
+  });
+  await summary.or(retry).waitFor({ state: "visible", timeout: remaining() });
+  if (await summary.isVisible()) return;
+  if (!completionAccepted())
+    throw Error(
+      "Exam summary retry requires acknowledged authentication; no retry performed",
+    );
+  const session = await page.request.get("/api/session", {
+    timeout: remaining(),
+  });
+  if (!session.ok())
+    throw Error(
+      "Exam summary retry could not verify the signed-in account; no retry performed",
+    );
+  const user = await session.json();
+  if (
+    user.role !== "student" ||
+    user.username !== identity.username ||
+    user.exam !== identity.exam
+  )
+    throw Error(
+      "Exam summary retry account does not match; no retry performed",
+    );
+  const exam = await page.request.get("/api/student/exam", {
+    timeout: remaining(),
+  });
+  if (!exam.ok() || (await exam.json()).attempt !== null)
+    throw Error(
+      "Exam summary retry requires a verified absent attempt; no retry performed",
+    );
+  note(
+    JSON.stringify({
+      phase: "exam-summary-read-retry",
+      ...identity,
+      retries: 1,
+      acknowledged_authentication: true,
+      no_attempt: true,
+    }),
+  );
+  await retry.click({ timeout: remaining() });
+  await summary.waitFor({ state: "visible", timeout: remaining() });
+}
+
 // Only the public welcome GET, before credentials or an attempt exist. A remote
 // generator's network-change cancellation may be retried once; exam operations
 // and every other failure retain their original refusal.
@@ -12,9 +73,18 @@ export async function openUnauthenticatedStressWelcome(
   try {
     return await page.goto(origin, { timeout: 10000 });
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("net::ERR_NETWORK_CHANGED"))
+    if (
+      !(error instanceof Error) ||
+      !error.message.includes("net::ERR_NETWORK_CHANGED")
+    )
       throw error;
-    note(JSON.stringify({ phase: "welcome-network-retry", error: error.message, retries: 1 }));
+    note(
+      JSON.stringify({
+        phase: "welcome-network-retry",
+        error: error.message,
+        retries: 1,
+      }),
+    );
     await page.waitForTimeout(500);
     return page.goto(origin, { timeout: 10000 });
   }
@@ -28,21 +98,40 @@ export async function waitForStressStartResponse(
 ) {
   const started = performance.now();
   const request = await page.waitForRequest(
-    request => new URL(request.url()).pathname.endsWith("/begin") && request.method() === "POST",
+    (request) =>
+      new URL(request.url()).pathname.endsWith("/begin") &&
+      request.method() === "POST",
     { timeout: OPERATION_TIMEOUT_MS },
   );
   const requested = performance.now();
-  note(JSON.stringify({ phase: "start-request", preparation_ms: Math.round(requested - started) }));
+  note(
+    JSON.stringify({
+      phase: "start-request",
+      preparation_ms: Math.round(requested - started),
+    }),
+  );
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const response = await Promise.race([
       request.response(),
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(Error("Start response exceeded the 60-second operation budget")), OPERATION_TIMEOUT_MS);
+        timer = setTimeout(
+          () =>
+            reject(
+              Error("Start response exceeded the 60-second operation budget"),
+            ),
+          OPERATION_TIMEOUT_MS,
+        );
       }),
     ]);
     if (!response) throw Error("Start request ended without an HTTP response");
-    note(JSON.stringify({ phase: "start-response", status: response.status(), response_ms: Math.round(performance.now() - requested) }));
+    note(
+      JSON.stringify({
+        phase: "start-response",
+        status: response.status(),
+        response_ms: Math.round(performance.now() - requested),
+      }),
+    );
     return response;
   } finally {
     clearTimeout(timer);

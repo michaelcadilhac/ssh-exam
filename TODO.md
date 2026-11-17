@@ -23,9 +23,15 @@ native preservation FULL. Historical hit-test cause remains unproved. A focused
 capture-verification failure reproduces inert-toolbar interception. Corrected
 driver waits for real input-gate release under the60s contract; both focused
 regressions pass locally and on Marco, without early input/incident or force clicks.
-All8affected readiness regressions/final typecheck pass. Next:local commit, fresh
-full70/90endurance with
-input-gate diagnostics, then agent report from actual completion/failure receipts.
+All8affected readiness regressions/final typecheck pass. Full5 then failed13.6min
+after16GCC/GDB students/64panes:seventeenth SSH authenticated, later read failed
+with Failed to fetch; supported Retry opening exam was not driven. All16ACTIVE/
+gen0; exact cleanup/FULL preservation. Five5.25–5.53s capture-verification pauses
+recovered without policy locks. Driver now uses that read retry once only after
+authcomplete200, exact signed-in account and null-attempt reconciliation; no
+credentials/Start replay.22unit guards, focused actual SSH recovery and all5session
+transition cases/typecheck pass. Next:fresh full70/90endurance with lifetime HTTP
+failure/input-gate diagnostics, then agent report from completion/failure receipts.
 
 Open P1 findings:installed32worker limit<70; shared anonymous180/minute budget
 rejects30of210minimal cold loads. Isolated96worker configuration does not fix
