@@ -6,6 +6,22 @@ import type {
 } from "@playwright/test";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
+export async function waitForStressPasswordPrompt(
+  page: Pick<Page, "getByLabel">,
+  note: (message: string) => void,
+) {
+  const started = performance.now();
+  await page
+    .getByLabel("Password", { exact: true })
+    .waitFor({ state: "visible", timeout: OPERATION_TIMEOUT_MS });
+  note(
+    JSON.stringify({
+      phase: "password-prompt",
+      elapsed_ms: Math.round(performance.now() - started),
+    }),
+  );
+}
+
 // Exercise one ordinary student retry after a positively observed pane refusal.
 // The caller retains the refusal and must fail its clean-run acceptance later.
 // Never replay an uncertain/pending open or retry a policy/ownership error.

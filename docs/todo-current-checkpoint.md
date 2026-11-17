@@ -1,61 +1,56 @@
-# Current checkpoint — stress remediation, native requalification
+# Current checkpoint — stress remediation; sign-in driver corrected
 
-User authorized implementing the stress report's fixes. Local development/tests/
-commits only; no push, deployment, production configuration or student changes.
-Preserve ten original dirty screenshots and all failed stress receipts.
+Local development/testing/commits only. No push/deployment, production settings,
+student records, institutional MFA or external email. Preserve the ten original
+modified documentation PNGs; 16 original image hashes were verified unchanged.
+No missing package. No native guest or Marco generator is running.
 
-Plan: [stress remediation](stress-remediation.md). Milestone 1 is implemented and
-validated: separate 1,200/minute/IP anonymous public-read bucket; other API and
-credential limits unchanged. Three focused and 16 affected integration checks,
-typecheck and the original 70-client/210-request baseline pass. Evidence:
-`var/stress-remediation/20261117/`. Original red/fixture-failure receipts retained.
+Main eb282d2 integrates the approved remediation: public bootstrap budget, capture
+recovery, Prof UI fixes, bounded SSH commands/channel retirement, isolated Marco
+networking, runner guards, technical proof v2 and pane-local feedback. Native v16
+is unchanged at /var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec
+(19 files/65,421,056 bytes). Native-recovery-6 passes actual16/64/75-second outage,
+preserved shells/clocks/SSH/supervisors and16 protected completions. Collection-1
+passes two508MiB collections, exact fatal worker fault and protected retry while
+14 peers continue. Both exact guests stopped with FULL original preservation.
 
-Milestone 2 is implemented/tested locally: 26 API/capture units and two actual
-browser challenge/upload cancellation cases pass after current build/typecheck.
-Selected streams retry with fresh verification; no stale modal/incident/clock,
-no authority bypass; late cancelled media is stopped.
+Current main application:915 pass/three gated skips;17 affected browser cases and
+three actual CLI/export/zsh-bwrap workflows pass. All-native race result:1,709 pass
+and137 explicit skip events. These are separately scoped, not additive feature
+counts. Docs:stress-remediation.md, technical-resume-timing.md, pane-refusal-feedback.md.
 
-Prof's remaining changes pass rendered desktop/375px review and focused browser
-regressions, including repeated offscreen validation, separate bulk cancellation,
-plural wording and correct initial 60-second focus warning. Real local nginx/TLS
-maintenance smoke passes. Affected suite: 162 passes/three stale expectations;
-those three pass separately after correction. Do not call that a full rerun.
+Endurance-1 FAILED before peak at61 verified students/244 panes, after5,228.876s
+command time. Student examq61 stayed on Connecting to the server when Password
+locator hit the driver's10s default. No sign-in bootstrap/network event was
+captured for that student; actual delay cause unproved. No pane refusal captured.
+Failure public snapshot:26 ACTIVE/gen0,35 unavailable under3s diagnostic bound;
+visible terminal inputs enabled. Later61 LOCKED1 rows are teardown, not attribution.
+Start max57.783s; high CPU pressure/resource sizing remain open. No70/90 pass.
+Private evidence:var/stress/20261117T174000Z/endurance-1/; new report in reports/stress/.
 
-Marco's private loopback-only network namespace passed 190 seconds/2,054 requests
-with zero failures across eight host interface events; independent owned cleanup
-passes. Actual encrypted SSH reproduces eight-session exhaustion. Bounded command
-queue/concurrency now preserves four panes, one monitoring-renewal lane and exact
-queued cancellation. Focused pressure tests, SSH races, build/typecheck pass.
-Historical fourth-pane refusal attribution remains unproved.
+Exact native stage /var/tmp/ssh-exam-overlay-ujfqp3d8, unit
+ssh-exam-qualification-b602dc8890484cf3b3e1801e00ae68cc.service is inactive/dead/PID0
+with FULL files/authority preservation. Exact Marco browser/unit/listeners stopped;
+owned local processes gone/3102,9444,9445 free. Independent receipts are inphase.
+Source/built manifests were unchanged at cleanup before the current test-only edit.
+Private logs copied; use current-agent-journal.log, not old prepared-base entries.
+At50 students:private native~2.1GiB,gateway process-treePSS~1.5GiB on separate hosts.
+Marco generatorpeak19,563,266,048bytes under20GiB cap; teardown status isn't peak.
+Installed32workers/2GiB web budget and combined roughly8GiB host remain unqualified.
 
-Full application suite passes: 910 tests/three gated skips,149 files passing.
-Two new Marco/native editor attempts refused before Start: Chromium reported
-offline in the loopback-only namespace. Both native clocks stayed zero; exact
-native/Marco/local cleanup and original host preservation pass. Metadata-only
-socket evidence and a separate real-browser online-indicator reproducer are kept.
-The private namespace now contains a closed veth pair, with no host/external link,
-instead of overriding navigator.onLine or relaxing application checks.
+Current bounded test-only correction:waitForStressPasswordPrompt uses existing60s
+operation budget, logs elapsed time, never retries auth. Real healthy16sWASM/SSH
+startup reproduced the old10s failure (password-wait-red). Corrected three real
+relay browsers pass86.30s,42 focused units pass, typecheck passes.11 current terminal
+browser cases pass40.42s; cohort observes current Terminal notice instead of old
+Terminal error modal. Evidence:var/stress-remediation/20261117/password-wait-*.
+No product binaries/protocol/timeout/security settings changed by this increment.
 
-Corrected network/online smoke passes190seconds/2,054requests and exact independent
-cleanup. Native editor attempt3 passes1.5minutes through that environment, including
-real hold/Continue, buffer preservation, protected finish and FULL preservation.
-The first two pre-Start refusals remain separate failed evidence.
-
-Sequential native timer/recovery attempt2 passes1.6minutes: pause with continuing
-work, allowance change, genuine SSH loss, reviewed same-attempt files-only recovery,
-no-expiry approval and protected finish. Exact native/Marco/local cleanup passes.
-Attempt1 hit an owned port conflict with a parallel ordinary
-browser suite: that runner was gracefully interrupted and exact native/Marco/local
-cleanup verified. No student workflow was reached; no source/policy weakened.
-Next:16/64 fault phases, combined sizing and fresh70×4×90-minute
-run. Ordinary browser rerun can overlap only70-person mode (3102 vs3100).
-Installed-capacity read-only gate reconfirms32<70; host has4CPUs/7.7GiB total,
-5.3GiB available at the idle observation. Co-located sizing remains open.
-
-Historical report: [20261116T194355Z](../reports/stress/20261116T194355Z/report.md).
-Its native/Marco/local fixtures are fully stopped with preserved host authority.
-No open user decision. Prof's current rendered report is
-reports/stress/20261117-remediation/ui-ux-review.md. No production changes.
+Next: commit this coherent local driver correction; freeze source/artifacts for a
+complete ordinary browser run on3100/3101 using direct npm run test:browser and a
+separate receipt (never concurrent stress-test.py writers). Then diagnose pressure
+with bounded focused evidence before another70 ramp. Historical native third-pane
+refusal remains unexplained. A successful subsequent pass must not erase failures.
 
 ## Deployed baseline
 

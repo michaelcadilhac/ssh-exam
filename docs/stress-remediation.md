@@ -65,7 +65,7 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
   lane; 63 queued commands, exact queued cancellation and all four panes pass,
   as do browser-SSH races. This is a confirmed failure path, not proof of the cause
   of the old sanitized fourth-pane refusal.
-- Full application checks pass: 910 tests/three explicitly gated skips. Latest
+- Earlier full application checks pass: 910 tests/three explicitly gated skips. Latest
   build and typecheck pass. Two native editor attempts were blocked before Start:
   the loopback-only namespace made Chromium report offline despite working HTTP.
   A separate real-browser check reproduced this. Exact fixture cleanup and zero
@@ -78,7 +78,47 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
   retained; its ordinary browser runner was gracefully interrupted and exact
   cleanup verified. One-/16-person phases share3100; only70-person mode on3102
   can overlap the ordinary suite.
-- Current milestone:16/64 fault qualification, finite worker/shared-host sizing
-  and new70×4×90-minute endurance. Installed32workers still fail the read-only gate.
-- Decisions: none pending. Installation sizing will be recorded as a candidate
+- Current application evidence: 915 passes/three gated skips; three actual
+  CLI/export/zsh-bwrap workflows pass separately. The 16/64 recovery and fatal
+  collection-worker phases pass. Current milestone: complete browser verification,
+  pressure diagnosis, shared-host sizing and a new 70×4×90-minute run. Installed
+  32 workers still fail the read-only gate.
+- No policy decision blocks the current local tests. Installation sizing stays a candidate
   until actual combined-capacity qualification, never represented as deployed.
+
+## Current critical findings
+
+Technical v2 now passes actual 16-student/64-terminal recovery after a 75-second
+proof outage, preserving shells, deadlines, ownership and protected completion.
+Concurrent collection also passes a fatal worker fault with continuing peers.
+See [timing acceptance and evidence](technical-resume-timing.md). The historical
+pre-outage refusal of a student's third pane is still unexplained; a later pass
+does not establish its cause. Private bounded diagnostics are retained for new
+failures. Prof-approved pane-local feedback is integrated, preserving healthy
+input, unknown-admission fences and explicit manual New terminal behavior.
+
+Endurance attempt 1 failed before peak at 61 students/244 terminals. The next
+student remained on Connecting to the server when the driver's default 10-second
+Password locator wait expired. A healthy, actual WASM/SSH startup with a 16-second
+relay delay reproduced this exact premature refusal. The shared driver wait now
+uses the existing 60-second operation budget and logs prompt latency, without
+retrying authentication or changing production. Three real-browser cases pass:
+delayed startup, actual 60-second expiry and correlated SSH loss. Forty-two
+focused unit checks, 11 terminal-browser checks and typecheck pass. The cohort's
+refusal observer also uses the current Terminal notice instead of the removed
+global dialog. All failed evidence is preserved.
+
+No 70-person peak or simultaneous submission result exists. Start responses grew
+to 57.783 seconds; contention and resource sizing need investigation before another
+long run. At failure, 26 public diagnostic reads reported ACTIVE/generation 0 and
+35 were unavailable under their 3-second diagnostic bound; visible inputs were
+enabled and no pane refusal was captured. Later LOCKED/generation 1 web rows belong
+to teardown. Do not infer a connection-loss cause or an all-fleet state from these
+different observations. Independent native, Marco and local cleanup passes, with
+original host files/authority and frozen source/built inputs unchanged.
+
+The next bounded milestone is the complete ordinary browser suite and pressure
+diagnosis, then a new full run after focused evidence. Production remains unchanged:
+32 workers and shared-host capacity are not qualified for the class target. Exact
+running/cleanup state belongs in [the checkpoint](todo-current-checkpoint.md);
+the [agent report](../reports/stress/20261117T174000Z/report.md) retains each scope.

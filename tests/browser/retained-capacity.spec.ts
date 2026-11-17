@@ -12,6 +12,7 @@ import {
   openUnauthenticatedStressWelcome,
   waitForStressStartResponse,
   waitForStressExamSummary,
+  waitForStressPasswordPrompt,
   prepareStressPages,
   watchStressNavigation,
   recoverRefusedStressPane,
@@ -542,6 +543,7 @@ test(
         await page
           .getByRole("button", { name: "Sign in", exact: true })
           .click();
+        if (stressRun) await waitForStressPasswordPrompt(page, console.log);
         await page
           .getByLabel("Password", { exact: true })
           .fill("shared-password");
@@ -671,14 +673,14 @@ test(
             .getByRole("button", { name: "New terminal", exact: true })
             .click();
           if (stressRun) {
-            const dialog = page.getByRole("dialog", {
-              name: "Terminal error",
+            const notice = page.getByRole("alert", {
+              name: "Terminal notice",
               exact: true,
             });
             await expect
               .poll(
                 async () =>
-                  opened.size === pane + 1 || (await dialog.isVisible()),
+                  opened.size === pane + 1 || (await notice.isVisible()),
                 {
                   timeout: OPERATION_TIMEOUT_MS,
                 },

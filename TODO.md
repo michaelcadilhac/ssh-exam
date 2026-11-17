@@ -16,6 +16,18 @@ requalification is in progress; shared-host sizing and the
 70-student/90-minute target remain open. No fixes are deployed.
 [Durable plan](docs/stress-remediation.md).
 
+The corrected proof exchange now passes actual 16-student/64-terminal outage
+recovery, preserving shells and deadlines, and concurrent collection survives a
+worker crash. Prof-approved pane-local feedback is integrated and tested. The new
+70-student run failed before peak at 61 students/244 terminals: its next sign-in
+hit a premature 10-second test-driver wait. A healthy 16-second SSH startup
+reproduced that defect; the driver now uses the existing 60-second budget, with
+three real-browser, 42 focused unit and 11 terminal-browser checks passing.
+Slow setup responses, shared-host sizing and the earlier unexplained native pane
+refusal remain open. No 70-student/90-minute pass exists. Exact cleanup/evidence:
+[checkpoint](docs/todo-current-checkpoint.md),
+[proof timing](docs/technical-resume-timing.md).
+
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
 Approved target: 70 synthetic students, four terminals each, 90 real peak minutes

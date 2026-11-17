@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { waitForStressPasswordPrompt } from "../fixtures/stress-navigation.js";
 
 async function diagnostics(page: Page) {
   const response = await page.request.get("/api/fixture/transport-diagnostics");
@@ -65,9 +66,8 @@ for (const expires of [false, true])
         rows.every((v: any) => /^[a-f0-9]{24}$/.test(v.relay_reference)),
       ).toBe(true);
     } else {
-      await expect(page.getByLabel("Password", { exact: true })).toBeVisible({
-        timeout: 25000,
-      });
+      page.setDefaultTimeout(10000);
+      await waitForStressPasswordPrompt(page, console.log);
       expect(Date.now() - readyAt).toBeGreaterThanOrEqual(16000);
     }
     const metadata = await diagnostics(page);

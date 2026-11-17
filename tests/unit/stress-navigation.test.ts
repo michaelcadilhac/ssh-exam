@@ -4,6 +4,7 @@ import {
   openUnauthenticatedStressWelcome,
   waitForStressStartResponse,
   waitForStressExamSummary,
+  waitForStressPasswordPrompt,
   prepareStressPages,
 } from "../fixtures/stress-navigation.js";
 
@@ -210,6 +211,35 @@ describe("unauthenticated stress welcome navigation", () => {
     ).rejects.toBe(error);
     expect(page.goto).toHaveBeenCalledTimes(1);
     expect(page.waitForTimeout).not.toHaveBeenCalled();
+  });
+});
+
+describe("stress SSH password prompt", () => {
+  it("uses the existing sixty-second operation budget instead of the action default", async () => {
+    const waitFor = vi.fn().mockResolvedValue(undefined);
+    const page = { getByLabel: vi.fn(() => ({ waitFor })) };
+    const note = vi.fn();
+    await waitForStressPasswordPrompt(page as any, note);
+    expect(page.getByLabel).toHaveBeenCalledWith("Password", { exact: true });
+    expect(waitFor).toHaveBeenCalledExactlyOnceWith({
+      state: "visible",
+      timeout: 60000,
+    });
+    expect(JSON.parse(note.mock.calls[0][0])).toMatchObject({
+      phase: "password-prompt",
+      elapsed_ms: expect.any(Number),
+    });
+  });
+  it("preserves a failed connection without retrying sign-in or claiming readiness", async () => {
+    const failure = Error("Synthetic connection did not finish");
+    const waitFor = vi.fn().mockRejectedValue(failure);
+    const page = { getByLabel: vi.fn(() => ({ waitFor })) };
+    const note = vi.fn();
+    await expect(waitForStressPasswordPrompt(page as any, note)).rejects.toBe(
+      failure,
+    );
+    expect(waitFor).toHaveBeenCalledTimes(1);
+    expect(note).not.toHaveBeenCalled();
   });
 });
 
