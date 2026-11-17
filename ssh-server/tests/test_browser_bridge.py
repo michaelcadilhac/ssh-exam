@@ -22,6 +22,30 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_private_agent_diagnostics_are_bounded_and_never_overwrite_a_receipt(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(bridge, 'OUTPUT', Path(directory)):
+            result = types.SimpleNamespace(returncode=0, stdout=b'old' + b'x' * 65536)
+            with mock.patch.object(bridge.subprocess, 'run', return_value=result) as command:
+                bridge.retain_agent_diagnostics()
+                self.assertIn('--unit=exam-agent.service', command.call_args.args[0])
+                self.assertIn('--lines=120', command.call_args.args[0])
+                self.assertEqual(command.call_args.kwargs['timeout'], 10)
+                bridge.retain_agent_diagnostics()
+                command.assert_called_once()
+            root = Path(directory)
+            self.assertEqual((root/'agent-journal.log').read_bytes(), b'x' * 65536)
+            self.assertEqual(json.loads((root/'agent-diagnostics.json').read_text())['status'], 'captured')
+            for name in ('agent-journal.log', 'agent-diagnostics.json'):
+                self.assertEqual((root/name).stat().st_mode & 0o777, 0o600)
+
+    def test_unavailable_private_journal_remains_a_receipt_without_hiding_the_failure(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(bridge, 'OUTPUT', Path(directory)), \
+             mock.patch.object(bridge.subprocess, 'run', side_effect=subprocess.TimeoutExpired('journalctl', 10)):
+            bridge.retain_agent_diagnostics()
+            value = json.loads((Path(directory)/'agent-diagnostics.json').read_text())
+            self.assertEqual(value['status'], 'unavailable')
+            self.assertEqual(value['error'], 'TimeoutExpired')
+
     def test_snapshot_reobserves_retired_scope_without_publishing_partial_kernel_proof(self):
         attempt='11111111-1234-4234-8234-123456789abc'
         gone='exam-'+attempt+'-22222222-1234-4234-8234-123456789abc-aaaaaaaa-1234-4234-8234-123456789abc.scope'

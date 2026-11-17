@@ -637,9 +637,10 @@ it("partial technical recovery retries the exact accepted prior seed while prese
       },
       route = "/api/agent/monitoring-continue",
       request = {
-        type: "monitoring-technical-continue/v1",
+        type: "monitoring-technical-continue/v2",
         agent: "class",
         nonce: hash(randomUUID()),
+        exchange_nonce: hash(randomUUID()),
         previous_owner: f.owner,
         owner,
         continuity: {
@@ -661,6 +662,7 @@ it("partial technical recovery retries the exact accepted prior seed while prese
       const next = {
         ...request,
         nonce: hash(randomUUID()),
+        exchange_nonce: hash(randomUUID()),
         continuity: {
           owner,
           coverage_epoch: seed.bootstrap.coverage_epoch,
@@ -703,9 +705,16 @@ it("partial technical recovery retries the exact accepted prior seed while prese
       );
       const sameNonce = await f.authenticated(route, next);
       expect(sameNonce.statusCode, sameNonce.body).toBe(200);
-      expect(
-        JSON.parse(Buffer.from(sameNonce.json().payload, "base64").toString()),
-      ).toEqual(reply);
+      const sameReply = JSON.parse(
+        Buffer.from(sameNonce.json().payload, "base64").toString(),
+      );
+      expect(sameReply).toEqual({
+        ...reply,
+        capture_valid_for_ms: expect.any(Number),
+      });
+      expect(sameReply.capture_valid_for_ms).toBeLessThanOrEqual(
+        reply.capture_valid_for_ms,
+      );
       seed = reply;
       acceptedNonce = next.nonce;
     }
@@ -851,9 +860,10 @@ it("signed technical continuation proves the original live stream and cannot tur
         input_epoch: hash("technical handoff"),
       },
       request = {
-        type: "monitoring-technical-continue/v1",
+        type: "monitoring-technical-continue/v2",
         agent: "class",
         nonce: hash(randomUUID()),
+        exchange_nonce: hash(randomUUID()),
         previous_owner: f.owner,
         owner,
         continuity: {
@@ -891,12 +901,32 @@ it("signed technical continuation proves the original live stream and cannot tur
     });
     expect(seed.bootstrap.sequence).toBeGreaterThanOrEqual(evidence.sequence);
     expect(seed.capture_valid_for_ms).toBeGreaterThan(0);
-    const retry = await f.authenticated(route, request);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const retry = await f.authenticated(route, {
+      ...request,
+      exchange_nonce: hash("fresh technical proof exchange"),
+    });
     expect(retry.statusCode, retry.body).toBe(200);
+    const repeated = JSON.parse(
+      Buffer.from(retry.json().payload, "base64").toString(),
+    );
+    expect(repeated).toEqual({
+      ...seed,
+      exchange_nonce: hash("fresh technical proof exchange"),
+      capture_valid_for_ms: expect.any(Number),
+    });
+    expect(repeated.capture_valid_for_ms).toBeLessThanOrEqual(
+      seed.capture_valid_for_ms - 15,
+    );
     expect(
-      JSON.parse(Buffer.from(retry.json().payload, "base64").toString()),
-    ).toEqual(seed);
-    const { continuity, ...reviewed } = request;
+      (
+        await f.authenticated(route, {
+          ...request,
+          type: "monitoring-technical-continue/v1",
+        })
+      ).statusCode,
+    ).toBe(400);
+    const { continuity, exchange_nonce, ...reviewed } = request;
     expect(
       (
         await f.authenticated(route, {

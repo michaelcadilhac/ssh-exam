@@ -122,6 +122,29 @@ def root_command(*args):
     return subprocess.run(args, check=True, capture_output=True, text=True, timeout=30).stdout
 
 
+def retain_agent_diagnostics():
+    """Keep bounded private logs before the disposable journal disappears."""
+    receipt = OUTPUT / 'agent-diagnostics.json'
+    if receipt.exists():
+        return
+    status = {'scope': 'disposable guest exam-agent only'}
+    try:
+        result = subprocess.run(['/usr/bin/journalctl', '--unit=exam-agent.service',
+                                 '--no-pager', '--lines=120', '--output=short-unix', '--quiet'],
+                                capture_output=True, check=False, timeout=10)
+        data = result.stdout[-65536:]
+        with (OUTPUT / 'agent-journal.log').open('xb') as stream:
+            os.chmod(stream.fileno(), 0o600)
+            stream.write(data)
+        status.update(status='captured' if result.returncode == 0 else 'unavailable',
+                      exit=result.returncode, retained_bytes=len(data))
+    except (OSError, subprocess.TimeoutExpired) as error:
+        status.update(status='unavailable', error=type(error).__name__)
+    with receipt.open('x') as stream:
+        os.chmod(stream.fileno(), 0o600)
+        json.dump(status, stream)
+
+
 def scope_directory(attempt, unit):
     # gate.go uses attempt UUID, pane UUID and ManagementID UUID. Keep this exact
     # production shape; neither a short random suffix nor a filesystem hint is it.
@@ -1026,8 +1049,11 @@ def run_guest(config, prepare_roles, role_snapshot):
                 raise
             time.sleep(.5)
     print('BROWSER_NATIVE_SOURCE_SYNCED', flush=True)
-    if not bridge.done.wait(10680 if bridge.students == 70 else 780 if bridge.students == 16 else 540):
-        raise TimeoutError('Actual browser/native qualification did not finish')
+    try:
+        if not bridge.done.wait(10680 if bridge.students == 70 else 780 if bridge.students == 16 else 540):
+            raise TimeoutError('Actual browser/native qualification did not finish')
+    finally:
+        retain_agent_diagnostics()
     if bridge.gate_fault is not None: bridge.gate_fault.cancel()
     if bridge.coordinator_fault is not None:
         receipt = OUTPUT / 'coordinator-fault.json'

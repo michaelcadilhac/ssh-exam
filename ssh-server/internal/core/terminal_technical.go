@@ -10,7 +10,7 @@ import (
 // supervisor preparation/commit barrier as reviewed Continue. A continuity
 // witness is historical live identity, never a permit or a restored actor seal.
 
-const monitoringTechnicalContinue = "monitoring-technical-continue/v1"
+const monitoringTechnicalContinue = "monitoring-technical-continue/v2"
 
 // Metadata selects an actor to challenge; it is never restored authority.
 func technicalRecoveryCandidate(a *Attempt) bool {

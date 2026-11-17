@@ -87,7 +87,8 @@ export class Monitoring {
       until: number;
       deadline: number;
       reply: {
-        type: "monitoring-technical-continue/v1";
+        type: "monitoring-technical-continue/v2";
+        exchange_nonce: string;
         audience: string;
         nonce: string;
         previous_owner: MonitoringOwner;
@@ -661,6 +662,7 @@ export class Monitoring {
     const requestIdentity = JSON.stringify({
       ...request,
       continuity: undefined,
+      exchange_nonce: undefined,
     });
     if (
       cached &&
@@ -713,7 +715,13 @@ export class Monitoring {
           )
       )
         throw new MonitoringEvidenceUnavailable("technical-gap");
-      return cached.reply; // Never refresh a nonce's original capture age/cutoff.
+      // Keep the operation idempotent, but bind this network attempt and age
+      // its cached allowance. A fresh exchange must never refresh old facts.
+      return {
+        ...cached.reply,
+        exchange_nonce: request.exchange_nonce,
+        capture_valid_for_ms: Math.floor(cached.until - clock),
+      };
     }
     if (this.technicalProposals.size >= 512)
       throw new MonitoringEvidenceUnavailable("capacity");
@@ -745,7 +753,8 @@ export class Monitoring {
       throw new MonitoringEvidenceUnavailable("policy-blocked");
     const expires = (JSON.parse(authorization) as [number, number])[1];
     const reply = {
-      type: "monitoring-technical-continue/v1" as const,
+      type: "monitoring-technical-continue/v2" as const,
+      exchange_nonce: request.exchange_nonce,
       audience: agent,
       nonce: request.nonce,
       previous_owner: previous,

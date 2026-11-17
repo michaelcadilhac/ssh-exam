@@ -5,6 +5,19 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November17 local remediation: fresh technical-recovery proof exchanges
+
+Technical Continue v2 keeps the idempotent recovery operation separate from a
+fresh one-use native BOOTTIME proof exchange. Cached web replies keep their
+original cutoff and return only the remaining allowance. Live bounded exchanges
+pin concurrent and partially durable recovery; failed pre-transaction fetches
+cancel only their own exchange. Replay, expiry, mixed versions, changed ownership
+and lost live supervisor authority still refuse. No clock, monitoring window,
+account hold or eligibility policy changes. The matched candidate passes actual
+16-student/64-terminal outage, automatic shell recovery and protected completion,
+with original host preservation;70-person capacity and deployment remain separate.
+See [timing/state review and qualification](docs/technical-resume-timing.md).
+
 ## November 17 local remediation: SSH command capacity and instructor clarity
 
 The browser SSH client admits at most three concurrent signed command channels,

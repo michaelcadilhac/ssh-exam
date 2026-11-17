@@ -112,7 +112,7 @@ func initialGrantServer(t *testing.T, e *Engine, gateway ed25519.PrivateKey, han
 		}
 		if resumeRoute {
 			var q monitoringContinueRequest
-			if terminalDecode(payload, &q) != nil || (q.Type != "monitoring-continue/v1" && q.Type != monitoringFilesContinue) || q.Agent != "class" || !validMonitoringOwner(q.Owner) || !validMonitoringOwner(q.PreviousOwner) || !monitoringDigest.MatchString(q.Nonce) {
+			if terminalDecode(payload, &q) != nil || (q.Type != "monitoring-continue/v1" && q.Type != monitoringFilesContinue && q.Type != monitoringTechnicalContinue) || q.Agent != "class" || !validMonitoringOwner(q.Owner) || !validMonitoringOwner(q.PreviousOwner) || !monitoringDigest.MatchString(q.Nonce) || (q.Type == monitoringTechnicalContinue && (!monitoringDigest.MatchString(q.ExchangeNonce) || q.Continuity == nil)) {
 				t.Error("wrong authenticated continuation scope")
 				w.WriteHeader(400)
 				return

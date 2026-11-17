@@ -1090,7 +1090,7 @@ export async function createApp(
       return agent.signTiming(
         request.type === "monitoring-files-continue/v1"
           ? monitoring.continueFilesBootstrap(request, agent.id)
-          : request.type === "monitoring-technical-continue/v1"
+          : request.type === "monitoring-technical-continue/v2"
             ? monitoring.continueTechnicalBootstrap(request, agent.id)
             : monitoring.continueBootstrap(request, agent.id),
       );

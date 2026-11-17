@@ -88,7 +88,8 @@ export const nativeFilesContinuation = nativeMonitoringContinuation
 // anchor, not a permission restored from storage.
 export const nativeTechnicalContinuation = nativeMonitoringContinuation
   .extend({
-    type: z.literal("monitoring-technical-continue/v1"),
+    type: z.literal("monitoring-technical-continue/v2"),
+    exchange_nonce: digest,
     continuity: z
       .object({
         owner: monitoringOwner,

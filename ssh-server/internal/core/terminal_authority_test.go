@@ -182,7 +182,7 @@ func TestActualMonitoredBeginSupervisorBootstrapAndNonrestorableOwnership(t *tes
 						return monitoringContinueReply{}, 403
 					}
 				}
-				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v2", ControlRetention: "v1", PolicyReports: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
+				reply := monitoringContinueReply{Type: q.Type, Audience: q.Agent, Nonce: q.Nonce, ExchangeNonce: q.ExchangeNonce, PreviousOwner: q.PreviousOwner, Owner: q.Owner, AuthorizationExpires: approvalUntil.Load(), Expires: min(Millis()+30000, approvalUntil.Load()), CaptureValidFor: 15000, Bootstrap: &monitoringBootstrap{Type: "monitoring-bootstrap/v2", ControlRetention: "v1", PolicyReports: "v1", Owner: q.Owner, CoverageEpoch: strings.Repeat("f", 64), Sequence: 1}}
 				switch resumeMode.Load() {
 				case 1:
 					reply.Owner.InputEpoch = Token()

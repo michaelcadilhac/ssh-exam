@@ -43,6 +43,7 @@ type terminalAuthorityRequest struct {
 	Grant               *GrantBinding    `json:"grant,omitempty"`
 	Intent              string           `json:"intent,omitempty"`
 	Nonce               string           `json:"nonce,omitempty"`
+	ExchangeNonce       string           `json:"exchange_nonce,omitempty"`
 	Frame               *SignedFrame     `json:"frame,omitempty"`
 	State               string           `json:"state,omitempty"`
 	Start               int64            `json:"start,omitempty"`
@@ -591,13 +592,18 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		if err != nil {
 			reply.Error = err.Error()
 		}
+	case "cancel-technical-exchange":
+		if err := s.cancelTechnicalProofExchange(q.Owner, q.Nonce, q.ExchangeNonce); err != nil {
+			reply.Error = err.Error()
+		}
 	case "prepare-resume", "prepare-resume-recovery", "prepare-technical-resume", "prepare-technical-resume-recovery":
 		var resume terminalResumePrepared
 		var err error
+		technical := q.Op == "prepare-technical-resume" || q.Op == "prepare-technical-resume-recovery"
 		if q.Op == "prepare-resume" || q.Op == "prepare-technical-resume" {
-			resume, err = s.prepareAuthorityResume(q.Owner, q.Generation)
+			resume, err = s.prepareAuthorityResume(q.Owner, q.Generation, technical)
 		} else {
-			resume, err = s.prepareAuthorityResumeRecovery(q.Owner, q.Nonce)
+			resume, err = s.prepareAuthorityResumeRecovery(q.Owner, q.Nonce, technical)
 		}
 		if err != nil {
 			reply.Error = err.Error()
@@ -614,9 +620,15 @@ func (s *terminalSupervisor) serveAuthority(c *net.UnixConn, exe *os.File, body 
 		// installed transition. Return the ACTUAL held actor separately.
 		owner := runtime.owner
 		s.mu.Unlock()
-		if q.Op == "prepare-technical-resume" || q.Op == "prepare-technical-resume-recovery" {
+		if technical {
+			resume, err = s.prepareTechnicalProofExchange(owner, resume)
+			if err != nil {
+				reply.Error = err.Error()
+				return
+			}
 			continuity, err := s.technicalContinuity(owner)
 			if err != nil {
+				_ = s.cancelTechnicalProofExchange(owner, resume.Nonce, resume.ExchangeNonce)
 				reply.Error = err.Error()
 				return
 			}

@@ -282,6 +282,7 @@ func (e *Engine) local(c *net.UnixConn) {
 		})
 	}
 	if err != nil {
+		log.Printf("protected channel policy check failed: attempt=%s pane=%s: %v", pending.capability.ID, pending.capability.Pane, err)
 		json.NewEncoder(c).Encode(map[string]string{"error": err.Error()})
 		return
 	}
