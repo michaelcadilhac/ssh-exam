@@ -1,54 +1,37 @@
 # Manual pre-final stress suite — FULL RUN INCOMPLETE
 
-November 16: manually invoked stress suite and agent-written report per full run,
-including independent Prof UI/UX review. Approved target: 70 synthetic students,
-four terminals each, 90 real minutes and simultaneous protected submission. No
-institutional MFA, real student accounts or external email. Guarded disposable
-csc-sys testing is authorized; no product deployment is requested.
+Approved:70synthetic students/four terminals each,90real minutes at peak and
+simultaneous protected submission. No institutional MFA, actual student accounts
+or outbound email. Marco is the selected browser generator; csc-sys hosts only
+the guarded disposable native guest. No production change/push/deployment.
 
-Harness 86 checks, 861 application checks and three normally gated actual
-CLI/export/bwrap workflows pass. Native races pass after four permission-fixture
-corrections. Prof's rendered review is complete with open wording findings.
-The narrow admin bulk-target fix passes the real cancel/import/bulk-edit workflow
-and all 30 editor guards. Fresh 16-client WASM sign-in and native editor, timer,
-16-student recovery and collector-crash workflows pass, with independent cleanup
-and preservation receipts. Earlier failures and unexplained extra-expiry
-observations remain documented. The corrected full browser suite completed with
-360 passed, three failed and five explicit skips. Later HTTP 429 responses support
-the shared-IP rate finding; three relay scenarios pass separately in a fresh
-five-case run that also verifies both local UI fixes. Neither fresh success nor
-fixture repairs erase the failed full-run receipts. All original images preserved.
+Implemented/tested:manual opt-in runner, per-phase manifests/receipts, bounded
+Marco generator, private workspace scratch, independent preservation/cleanup;
+861application checks/three gated CLI/export/bwrap workflows, native races,
+86harness checks,16-client WASM sign-in and editor/timer/recovery/collector-crash
+qualification. Prof reviewed28rendered UX screenshots. Full browser2:
+360passed/threefailed/fiveskipped; fresh five affected/protocol cases pass separately.
+No full-final-candidate browser pass claimed. Original documentation images remain.
 
-The latest rehearsal stopped safely at 22 active students/88 panes on the generator
-memory floor. The instructor selected Marco as generator; live isolation/media/
-HTTP/WebSocket smoke and independent worker/browser/tunnel cleanup pass. Harness
-now passes83 checks. The70-person rehearsal and90-minute peak remain outstanding.
-November17: Marco rehearsal10 reached39students/156panes with GCC/GDB; old30s
-Start response observation timed out, with existing attempts still ACTIVE/gen0.
-The stopped fixtures are independently verified clean with FULL native preservation.
-The observer now separates preparation/response60s budgets; ten focused checks and
-typecheck pass. Full70-person/90-minute attempt is next. No product fix or root
-cause is inferred from that observer timeout; later teardown locks are expected.
-The first full attempt then failed on a covered-pane driver click. Two students
-passed GCC/GDB; all three started attempts were ACTIVE/gen0. Exact cleanup/FULL
-preservation pass. The driver now uses the visible Terminals menu; focused
-RED→GREEN, all six terminal-readiness UI cases and typecheck pass. No product
-Arrange fix is claimed. Full attempt2 is next;70/90/protected completion is open.
-Full2 failed55.3min after52GCC/GDB students/208panes;53rdStart succeeded but one
-command echo was absent. All53 failure states ACTIVE/gen0. Concurrent/tmp user
-quota/diagnostic failure confirmed; primary input cause unproved. All exact cleanup
-passes;118,474 raw files from two stopped failed fixtures were hash-verified onto
-workspace disk before removing only their/tmp originals. New private workspace
-scratch (40GiB startup/8GiB live), per-command public pane selection and matched
-finite four-hour test bounds pass86harness/10observer/sixUI checks, typecheck and
-actual Marco/workspace smoke6. Peak remains90real minutes; earlier clocks/records
-unchanged. Current v11 updates only two fixture scripts/checksums;382native inputs
-and16reused files unchanged. Next full attempt3; no70/90pass or deployment.
-Confirmed P1 baselines: installed 32-connection ceiling is below 70, and the shared
-anonymous 180/minute bucket rejects 30 of 210 minimal cold-load requests. Neither
-is changed in production; the isolated candidate uses 96 compiled workers.
-Plan: docs/stress-testing.md. Reports: reports/stress/; private evidence: var/stress/.
-No production configuration, services or student data changed; nothing deployed.
+Endurance incomplete. Full2 reached52GCC/GDB students/208panes before missing input;
+all53started attempts ACTIVE/gen0. Concurrent/tmp quota failure confirmed,
+causality unproved;118,474raw files hash-preserved on workspace. Full3 refused a
+wrong manifest before allocating a guest;v12 corrects manifest only.
+Full4 failed12.1min on a normal terminal-menu click after14GCC/GDB students;
+15thStart200;all15ACTIVE/gen0. Exact native/Marco/local cleanup passes, original
+native preservation FULL. Historical hit-test cause remains unproved. A focused
+capture-verification failure reproduces inert-toolbar interception. Corrected
+driver waits for real input-gate release under the60s contract; both focused
+regressions pass locally and on Marco, without early input/incident or force clicks.
+All8affected readiness regressions/final typecheck pass. Next:local commit, fresh
+full70/90endurance with
+input-gate diagnostics, then agent report from actual completion/failure receipts.
+
+Open P1 findings:installed32worker limit<70; shared anonymous180/minute budget
+rejects30of210minimal cold loads. Isolated96worker configuration does not fix
+production or qualify web/native co-location. Suggested solutions in the report.
+Plan:docs/stress-testing.md; checkpoint:docs/todo-current-checkpoint.md;
+report:reports/stress/20261116T194355Z/report.md; raw:var/stress/20261116T194355Z/.
 
 # csc-sys migration — ACTIVATED AND VERIFIED ONLINE
 

@@ -1,6 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
-import { fixture, begin, gate, readyTerminal, selectVerifiedTerminal } from "./transition-fixture.js";
+import {
+  fixture,
+  begin,
+  gate,
+  readyTerminal,
+  selectVerifiedTerminal,
+} from "./transition-fixture.js";
 
 for (const framed of [false, true]) {
   test(`${framed ? "framed" : "legacy"} terminal blocks early keys and preserves the first key after its actual open acknowledgement`, async ({
@@ -164,28 +170,247 @@ test("Enter while a new terminal is opening cannot activate New terminal again",
   }
 });
 
-test("terminal selection reaches an earlier pane while another window covers it", async ({ page }, info) => {
+test("terminal selection reaches an earlier pane while another window covers it", async ({
+  page,
+}, info) => {
   const f = await fixture(page);
   await begin(page, f);
   await readyTerminal(page, 1);
   await page.getByRole("button", { name: "New terminal", exact: true }).click();
   await expect(page.locator('.terminal[aria-busy="false"]')).toHaveCount(2);
-  const ids = await page.locator(".winbox").evaluateAll(elements => elements.map(element => element.id));
-  const coveredBy = await page.locator(`.winbox[id="${ids[0]}"] .xterm-screen`).evaluate(element => {
-    const r = element.getBoundingClientRect();
-    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest(".winbox")?.id;
-  });
+  const ids = await page
+    .locator(".winbox")
+    .evaluateAll((elements) => elements.map((element) => element.id));
+  const coveredBy = await page
+    .locator(`.winbox[id="${ids[0]}"] .xterm-screen`)
+    .evaluate((element) => {
+      const r = element.getBoundingClientRect();
+      return document
+        .elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+        ?.closest(".winbox")?.id;
+    });
   expect(coveredBy).toBe(ids[1]);
   await page.screenshot({ path: info.outputPath("overlapping-terminals.png") });
-  const opened = f.model.messages.filter(message => message.type === "open");
+  const opened = f.model.messages.filter((message) => message.type === "open");
   expect(opened).toHaveLength(2);
-  for (const [index, text] of [[0, "first-only"], [1, "second-only"], [0, "first-again"]] as const) {
-    const before = f.model.messages.filter(message => message.type === "input").length;
-    await selectVerifiedTerminal(page, page.locator(`.winbox[id="${ids[index]}"]`));
+  for (const [index, text] of [
+    [0, "first-only"],
+    [1, "second-only"],
+    [0, "first-again"],
+  ] as const) {
+    const before = f.model.messages.filter(
+      (message) => message.type === "input",
+    ).length;
+    await selectVerifiedTerminal(
+      page,
+      page.locator(`.winbox[id="${ids[index]}"]`),
+    );
     await page.keyboard.type(text);
-    await expect.poll(() => f.model.messages.filter(message => message.type === "input").slice(before).map(message => message.data).join("")).toBe(text);
-    expect(f.model.messages.filter(message => message.type === "input").slice(before).every(message => message.pane === opened[index].pane)).toBe(true);
+    await expect
+      .poll(() =>
+        f.model.messages
+          .filter((message) => message.type === "input")
+          .slice(before)
+          .map((message) => message.data)
+          .join(""),
+      )
+      .toBe(text);
+    expect(
+      f.model.messages
+        .filter((message) => message.type === "input")
+        .slice(before)
+        .every((message) => message.pane === opened[index].pane),
+    ).toBe(true);
   }
-  await page.screenshot({ path: info.outputPath("selected-earlier-terminal.png") });
+  await page.screenshot({
+    path: info.outputPath("selected-earlier-terminal.png"),
+  });
   await expect(page.locator(".winbox")).toHaveCount(2);
+});
+
+test("terminal menu remains clickable across arranged fullscreen workspaces", async ({
+  browser,
+}, info) => {
+  test.setTimeout(90000);
+  const contexts = [];
+  try {
+    for (let student = 0; student < 8; student++) {
+      const context = await browser.newContext();
+      contexts.push(context);
+      const page = await context.newPage();
+      const f = await fixture(page);
+      await begin(page, f);
+      for (let pane = 1; pane < 4; pane++) {
+        await page
+          .getByRole("button", { name: "New terminal", exact: true })
+          .click();
+        await expect(page.locator('.terminal[aria-busy="false"]')).toHaveCount(
+          pane + 1,
+        );
+      }
+      await page
+        .getByRole("button", { name: "Arrange terminals", exact: true })
+        .click();
+      const opened = f.model.messages.filter(
+        (message) => message.type === "open",
+      );
+      for (const pane of [0, 0, 1, 2, 3, 0]) {
+        const before = f.model.messages.filter(
+          (message) => message.type === "input",
+        ).length;
+        try {
+          await selectVerifiedTerminal(page, page.locator(".winbox").nth(pane));
+        } catch (error) {
+          await page.screenshot({
+            path: info.outputPath(`student-${student}-menu.png`),
+          });
+          const menu = page
+            .getByLabel("Open terminals")
+            .getByRole("button")
+            .first();
+          const hit = await menu.evaluate((element) => {
+            const r = element.getBoundingClientRect();
+            return {
+              rect: r.toJSON(),
+              fullscreen: document.fullscreenElement?.className,
+              hits: document
+                .elementsFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+                .map((e) => ({
+                  tag: e.tagName,
+                  className: e.className,
+                  inert: (e as HTMLElement).inert,
+                  pointerEvents: getComputedStyle(e).pointerEvents,
+                })),
+              ancestors: [
+                element,
+                ...(function* () {
+                  for (let p = element.parentElement; p; p = p.parentElement)
+                    yield p;
+                })(),
+              ].map((e) => ({
+                tag: e.tagName,
+                className: e.className,
+                inert: (e as HTMLElement).inert,
+                zIndex: getComputedStyle(e).zIndex,
+                pointerEvents: getComputedStyle(e).pointerEvents,
+              })),
+            };
+          });
+          await writeFile(
+            info.outputPath(`student-${student}-hit.json`),
+            JSON.stringify(hit, null, 2),
+          );
+          throw error;
+        }
+        const marker = `student-${student}-pane-${pane}`;
+        await page.keyboard.type(marker);
+        await expect
+          .poll(() =>
+            f.model.messages
+              .filter((message) => message.type === "input")
+              .slice(before)
+              .map((message) => message.data)
+              .join(""),
+          )
+          .toBe(marker);
+        expect(
+          f.model.messages
+            .filter((message) => message.type === "input")
+            .slice(before)
+            .every((message) => message.pane === opened[pane].pane),
+        ).toBe(true);
+      }
+    }
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+  }
+});
+
+test("terminal selection waits for verified capture recovery without bypassing inert controls", async ({
+  page,
+}, info) => {
+  test.setTimeout(30000);
+  const f = await fixture(page);
+  const recovered = gate();
+  try {
+    await begin(page, f);
+    for (let pane = 1; pane < 4; pane++) {
+      await page
+        .getByRole("button", { name: "New terminal", exact: true })
+        .click();
+      await expect(page.locator('.terminal[aria-busy="false"]')).toHaveCount(
+        pane + 1,
+      );
+    }
+    await page
+      .getByRole("button", { name: "Arrange terminals", exact: true })
+      .click();
+    Object.assign(f.model.attempt, { monitoring_mode: "v1" });
+    f.send();
+    let rejected = false;
+    await page.route("**/capture-challenges", async (route) => {
+      if (!rejected) {
+        rejected = true;
+        return route.fulfill({
+          status: 503,
+          json: { error: "Synthetic capture verification unavailable" },
+        });
+      }
+      await recovered.promise;
+      return route.fulfill({
+        json: {
+          challenge: "synthetic-recovered",
+          after_sequence: 0,
+          valid_for_ms: 15000,
+        },
+      });
+    });
+    await expect(
+      page.getByText("Monitoring check delayed · input paused", {
+        exact: true,
+      }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(".exam-toolbar")).toHaveAttribute("inert", "");
+    const inputCount = f.model.messages.filter(
+      (message) => message.type === "input",
+    ).length;
+    const selection = selectVerifiedTerminal(
+      page,
+      page.locator(".winbox").first(),
+    ).then(
+      () => null,
+      (error) => error as Error,
+    );
+    await page.keyboard.type("must-not-send");
+    await page.waitForTimeout(6000);
+    expect(
+      f.model.messages.filter((message) => message.type === "input"),
+    ).toHaveLength(inputCount);
+    await page.screenshot({
+      path: info.outputPath("capture-gate-blocked.png"),
+    });
+    recovered.release();
+    const error = await selection;
+    expect(error?.message).toBeUndefined();
+    await expect(page.locator(".exam-toolbar")).not.toHaveAttribute(
+      "inert",
+      "",
+    );
+    await page.keyboard.type("verified-recovered-input");
+    await expect
+      .poll(() =>
+        f.model.messages
+          .filter((message) => message.type === "input")
+          .slice(inputCount)
+          .map((message) => message.data)
+          .join(""),
+      )
+      .toBe("verified-recovered-input");
+    expect(
+      f.model.messages.filter((message) => message.type === "incident"),
+    ).toEqual([]);
+    expect(f.model.attempt.state).toBe("ACTIVE");
+  } finally {
+    recovered.release();
+  }
 });

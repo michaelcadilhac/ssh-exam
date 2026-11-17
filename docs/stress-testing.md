@@ -25,47 +25,42 @@ Production state, deadlines, services and submissions remain untouched.
    UX findings, suggested solutions and severity. Preserve raw evidence privately
    under var/stress/RUN/. Commit coherent validated suite/docs locally; no push/deploy.
 
-Current status: 861 application checks pass, with three normally gated real
-CLI/export/bwrap entries passing separately. Harness 86 checks, native races,
-16-client WASM sign-in and native editor/timer/recovery/collector-crash workflows
-pass. Prof's rendered review is complete. The corrected full browser run completed
-360 passed, three failed and five explicit skips. The failures remain recorded;
-later rate-limit responses support the shared anonymous-budget finding. All three
-relay scenarios and both local UI fixes pass in a separate fresh five-case run.
-That does not convert the failed full run into a pass. Earlier fixture repairs
-and recovery observations remain in the report; no backend timing fix is claimed.
-The seventh rehearsal safely refused further load at22students/88terminals when
-the generator's available RAM fell below768MiB. All22attempts were ACTIVE;
-there is no70-student or90-minute pass. The instructor selected Marco as the larger
-browser generator; its live two-context smoke and independently verified cleanup
-pass. Rehearsal10 reached39students/156panes with GCC/GDB, then its old30s Start
-observer timed out. The existing attempts were ACTIVE/generation0 at failure;
-later locks followed context teardown. Capture preparation versus pending HTTP
-response is not established by that receipt. The corrected observer gives each
-stage the existing60s operation budget, with ten focused checks/typecheck and
-bounded setup-network diagnostics. Exact guest/browser/local cleanup is verified.
-The full70-person/90-minute attempt is next; it includes the remaining ramp and
-completion path. All failed rehearsals remain failed, not promoted to full runs.
-Full attempt1 then stopped early on the driver's covered-pane click after two
-GCC/GDB students; all three started attempts were ACTIVE/gen0 at failure. Actual
-overlap RED→GREEN and all six terminal-readiness UI checks qualify selection via
-the existing visible Terminals menu. Exact native/browser/local cleanup passes.
-This corrects the test workflow, not the product Arrange behavior. Full2 reached
-52GCC/GDB students/208panes;53rdStart succeeded, then one command echo was absent.
-All53 failure states were ACTIVE/gen0. Concurrent/tmp user-quota exhaustion and
-fixture diagnostic failure are confirmed; their causality for missing input is
-unproved. Exact cleanup passes. Both large failed scratch trees were hash-verified
-onto workspace storage before removing their temporary originals; raw evidence
-remains private in each phase's local-fixture-archive. New startup/live local-disk
-guards, per-command public pane selection and matched finite four-hour bounds
-pass86harness/10observer/sixUI checks, types and actual Marco/workspace smoke6.
-Full attempt3 is next; there is still no70-person/90-minute pass.
-Independent functional/fault phases continue. The installed32-connection limit
-is below the70-student target; the isolated candidate uses96 with compiled
-connection workers. This is a test configuration, not a production change.
-No maintenance action has been needed. The installed baseline remains
-ed09efc/schema37; local source also includes previous unpushed CLI work.
-The per-run report must name this distinction and retain all failed rehearsals.
+Current status:861application checks and three normally gated real CLI/export/
+bwrap workflows pass. Native races,86harness checks,16-client WASM sign-in and
+native editor/timer/recovery/collector-crash workflows pass, with independently
+verified exact cleanup and original preservation. Full browser2 completed360passes,
+threefailures and fiveskips; a fresh five-case run passes separately, without
+erasing that failed full receipt. Prof reviewed28rendered UX screenshots.
+
+There is no70-student/90-minute/protected-completion pass. Marco is the approved,
+qualified generator. Rehearsal10 reached39GCC/GDB students/156panes; full2 reached
+52/208before a command echo was absent. All53failure states were ACTIVE/gen0.
+Concurrent local/tmp quota exhaustion is confirmed; its causality is unproved.
+118,474raw files from two stopped fixtures were hash-preserved on workspace disk
+before deleting temporary originals. Private scratch now requires40GiB initially/
+8GiB live and is routed to workspace storage. Guest/browser/bridges and synthetic
+allowances use matched finite four-hour bounds, retaining original deadlines.
+Full3 rejected an incorrect guest manifest before allocation;v12 corrects only
+that manifest, with original binaries and all refused evidence retained.
+
+Full4 failed12.1min after14GCC/GDB students/56panes;15thStart200, then a normal menu
+click was intercepted by the workspace. All15failure states ACTIVE/gen0. Native,
+Marco and local cleanup independently pass; native preservation FULL. The precise
+historical cause remains unproved. A genuine capture-verification failure
+reproduces the inert-toolbar interception. The corrected driver waits for actual
+verified release within the existing60s operation budget, with no force-click or
+early input. Both new focused cases pass locally and on Marco: eight fullscreen
+workspaces/four arranged panes and six-second blocked-capture/recovery/no-incident.
+All8affected readiness cases and final typecheck pass. The next endurance records
+timestamped input-gate transitions and selection waits;
+it does not silently convert monitoring delays into a pass or student violation.
+
+Confirmed P1 baselines remain open:installed32connection workers<70; shared
+anonymous180requests/minute bucket rejects30of210minimal cold-load requests.
+The isolated96worker candidate is a test configuration, not a production fix or
+co-location qualification. No production service, configuration or student record
+has changed; baseline remainsed09efc/schema37. No maintenance, push or deployment.
+Per-run report and raw receipts preserve all failures and simulated boundaries.
 
 ## Explicit entry point
 

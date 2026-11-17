@@ -7,6 +7,7 @@ import {
   type Locator,
 } from "@playwright/test";
 import { createHash } from "node:crypto";
+import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
 // Deliberate reload/recovery scenarios must confirm leaving an unfinished
 // workspace. Do not silently dismiss the new protection and test a stale page.
@@ -435,13 +436,30 @@ export async function ready(page: Page, webcam = false) {
 // Window creation precedes the verified open/input acknowledgment. Pin the
 // intended windows and wait for that real boundary before driving a keyboard.
 export async function selectVerifiedTerminal(page: Page, pane: Locator) {
-  await expect(pane.locator(".terminal[aria-busy]")).toHaveAttribute("aria-busy", "false", { timeout: 10000 });
+  const deadline = Date.now() + OPERATION_TIMEOUT_MS;
+  const remaining = () => Math.max(1, deadline - Date.now());
+  await expect(pane.locator(".terminal[aria-busy]")).toHaveAttribute(
+    "aria-busy",
+    "false",
+    { timeout: 10000 },
+  );
   const input = pane.locator(".xterm-helper-textarea");
   await expect(input).toBeEnabled();
   const name = (await pane.locator(".wb-title").textContent())?.trim() || "";
   expect(name).not.toBe("");
-  await page.locator(".workspace-tools > summary").click({ timeout: 5000 });
-  await page.getByLabel("Open terminals").getByRole("button", { name, exact: true }).click({ timeout: 5000 });
+  // An open acknowledgement does not make an inert toolbar usable. Temporary
+  // challenged-capture recovery keeps both toolbar and panes inert; wait for its
+  // actual release, never force a click or send keys through that barrier.
+  await expect(page.locator(".exam-toolbar")).not.toHaveAttribute("inert", "", {
+    timeout: remaining(),
+  });
+  await page
+    .locator(".workspace-tools > summary")
+    .click({ timeout: remaining() });
+  await page
+    .getByLabel("Open terminals")
+    .getByRole("button", { name, exact: true })
+    .click({ timeout: remaining() });
   await expect(input).toBeFocused();
   return pane;
 }

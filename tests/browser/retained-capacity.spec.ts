@@ -1,9 +1,17 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { z } from "zod";
 import { mkdir, readFile, statfs, writeFile } from "node:fs/promises";
-import { simulatedMedia, ready, readyTerminal, selectVerifiedTerminal } from "./transition-fixture.js";
+import {
+  simulatedMedia,
+  ready,
+  readyTerminal,
+  selectVerifiedTerminal,
+} from "./transition-fixture.js";
 import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
-import { openUnauthenticatedStressWelcome, waitForStressStartResponse } from "../fixtures/stress-navigation.js";
+import {
+  openUnauthenticatedStressWelcome,
+  waitForStressStartResponse,
+} from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
@@ -18,20 +26,34 @@ async function generatorHeadroom() {
       "Load-generator memory headroom is below768MiB; abort only the owned synthetic test before affecting other applications",
     );
   const scratch = process.env.EXAM_STRESS_LOCAL_SCRATCH;
-  if (!scratch) throw Error("The70-person run requires its private workspace scratch; use the manual stress runner");
+  if (!scratch)
+    throw Error(
+      "The70-person run requires its private workspace scratch; use the manual stress runner",
+    );
   const filesystem = await statfs(scratch);
-  if (Number(filesystem.bavail) * Number(filesystem.bsize) < 8 * 1024**3)
-    throw Error("Local stress scratch has less than8GiB headroom; stop only the owned synthetic test before recording writes fail");
+  if (Number(filesystem.bavail) * Number(filesystem.bsize) < 8 * 1024 ** 3)
+    throw Error(
+      "Local stress scratch has less than8GiB headroom; stop only the owned synthetic test before recording writes fail",
+    );
   const remote = process.env.EXAM_STRESS_GENERATOR_STATUS;
   if (remote) {
-    const status = z.object({
-      host: z.literal("marco"), active: z.literal(true),
-      observed_local_ms: z.number().int(),
-      available_bytes: z.number().int().nonnegative(),
-      minimum_available_bytes: z.literal(4 * 1024 ** 3),
-    }).parse(JSON.parse(await readFile(remote, "utf8")));
-    if (Date.now() < status.observed_local_ms || Date.now() - status.observed_local_ms > 20000 || status.available_bytes < status.minimum_available_bytes)
-      throw Error("Remote browser generator health/headroom is unavailable; abort the owned synthetic test");
+    const status = z
+      .object({
+        host: z.literal("marco"),
+        active: z.literal(true),
+        observed_local_ms: z.number().int(),
+        available_bytes: z.number().int().nonnegative(),
+        minimum_available_bytes: z.literal(4 * 1024 ** 3),
+      })
+      .parse(JSON.parse(await readFile(remote, "utf8")));
+    if (
+      Date.now() < status.observed_local_ms ||
+      Date.now() - status.observed_local_ms > 20000 ||
+      status.available_bytes < status.minimum_available_bytes
+    )
+      throw Error(
+        "Remote browser generator health/headroom is unavailable; abort the owned synthetic test",
+      );
     return status.available_bytes;
   }
   return available;
@@ -124,8 +146,19 @@ test(
     let bootstrap = async (): Promise<unknown> => null;
     let signInEvents: { event: string; path: string; type?: string }[] = [];
     let setupStudent = "";
-    let setupNetwork: { event: string; path: string; elapsed_ms: number; status?: number }[] = [];
-    let lastCommand: { student: string; window: string; pane: number; marker: string; stage: string } | null = null;
+    let setupNetwork: {
+      event: string;
+      path: string;
+      elapsed_ms: number;
+      status?: number;
+    }[] = [];
+    let lastCommand: {
+      student: string;
+      window: string;
+      pane: number;
+      marker: string;
+      stage: string;
+    } | null = null;
     const fleet: {
       context: BrowserContext;
       page: Page;
@@ -173,8 +206,28 @@ test(
     ) => {
       const id = entry.panes[pane];
       expect(id).toMatch(/^[a-zA-Z0-9_-]+$/);
-      lastCommand = { student: entry.username, window: id, pane, marker, stage: "selecting" };
-      const terminal = await selectVerifiedTerminal(entry.page, entry.page.locator(`.winbox[id="${id}"]`));
+      lastCommand = {
+        student: entry.username,
+        window: id,
+        pane,
+        marker,
+        stage: "selecting",
+      };
+      const selectionStarted = performance.now();
+      const terminal = await selectVerifiedTerminal(
+        entry.page,
+        entry.page.locator(`.winbox[id="${id}"]`),
+      );
+      const selectionMs = Math.round(performance.now() - selectionStarted);
+      if (stressRun && selectionMs > 1000)
+        console.log(
+          JSON.stringify({
+            phase: "terminal-selection-wait",
+            student: entry.username,
+            pane,
+            elapsed_ms: selectionMs,
+          }),
+        );
       // Paste a normal command through the real terminal input path. Artificial
       // per-character delays make fleet ramp time measure the generator instead.
       lastCommand.stage = "typing";
@@ -202,6 +255,33 @@ test(
         page.setDefaultTimeout(10000);
         bootstrap = await observeWasmBootstrap(page);
         await simulatedMedia(page, !!stressRun);
+        if (stressRun)
+          await page.addInitScript(() => {
+            const evidence = {
+              transitions: 0,
+              events: [] as { at_ms: number; inert: boolean; status: string }[],
+            };
+            (window as any).__stressInputGates = evidence;
+            let previous: boolean | undefined;
+            new MutationObserver(() => {
+              const header =
+                document.querySelector<HTMLElement>(".exam-toolbar");
+              if (!header || previous === header.inert) return;
+              previous = header.inert;
+              evidence.transitions++;
+              if (evidence.events.length < 1024)
+                evidence.events.push({
+                  at_ms: Math.round(performance.now()),
+                  inert: header.inert,
+                  status: header.innerText.slice(0, 500),
+                });
+            }).observe(document, {
+              subtree: true,
+              attributes: true,
+              childList: true,
+              characterData: true,
+            });
+          });
         page.on("response", async (response) => {
           if (!recovering) return;
           const path = new URL(response.url()).pathname;
@@ -232,13 +312,28 @@ test(
         if (stressRun) {
           const record = (event: string, url: string, status?: number) => {
             const path = new URL(url).pathname;
-            if (!observingSetup || !/^\/api\/student\/attempts\/[^/]+\/(?:frames(?:\/(?:challenge|challenged))?|monitoring-readiness|begin)$/.test(path)) return;
+            if (
+              !observingSetup ||
+              !/^\/api\/student\/attempts\/[^/]+\/(?:frames(?:\/(?:challenge|challenged))?|monitoring-readiness|begin)$/.test(
+                path,
+              )
+            )
+              return;
             if (setupEvents.length >= 64) setupEvents.shift();
-            setupEvents.push({ event, path, elapsed_ms: Math.round(performance.now() - setupStarted), ...(status === undefined ? {} : { status }) });
+            setupEvents.push({
+              event,
+              path,
+              elapsed_ms: Math.round(performance.now() - setupStarted),
+              ...(status === undefined ? {} : { status }),
+            });
           };
-          page.on("request", request => record("requested", request.url()));
-          page.on("response", response => record("response", response.url(), response.status()));
-          page.on("requestfailed", request => record("failed", request.url()));
+          page.on("request", (request) => record("requested", request.url()));
+          page.on("response", (response) =>
+            record("response", response.url(), response.status()),
+          );
+          page.on("requestfailed", (request) =>
+            record("failed", request.url()),
+          );
         }
         page.on("websocket", (socket) => {
           const path = new URL(socket.url()).pathname;
@@ -861,6 +956,14 @@ test(
               protected: completed.snapshots.length,
               simulated_media: true,
               institutional_mfa: false,
+              input_gates: await Promise.all(
+                fleet.map(async (entry) => ({
+                  username: entry.username,
+                  evidence: await entry.page.evaluate(
+                    () => (window as any).__stressInputGates,
+                  ),
+                })),
+              ),
               timing: fleet.map((entry) => ({
                 username: entry.username,
                 ...entry.timing,
@@ -1049,8 +1152,16 @@ test(
     } catch (error) {
       await mkdir(test.info().outputDir, { recursive: true });
       const failure = test.info().outputPath("capacity-failure.json");
-      const failedEntry = fleet.find(entry => entry.username === lastCommand?.student);
-      if (failedEntry) await failedEntry.page.screenshot({ path: test.info().outputPath("last-command-page.png"), timeout: 5000 }).catch(() => {});
+      const failedEntry = fleet.find(
+        (entry) => entry.username === lastCommand?.student,
+      );
+      if (failedEntry)
+        await failedEntry.page
+          .screenshot({
+            path: test.info().outputPath("last-command-page.png"),
+            timeout: 5000,
+          })
+          .catch(() => {});
       const publicStates = await Promise.all(
         fleet.map(async (entry) => {
           const browser = await entry.page
@@ -1061,7 +1172,32 @@ test(
               activeTag: document.activeElement?.tagName,
               activeLabel: document.activeElement?.getAttribute("aria-label"),
               activeWindow: document.activeElement?.closest(".winbox")?.id,
-              feedback: [...document.querySelectorAll<HTMLElement>('[role="status"]')].filter(element => element.getClientRects().length).map(element => element.innerText.slice(0, 400)),
+              toolbarInert:
+                document.querySelector<HTMLElement>(".exam-toolbar")?.inert,
+              inputGates: (window as any).__stressInputGates,
+              menuHit: (() => {
+                const button = document.querySelector<HTMLButtonElement>(
+                  ".terminal-switcher button",
+                );
+                if (!button) return null;
+                const r = button.getBoundingClientRect();
+                return {
+                  rect: r.toJSON(),
+                  inertAncestor: button.closest("[inert]")?.className,
+                  hits: document
+                    .elementsFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+                    .slice(0, 6)
+                    .map((element) => ({
+                      tag: element.tagName,
+                      className: element.className,
+                    })),
+                };
+              })(),
+              feedback: [
+                ...document.querySelectorAll<HTMLElement>('[role="status"]'),
+              ]
+                .filter((element) => element.getClientRects().length)
+                .map((element) => element.innerText.slice(0, 400)),
               overlays: [
                 ...document.querySelectorAll<HTMLElement>(".lock-overlay"),
               ].map((element) => element.innerText.slice(0, 1600)),
@@ -1071,8 +1207,12 @@ test(
                 busy: element.getAttribute("aria-busy"),
                 inert: !!element.closest("[inert]"),
                 window: element.closest(".winbox")?.id,
-                inputDisabled: element.querySelector<HTMLTextAreaElement>(".xterm-helper-textarea")?.disabled,
-                outputTail: element.querySelector(".xterm-rows")?.textContent?.slice(-1200),
+                inputDisabled: element.querySelector<HTMLTextAreaElement>(
+                  ".xterm-helper-textarea",
+                )?.disabled,
+                outputTail: element
+                  .querySelector(".xterm-rows")
+                  ?.textContent?.slice(-1200),
               })),
             }))
             .catch(() => ({ unavailable: true }));
