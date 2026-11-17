@@ -63,6 +63,8 @@ def endurance_receipt(output,seconds):
         return 'Endurance receipt does not prove the requested fleet, duration, protected work and preservation'
     if value.get('peak_seconds',0)<seconds:
         return 'The requested real peak duration was not completed'
+    if value.get('pane_refusals'):
+        return 'Recovered terminal refusals are retained failures, not a clean endurance pass'
     return None
 
 

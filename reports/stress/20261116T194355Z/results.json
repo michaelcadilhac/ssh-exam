@@ -1053,6 +1053,621 @@
       ],
       "evidence": "var/stress/20261116T194355Z/build-5",
       "finished": "2026-11-17T00:59:51.508755+00:00"
+    },
+    {
+      "phase": "harness",
+      "attempt": 8,
+      "started": "2026-11-17T05:19:41.925315+00:00",
+      "source": "201cceab951b48a758fd49d0390807300b9637eb",
+      "source_diff_sha256": "a3a35c4c0358f479c66a2d8eafd9898a0da7bd5b816b5999baa6c1d1045b93e4",
+      "inputs_sha256": "73ce5536fef3adcc9dd4ed35d3b1949759186064d10aea0712265bf1b99c81c0",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v10_jjaru6f1",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_overlay_qualification.py"
+          ],
+          "exit": 0,
+          "seconds": 0.164
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_browser_bridge.py"
+          ],
+          "exit": 0,
+          "seconds": 6.235
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_runner.py"
+          ],
+          "exit": 0,
+          "seconds": 0.164
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_generator.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/harness-8",
+      "generator": "local",
+      "finished": "2026-11-17T05:19:48.645808+00:00"
+    },
+    {
+      "phase": "harness",
+      "attempt": 9,
+      "started": "2026-11-17T05:38:28.010049+00:00",
+      "source": "201cceab951b48a758fd49d0390807300b9637eb",
+      "source_diff_sha256": "0e0df392dd21e158ac6b01b45e6d30a941bf47740a3eceacc529b2cff63cc4df",
+      "inputs_sha256": "b7ddccb736af6f148939823a5fda213175dbe61c59a6532c460deccbe771e100",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v10_jjaru6f1",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_overlay_qualification.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_browser_bridge.py"
+          ],
+          "exit": 0,
+          "seconds": 6.184
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_runner.py"
+          ],
+          "exit": 0,
+          "seconds": 0.164
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_generator.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/harness-9",
+      "generator": "local",
+      "finished": "2026-11-17T05:38:34.632715+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 1,
+      "started": "2026-11-17T06:27:27.210273+00:00",
+      "source": "562599639e854d7b27e87fe7ce80897f315afcd2",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "62a0379566dd24ae87e192721e0387ddbb0d88313d61fce3b401e44a2dee3428",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v10_jjaru6f1",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.181
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 145.336
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-1",
+      "generator": "marco",
+      "finished": "2026-11-17T06:30:05.925142+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 2,
+      "started": "2026-11-17T06:39:38.676754+00:00",
+      "source": "829bb77b2364ef60c75a3e38100242724c0dd6da",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "6776bb3c898f5a9f50f53877cf88dba6ae32fb9cf9d93f298ef56d9f14abe4fc",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v10_jjaru6f1",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.334
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 3328.498
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-2",
+      "generator": "marco",
+      "finished": "2026-11-17T07:35:19.304604+00:00"
+    },
+    {
+      "phase": "harness",
+      "attempt": 10,
+      "started": "2026-11-17T08:10:29.979248+00:00",
+      "source": "829bb77b2364ef60c75a3e38100242724c0dd6da",
+      "source_diff_sha256": "eeb89add55ce6cedb6ad110593e190ee1e4e3387a6dfe56aa3426c924ca060de",
+      "inputs_sha256": "ca480cb4e00ff58495357360e74e441d81b2ad2e586e9970620a997f509ffc77",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v11_qld3jxyy",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_overlay_qualification.py"
+          ],
+          "exit": 0,
+          "seconds": 0.164
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_browser_bridge.py"
+          ],
+          "exit": 0,
+          "seconds": 6.232
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_runner.py"
+          ],
+          "exit": 0,
+          "seconds": 0.164
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_generator.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/harness-10",
+      "generator": "local",
+      "finished": "2026-11-17T08:10:36.696690+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 3,
+      "started": "2026-11-17T08:14:17.911816+00:00",
+      "source": "917387af28d33fe2528a64d2f0f31d414e24a84d",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "ca480cb4e00ff58495357360e74e441d81b2ad2e586e9970620a997f509ffc77",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v11_qld3jxyy",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.181
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 2.52
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-3",
+      "generator": "marco",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-3/temporary",
+      "finished": "2026-11-17T08:14:32.681029+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 4,
+      "started": "2026-11-17T08:21:16.828630+00:00",
+      "source": "917387af28d33fe2528a64d2f0f31d414e24a84d",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "ca480cb4e00ff58495357360e74e441d81b2ad2e586e9970620a997f509ffc77",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.229
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 738.673
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-4",
+      "generator": "marco",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-4/temporary",
+      "finished": "2026-11-17T08:33:47.806720+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 5,
+      "started": "2026-11-17T08:45:40.392085+00:00",
+      "source": "a803e19de2d053826fd697b1de8200e218ca5dd2",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "ee7b79ea6d0c1eb54724367e4ee1d6b5929d9e90b3d368835a8d44ddd5e648f8",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.229
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 830.996
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-5",
+      "generator": "marco",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-5/temporary",
+      "finished": "2026-11-17T08:59:43.905051+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 6,
+      "started": "2026-11-17T09:06:13.758931+00:00",
+      "source": "4bd3280fd6a4c6538a16982bd981b111bb95a32b",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "d42958aa348fa92ef588d0600cbed885256fb6248cc9114281d12c72ea2e8e3b",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.23
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 2060.809
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-6",
+      "generator": "marco",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-6/temporary",
+      "finished": "2026-11-17T09:40:48.132803+00:00"
+    },
+    {
+      "phase": "harness",
+      "attempt": 11,
+      "started": "2026-11-17T09:45:22.014450+00:00",
+      "source": "4bd3280fd6a4c6538a16982bd981b111bb95a32b",
+      "source_diff_sha256": "091747d81b4ee613c4260569eb319ce28fdc10307e5ee30aeaed5ced315bdb95",
+      "inputs_sha256": "c38d9f0c63786f7b0e86b3b2d94ec1672c9e733dc2b911d0ba3b149d738e5997",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_overlay_qualification.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_browser_bridge.py"
+          ],
+          "exit": 0,
+          "seconds": 6.182
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_runner.py"
+          ],
+          "exit": 0,
+          "seconds": 0.164
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_generator.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/harness-11",
+      "generator": "local",
+      "finished": "2026-11-17T09:45:28.644755+00:00"
+    },
+    {
+      "phase": "harness",
+      "attempt": 12,
+      "started": "2026-11-17T10:21:49.482373+00:00",
+      "source": "4bd3280fd6a4c6538a16982bd981b111bb95a32b",
+      "source_diff_sha256": "3813374309e58c98fab54b3e051fc5a9699ca15ccc81047ce76f1dc3633c038a",
+      "inputs_sha256": "08e65f42ece386f5332eca23ebb6357d702d0d5b67c1526ea90716ed6a7c0c7f",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v13_t7wdue97",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_overlay_qualification.py"
+          ],
+          "exit": 0,
+          "seconds": 0.114
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "ssh-server/tests",
+            "-p",
+            "test_browser_bridge.py"
+          ],
+          "exit": 0,
+          "seconds": 6.233
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_runner.py"
+          ],
+          "exit": 0,
+          "seconds": 0.165
+        },
+        {
+          "argv": [
+            "python3",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_stress_generator.py"
+          ],
+          "exit": 0,
+          "seconds": 0.165
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/harness-12",
+      "generator": "local",
+      "finished": "2026-11-17T10:21:56.205320+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 7,
+      "started": "2026-11-17T10:27:44.649510+00:00",
+      "source": "365f1db6cd36b9647b3eaeab98616b97fa7447f1",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "08e65f42ece386f5332eca23ebb6357d702d0d5b67c1526ea90716ed6a7c0c7f",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v13_t7wdue97",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.233
+        },
+        {
+          "argv": [
+            "node",
+            "--import",
+            "tsx",
+            "tests/fixtures/stress-https-smoke.ts"
+          ],
+          "exit": 0,
+          "seconds": 33.059
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 2553.844
+        }
+      ],
+      "evidence": "var/stress/20261116T194355Z/endurance-7",
+      "generator": "marco",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261116T194355Z/endurance-7/temporary",
+      "finished": "2026-11-17T11:11:03.927531+00:00"
     }
   ],
   "students": 70,

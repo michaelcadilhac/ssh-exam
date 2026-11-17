@@ -41,27 +41,28 @@ The70-person parent now has8192tasks, retaining3GiB/no-swap/2CPU/fourhours.
 1/16-person modes and all actual student-policy limits are unchanged.30focused
 overlay checks and all86harness12 contracts pass. Audited v13 changes only the
 29,264-byte bootstrap;18other code files/guest manifest/native binaries are reused.
-Actual8192-task kernel verification remains required in the next guest.
+Actual8192-task kernel bounds were verified in full7.
 
-Full6 also recorded147Chromium network-change cancellations. Bounded TLS controls
-reproduced eight/nine cancellations during late HTTPS page initialization/
-navigation, and zero with fully loaded pages using only in-page requests.
-This identifies a fixture interaction; it does not attribute every historical
-error or establish a production defect. A rejected static-certificate workaround
-was reverted. Existing per-context certificate settings remain unchanged.
+Full7 failed after42.3min,38GCC/GDB students/152panes. The39th student received an
+actual SSH pane-admission refusal on the fourth pane; all39 failure snapshots were
+ACTIVE/gen0. Independent native/Marco/local cleanup and host preservation pass.
+No70/90pass. All70welcome pages were preloaded and late main-frame navigation was0,
+yet194network-change cancellations occurred. Small worker-initialization controls
+recorded no errors; their absence does not diagnose the larger fleet failures.
 
-The fleet now prepares all70 actual welcome pages before any authentication/clock,
-with four-second spacing, synthetic-media/bootstrap initialization and ownership
-for partial cleanup. It then uses existing SPA pages, forbids late main-frame
-navigation and verifies the public attempt list is empty before sign-in.
-The separate anonymous burst still fails; paced endurance setup is not a cold-
-classroom admission pass. A permanent manual-only HTTPS preflight runs before a
-guest:13preloaded contexts, overlapping requests and the shared navigation guard.
-Its weak initial mutation survived and is explicitly not proof; the strengthened
-control detects12actual late navigations. The positive run passes161HTTPS
-requests/zero failures, plus existing cookie/media/HTTP/WebSocket smoke and exact
-cleanup.27focused guards and final typecheck pass; no new application build is
-needed for these test-only changes. Next:local commit and full endurance7.
+The private observer now retains at most eight256-character errors for pane-open
+RPCs, excluding authentication/MFA requests and tokens. A positively observed
+ordinary terminal-admission refusal is recorded, including a private native
+snapshot, before one public Close/New terminal retry. Fresh unchanged ACTIVE/gen0
+ownership is required; pending opens, changed/held attempts and other errors are
+never replayed. A second refusal stops that workflow. A recovered refusal remains
+a final test failure and fails the independent endurance receipt validator. This
+allows collecting endurance/recovery evidence without relabelling a flawed run
+clean. No product permission, timer, grace or enforcement changes.
+Qualification:37unit cases,14runner checks,14affected browser workflows and final
+typecheck pass. The first UI-only fixture bypassed its declared page routing;
+that failure is retained, and the corrected browser-fetch fixture passes. The
+underlying real native refusal remains unproved until another observed event.
 
 Confirmed P1 baselines remain open:installed32workers<70; shared anonymous
 180requests/minute bucket rejects30of210minimal cold loads. Isolated96workers
@@ -142,7 +143,7 @@ same-attempt restoration from files, no-expiry approval and protected completion
 The ordinary browser phase explicitly enables its real gateway-process restart
 fixture; native-only skips are reported separately.
 The Marco path runs both the existing HTTP/WebSocket/media smoke and
-\`tests/fixtures/stress-https-smoke.ts\` before allocating a native guest. The
+`tests/fixtures/stress-https-smoke.ts` before allocating a native guest. The
 HTTPS check prepares13contexts and requires overlapping in-page traffic without
 failures or late document navigation. Its deliberate navigation control is a
 development-only negative check, never enabled by the normal runner. Existing

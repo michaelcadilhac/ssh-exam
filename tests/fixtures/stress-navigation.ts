@@ -1,5 +1,61 @@
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type {
+  APIResponse,
+  Browser,
+  BrowserContext,
+  Page,
+} from "@playwright/test";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
+
+// Exercise one ordinary student retry after a positively observed pane refusal.
+// The caller retains the refusal and must fail its clean-run acceptance later.
+// Never replay an uncertain/pending open or retry a policy/ownership error.
+export async function recoverRefusedStressPane(options: {
+  page: Pick<Page, "getByRole"> & {
+    request: {
+      get: (
+        url: string,
+        options: { timeout: number },
+      ) => Promise<Pick<APIResponse, "ok" | "json">>;
+    };
+  };
+  attempt: string;
+  opened: () => number;
+  expected: number;
+  record: () => Promise<void>;
+}) {
+  const { page, attempt, opened, expected, record } = options;
+  const dialog = page.getByRole("dialog", {
+    name: "Terminal error",
+    exact: true,
+  });
+  if (!(await dialog.isVisible()))
+    throw Error("No confirmed terminal refusal; no retry");
+  if (opened() !== expected - 1)
+    throw Error("Pane ownership changed; no retry");
+  await record(); // Persist failure evidence before any recovery action.
+  const text = await dialog.innerText();
+  if (!text.includes("This terminal could not open. Try again."))
+    throw Error("Unrecognized terminal error; no retry");
+  const response = await page.request.get("/api/student/exam", {
+    timeout: 5000,
+  });
+  if (!response.ok()) throw Error("Cannot verify current attempt; no retry");
+  const current = (await response.json()).attempt;
+  if (
+    current?.id !== attempt ||
+    current.state !== "ACTIVE" ||
+    current.generation !== 0
+  )
+    throw Error("Attempt changed or requires review; no retry");
+  if (opened() !== expected - 1)
+    throw Error("Pane ownership changed; no retry");
+  await dialog
+    .getByRole("button", { name: "Close", exact: true })
+    .click({ timeout: 5000 });
+  await page
+    .getByRole("button", { name: "New terminal", exact: true })
+    .click({ timeout: 5000 });
+}
 
 export function watchStressNavigation(
   page: Page,

@@ -1,37 +1,30 @@
 # Manual pre-final stress suite — FULL RUN INCOMPLETE
 
-Target:70synthetic students/four terminals each,90real peak minutes and
+Target:70 synthetic students/four terminals each,90 real peak minutes and
 simultaneous protected submission. Marco generates browsers; csc-sys hosts only
 the guarded disposable native guest. No institutional MFA, actual student
 accounts, external email, production change, push or deployment.
 
-Collected:861application checks/three real CLI-export-bwrap entries for unchanged
-runtime; native races;86harness checks;16-client WASM sign-in; editor/timer/
+Collected:861 application checks/three real CLI-export-bwrap entries for unchanged
+runtime; native races;86 harness checks;16-client WASM sign-in; editor/timer/
 recovery/collector-crash interfaces with original preservation and exact cleanup.
-Prof reviewed28rendered screens. Full browser2:360passed/threefailed/fiveskipped;
-fresh5cases pass separately. No full-final-candidate browser pass claimed.
+Prof reviewed28 rendered screens. Full browser2:360passed/threefailed/fiveskipped;
+fresh5 cases pass separately. No full-final-candidate browser pass claimed.
 Original documentation images and earlier failure evidence remain preserved.
 
-Endurance incomplete. Largest earlier partial52/208 failed on missing echo with
-concurrent local/tmp quota failure(causality unproved);118,474raw files preserved.
-Full4 menu-click failure led to qualified readiness-gate waiting; full5 exposed
-supported post-auth read recovery, now qualified with strict no-Start/no-credential
-replay. Full6 was deliberately stopped after35GCC/GDB students/140panes when
-measured guest thread demand projected beyond its4096-task budget at70.
-Exact abort/cleanup/preservation FULL. New finite TEST-only8192-task allocation
-keeps3GiB/no-swap/2CPU/fourhours; native student limits and1/16 modes unchanged.
-30focused overlay/86harness12 checks pass; v13bootstrap-only upload verified.
-Actual kernel-bound verification remains pending in the next guest.
+Endurance7 FAILED after42.3min:38 GCC/GDB students/152panes verified;39th actual
+fourth-pane refusal (SSH open/operation-rejected), not merely a pending timeout.
+All39 failure snapshotsACTIVE/gen0. Native/Marco/local independent cleanup FULL;
+original installation/authority unchanged. Actual8192tasks/3GiB/2CPU/fourhours
+verified. No70-student/90-minute/protected-completion pass exists.
 
-TLS experiments exposed fixture-only shared-browser cancellations around late
-HTTPS document initialization/navigation. Preloaded pages with only in-page
-requests had zero cancellations. All70welcome pages now prepare before any clock;
-late navigation is forbidden, and the empty public attempt list is checked.
-Permanent pre-guest HTTPS smoke:13contexts,161successful requests/zero failures,
-existing HTTP/WS/media/cookie smoke and independent cleanup pass. The strengthened
-late-navigation control is detected; its earlier weak mutation remains unproved.
-27focused guards/typecheck pass. Next:coherent local commit, full endurance7,
-70/280/5400s/70protected receipts and agent-authored report. No70/90pass.
+Despite all70 welcome pages being preloaded and no late main-frame navigation,
+194 network-change cancellations occurred. Small worker-initialization probe had
+zero errors and does not explain them. Underlying pane error was not retained.
+Next bounded increment retains private pane-only WASM causes/native snapshot and
+exercises one ordinary public retry after a confirmed refusal. Every recovered
+refusal still FAILS clean-run acceptance, including the independent receipt check;
+no uncertain open, authentication, Start, clock or permission is replayed.
 
 Open P1s:installed32workers<70; shared anonymous180/minute bucket rejects30/210
 minimal cold loads. Isolated96workers/paced warmup do not fix those baselines or

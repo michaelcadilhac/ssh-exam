@@ -98,6 +98,14 @@ class ManualStressTests(unittest.TestCase):
         self.assertEqual(state['status'],'AUTOMATED_FAILED')
         self.assertIn('Missing unique',state['phases'][0]['reason'])
 
+    def test_recovered_pane_refusal_cannot_be_promoted_to_clean_endurance(self):
+        output=self.root/'browser';output.mkdir()
+        value={'students':70,'terminals':280,'requested_seconds':5400,
+               'peak_seconds':5400,'protected':70,'preservation':'FULL',
+               'pane_refusals':[{'username':'synthetic','expected':4}]}
+        (output/'endurance-result.json').write_text(json.dumps(value))
+        self.assertIn('retained failures',runner.endurance_receipt(self.root,5400))
+
     def test_browser_phase_explicitly_enables_existing_gateway_restart_cases(self):
         with mock.patch.dict(os.environ,{'EXAM_BROWSER_GATEWAY_PROCESS':'0'}):
             code,state,launched=self.invoke('--phase','browser-corners')

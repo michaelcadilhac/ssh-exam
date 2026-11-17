@@ -14,6 +14,7 @@ import {
   waitForStressExamSummary,
   prepareStressPages,
   watchStressNavigation,
+  recoverRefusedStressPane,
 } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
@@ -149,6 +150,11 @@ test(
     let bootstrap = async (): Promise<unknown> => null;
     const contexts: BrowserContext[] = [];
     const lateNavigations: { username: string; path: string }[] = [];
+    const paneRefusals: {
+      username: string;
+      expected: number;
+      diagnostics: unknown;
+    }[] = [];
     let signInEvents: { event: string; path: string; type?: string }[] = [];
     let setupStudent = "";
     let setupPage: Page | undefined;
@@ -664,8 +670,77 @@ test(
           await page
             .getByRole("button", { name: "New terminal", exact: true })
             .click();
+          if (stressRun) {
+            const dialog = page.getByRole("dialog", {
+              name: "Terminal error",
+              exact: true,
+            });
+            await expect
+              .poll(
+                async () =>
+                  opened.size === pane + 1 || (await dialog.isVisible()),
+                {
+                  timeout: OPERATION_TIMEOUT_MS,
+                },
+              )
+              .toBe(true);
+            if (opened.size !== pane + 1)
+              await recoverRefusedStressPane({
+                page,
+                attempt: entry.id,
+                opened: () => opened.size,
+                expected: pane + 1,
+                record: async () => {
+                  const refusal = {
+                    username: entry.username,
+                    expected: pane + 1,
+                    diagnostics: await bootstrap(),
+                  };
+                  paneRefusals.push(refusal);
+                  await mkdir(test.info().outputDir, { recursive: true });
+                  const nativePath = test
+                    .info()
+                    .outputPath(
+                      `pane-refusal-${paneRefusals.length}-native.json`,
+                    );
+                  try {
+                    const native = await request.get(
+                      "/api/fixture/native-state",
+                      {
+                        params: { attempt: entry.id },
+                        timeout: 15000,
+                      },
+                    );
+                    await writeFile(nativePath, await native.text(), {
+                      mode: 0o600,
+                    });
+                  } catch (error) {
+                    await writeFile(
+                      nativePath,
+                      JSON.stringify({
+                        unavailable: String(error).slice(0, 256),
+                      }),
+                      { mode: 0o600 },
+                    );
+                  }
+                  await writeFile(
+                    test.info().outputPath("pane-refusals.json"),
+                    JSON.stringify(paneRefusals, null, 2),
+                    { mode: 0o600 },
+                  );
+                  console.log(
+                    JSON.stringify({
+                      phase: "terminal-refusal-recovery",
+                      ...refusal,
+                    }),
+                  );
+                },
+              });
+          }
           await expect
-            .poll(() => opened.size, { timeout: 15000 })
+            .poll(() => opened.size, {
+              timeout: stressRun ? OPERATION_TIMEOUT_MS : 15000,
+            })
             .toBe(pane + 1);
         }
         await expect(page.locator(".xterm-helper-textarea")).toHaveCount(4);
@@ -1092,6 +1167,7 @@ test(
               prepared_welcome_pages: prepared.length,
               late_navigations: lateNavigations,
               transport_failures: transportFailures,
+              pane_refusals: paneRefusals,
               input_gates: await Promise.all(
                 fleet.map(async (entry) => ({
                   username: entry.username,
@@ -1110,6 +1186,10 @@ test(
           ),
           { mode: 0o600 },
         );
+        expect(
+          paneRefusals,
+          "Recovered pane refusals remain clean-run failures",
+        ).toEqual([]);
         return;
       }
       await Promise.all(fleet.slice(0, 2).map(finish));
@@ -1384,6 +1464,7 @@ test(
           lastCommand,
           lateNavigations,
           transportFailures,
+          paneRefusals,
           wasmBootstrap: await bootstrap(),
           publicStates,
           recoveryReplies: fleet.map((entry) => ({

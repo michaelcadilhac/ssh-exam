@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
+import { recoverRefusedStressPane } from "../fixtures/stress-navigation.js";
 import {
   fixture,
   begin,
@@ -7,6 +8,65 @@ import {
   readyTerminal,
   selectVerifiedTerminal,
 } from "./transition-fixture.js";
+
+test("manual stress records a refused pane and exercises one ordinary public retry", async ({
+  page,
+}) => {
+  const f = await fixture(page);
+  await begin(page, f);
+  await readyTerminal(page, 1, 0);
+  let refused = false,
+    recorded = false;
+  f.model.onOpen = async (socket, message) => {
+    if (!refused) {
+      refused = true;
+      socket.send(
+        JSON.stringify({
+          type: "error",
+          pane: message.pane,
+          error:
+            "This terminal could not open. Try again. If it still fails, contact your instructor.",
+        }),
+      );
+    } else {
+      expect(recorded).toBe(true);
+      socket.send(JSON.stringify({ type: "opened", pane: message.pane }));
+    }
+  };
+  await page.getByRole("button", { name: "New terminal", exact: true }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Terminal error", exact: true }),
+  ).toBeVisible();
+  await recoverRefusedStressPane({
+    // This UI fixture intercepts browser fetch, not Playwright APIRequestContext.
+    // Read the same public projection through that declared fixture transport.
+    page: {
+      getByRole: page.getByRole.bind(page),
+      request: {
+        get: async () => {
+          const value = await page.evaluate(async () => {
+            const response = await fetch("/api/student/exam");
+            return { ok: response.ok, data: await response.json() };
+          });
+          return { ok: () => value.ok, json: async () => value.data };
+        },
+      },
+    },
+    attempt: f.model.attempt.id,
+    opened: () => 1,
+    expected: 2,
+    record: async () => {
+      recorded = true;
+    },
+  });
+  await readyTerminal(page, 2, 1);
+  expect(
+    f.model.messages.filter((message) => message.type === "open"),
+  ).toHaveLength(3);
+  expect(
+    f.model.messages.filter((message) => message.type === "incident"),
+  ).toEqual([]);
+});
 
 for (const framed of [false, true]) {
   test(`${framed ? "framed" : "legacy"} terminal blocks early keys and preserves the first key after its actual open acknowledgement`, async ({

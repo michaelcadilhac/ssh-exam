@@ -12,7 +12,11 @@ export async function observeWasmBootstrap(page: Page) {
   page.on("response", (response) => {
     const value = path(response.url());
     if (value && network.length < 24)
-      network.push({ path: value, event: "response", status: response.status() });
+      network.push({
+        path: value,
+        event: "response",
+        status: response.status(),
+      });
   });
   page.on("requestfinished", (request) => {
     const value = path(request.url());
@@ -27,6 +31,8 @@ export async function observeWasmBootstrap(page: Page) {
   await page.addInitScript(() => {
     const events: { event: string; worker?: number }[] = [];
     (window as any).__examBootstrapEvents = events;
+    const admissions: { worker: number; error: string }[] = [];
+    (window as any).__examPaneRefusals = admissions;
     const Base = window.Worker;
     let next = 0;
     window.Worker = class extends Base {
@@ -39,6 +45,16 @@ export async function observeWasmBootstrap(page: Page) {
         note("created");
         this.addEventListener("message", ({ data }) => {
           if (["ready", "fatal", "loss"].includes(data?.type)) note(data.type);
+          // Synthetic observer only. Never retain connect/auth requests, replies,
+          // tokens or MFA answers. The production control channel deliberately
+          // exposes only a fixed category; retain this local pane-only cause.
+          if (
+            data?.type === "rpc-result" &&
+            data.diagnostic?.stage === "open" &&
+            typeof data.error === "string" &&
+            admissions.length < 8
+          )
+            admissions.push({ worker, error: data.error.slice(0, 256) });
         });
         this.addEventListener("error", () => note("worker-error"));
       }
@@ -49,5 +65,8 @@ export async function observeWasmBootstrap(page: Page) {
     worker: await page
       .evaluate(() => (window as any).__examBootstrapEvents ?? [])
       .catch(() => [{ event: "page-unavailable" }]),
+    paneRefusals: await page
+      .evaluate(() => (window as any).__examPaneRefusals ?? [])
+      .catch(() => [{ unavailable: true }]),
   });
 }
