@@ -347,7 +347,7 @@ export function Workspace({
     "Your connection ended. After instructor approval, sign in again to reopen saved files in new terminals. Programs and unsaved changes are lost. Your deadline is unchanged.";
   const preflightRecovery =
     attempt.state === "PREPARING" && (authenticationGap || recoveryExpired);
-  const covered =
+  const coveredByState =
     !!dialog ||
     focusSeconds !== null ||
     locked ||
@@ -355,8 +355,8 @@ export function Workspace({
     ended ||
     protecting ||
     authenticationGap ||
-    captureDelayed ||
     (!connected && attempt.state === "ACTIVE");
+  const covered = coveredByState || captureDelayed;
   const dialogRef = useRef(dialog);
   dialogRef.current = dialog;
   const coveredRef = useRef(covered);
@@ -880,7 +880,11 @@ export function Workspace({
         (attemptRef.current.monitoring_mode === "v1" &&
           ["ACTIVE", "LOCKED"].includes(attemptRef.current.state)),
       (source, healthy) => {
-        if (attemptRef.current.monitoring_mode !== "v1") return false;
+        if (
+          attemptRef.current.monitoring_mode !== "v1" &&
+          attemptRef.current.state !== "PREPARING"
+        )
+          return false;
         if (healthy) captureFailures.current.delete(source);
         else captureFailures.current.add(source);
         setCaptureDelayed(captureFailures.current.size !== 0);
@@ -1720,7 +1724,9 @@ export function Workspace({
             )}
             {captureDelayed && (
               <span className="warn" role="status">
-                Monitoring check delayed · input paused
+                {attempt.state === "PREPARING"
+                  ? "Sharing check delayed. Retrying automatically."
+                  : "Monitoring check delayed · input paused"}
               </span>
             )}
           </small>
@@ -1819,7 +1825,7 @@ export function Workspace({
         </div>
       )}
       {attempt.state === "PREPARING" && (
-        <div className="preflight" inert={covered}>
+        <div className="preflight" inert={coveredByState}>
           <button
             aria-pressed={screen}
             onClick={() =>
@@ -2292,9 +2298,8 @@ export function Workspace({
                 !reservation.administratorSandbox &&
                 "Starting closes your other server sessions and processes; save their work first. "}
               You have {timeLimit(settings.duration)}. The countdown starts when
-              you confirm.
-              Saved files in {directory} are collected when time ends or you
-              finish. Unsaved edits are excluded.
+              you confirm. Saved files in {directory} are collected when time
+              ends or you finish. Unsaved edits are excluded.
             </p>
           )}
           {dialog.kind === "finish" && (

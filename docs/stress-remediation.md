@@ -45,6 +45,10 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
   baseline pass. No attempts, sessions or outbox rows created by the baseline.
   The first security fixture incorrectly expected a 404 before the authentication
   hook; its failure is retained and the existing protected route is now tested.
-- Current milestone: 2, capture setup recovery after transport cancellation.
+- Milestone 2 implemented/tested locally: 26 focused API/capture checks, current
+  build/typecheck and two browser challenge/upload cancellation cases pass. One
+  selected stream, no stale modal/incident/clock; cancellation releases late media.
+- Current milestone: 3, affected instructor/browser workflows (running); then
+  stable private Marco network and native capacity/pane-refusal investigation.
 - Decisions: none pending. Installation sizing will be recorded as a candidate
   until actual combined-capacity qualification, never represented as deployed.

@@ -21,6 +21,7 @@ export class Capture {
   private abort = new AbortController();
   private encoder = new CaptureEncoder();
   private videoRetryAt = new Map<string, number>();
+  private setups = new Map<string, Promise<MediaStream | undefined>>();
   constructor(
     private id: string,
     private page: string,
@@ -31,6 +32,19 @@ export class Capture {
     private sampleAllowed: () => boolean = () => true,
   ) {}
   async setup(source: "screen" | "webcam") {
+    if (this.stopped)
+      throw new DOMException("Sharing was cancelled", "AbortError");
+    const pending = this.setups.get(source);
+    if (pending) return pending;
+    const task = this.setupOnce(source);
+    this.setups.set(source, task);
+    try {
+      return await task;
+    } finally {
+      if (this.setups.get(source) === task) this.setups.delete(source);
+    }
+  }
+  private async setupOnce(source: "screen" | "webcam") {
     if (this.streams.has(source) && this.healthy(source))
       return this.streams.get(source);
     this.streams
@@ -55,6 +69,12 @@ export class Capture {
             },
             audio: false,
           });
+    const cancelIfStopped = () => {
+      if (!this.stopped) return;
+      stream.getTracks().forEach((t) => t.stop());
+      throw new DOMException("Sharing was cancelled", "AbortError");
+    };
+    cancelIfStopped();
     const track = stream.getVideoTracks()[0];
     if (
       source === "screen" &&
@@ -64,13 +84,20 @@ export class Capture {
       throw Error("Choose Entire Screen in the sharing prompt.");
     }
     track.onended = () => {
-      if (!this.stopped) this.incident(`${source} track ended`);
+      if (!this.stopped && this.streams.get(source) === stream)
+        this.incident(`${source} track ended`);
     };
     const video = document.createElement("video");
     video.srcObject = stream;
     video.muted = true;
     video.playsInline = true;
-    await video.play();
+    try {
+      await video.play();
+    } catch (error) {
+      stream.getTracks().forEach((t) => t.stop());
+      throw error;
+    }
+    cancelIfStopped();
     this.streams.set(source, stream);
     this.videos.set(source, video);
     this.queues.set(source, []);
@@ -82,7 +109,24 @@ export class Capture {
               this.incident(`${s} capture failed`);
           });
       }, 5000);
-    await this.sample(source);
+    try {
+      await this.sample(source);
+    } catch (error) {
+      const failure = error as {
+        transportUnavailable?: boolean;
+        status?: number;
+      };
+      if (
+        !this.stopped &&
+        this.healthy(source) &&
+        (failure.transportUnavailable ||
+          [502, 503, 504].includes(failure.status ?? 0)) &&
+        this.sampleHealth?.(source, false)
+      )
+        return stream; // Existing five-second loop retries with a NEW challenge.
+      throw error;
+    }
+    cancelIfStopped();
     return stream;
   }
   healthy(source: string) {

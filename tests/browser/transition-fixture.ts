@@ -140,14 +140,15 @@ export async function fixture(
   role = "student",
   exam = "sandbox",
   duration = 300,
+  webcam = false,
 ) {
   await observeScreens(page);
-  await simulatedMedia(page);
+  await simulatedMedia(page, webcam);
   const settings = {
     id: exam,
     name: "Transition fixture",
     duration,
-    webcam: false,
+    webcam,
     terminals: 4,
     template: "sample-exam",
     earliest: 0,

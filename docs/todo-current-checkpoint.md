@@ -1,4 +1,4 @@
-# Current checkpoint — stress remediation active, milestone 2
+# Current checkpoint — stress remediation active, milestone 3
 
 User authorized implementing the stress report's fixes. Local development/tests/
 commits only; no push, deployment, production configuration or student changes.
@@ -10,12 +10,17 @@ credential limits unchanged. Three focused and 16 affected integration checks,
 typecheck and the original 70-client/210-request baseline pass. Evidence:
 `var/stress-remediation/20261117/`. Original red/fixture-failure receipts retained.
 
-Current next action: fix actual screen/webcam setup recovery from cancelled
-capture requests. Never start a clock, consume a permission, bypass verification
-or leave a stale modal after automatic recovery. Then apply Prof's approved UI
-changes, isolate the owned Marco generator network, diagnose pane refusal and
-qualify combined capacity/full 70×4×90-minute run. Installed 32-worker ceiling and
-prior failed qualification remain production blockers; no completed 70/90 receipt.
+Milestone 2 is implemented/tested locally: 26 API/capture units and two actual
+browser challenge/upload cancellation cases pass after current build/typecheck.
+Selected streams retry with fresh verification; no stale modal/incident/clock,
+no authority bypass; late cancelled media is stopped.
+
+Current next action: collect affected Prof UI/browser suite (session55045),
+read results before edits. App/UI/affected tests are frozen. Prof edits are stable
+and real local nginx maintenance smoke passed. Then qualify the owned Marco
+network namespace (installed rootless unshare was positively verified), investigate
+native pane refusal and combined capacity, then new full 70×4×90-minute run.
+Installed 32-worker ceiling and prior failed qualification remain production gates.
 
 Historical report: [20261116T194355Z](../reports/stress/20261116T194355Z/report.md).
 Its native/Marco/local fixtures are fully stopped with preserved host authority.

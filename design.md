@@ -5,6 +5,21 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 17 local remediation: recover initial capture verification
+
+A selected live screen/camera stream survives a temporary initial transport or
+502/503/504 verification failure. Setup reports delayed verification inline and
+retries on the existing five-second cadence with a fresh challenge/frame. Setup
+controls remain usable; Start and terminal input remain fenced until the required
+verification succeeds. HTTP ownership/permission refusals are not classified as
+network failures, and no authentication, Start or management action is replayed.
+Concurrent clicks share one media prompt. Cancelling the owning view stops media
+that arrives after cancellation or preview startup; a failed preview releases its
+stream. Raw fetch jargon is replaced with connection guidance while owner
+cancellation/timeout identity is preserved. Implemented/tested locally only:
+26 focused unit checks, current build/typecheck and two actual browser challenge/
+upload cancellation workflows. No clock, deadline, grant or monitoring change.
+
 ## November 17 local remediation: classroom bootstrap budgets
 
 Anonymous read-only welcome pages, built assets, session lookup and public login

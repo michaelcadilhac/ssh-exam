@@ -34,18 +34,35 @@ async function request(
   signal: AbortSignal | undefined,
   contentType: string,
 ) {
-  const res = await fetch("/api" + url, {
-    method: body === undefined ? "GET" : "POST",
-    signal: signal
-      ? AbortSignal.any([signal, AbortSignal.timeout(OPERATION_TIMEOUT_MS)])
-      : AbortSignal.timeout(OPERATION_TIMEOUT_MS),
-    headers: {
-      "Content-Type": contentType,
-      "X-CSRF-Token": csrf,
-      ...(page ? { "X-Page-Instance": page } : {}),
-    },
-    body,
-  });
+  let res: Response;
+  try {
+    res = await fetch("/api" + url, {
+      method: body === undefined ? "GET" : "POST",
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(OPERATION_TIMEOUT_MS)])
+        : AbortSignal.timeout(OPERATION_TIMEOUT_MS),
+      headers: {
+        "Content-Type": contentType,
+        "X-CSRF-Token": csrf,
+        ...(page ? { "X-Page-Instance": page } : {}),
+      },
+      body,
+    });
+  } catch (error) {
+    // A cancelled view must stay cancelled. Other transport failures carry a
+    // local marker, distinct from an HTTP refusal or uncertain action outcome.
+    if (signal?.aborted) throw error;
+    throw Object.assign(
+      new Error(
+        "The server could not be reached. Check your connection and try again.",
+        { cause: error },
+      ),
+      {
+        name: error instanceof Error ? error.name : "Error",
+        transportUnavailable: true,
+      },
+    );
+  }
   const result = await res.json();
   if (!res.ok)
     throw Object.assign(Error(result.error || "Request failed"), {

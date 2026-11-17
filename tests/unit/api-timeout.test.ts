@@ -55,3 +55,30 @@ it("still cancels immediately when the owning view cancels its request", async (
   owner.abort(new DOMException("View closed", "AbortError"));
   await refusal;
 });
+
+it("labels only a transport failure with actionable wording, without replaying the request", async () => {
+  const fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+  vi.stubGlobal("fetch", fetch);
+  await expect(api("/student/exam")).rejects.toMatchObject({
+    transportUnavailable: true,
+    message:
+      "The server could not be reached. Check your connection and try again.",
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("keeps HTTP refusals distinct from local transport failures", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ error: "Page replaced" }), {
+          status: 403,
+        }),
+      ),
+  );
+  const error = await api("/student/exam").catch((error) => error);
+  expect(error.status).toBe(403);
+  expect(error.transportUnavailable).toBeUndefined();
+});
