@@ -16,6 +16,10 @@ headroom for four panes within the shipped eight-session SSH budget. No command,
 authentication or signed authorization is regenerated or replayed. Resource-shortage
 diagnostics use a fixed category without copying server messages. Encrypted local
 SSH pressure/cancellation and race checks pass; native capacity remains separate.
+The channel reservation also covers remote retirement after the reply: the reply
+is delivered immediately, while bounded asynchronous cleanup retains its slot
+until remote closure or original owner/timeout cancellation. This prevents a
+reply/close race from reusing a slot while the server still counts that session.
 
 Instructor bulk editing and cancellation are separate workflows. Known draft
 validation receives focus and scrolls into view, including repeated failures on

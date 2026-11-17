@@ -334,7 +334,21 @@ func (c *Client) session() (*ssh.Session, error) {
 }
 func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	ctx, cancel := context.WithTimeout(c.ctx, 60*time.Second)
-	defer cancel()
+	ordinary, total, retiring := false, false, false
+	release := func() {
+		if total {
+			<-c.commandSlots
+		}
+		if ordinary {
+			<-c.ordinarySlots
+		}
+		cancel()
+	}
+	defer func() {
+		if !retiring {
+			release()
+		}
+	}()
 	// Only an exact gateway-issued command nonce can cancel this channel.
 	// Legacy frames without a signed envelope retain their existing behavior.
 	var envelope struct{ Payload string }
@@ -372,14 +386,14 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	if request.Op != "renew-execution-lease" {
 		select {
 		case c.ordinarySlots <- struct{}{}:
-			defer func() { <-c.ordinarySlots }()
+			ordinary = true
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
 	}
 	select {
 	case c.commandSlots <- struct{}{}:
-		defer func() { <-c.commandSlots }()
+		total = true
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -390,12 +404,20 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer s.Close()
+	defer func() {
+		if !retiring {
+			s.Close()
+		}
+	}()
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	stop := context.AfterFunc(ctx, func() { s.Close() })
-	defer stop()
+	defer func() {
+		if !retiring {
+			stop()
+		}
+	}()
 	in, err := s.StdinPipe()
 	if err != nil {
 		return nil, err
@@ -415,6 +437,18 @@ func (c *Client) Command(frame json.RawMessage) (json.RawMessage, error) {
 	if err != nil || len(line) > 6*1024*1024 {
 		return nil, errors.New("invalid agent acknowledgment")
 	}
+	// Deliver the original reply immediately, but keep the channel budget until
+	// the remote process/channel has actually retired. Releasing it on the first
+	// JSON line can oversubscribe MaxSessions during delayed server cleanup.
+	// The ORIGINAL timeout/owner cancellation bounds retirement; no receipt,
+	// signed expiry or command is regenerated, replayed or delayed by this wait.
+	retiring = true
+	go func() {
+		_ = s.Wait()
+		stop()
+		s.Close()
+		release()
+	}()
 	return json.RawMessage(line), nil
 }
 
