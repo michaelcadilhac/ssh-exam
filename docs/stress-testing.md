@@ -124,7 +124,7 @@ The `--rehearsal` option uses30seconds at full70-person load to qualify the harn
 it cannot count as a90-minute pass and cannot be promoted under the same run ID.
 The config is separate from default Playwright discovery and deployment scripts.
 
-Use `--generator marco` with a guarded native phase, `endurance` (or `all`) for the approved larger
+Use `--generator marco` with `endurance`, a single-student native phase, or `all` for the approved larger
 generator. It transfers only the existing Playwright runtime and synthetic worker
 to a fresh private Marco directory. Installed Node/Chromium run in an owned user
 service:20GiB maximum RAM,18GiB high watermark, no swap,8CPU quota,4096tasks and a
@@ -152,6 +152,24 @@ Verify exact namespace PIDs, owner/cgroup, three allowed interfaces and private
 route. Never override navigator.onLine or change host NetworkManager/interfaces.
 The pre-guest smoke must check the real online indicator as well as actual traffic.
 The190-second HTTPS steady check covers several observed host churn cycles.
+The16-client recovery/collection phases use the original local-browser path,
+preserving their existing660/780-second scenario and900-second native containment.
+The measured intercontinental UI-control ramp cannot fit those bounds; explicit
+Marco selection for those phases refuses before allocation. `all --generator marco`
+still runs these smaller fault phases locally, then the70-client endurance onMarco.
+No original smaller native/kernel bound was extended to accommodate the generator.
+The16-person synthetic start window is30minutes: the real Marco ramp exceeded the
+previous ten-minute fixture window before student14. One-person windows stay ten
+minutes,70-person windows stay two hours; all are finite. Started deadlines and
+guest/resource bounds are unchanged. An expired synthetic grant refusal remains
+a failed test receipt, never permission to reopen a consumed/expired real grant.
+
+Before allocating a native guest, the runner refuses a busy/unavailable selected
+local callback/TLS/relay port without interrupting its owner. It also inventories
+the actual built web/WASM/worker/clock bytes; missing builds fail with build
+guidance, and changed artifacts invalidate the receipt. Browser-SSH Go sources
+are included in the source manifest. Build phases intentionally produce artifacts;
+browser/native phases require them to stay unchanged.
 
 Schedule fixtures by their actual ports: one-/16-person native phases and the
 ordinary browser suite both use local3100 and must run sequentially. The70-person
@@ -160,8 +178,12 @@ after verifying both fixtures' exact cleanup/port ownership. Separate process
 groups alone do not isolate listeners. Retain controlled-stop and port-conflict
 receipts as harness failures; they do not qualify a student workflow.
 
-The runner creates a fresh private workspace `temporary` directory for each
-endurance attempt and supplies it as TMPDIR. A real child-Node routing probe runs
+The runner creates a fresh private workspace scratch for each native attempt and
+supplies it as TMPDIR. Remote/endurance scratch is its per-phase `temporary`;
+local small phases use a short700-mode `var/stress.*` directory with a durable
+`scratch-location.json`, because Chromium's Unix sockets cannot fit a long evidence
+path. An actual Unix-socket regression and local Chromium startup qualify this.
+A real child-Node routing probe runs
 before the guest. Require40GiB free before launch and8GiB live headroom: retained
 raw synthetic recording data hit the development/tmp user quota at53starts.
 No recording or enforcement failure is ignored to get a pass. Preserve failed

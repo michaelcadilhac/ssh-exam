@@ -11,20 +11,24 @@ import re
 import shlex
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
 PHASES = ('harness', 'build', 'installed-capacity', 'anonymous-burst', 'application', 'operator-integrations', 'native-race', 'browser-signin', 'browser-corners',
           'native-editor', 'native-timer-recovery', 'native-recovery', 'native-collection', 'endurance')
-MARCO_PHASES = ('native-editor','native-timer-recovery','native-recovery','native-collection','endurance')
+NATIVE_PHASES = ('native-editor','native-timer-recovery','native-recovery','native-collection','endurance')
+MARCO_PHASES = ('native-editor','native-timer-recovery','endurance')
+BUILT_PHASES = ('browser-signin','browser-corners',*NATIVE_PHASES)
 
 
 def source_manifest():
     names=subprocess.check_output(['git','ls-files','-co','--exclude-standard','-z','--',
-                                   'apps','packages','ssh-server','scripts','tests','package.json','package-lock.json'],cwd=ROOT)
+                                   'apps','packages','browser-ssh','ssh-server','scripts','tests','package.json','package-lock.json'],cwd=ROOT)
     result={}
     for name in sorted(set(filter(None,names.decode().split('\0')))):
         path=ROOT/name
@@ -33,12 +37,50 @@ def source_manifest():
     return result
 
 
-def local_scratch(output):
-    scratch = output / 'temporary'
-    try:
-        scratch.mkdir(mode=0o700)
-    except FileExistsError as error:
-        raise RuntimeError('Owned stress scratch already exists; preserve it and use a new phase attempt') from error
+def built_manifest():
+    required = ('dist/web/index.html','dist/web/ssh/client.wasm','dist/web/ssh/wasm_exec.js',
+                'dist/apps/server/src/connection-worker.js','dist/apps/server/native/monitoring_clock.node',
+                'apps/server/native/monitoring_clock.node')
+    if any(not (ROOT/name).is_file() for name in required):
+        raise RuntimeError('Built browser/WASM/worker/clock inputs are missing; run npm run build before qualification')
+    paths = {ROOT/name for name in required}
+    for root in ('dist/web','dist/apps','dist/packages'):
+        for path in (ROOT/root).rglob('*'):
+            if path.is_symlink():
+                raise RuntimeError('Built qualification inputs must be regular files, not symlinks')
+            if path.is_file(): paths.add(path)
+    result={};total=0
+    for path in sorted(paths):
+        info=path.lstat()
+        if not stat.S_ISREG(info.st_mode): raise RuntimeError('Built qualification input is not a regular file')
+        total+=info.st_size
+        if len(paths)>5000 or total>128*1024**2: raise RuntimeError('Built qualification inputs exceed the bounded code-artifact inventory')
+        result[str(path.relative_to(ROOT))]={'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'mode':info.st_mode}
+    return result
+
+
+def check_local_ports(ports):
+    for port in ports:
+        try:
+            with socket.socket() as listener:
+                listener.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+                listener.bind(('127.0.0.1',port))
+        except OSError as error:
+            raise RuntimeError(f'Private test port127.0.0.1:{port} is busy or unavailable; finish its owned fixture before this phase') from error
+
+
+def local_scratch(output, short=False):
+    if short:
+        scratch=Path(tempfile.mkdtemp(prefix='stress.',dir=ROOT/'var'))
+        (output/'scratch-location.json').write_text(json.dumps({'scratch':str(scratch)})+'\n')
+        if len(os.fsencode(scratch))+50>=108:
+            raise RuntimeError('Workspace scratch path is too long for Chromium Unix sockets; use a shorter checkout path')
+    else:
+        scratch = output / 'temporary'
+        try:
+            scratch.mkdir(mode=0o700)
+        except FileExistsError as error:
+            raise RuntimeError('Owned stress scratch already exists; preserve it and use a new phase attempt') from error
     info = scratch.lstat()
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
         raise RuntimeError('Private stress scratch ownership/mode refused')
@@ -86,7 +128,7 @@ def main():
                    help='Browser host for guarded native phases/endurance; Marco uses an owned isolated worker and private SSH forwards')
     args = p.parse_args()
     if args.generator == 'marco' and args.phase not in ('all', *MARCO_PHASES):
-        p.error('--generator marco requires a guarded native phase, endurance or all')
+        p.error('Use --generator local for16-student fault phases; Marco supports single-student, endurance or all')
     if not re.fullmatch(r'/var/tmp/ssh-exam-browser-native-upload\.[A-Za-z0-9_]+', args.native_bundle):
         p.error('Expected a private code-only native-browser upload directory')
     run = args.run_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
@@ -99,7 +141,7 @@ def main():
     report.mkdir(parents=True, exist_ok=True)
     metadata = evidence / 'run.json'
     source = subprocess.check_output(['git','rev-parse','HEAD'], cwd=ROOT, text=True).strip()
-    diff = subprocess.check_output(['git','diff','--','apps','packages','ssh-server','tests','scripts'], cwd=ROOT)
+    diff = subprocess.check_output(['git','diff','--','apps','packages','browser-ssh','ssh-server','tests','scripts'], cwd=ROOT)
     state = json.loads(metadata.read_text()) if metadata.exists() else {
         'run':run,'started':datetime.now(timezone.utc).isoformat(),'phases':[],
         'students':70,'terminals':280,'endurance_seconds':30 if args.rehearsal else 5400,
@@ -191,7 +233,7 @@ sys.exit(0 if limit>=70 else 1)
                        EXAM_BROWSER_NATIVE_RELEASE='1')
             commands=[(['npm','run','test:browser','--','--config','tests/stress.config.ts'],ROOT,14400)]
         state['status']='RUNNING';save()
-        current_diff = subprocess.check_output(['git','diff','--','apps','packages','ssh-server','tests','scripts'], cwd=ROOT)
+        current_diff = subprocess.check_output(['git','diff','--','apps','packages','browser-ssh','ssh-server','tests','scripts'], cwd=ROOT)
         inputs=source_manifest()
         (output/'inputs.json').write_text(json.dumps(inputs,sort_keys=True)+'\n')
         row={'phase':phase,'attempt':attempt,'started':datetime.now(timezone.utc).isoformat(),
@@ -206,9 +248,15 @@ sys.exit(0 if limit>=70 else 1)
         cleanup_error = None
         use_marco = args.generator == 'marco' and phase in MARCO_PHASES
         row['generator'] = 'marco' if use_marco else 'local'
+        built = None
         try:
-            if phase == 'endurance' or use_marco:
-                scratch = local_scratch(output)
+            if phase in BUILT_PHASES:
+                built=built_manifest()
+                (output/'built-inputs.json').write_text(json.dumps(built,sort_keys=True)+'\n')
+                row['built_inputs_sha256']=hashlib.sha256(json.dumps(built,sort_keys=True).encode()).hexdigest()
+            if phase in NATIVE_PHASES:
+                check_local_ports((3102 if phase=='endurance' else 3100,9444,9445))
+                scratch = local_scratch(output,short=not use_marco and phase!='endurance')
                 env.update(TMPDIR=str(scratch), EXAM_STRESS_LOCAL_SCRATCH=str(scratch))
                 row['local_scratch'] = str(scratch)
             if use_marco:
@@ -236,6 +284,8 @@ sys.exit(0 if limit>=70 else 1)
                 row['commands'].append({'argv':command,'exit':code,'seconds':round(time.monotonic()-started,3)})
                 save()
                 if code!=0: break
+            if built is not None and built_manifest()!=built:
+                raise RuntimeError('Built browser/WASM/worker/clock inputs changed during qualification; preserve this failed receipt')
         except (Exception, KeyboardInterrupt) as error:
             failed = True
             row['reason'] = str(error)

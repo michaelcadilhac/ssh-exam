@@ -557,8 +557,12 @@ for (const [url, payload] of [
       id: "native-browser",
       name: "Private native browser qualification",
       earliest: Date.now() - 1000,
-      latest: Date.now() + (students === 70 ? 7200000 : 600000),
-      // Three-hour allowance covers the measured sequential ramp plus90 real
+      // Marco's real intercontinental16-person ramp exceeded ten minutes.
+      // Finite test issuance windows cover that ramp without reopening grants.
+      latest:
+        Date.now() +
+        (students === 70 ? 7200000 : students === 16 ? 1800000 : 600000),
+      // Four-hour allowance covers the measured sequential ramp plus90 real
       // minutes at peak, without spending that peak interval during setup.
       // No clock reset or fake clock is used by the endurance test.
       duration: students === 70 ? 14400 : 5400,

@@ -2,6 +2,7 @@
 import importlib.util
 import json
 import os
+import socket
 from pathlib import Path
 import tempfile
 import unittest
@@ -23,6 +24,8 @@ class ManualStressTests(unittest.TestCase):
         self.child=mock.Mock(pid=999999,wait=mock.Mock(return_value=0))
         self.proof=True
         self.scratch_free=80*1024**3
+        self.built=mock.Mock(return_value={'synthetic-build':{'sha256':'a'*64}})
+        self.ports=mock.Mock()
 
     def invoke(self,*args):
         def git(command,**kw):
@@ -39,6 +42,8 @@ class ManualStressTests(unittest.TestCase):
         with mock.patch.object(runner,'ROOT',self.root), \
              mock.patch.object(runner.sys,'argv',['stress','--native-bundle',self.bundle,'--run-id',self.run,*args]), \
              mock.patch.object(runner.shutil,'disk_usage',return_value=SimpleNamespace(free=self.scratch_free)), \
+             mock.patch.object(runner,'built_manifest',self.built), \
+             mock.patch.object(runner,'check_local_ports',self.ports), \
              mock.patch.object(runner.subprocess,'check_output',side_effect=git), \
              mock.patch.object(runner.subprocess,'Popen',side_effect=launch) as launched:
             code=runner.main()
@@ -155,7 +160,7 @@ class ManualStressTests(unittest.TestCase):
         generator.close.assert_called_once();launched.assert_not_called()
 
     def test_guarded_native_workflows_can_use_the_same_isolated_marco_browser(self):
-        for phase,students in [('native-editor','1'),('native-timer-recovery','1'),('native-recovery','16'),('native-collection','16')]:
+        for phase,students in [('native-editor','1'),('native-timer-recovery','1')]:
             with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
                 old=self.root;self.root=Path(directory)
                 try:
@@ -169,6 +174,71 @@ class ManualStressTests(unittest.TestCase):
                     self.assertEqual(launched.call_args.kwargs['env']['EXAM_BROWSER_NATIVE_STUDENTS'],students)
                     self.assertEqual(launched.call_args.kwargs['env']['EXAM_STRESS_BROWSER_WS'],'ws://127.0.0.1:12345/synthetic')
                 finally:self.root=old
+
+    def test_sixteen_person_faults_keep_local_browsers_and_original_containment(self):
+        for phase in ('native-recovery','native-collection'):
+            with self.subTest(phase=phase),self.assertRaises(SystemExit):
+                self.invoke('--phase',phase,'--generator','marco')
+        code,state,launched=self.invoke('--phase','native-recovery')
+        self.assertEqual(code,0)
+        self.assertEqual(state['phases'][0]['generator'],'local')
+        self.ports.assert_called_once_with((3100,9444,9445))
+        self.assertIn('TMPDIR',launched.call_args.kwargs['env'])
+
+    def test_local_port_refusal_happens_before_generator_or_guest(self):
+        self.ports.side_effect=RuntimeError('Private test port3102 is busy')
+        with mock.patch.object(runner,'marco_generator') as generator:
+            code,state,launched=self.invoke('--phase','endurance','--generator','marco')
+        self.assertEqual(code,1);generator.assert_not_called();launched.assert_not_called()
+        self.assertIn('busy',state['phases'][0]['reason'])
+
+    def test_real_local_listener_refuses_without_interrupting_its_owner(self):
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1',0));listener.listen(1);port=listener.getsockname()[1]
+            with self.assertRaisesRegex(RuntimeError,'busy or unavailable'):
+                runner.check_local_ports((port,))
+            self.assertEqual(listener.getsockname(),('127.0.0.1',port))
+        runner.check_local_ports((port,))
+
+    def test_local_native_scratch_fits_actual_chromium_unix_socket_paths(self):
+        code,_,launched=self.invoke('--phase','native-recovery')
+        self.assertEqual(code,0)
+        scratch=Path(launched.call_args.kwargs['env']['TMPDIR'])
+        self.assertTrue(scratch.is_relative_to(self.root/'var'))
+        self.assertEqual(scratch.stat().st_mode&0o777,0o700)
+        directory=scratch/'org.chromium.Chromium.aaaaaa';directory.mkdir()
+        with socket.socket(socket.AF_UNIX) as listener:
+            listener.bind(str(directory/'SingletonSocket'))
+
+    def test_missing_or_changed_build_refuses_qualification(self):
+        self.built.side_effect=RuntimeError('run npm run build')
+        code,state,launched=self.invoke('--phase','browser-signin')
+        self.assertEqual(code,1);launched.assert_not_called()
+        self.assertIn('npm run build',state['phases'][0]['reason'])
+        self.built.side_effect=[{'wasm':'original'},{'wasm':'changed'}]
+        code,state,_=self.invoke('--phase','browser-signin')
+        self.assertEqual(code,1)
+        self.assertIn('inputs changed',state['phases'][-1]['reason'])
+
+    def test_built_manifest_tracks_real_wasm_and_clock_and_refuses_symlinks(self):
+        names=('dist/web/index.html','dist/web/ssh/client.wasm','dist/web/ssh/wasm_exec.js',
+               'dist/apps/server/src/connection-worker.js','dist/apps/server/native/monitoring_clock.node',
+               'apps/server/native/monitoring_clock.node','dist/packages/config/index.js')
+        for name in names:
+            p=self.root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'synthetic original')
+        with mock.patch.object(runner,'ROOT',self.root):
+            before=runner.built_manifest()
+            wasm=self.root/'dist/web/ssh/client.wasm';wasm.write_bytes(b'synthetic changed')
+            self.assertNotEqual(before,runner.built_manifest())
+            wasm.unlink();wasm.symlink_to(self.root/'dist/packages/config/index.js')
+            with self.assertRaisesRegex(RuntimeError,'symlink|regular'):
+                runner.built_manifest()
+
+    def test_source_manifest_includes_browser_ssh(self):
+        name='browser-ssh/client/client.go';p=self.root/name;p.parent.mkdir(parents=True);p.write_text('synthetic source')
+        with mock.patch.object(runner,'ROOT',self.root),mock.patch.object(runner.subprocess,'check_output',return_value=(name+'\0').encode()) as git:
+            self.assertIn(name,runner.source_manifest())
+        self.assertIn('browser-ssh',git.call_args.args[0])
 
     def test_remote_cleanup_refusal_is_durable_and_blocks_further_work(self):
         generator=mock.Mock(failure=None)
