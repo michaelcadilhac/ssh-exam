@@ -42,12 +42,9 @@ const nativeProbe = z.object({
 
 let failureAttempt = "";
 const failureStates: unknown[] = [];
+const connectionEvents: object[] = [];
 test.afterEach(async ({ page }, info) => {
-  if (
-    !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
-    info.status === "passed" ||
-    !failureAttempt
-  )
+  if (!process.env.EXAM_BROWSER_NATIVE_BUNDLE || info.status === "passed")
     return;
   try {
     const diagnostic = async (name: string, value: unknown) => {
@@ -60,17 +57,21 @@ test.afterEach(async ({ page }, info) => {
       );
       await info.attach(name, { path, contentType: "application/json" });
     };
-    const response = await page.request.get("/api/fixture/native-state", {
-      params: { attempt: failureAttempt },
-      timeout: 10000,
-    });
-    await diagnostic("native-boundary-state", await response.body());
+    await diagnostic("connection-boundary-events", connectionEvents);
+    if (failureAttempt) {
+      const response = await page.request.get("/api/fixture/native-state", {
+        params: { attempt: failureAttempt },
+        timeout: 10000,
+      });
+      await diagnostic("native-boundary-state", await response.body());
+    }
     await diagnostic("student-control-boundary", failureStates);
     const focus = await page.evaluate(() => ({
       activeTag: document.activeElement?.tagName,
       activeClass: document.activeElement?.className,
       activeLabel: document.activeElement?.getAttribute("aria-label"),
       visible: document.visibilityState,
+      online: navigator.onLine,
       focused: document.hasFocus(),
       fullscreen: !!document.fullscreenElement,
       terminals: [...document.querySelectorAll(".xterm-helper-textarea")].map(
@@ -99,6 +100,31 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   page.setDefaultTimeout(10000);
   failureAttempt = "";
   failureStates.length = 0;
+  connectionEvents.length = 0;
+  const note = (event: object) => {
+    if (connectionEvents.length < 128) connectionEvents.push(event);
+  };
+  page.on("websocket", (socket) => {
+    const path = new URL(socket.url()).pathname;
+    if (!["/api/student/session", "/api/browser/ssh"].includes(path)) return;
+    note({ event: "opened", path });
+    socket.on("close", () => note({ event: "closed", path }));
+    socket.on("socketerror", () => note({ event: "socket-error", path }));
+    const frame = (direction: string, payload: string | Buffer) => {
+      try {
+        const message = JSON.parse(String(payload));
+        if (
+          typeof message.type === "string" &&
+          /^[a-z-]{1,40}$/.test(message.type)
+        )
+          note({ event: direction, path, type: message.type });
+      } catch {}
+    };
+    socket.on("framesent", ({ payload }) => frame("framesent", payload));
+    socket.on("framereceived", ({ payload }) =>
+      frame("framereceived", payload),
+    );
+  });
   const processMode = process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1";
   const stallMode = process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1";
   const coordinatorMode =
@@ -177,10 +203,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
           recoveryTransport = value.technicalRecoveryTransport || "";
         })
         .catch(() => {});
-    if (
-      isChallengedCapture(response.url()) &&
-      response.status() === 200
-    )
+    if (isChallengedCapture(response.url()) && response.status() === 200)
       uploads++;
   });
   page.on("websocket", (socket) => {
@@ -238,17 +261,15 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
   await page.goto("/");
   await page.getByLabel("Exam ID", { exact: true }).fill("native-browser");
   await page.getByLabel("Username").fill("examq");
-  await page
-    .getByRole("button", { name: "Sign in", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Password", { exact: true }).fill("shared-password");
-  await page
-    .getByRole("button", { name: "Continue", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByRole("button", { name: "Check setup and practice", exact: true })
     .click();
   await ready(page);
+  failureAttempt = (await (await page.request.get("/api/student/exam")).json())
+    .attempt.id;
   await page.getByRole("button", { name: "Start exam", exact: true }).click();
   await page
     .getByRole("dialog")

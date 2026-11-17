@@ -141,6 +141,7 @@ class ManualStressTests(unittest.TestCase):
         self.assertEqual(len(launched.call_args_list),3)
         self.assertEqual(launched.call_args_list[0].args[0],['node','scripts/stress-generator-smoke.cjs'])
         self.assertEqual(launched.call_args_list[1].args[0],['node','--import','tsx','tests/fixtures/stress-https-smoke.ts'])
+        self.assertEqual(self.child.wait.call_args_list[1].kwargs['timeout'],330)
         self.assertEqual(launched.call_args.kwargs['env']['EXAM_STRESS_BROWSER_WS'],'ws://127.0.0.1:12345/synthetic')
         with self.assertRaises(SystemExit):self.invoke('--phase','application','--generator','marco')
 
@@ -152,6 +153,22 @@ class ManualStressTests(unittest.TestCase):
         self.assertEqual(code,1);self.assertEqual(state['phases'][0]['status'],'FAILED')
         self.assertEqual(state['phases'][0]['commands'],[])
         generator.close.assert_called_once();launched.assert_not_called()
+
+    def test_guarded_native_workflows_can_use_the_same_isolated_marco_browser(self):
+        for phase,students in [('native-editor','1'),('native-timer-recovery','1'),('native-recovery','16'),('native-collection','16')]:
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                old=self.root;self.root=Path(directory)
+                try:
+                    generator=mock.Mock(failure=None)
+                    generator.start.return_value={'EXAM_STRESS_BROWSER_WS':'ws://127.0.0.1:12345/synthetic'}
+                    with mock.patch.object(runner,'marco_generator',return_value=generator):
+                        code,state,launched=self.invoke('--phase',phase,'--generator','marco')
+                    self.assertEqual(code,0);generator.close.assert_called_once()
+                    self.assertEqual(state['phases'][0]['generator'],'marco')
+                    self.assertEqual(len(launched.call_args_list),2)
+                    self.assertEqual(launched.call_args.kwargs['env']['EXAM_BROWSER_NATIVE_STUDENTS'],students)
+                    self.assertEqual(launched.call_args.kwargs['env']['EXAM_STRESS_BROWSER_WS'],'ws://127.0.0.1:12345/synthetic')
+                finally:self.root=old
 
     def test_remote_cleanup_refusal_is_durable_and_blocks_further_work(self):
         generator=mock.Mock(failure=None)

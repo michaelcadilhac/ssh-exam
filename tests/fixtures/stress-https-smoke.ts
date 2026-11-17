@@ -27,9 +27,9 @@ let observing = false;
 const lateNavigationControl =
   process.env.EXAM_STRESS_HTTPS_LATE_NAVIGATION_CONTROL === "1";
 const timer = setTimeout(() => {
-  console.error("Private HTTPS preflight exceeded60s");
+  console.error("Private HTTPS preflight exceeded300s");
   process.exit(124);
-}, 60000);
+}, 300000);
 try {
   execFileSync(
     "/usr/bin/openssl",
@@ -126,7 +126,10 @@ try {
       });
     }
   }
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Marco's interface churn repeats around every62s. Observe at least three
+  // cycles; a fast successful smoke can miss this generator fault entirely.
+  const steadyStarted = performance.now();
+  await new Promise((resolve) => setTimeout(resolve, 190000));
   const stats = await prepared[0].page.evaluate(
     () => (window as any).__httpsStress,
   );
@@ -147,6 +150,7 @@ try {
       remoteHTTPS: true,
       preloadedContexts: prepared.length,
       successfulRequests: stats.ok,
+      steadySeconds: (performance.now() - steadyStarted) / 1000,
       requestFailures: stats.failed,
       lateNavigationControl,
       institutionalMFA: false,

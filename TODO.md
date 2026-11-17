@@ -9,7 +9,10 @@ The isolated Marco network passed 2,054 steady requests across eight host networ
 events with zero failures and verified cleanup. A real SSH regression reproduced
 session exhaustion; bounded command concurrency now preserves four panes and a
 monitoring-renewal lane. SSH races, current build/typecheck and focused UI checks
-pass. Native/browser requalification is in progress; shared-host sizing and the
+pass. Actual native editor/buffer preservation and timer/files-only recovery
+workflows pass through the corrected private Marco network, with protected
+completion and independently verified host preservation/cleanup. Cohort/browser
+requalification is in progress; shared-host sizing and the
 70-student/90-minute target remain open. No fixes are deployed.
 [Durable plan](docs/stress-remediation.md).
 

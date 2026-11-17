@@ -36,11 +36,21 @@ socket evidence and a separate real-browser online-indicator reproducer are kept
 The private namespace now contains a closed veth pair, with no host/external link,
 instead of overriding navigator.onLine or relaxing application checks.
 
-Active: corrected 190-second network/online smoke (session99596), plus fixture
-typecheck (session86468). Harness source is frozen until smoke completion.
-Next: verify both and cleanup, repeat native editor with the corrected private
-network, then timer/16/64 fault phases, combined sizing and fresh70×4×90-minute run.
-Installed32workers and co-located resource sizing remain open.
+Corrected network/online smoke passes190seconds/2,054requests and exact independent
+cleanup. Native editor attempt3 passes1.5minutes through that environment, including
+real hold/Continue, buffer preservation, protected finish and FULL preservation.
+The first two pre-Start refusals remain separate failed evidence.
+
+Sequential native timer/recovery attempt2 passes1.6minutes: pause with continuing
+work, allowance change, genuine SSH loss, reviewed same-attempt files-only recovery,
+no-expiry approval and protected finish. Exact native/Marco/local cleanup passes.
+Attempt1 hit an owned port conflict with a parallel ordinary
+browser suite: that runner was gracefully interrupted and exact native/Marco/local
+cleanup verified. No student workflow was reached; no source/policy weakened.
+Next:16/64 fault phases, combined sizing and fresh70×4×90-minute
+run. Ordinary browser rerun can overlap only70-person mode (3102 vs3100).
+Installed-capacity read-only gate reconfirms32<70; host has4CPUs/7.7GiB total,
+5.3GiB available at the idle observation. Co-located sizing remains open.
 
 Historical report: [20261116T194355Z](../reports/stress/20261116T194355Z/report.md).
 Its native/Marco/local fixtures are fully stopped with preserved host authority.

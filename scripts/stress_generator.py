@@ -72,6 +72,18 @@ def browser_process(endpoint):
   assert p.stat().st_uid==uid
   return {'state':fields[0],'cgroup':(p/'cgroup').read_text()}
  except FileNotFoundError:return None
+def verify_network(identity,state):
+ host=os.readlink('/proc/self/ns/net');private=identity['browser_network_namespace']
+ assert re.fullmatch(r'net:\[[0-9]+\]',private) and private!=host and identity['host_network_namespace']==host
+ for pid in (identity['namespace_node_pid'],identity['browser_pid']):
+  assert isinstance(pid,int) and pid>1
+  p=Path('/proc')/str(pid);assert p.stat().st_uid==uid and (p/'cgroup').read_text()=='0::'+state['ControlGroup']+'\n'
+  assert os.readlink(p/'ns/net')==private
+ devices={l.split(':')[0].strip() for l in (Path('/proc')/str(identity['namespace_node_pid'])/'net/dev').read_text().splitlines()[2:]}
+ assert devices=={'lo','exam-test0','exam-test1'},'Private browser must contain only its closed test link and loopback'
+ routes=(Path('/proc')/str(identity['namespace_node_pid'])/'net/route').read_text().splitlines()[1:]
+ defaults=[l.split() for l in routes if l.split()[1]=='00000000']
+ assert len(defaults)==1 and defaults[0][:3]==['exam-test0','00000000','020200C0'],'Private route must end at the unconnected test peer'
 def owned_bytes(root):
  paths=list(root.rglob('*'));assert len(paths)<10000
  total=0
@@ -88,6 +100,9 @@ if op=='preflight':
  assert shared_memory()>=12*1024**3,'Private browser run needs12GiB shared-memory headroom'
  assert shutil.disk_usage('/var/tmp').free>=3*1024**3,'Private browser scratch needs3GiB free'
  free_ports()
+ assert Path('/usr/bin/ip').is_file(),'Private browser namespace requires the installed ip tool'
+ command(['/usr/bin/unshare','--user','--map-current-user','--net','/usr/bin/python3','-c',
+          'import os;assert os.readlink("/proc/self/ns/net")!='+repr(os.readlink('/proc/self/ns/net'))])
  print(json.dumps({'uid':uid,'cpus':os.cpu_count(),'available_bytes':memory(),'scratch_free_bytes':shutil.disk_usage('/var/tmp').free,'shared_memory_free_bytes':shared_memory(),'node':command(['/usr/bin/node','--version']).strip(),'chromium':command(['/usr/bin/chromium','--version']).strip(),'web_service':expected}))
 elif op=='setup':
  files=v['files'];assert 1<len(files)<=1000
@@ -124,6 +139,11 @@ else:
     '--property=StandardOutput=append:'+str(root/'worker.log'),
     '--property=StandardError=append:'+str(root/'worker.log'),
     '--working-directory='+str(root),'/usr/bin/node',str(root/'worker.cjs')])
+  state=unit_state(unit);group=state.get('ControlGroup','')
+  if group:
+   assert group.startswith('/') and '..' not in PurePosixPath(group).parts and group.endswith('/'+unit)
+   fd=os.open(root/'scope.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+   with os.fdopen(fd,'w') as stream:json.dump({'control_group':group},stream)
   print(json.dumps({'started':True,'unit':unit}))
  elif op=='status':
   state=unit_state(unit);active=state['ActiveState']=='active' and int(state['MainPID'])>1
@@ -149,6 +169,7 @@ else:
    if active:
     browser=browser_process(identity);assert browser and browser['state'] not in ('Z','X')
     assert identity['node_pid']==int(state['MainPID']) and browser['cgroup']=='0::'+state['ControlGroup']+'\n'
+    verify_network(identity,state);result['network_isolation_verified']=True
     assert b'--disable-dev-shm-usage' not in (Path('/proc')/str(identity['browser_pid'])/'cmdline').read_bytes().split(b'\0'),'Browser shared pages must not use root-disk scratch'
   if not active and (root/'worker.log').is_file():result['worker_log_tail']=(root/'worker.log').read_text()[-8192:]
   result['owned_bytes']=owned_bytes(root)
@@ -164,7 +185,12 @@ else:
   assert state['ActiveState']=='inactive' and state['SubState']=='dead' and state['MainPID']=='0',state
   endpoint=root/'endpoint.json';browser=browser_process(private_json(endpoint)) if endpoint.exists() else None
   assert browser is None or browser['state'] in ('Z','X'),'Owned browser still executes after unit stop'
-  print(json.dumps({'unit':unit,'unit_state':state,'web_service_unchanged':web()==marker['web_service'],'stopped':True,'browser_stopped':True}))
+  scope=root/'scope.json'
+  if scope.exists():
+   group=private_json(scope)['control_group'];assert group.startswith('/') and '..' not in PurePosixPath(group).parts and group.endswith('/'+unit)
+   events=Path('/sys/fs/cgroup')/group.lstrip('/')/'cgroup.events'
+   assert not events.exists() or dict(l.split() for l in events.read_text().splitlines())['populated']=='0','Owned namespace/proxy processes remain'
+  print(json.dumps({'unit':unit,'unit_state':state,'web_service_unchanged':web()==marker['web_service'],'stopped':True,'browser_stopped':True,'scope_empty':True}))
  elif op=='ports':
   free_ports();print(json.dumps({'ports_closed':[9444,9445]}))
  elif op=='listeners':

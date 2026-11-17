@@ -6,6 +6,17 @@ followed by simultaneous submission. No institutional MFA, actual student accoun
 or outbound email. Use independent test keys, storage and loopback mail capture.
 Production state, deadlines, services and submissions remain untouched.
 
+November17 remediation: classroom public reads and transient initial capture
+verification are fixed locally, together with Prof's bounded instructor/copy/
+focus findings and browser SSH command-session pressure. Current application
+checks pass910/three gated skips; SSH races, build/typecheck and focused browser
+checks pass. The corrected Marco network passes its real online indicator and
+190seconds/2,054steady requests without failures; native editor preservation and
+protected finish pass through that network. Production's32workers and the full
+70-person/shared-host target remain open. See [remediation](stress-remediation.md)
+and its current checkpoint rather than treating the historical campaign below
+as the result of the new candidate.
+
 ## Dependency-ordered milestones
 
 1. Extend the existing guarded disposable native/browser fixture to the explicitly
@@ -25,7 +36,7 @@ Production state, deadlines, services and submissions remain untouched.
    UX findings, suggested solutions and severity. Preserve raw evidence privately
    under var/stress/RUN/. Commit coherent validated suite/docs locally; no push/deploy.
 
-Current status:861application checks and three normally gated real CLI/export/
+Historical campaign:861application checks and three normally gated real CLI/export/
 bwrap workflows pass for the unchanged application runtime. Native races,
 86harness checks,16-client WASM sign-in and native editor/timer/recovery/
 collector-crash workflows pass with independent cleanup/preservation. Full
@@ -113,7 +124,7 @@ The `--rehearsal` option uses30seconds at full70-person load to qualify the harn
 it cannot count as a90-minute pass and cannot be promoted under the same run ID.
 The config is separate from default Playwright discovery and deployment scripts.
 
-Use `--generator marco` with `--phase endurance` (or `all`) for the approved larger
+Use `--generator marco` with a guarded native phase, `endurance` (or `all`) for the approved larger
 generator. It transfers only the existing Playwright runtime and synthetic worker
 to a fresh private Marco directory. Installed Node/Chromium run in an owned user
 service:20GiB maximum RAM,18GiB high watermark, no swap,8CPU quota,4096tasks and a
@@ -131,6 +142,23 @@ fixture termination, then retain preservation/stop receipts before another run.
 This topology includes an
 intercontinental test-generator link; it does not certify co-located production
 web/native capacity or campus latency.
+
+The owned Node/Chromium subtree uses a separate user/network namespace. A closed
+veth pair exists entirely inside it so Chromium correctly reports its usable
+private connection online; the default peer has no host/external link. Capabilities
+are dropped before Node/Chromium run. Only private Unix-socket proxies carry the
+loopback9444/9445 fixture and browser-control connections across the namespace.
+Verify exact namespace PIDs, owner/cgroup, three allowed interfaces and private
+route. Never override navigator.onLine or change host NetworkManager/interfaces.
+The pre-guest smoke must check the real online indicator as well as actual traffic.
+The190-second HTTPS steady check covers several observed host churn cycles.
+
+Schedule fixtures by their actual ports: one-/16-person native phases and the
+ordinary browser suite both use local3100 and must run sequentially. The70-person
+native gateway uses3102, so its endurance can overlap the ordinary browser suite
+after verifying both fixtures' exact cleanup/port ownership. Separate process
+groups alone do not isolate listeners. Retain controlled-stop and port-conflict
+receipts as harness failures; they do not qualify a student workflow.
 
 The runner creates a fresh private workspace `temporary` directory for each
 endurance attempt and supplies it as TMPDIR. A real child-Node routing probe runs

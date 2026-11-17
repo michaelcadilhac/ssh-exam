@@ -2,6 +2,14 @@ import { defineConfig } from "@playwright/test";
 // Keep test-worker skip guards and the private server on the same mode.
 process.env.EXAM_BROWSER_SSH ??= "1";
 const native = !!process.env.EXAM_BROWSER_NATIVE_BUNDLE;
+const remoteBrowser = process.env.EXAM_STRESS_BROWSER_WS;
+if (
+  remoteBrowser &&
+  (!native || !/^ws:\/\/127\.0\.0\.1:\d+\/[A-Za-z0-9_-]+$/.test(remoteBrowser))
+)
+  throw Error(
+    "Remote stress browsers require the private native fixture and loopback tunnel",
+  );
 export default defineConfig({
   testDir: "tests/browser",
   workers: 1,
@@ -9,6 +17,9 @@ export default defineConfig({
     baseURL: native ? "https://127.0.0.1:9444" : "http://localhost:3100",
     ignoreHTTPSErrors: native,
     headless: true,
+    ...(remoteBrowser
+      ? { connectOptions: { wsEndpoint: remoteBrowser, timeout: 15000 } }
+      : {}),
     launchOptions: {
       executablePath: process.env.CHROMIUM || "/usr/bin/chromium",
       args: ["--no-sandbox"],

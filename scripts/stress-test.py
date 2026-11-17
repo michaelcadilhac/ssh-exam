@@ -19,6 +19,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 PHASES = ('harness', 'build', 'installed-capacity', 'anonymous-burst', 'application', 'operator-integrations', 'native-race', 'browser-signin', 'browser-corners',
           'native-editor', 'native-timer-recovery', 'native-recovery', 'native-collection', 'endurance')
+MARCO_PHASES = ('native-editor','native-timer-recovery','native-recovery','native-collection','endurance')
 
 
 def source_manifest():
@@ -82,10 +83,10 @@ def main():
     p.add_argument('--phase', choices=('all', *PHASES), default='all')
     p.add_argument('--rehearsal', action='store_true', help='70-student30s harness rehearsal; never a full endurance pass')
     p.add_argument('--generator', choices=('local', 'marco'), default='local',
-                   help='Browser host for endurance only; Marco uses an owned bounded worker and private SSH forwards')
+                   help='Browser host for guarded native phases/endurance; Marco uses an owned isolated worker and private SSH forwards')
     args = p.parse_args()
-    if args.generator == 'marco' and args.phase not in ('all', 'endurance'):
-        p.error('--generator marco requires --phase endurance or all')
+    if args.generator == 'marco' and args.phase not in ('all', *MARCO_PHASES):
+        p.error('--generator marco requires a guarded native phase, endurance or all')
     if not re.fullmatch(r'/var/tmp/ssh-exam-browser-native-upload\.[A-Za-z0-9_]+', args.native_bundle):
         p.error('Expected a private code-only native-browser upload directory')
     run = args.run_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
@@ -130,6 +131,7 @@ def main():
                       (['python3','-m','unittest','discover','-s','ssh-server/tests','-p','test_browser_bridge.py'],ROOT,60),
                       (['python3','-m','unittest','discover','-s','tests','-p','test_stress_runner.py'],ROOT,60)]
             commands.append((['python3','-m','unittest','discover','-s','tests','-p','test_stress_generator.py'],ROOT,60))
+            commands.append((['node','--test','tests/stress-network-proxy.cjs'],ROOT,30))
         elif phase=='build':
             commands=[(['npm','run','typecheck'],ROOT,180),(['npm','run','build'],ROOT,600)]
         elif phase=='installed-capacity':
@@ -202,16 +204,18 @@ sys.exit(0 if limit>=70 else 1)
         generator = None
         failed = False
         cleanup_error = None
-        row['generator'] = args.generator if phase == 'endurance' else 'local'
+        use_marco = args.generator == 'marco' and phase in MARCO_PHASES
+        row['generator'] = 'marco' if use_marco else 'local'
         try:
-            if phase == 'endurance':
+            if phase == 'endurance' or use_marco:
                 scratch = local_scratch(output)
                 env.update(TMPDIR=str(scratch), EXAM_STRESS_LOCAL_SCRATCH=str(scratch))
                 row['local_scratch'] = str(scratch)
-            if phase == 'endurance' and args.generator == 'marco':
+            if use_marco:
                 generator = marco_generator(output)
                 env.update(generator.start())
-                commands.insert(0, (['node','--import','tsx','tests/fixtures/stress-https-smoke.ts'],ROOT,100))
+                if phase == 'endurance':
+                    commands.insert(0, (['node','--import','tsx','tests/fixtures/stress-https-smoke.ts'],ROOT,330))
                 commands.insert(0, (['node','scripts/stress-generator-smoke.cjs'],ROOT,45))
             for index,(command,cwd,timeout) in enumerate(commands):
                 print(json.dumps({'run':run,'phase':phase,'attempt':attempt,'command':command}),flush=True)

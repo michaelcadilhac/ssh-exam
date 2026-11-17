@@ -56,7 +56,7 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
   plural cancellation and 60-second focus-display regressions pass on rebuilt
   assets. Real local nginx/TLS maintenance checks pass. Original failed receipts
   and the separate follow-up results remain distinct.
-- Milestone 4: the owned Marco browser now has an isolated loopback-only network
+- Milestone 4: the owned Marco browser now has an isolated private network
   namespace with private Unix-socket forwarding. A 190-second steady probe passed
   2,054 requests without failures across eight host interface-creation events;
   independent exact process/cgroup/tunnel cleanup passes. No host networking changed.
@@ -64,14 +64,21 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
   concurrent commands. Bounded command concurrency/queueing reserves a live-renewal
   lane; 63 queued commands, exact queued cancellation and all four panes pass,
   as do browser-SSH races. This is a confirmed failure path, not proof of the cause
-  of the old sanitized fourth-pane refusal. Native UI qualification is next.
+  of the old sanitized fourth-pane refusal.
 - Full application checks pass: 910 tests/three explicitly gated skips. Latest
   build and typecheck pass. Two native editor attempts were blocked before Start:
   the loopback-only namespace made Chromium report offline despite working HTTP.
   A separate real-browser check reproduced this. Exact fixture cleanup and zero
   clock/consumption evidence are retained. The corrected private namespace has
   only its closed veth pair and loopback, without host/external connectivity or
-  navigator overrides; a fresh steady/online smoke is running before native retry.
-- Current milestone: native editor/recovery/capacity qualification through Marco.
+  navigator overrides. Its fresh real-online/HTTP/WebSocket/media smoke and
+  190-second/2,054-request steady HTTPS check pass. Native editor and timer/files-only
+  recovery then pass through the actual browser, SSH and root guest, with exact
+  cleanup and FULL original preservation. An owned parallel port conflict is
+  retained; its ordinary browser runner was gracefully interrupted and exact
+  cleanup verified. One-/16-person phases share3100; only70-person mode on3102
+  can overlap the ordinary suite.
+- Current milestone:16/64 fault qualification, finite worker/shared-host sizing
+  and new70×4×90-minute endurance. Installed32workers still fail the read-only gate.
 - Decisions: none pending. Installation sizing will be recorded as a candidate
   until actual combined-capacity qualification, never represented as deployed.

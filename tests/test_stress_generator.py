@@ -17,6 +17,37 @@ spec.loader.exec_module(generator)
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_network_guard_requires_current_owned_pids_and_a_closed_private_link(self):
+        function = next(node for node in ast.parse(generator.RPC).body
+                        if isinstance(node, ast.FunctionDef) and node.name == 'verify_network')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for pid in (1001,1002):
+                p=root/str(pid);(p/'net').mkdir(parents=True)
+                (p/'cgroup').write_text('0::/owned\n')
+                (p/'net/dev').write_text('header\nheader\nlo: 0\nexam-test0: 0\nexam-test1: 0\n')
+                (p/'net/route').write_text('header\nexam-test0 00000000 020200C0 0003\n')
+            import os,re
+            current={'1001':'net:[2]','1002':'net:[2]'}
+            def readlink(path):
+                return 'net:[1]' if str(path)=='/proc/self/ns/net' else current[Path(path).parts[-3]]
+            namespace={'Path':lambda path:root if str(path)=='/proc' else Path(path),
+                       'os':mock.Mock(readlink=readlink),'uid':os.getuid(),'re':re}
+            exec(compile(ast.Module(body=[function],type_ignores=[]),'network-guard','exec'),namespace)
+            identity={'host_network_namespace':'net:[1]','browser_network_namespace':'net:[2]',
+                      'namespace_node_pid':1001,'browser_pid':1002}
+            state={'ControlGroup':'/owned'}
+            namespace['verify_network'](identity,state)
+            current['1002']='net:[1]'
+            with self.assertRaises(AssertionError):namespace['verify_network'](identity,state)
+            current['1002']='net:[2]';(root/'1001/net/dev').write_text('header\nheader\nlo: 0\neth0: 0\n')
+            with self.assertRaises(AssertionError):namespace['verify_network'](identity,state)
+            (root/'1001/net/dev').write_text('header\nheader\nlo: 0\nexam-test0: 0\nexam-test1: 0\n')
+            (root/'1001/net/route').write_text('header\neth0 00000000 0100000A 0003\n')
+            with self.assertRaises(AssertionError):namespace['verify_network'](identity,state)
+            (root/'1001/net/route').write_text('header\nexam-test0 00000000 020200C0 0003\n');(root/'1002/cgroup').write_text('0::/unrelated\n')
+            with self.assertRaises(AssertionError):namespace['verify_network'](identity,state)
+
     def test_shared_memory_pressure_refuses_only_the_owned_generator(self):
         with tempfile.TemporaryDirectory() as directory:
             owned = generator.MarcoGenerator(directory)

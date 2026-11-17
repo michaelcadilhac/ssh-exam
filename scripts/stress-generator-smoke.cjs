@@ -37,6 +37,8 @@ const { WebSocketServer } = require('ws');
       const page = await context.newPage();
       await page.goto('http://127.0.0.1:9444', { timeout: 10000 });
       assert.equal(await page.title(), 'Private synthetic generator');
+      assert.equal(await page.evaluate(() => navigator.onLine), true,
+        'The isolated browser must report its working private connection online');
       entries.push({ context, page, value });
     }
     for (const { page, value } of entries) {
