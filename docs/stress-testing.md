@@ -36,7 +36,9 @@ That does not convert the failed full run into a pass. Earlier fixture repairs
 and recovery observations remain in the report; no backend timing fix is claimed.
 The seventh rehearsal safely refused further load at22students/88terminals when
 the generator's available RAM fell below768MiB. All22attempts were ACTIVE;
-there is no70-student or90-minute pass. A larger generator decision is pending.
+there is no70-student or90-minute pass. The instructor selected Marco as the larger
+browser generator; its live two-context smoke and independently verified cleanup
+pass. The current harness passes83 checks. The70-person rehearsal is next.
 Independent functional/fault phases continue. The installed32-connection limit
 is below the70-student target; the isolated candidate uses96 with compiled
 connection workers. This is a test configuration, not a production change.
@@ -66,6 +68,25 @@ alone does not require rebuilding or uploading the same native binaries.
 The `--rehearsal` option uses30seconds at full70-person load to qualify the harness;
 it cannot count as a90-minute pass and cannot be promoted under the same run ID.
 The config is separate from default Playwright discovery and deployment scripts.
+
+Use `--generator marco` with `--phase endurance` (or `all`) for the approved larger
+generator. It transfers only the existing Playwright runtime and synthetic worker
+to a fresh private Marco directory. Installed Node/Chromium run in an owned user
+service:20GiB maximum RAM,18GiB high watermark, no swap,8CPU quota,4096tasks and a
+three-hour lifetime. Fresh profiles, actual cgroup bounds, ancestor headroom and
+loopback-only listeners are verified. Chromium shared pages use existing tmpfs
+under the same memory cgroup;12GiB startup and4GiB live shared-memory headroom
+are required, as well as the independent root-disk guard. Private SSH forwards carry browser traffic
+to the local gateway/relay; no retired Marco exam service or production data is
+changed. A two-context isolation/media/HTTP/WebSocket smoke precedes the guest.
+Every run records worker identity, resource observations and exact-unit/browser/
+tunnel cleanup. Unknown cleanup blocks another run. On interruption, independently
+check the native guest and local fixture too: wrapper exit alone can leave them
+active. Use only the qualified exact-stage private abort and verified owned local
+fixture termination, then retain preservation/stop receipts before another run.
+This topology includes an
+intercontinental test-generator link; it does not certify co-located production
+web/native capacity or campus latency.
 
 The installed-capacity phase reads only the installed connection-worker limit and
 fails when it is below70. It never changes the installation to obtain a pass.

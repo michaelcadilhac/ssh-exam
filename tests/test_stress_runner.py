@@ -27,7 +27,7 @@ class ManualStressTests(unittest.TestCase):
             return 'a'*40+'\n' if kw.get('text') else b''
         def launch(command,**kw):
             env=kw['env']
-            if self.proof and env.get('EXAM_STRESS_OUTPUT'):
+            if self.proof and env.get('EXAM_STRESS_OUTPUT') and command[0]=='npm':
                 output=Path(env['EXAM_STRESS_OUTPUT'])
                 output.mkdir(parents=True)
                 seconds=int(env['EXAM_STRESS_SECONDS'])
@@ -91,6 +91,39 @@ class ManualStressTests(unittest.TestCase):
             self.assertEqual(env[key],'1')
         self.assertEqual(env['EXAM_BROWSER_NATIVE_STUDENTS'],'1')
         self.assertIn('tests/browser/retained-recovery.spec.ts',launched.call_args.args[0])
+
+    def test_marco_generator_is_explicit_scoped_to_endurance_and_closed(self):
+        generator=mock.Mock(failure=None)
+        generator.start.return_value={'EXAM_STRESS_BROWSER_WS':'ws://127.0.0.1:12345/synthetic',
+                                      'EXAM_STRESS_GENERATOR_STATUS':'private-status'}
+        with mock.patch.object(runner,'marco_generator',return_value=generator):
+            code,state,launched=self.invoke('--phase','endurance','--generator','marco')
+        self.assertEqual(code,0)
+        generator.start.assert_called_once();generator.close.assert_called_once()
+        self.assertEqual(state['phases'][0]['generator'],'marco')
+        self.assertEqual(len(launched.call_args_list),2)
+        self.assertEqual(launched.call_args_list[0].args[0],['node','scripts/stress-generator-smoke.cjs'])
+        self.assertEqual(launched.call_args.kwargs['env']['EXAM_STRESS_BROWSER_WS'],'ws://127.0.0.1:12345/synthetic')
+        with self.assertRaises(SystemExit):self.invoke('--phase','application','--generator','marco')
+
+    def test_remote_setup_failure_still_closes_owned_generator_and_cannot_pass(self):
+        generator=mock.Mock(failure=None)
+        generator.start.side_effect=RuntimeError('bounded setup refusal')
+        with mock.patch.object(runner,'marco_generator',return_value=generator):
+            code,state,launched=self.invoke('--phase','endurance','--generator','marco')
+        self.assertEqual(code,1);self.assertEqual(state['phases'][0]['status'],'FAILED')
+        self.assertEqual(state['phases'][0]['commands'],[])
+        generator.close.assert_called_once();launched.assert_not_called()
+
+    def test_remote_cleanup_refusal_is_durable_and_blocks_further_work(self):
+        generator=mock.Mock(failure=None)
+        generator.start.return_value={}
+        generator.close.side_effect=RuntimeError('owned unit not confirmed stopped')
+        with mock.patch.object(runner,'marco_generator',return_value=generator),self.assertRaisesRegex(RuntimeError,'cleanup is unconfirmed'):
+            self.invoke('--phase','endurance','--generator','marco')
+        state=json.loads((self.root/'var/stress'/self.run/'run.json').read_text())
+        self.assertEqual(state['status'],'INCOMPLETE')
+        self.assertEqual(state['phases'][0]['status'],'CLEANUP_UNCONFIRMED')
 
     def test_operator_integrations_enable_the_three_normally_gated_real_entries(self):
         code,_,launched=self.invoke('--phase','operator-integrations')

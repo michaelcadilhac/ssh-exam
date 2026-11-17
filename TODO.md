@@ -20,7 +20,9 @@ five-case run that also verifies both local UI fixes. Neither fresh success nor
 fixture repairs erase the failed full-run receipts. All original images preserved.
 
 The latest rehearsal stopped safely at 22 active students/88 panes on the generator
-memory floor. No 70-student/90-minute pass; larger-generator decision pending.
+memory floor. The instructor selected Marco as generator; live isolation/media/
+HTTP/WebSocket smoke and independent worker/browser/tunnel cleanup pass. Harness
+now passes83 checks. The70-person rehearsal and90-minute peak remain outstanding.
 Confirmed P1 baselines: installed 32-connection ceiling is below 70, and the shared
 anonymous 180/minute bucket rejects 30 of 210 minimal cold-load requests. Neither
 is changed in production; the isolated candidate uses 96 compiled workers.

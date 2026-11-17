@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -41,13 +42,24 @@ def endurance_receipt(output,seconds):
     return None
 
 
+def marco_generator(output):
+    spec = importlib.util.spec_from_file_location('stress_generator', ROOT / 'scripts/stress_generator.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.MarcoGenerator(output)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--native-bundle', required=True, help='Audited code-only bundle in a NEW private csc-sys directory')
     p.add_argument('--run-id', help='Existing run to resume; prior phase receipts are retained')
     p.add_argument('--phase', choices=('all', *PHASES), default='all')
     p.add_argument('--rehearsal', action='store_true', help='70-student30s harness rehearsal; never a full endurance pass')
+    p.add_argument('--generator', choices=('local', 'marco'), default='local',
+                   help='Browser host for endurance only; Marco uses an owned bounded worker and private SSH forwards')
     args = p.parse_args()
+    if args.generator == 'marco' and args.phase not in ('all', 'endurance'):
+        p.error('--generator marco requires --phase endurance or all')
     if not re.fullmatch(r'/var/tmp/ssh-exam-browser-native-upload\.[A-Za-z0-9_]+', args.native_bundle):
         p.error('Expected a private code-only native-browser upload directory')
     run = args.run_id or datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
@@ -91,6 +103,7 @@ def main():
             commands=[(['python3','-m','unittest','discover','-s','ssh-server/tests','-p','test_overlay_qualification.py'],ROOT,60),
                       (['python3','-m','unittest','discover','-s','ssh-server/tests','-p','test_browser_bridge.py'],ROOT,60),
                       (['python3','-m','unittest','discover','-s','tests','-p','test_stress_runner.py'],ROOT,60)]
+            commands.append((['python3','-m','unittest','discover','-s','tests','-p','test_stress_generator.py'],ROOT,60))
         elif phase=='build':
             commands=[(['npm','run','typecheck'],ROOT,180),(['npm','run','build'],ROOT,600)]
         elif phase=='installed-capacity':
@@ -160,26 +173,50 @@ sys.exit(0 if limit>=70 else 1)
              'native_bundle':args.native_bundle,
              'status':'RUNNING','commands':[],'evidence':str(output.relative_to(ROOT))}
         state['phases'].append(row);save()
-        for index,(command,cwd,timeout) in enumerate(commands):
-            print(json.dumps({'run':run,'phase':phase,'attempt':attempt,'command':command}),flush=True)
-            started=time.monotonic()
-            with (output/('command-'+str(index)+'.log')).open('xb') as log:
-                child=subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+        generator = None
+        failed = False
+        cleanup_error = None
+        row['generator'] = args.generator if phase == 'endurance' else 'local'
+        try:
+            if phase == 'endurance' and args.generator == 'marco':
+                generator = marco_generator(output)
+                env.update(generator.start())
+                commands.insert(0, (['node','scripts/stress-generator-smoke.cjs'],ROOT,45))
+            for index,(command,cwd,timeout) in enumerate(commands):
+                print(json.dumps({'run':run,'phase':phase,'attempt':attempt,'command':command}),flush=True)
+                started=time.monotonic()
+                with (output/('command-'+str(index)+'.log')).open('xb') as log:
+                    child=subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+                    try:
+                        code=child.wait(timeout=timeout)
+                    except (subprocess.TimeoutExpired,KeyboardInterrupt):
+                        # Signal only this owned test tree. Its fixture performs guarded guest cleanup.
+                        os.killpg(child.pid,signal.SIGTERM)
+                        try: code=child.wait(timeout=35)
+                        except subprocess.TimeoutExpired:
+                            row['status']='CLEANUP_UNCONFIRMED';row['pid']=child.pid
+                            state['status']='INCOMPLETE';save()
+                            raise RuntimeError('Owned test cleanup is still pending; preserve its state; do not launch another guest')
+                        if code==0: code=124
+                row['commands'].append({'argv':command,'exit':code,'seconds':round(time.monotonic()-started,3)})
+                save()
+                if code!=0: break
+        except (Exception, KeyboardInterrupt) as error:
+            failed = True
+            row['reason'] = str(error)
+        finally:
+            if generator:
                 try:
-                    code=child.wait(timeout=timeout)
-                except (subprocess.TimeoutExpired,KeyboardInterrupt):
-                    # Signal only this owned test tree. Its fixture performs guarded guest cleanup.
-                    os.killpg(child.pid,signal.SIGTERM)
-                    try: code=child.wait(timeout=35)
-                    except subprocess.TimeoutExpired:
-                        row['status']='CLEANUP_UNCONFIRMED';row['pid']=child.pid
-                        state['status']='INCOMPLETE';save()
-                        raise RuntimeError('Owned test cleanup is still pending; preserve its state; do not launch another guest')
-                    if code==0: code=124
-            row['commands'].append({'argv':command,'exit':code,'seconds':round(time.monotonic()-started,3)})
-            save()
-            if code!=0: break
-        row['status']='PASSED' if all(c['exit']==0 for c in row['commands']) else 'FAILED'
+                    generator.close()
+                    if generator.failure:
+                        failed = True;row['reason'] = generator.failure
+                except Exception as error:
+                    cleanup_error = str(error)
+        if cleanup_error or row['status']=='CLEANUP_UNCONFIRMED':
+            row['status']='CLEANUP_UNCONFIRMED';row['reason']=cleanup_error or row.get('reason')
+            state['status']='INCOMPLETE';save()
+            raise RuntimeError('Owned cleanup is unconfirmed; preserve evidence and do not launch another test')
+        row['status']='PASSED' if not failed and row['commands'] and all(c['exit']==0 for c in row['commands']) else 'FAILED'
         if row['status']=='PASSED' and source_manifest()!=inputs:
             row['status']='FAILED';row['reason']='Test source changed during execution; receipt is not qualified'
         if row['status']=='PASSED' and phase=='endurance':

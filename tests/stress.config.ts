@@ -11,6 +11,12 @@ if (!base.webServer || Array.isArray(base.webServer))
 
 export default defineConfig({
   ...base,
+  use: {
+    ...base.use,
+    ...(process.env.EXAM_STRESS_BROWSER_WS
+      ? { connectOptions: { wsEndpoint: process.env.EXAM_STRESS_BROWSER_WS, timeout: 15000 } }
+      : {}),
+  },
   webServer: {
     ...base.webServer,
     cwd: fileURLToPath(new URL("..", import.meta.url)),

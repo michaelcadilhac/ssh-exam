@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { simulatedMedia, ready, readyTerminal } from "./transition-fixture.js";
 import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
+import { openUnauthenticatedStressWelcome } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
@@ -16,6 +17,18 @@ async function generatorHeadroom() {
     throw Error(
       "Load-generator memory headroom is below768MiB; abort only the owned synthetic test before affecting other applications",
     );
+  const remote = process.env.EXAM_STRESS_GENERATOR_STATUS;
+  if (remote) {
+    const status = z.object({
+      host: z.literal("marco"), active: z.literal(true),
+      observed_local_ms: z.number().int(),
+      available_bytes: z.number().int().nonnegative(),
+      minimum_available_bytes: z.literal(4 * 1024 ** 3),
+    }).parse(JSON.parse(await readFile(remote, "utf8")));
+    if (Date.now() < status.observed_local_ms || Date.now() - status.observed_local_ms > 20000 || status.available_bytes < status.minimum_available_bytes)
+      throw Error("Remote browser generator health/headroom is unavailable; abort the owned synthetic test");
+    return status.available_bytes;
+  }
   return available;
 }
 const shellQuote = (value: string) =>
@@ -274,7 +287,9 @@ test(
             } catch {}
           });
         });
-        await page.goto(origin);
+        if (stressRun && process.env.EXAM_STRESS_GENERATOR_STATUS)
+          await openUnauthenticatedStressWelcome(page, origin, console.log);
+        else await page.goto(origin);
         await page
           .getByLabel("Exam ID", { exact: true })
           .fill("native-browser");

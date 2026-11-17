@@ -1,9 +1,10 @@
-# Current checkpoint — stress report saved; 70-student run BLOCKED
+# Current checkpoint — Marco selected; remote generator qualification
 
 November 16: approved target 70 synthetic students/four terminals each, 90 real
 minutes at peak, simultaneous protected submission. No institutional MFA, actual
 student accounts or external email. No production change, push or deployment.
-All owned test fixtures are stopped; 16 original documentation images unchanged.
+16 original documentation images remain unchanged. Active owned test below;
+completed earlier fixtures have independently verified cleanup.
 Local UI/browser fixes: commit `8a42483`; permission fixtures: `c9f421c`.
 The manual suite and report are committed locally (see git log); nothing pushed.
 
@@ -28,17 +29,48 @@ Current audited bundle (no speculative rebuild/upload needed):
 19 verified files; product native binaries unchanged from v8. Each phase retains
 its exact input/bundle identity. Audit: `var/stress/native-upload-v10.json`.
 
-**Open resource dialog:** 24 GiB available on euler/another generator, or explicit
-70-protocol-client/smaller-browser coverage choice. Euler heavy work has not been
-authorized or started. Rehearsal 7 stopped safely at 22 ACTIVE/88 panes on the memory
-floor; no 70-student ramp, 90-minute peak or 70-way completion exists.
+**Selected generator:** instructor authorized Marco. Read-only inventory: 12 CPUs,
+31.24 GiB RAM/24.24 GiB available, Node 26.4 and Chromium 149 installed; retired
+exam service remains inactive/dead/disabled/MainPID 0. Existing user bus works
+with its verified runtime environment. No package installation required.
+
+Current milestone: `test:stress --phase endurance --generator marco`. Private
+Playwright server, loopback-only SSH forwards, fresh profiles, 20 GiB memory cap,
+no swap, 8 CPU quota, 4096 tasks, three-hour lifetime. Actual kernel limits,
+ancestor memory headroom, listener addresses and exact-process cleanup are checked.
+Seven controller and ten runner contracts pass; harness 9 passes all 83 checks.
+RPC syntax and fixture types pass. Actual Marco smoke 3 passes two simultaneous
+isolated cookie contexts, synthetic video, reverse HTTP/text+binary WebSocket and
+browser-server reuse. Cleanup and independent observation prove the exact worker
+inactive/dead/MainPID 0, browser PID absent, private listeners closed and retired
+web service unchanged. Earlier temporary-file, echo-fixture and closing-socket
+verifier failures remain recorded; corrections change no product behavior.
+Rehearsal 8 stopped before the fourth welcome page on Chromium ERR_NETWORK_CHANGED;
+all three admitted students remained ACTIVE/generation 0 with GCC/GDB verified.
+Both hosts' exact worker/guest cleanup and FULL native preservation are verified.
+One logged retry of that exact unauthenticated welcome GET cancellation is now
+covered by six focused tests and fixture typecheck; no exam operation is retried.
+Its initiating network-change cause remains unproven. Rehearsal 9 reached nine
+students/36 panes with GCC/GDB, then was intentionally stopped to correct Chromium's
+deleted shared pages using scarce root-disk scratch. Exact private abort/local
+fixture termination and independent native FULL preservation/Marco cleanup pass;
+runner exit alone had left these fixtures active. Preserve that cleanup limitation.
+The worker now uses existing tmpfs /dev/shm, charged to the same memory cgroup,
+with 12GiB startup/4GiB live shared-memory headroom. Actual argv and kernel checks,
+smoke 5 and independent cleanup pass. Smoke 4's leftover local-listener refusal
+remains recorded. No current test is active; next is rehearsal 10 using Marco and
+the unchanged v10 guest bundle, followed by full peak after receipt/cleanup review.
+Freeze source during each run. All earlier source input
+manifests and failed rehearsals remain authoritative for their own revisions.
+Rehearsal 7 stopped safely at 22 ACTIVE/88 panes on the old local generator floor;
+there is not yet a 70-student ramp/90-minute peak/70-way completion.
 
 Confirmed P1 findings remain unfixed: installed worker limit 32 < 70; shared
 anonymous 180/minute bucket rejects 30/210 minimal cold-load requests. Isolated
 candidate 96 workers does not qualify production co-location capacity.
 
-Next: receive generator choice, verify its headroom and exact candidate, rehearse
-70 students then execute 5,400 peak seconds and protected submission. Correct and
+Next: qualify the Marco generator, rehearse 70 students, then execute 5,400 peak
+seconds and protected submission with the existing audited v10 bundle. Correct and
 qualify the two P1 findings before any readiness claim. No push/deploy authorized.
 Manual entry/plan: `docs/stress-testing.md`; report and suggested fixes:
 `reports/stress/20261116T194355Z/report.md`; raw receipts `var/stress/20261116T194355Z/`.
