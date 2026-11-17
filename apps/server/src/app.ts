@@ -157,7 +157,9 @@ export async function createApp(
   });
   await app.register(cookie);
   await app.register(rateLimit, {
-    max: 180,
+    // A classroom behind one NAT needs HTML/assets and public startup reads.
+    // Keep that bounded traffic separate from protected/API/password budgets.
+    max: (_req, key) => (key.startsWith("public-bootstrap:") ? 1200 : 180),
     timeWindow: "1 minute",
     keyGenerator: (req) => {
       const token = req.cookies.session;
@@ -168,7 +170,24 @@ export async function createApp(
             )
             .get(hash(token), now()) as any)
         : null;
-      return session ? session.role + ":" + session.username : req.ip;
+      if (session) return session.role + ":" + session.username;
+      const pathname = req.url.split("?", 1)[0];
+      if (
+        ["GET", "HEAD"].includes(req.method) &&
+        ([
+          "/",
+          "/admin",
+          "/api/session",
+          "/api/login-test",
+          "/favicon.svg",
+          "/favicon.ico",
+          "/ssh/client.wasm",
+          "/ssh/wasm_exec.js",
+        ].includes(pathname) ||
+          pathname.startsWith("/assets/"))
+      )
+        return "public-bootstrap:" + req.ip;
+      return req.ip;
     },
   });
   const store = new Store(config.data),

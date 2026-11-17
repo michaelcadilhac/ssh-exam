@@ -1,5 +1,5 @@
 // Manual stress baseline: actual HTTP middleware, no authentication or native
-// calls. This intentionally fails while a classroom shares one small IP bucket.
+// calls. Preserve any refusals as failures; never reset budgets to get a pass.
 import { strict as assert } from "node:assert";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

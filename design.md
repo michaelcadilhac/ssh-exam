@@ -5,6 +5,19 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 17 local remediation: classroom bootstrap budgets
+
+Anonymous read-only welcome pages, built assets, session lookup and public login
+settings share a separate bounded 1,200-request/minute/IP bucket. Other anonymous
+API traffic retains 180/minute; authenticated requests retain their existing
+per-actor budget and route-specific password/authentication limits are unchanged.
+This intentionally permits the approved 70-student classroom behind one NAT
+without allowing bootstrap reads to consume credential/API budgets. GET/HEAD and
+explicit public paths are required; query strings cannot create new buckets.
+The change is implemented/tested locally, not deployed. Worker capacity and shared
+host resource sizing remain separate qualification gates. See
+[stress remediation](docs/stress-remediation.md).
+
 ## November12 remove redundant CLI flag (implemented/tested locally)
 
 The current source removes --all, its compatibility state/checks and its uses in

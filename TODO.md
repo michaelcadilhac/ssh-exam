@@ -1,3 +1,13 @@
+# Stress remediation — IN PROGRESS, LOCAL ONLY
+
+November 17: classroom bootstrap now has a separate bounded public-read budget.
+Seventy same-NAT cold loads, bounded read abuse and unchanged credential/API
+refusals pass through real middleware; 16 affected security/integration checks,
+typecheck and the original baseline pass. No production limit has changed.
+Next: capture setup recovery, remaining Prof fixes, stable generator networking,
+pane-refusal diagnosis and shared-host/full endurance qualification.
+[Durable plan](docs/stress-remediation.md).
+
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
 Approved target: 70 synthetic students, four terminals each, 90 real peak minutes

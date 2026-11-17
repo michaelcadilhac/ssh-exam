@@ -1,41 +1,26 @@
-# Current checkpoint — stress report delivered; 70-student target NOT QUALIFIED
+# Current checkpoint — stress remediation active, milestone 2
 
-The requested manual stress campaign used Marco browsers and guarded disposable
-csc-sys guests. No actual student account, institutional MFA, external email,
-production change, push or deployment. All owned fixtures are stopped; original
-host files/authority and all 16 documentation images are preserved.
+User authorized implementing the stress report's fixes. Local development/tests/
+commits only; no push, deployment, production configuration or student changes.
+Preserve ten original dirty screenshots and all failed stress receipts.
 
-Read [the agent report](../reports/stress/20261116T194355Z/report.md) and
-[manual suite instructions](stress-testing.md). Run: `20261116T194355Z`.
-Validated runner source: `3a9a3f4`, unchanged native bundle v13. Final follow-up
-changes only documentation, evidence and a corrected explanatory code comment.
+Plan: [stress remediation](stress-remediation.md). Milestone 1 is implemented and
+validated: separate 1,200/minute/IP anonymous public-read bucket; other API and
+credential limits unchanged. Three focused and 16 affected integration checks,
+typecheck and the original 70-client/210-request baseline pass. Evidence:
+`var/stress-remediation/20261117/`. Original red/fixture-failure receipts retained.
 
-Latest endurance attempt 8 failed: seven GCC/GDB students / 28 terminals verified;
-eighth setup showed a blocking “Failed to fetch” dialog. Its clock never started.
-All seven failure snapshots were ACTIVE/generation 0. Exact native/Marco/local
-cleanup and the 822-file input manifest were independently verified. Largest
-prior partial: 52 students / 208 terminals. No 70-student / 90-minute result exists.
+Current next action: fix actual screen/webcam setup recovery from cancelled
+capture requests. Never start a clock, consume a permission, bypass verification
+or leave a stale modal after automatic recovery. Then apply Prof's approved UI
+changes, isolate the owned Marco generator network, diagnose pane refusal and
+qualify combined capacity/full 70×4×90-minute run. Installed 32-worker ceiling and
+prior failed qualification remain production blockers; no completed 70/90 receipt.
 
-Open blockers:
-- Installed worker ceiling is 32, below 70; isolated candidate uses 96 only.
-- Shared anonymous 180-request/minute budget rejected 30 of 210 classroom loads.
-- Marco's steady-traffic probe reproduced 17 cancellations (14 HTTPS, three HTTP)
-  in 95 seconds, with no navigation or native guest. Bursts closely followed
-  virtual-interface events. Network causation of every earlier failure is unproved.
-- Prior fourth-terminal refusal remains unexplained; preflight recovery UX failed.
-
-Completed separate evidence: application/integration/build/native races; actual
-16-student WASM, editor/timer/recovery and collector-crash workflows; Prof's 28
-rendered UI reviews. Latest private retry changes passed 37 unit, 14 runner and
-14 browser checks plus typechecking. Student instructions corrected with Prof;
-all changes remain local. Historical failures/skips are retained in the report.
-
-Next milestone: focused remediation, not another blind full ramp. Stabilize the
-private generator network and qualify a several-cycle preflight; repair classroom
-admission budgets and the preflight recovery workflow; diagnose pane refusal;
-then qualify combined web/native capacity before one new full endurance run.
-No user decision is pending. No test process remains running. Preserve private
-`var/stress/20261116T194355Z/`, `var/stress/context-net-11/` and remote stage evidence.
+Historical report: [20261116T194355Z](../reports/stress/20261116T194355Z/report.md).
+Its native/Marco/local fixtures are fully stopped with preserved host authority.
+No new native/Marco run active. No open user decision. Prof completed read-only
+approval of remaining UX fixes; main agent owns implementation.
 
 ## Deployed baseline
 
