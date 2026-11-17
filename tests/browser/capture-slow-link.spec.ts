@@ -74,7 +74,7 @@ test("challenged video uploads and retained input stay live on a real 128 kbit u
     (await (await page.request.get("/api/login-test")).json()).browserSSH,
   ).toBe(true);
   await page.getByLabel("Exam ID", { exact: true }).fill("retained-control");
-  await page.getByLabel("Username").fill("retained01");
+  await page.getByLabel("Username").fill("retained16");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Password", { exact: true }).fill("shared-password");
   await page.getByRole("button", { name: "Continue", exact: true }).click();

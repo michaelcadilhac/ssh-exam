@@ -1743,10 +1743,14 @@ export function Admin({
             username={grantsFor ?? undefined}
             students={unusedStudents?.students}
             initialAction={unusedStudents?.action ?? grantAction}
-            initialGrantId={grantFocus ?? undefined}
+            initialGrantId={
+              unusedStudents ? undefined : (grantFocus ?? undefined)
+            }
             onClose={() => {
               setGrantsFor(null);
               setUnusedStudents(null);
+              setGrantFocus(null);
+              setGrantAction(undefined);
             }}
             onChanged={refresh}
           />

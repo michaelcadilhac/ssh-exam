@@ -3,6 +3,7 @@ import { ready, simulatedMedia, confirmFinish } from "./transition-fixture.js";
 
 test("actual WASM existing legacy preflight and Begin refuse old roles, then retry the same allowance after repair", async ({
   page,
+  request,
 }) => {
   test.setTimeout(75000);
   test.skip(
@@ -24,6 +25,22 @@ test("actual WASM existing legacy preflight and Begin refuse old roles, then ret
     (await (await page.request.get("/api/fixture/runtime")).json())
       .recoveryCompatibility;
   await simulatedMedia(page);
+  // Separate API context: normal synthetic instructor credentials/CSRF author
+  // the case, while the student's browser remains unauthenticated.
+  const setup = await request.post("/api/admin/login", {
+    headers: { origin: "http://localhost:3100" },
+    data: { username: "prof_recovery_setup", password: "fixture-password" },
+  });
+  expect(setup.ok(), await setup.text()).toBe(true);
+  const authored = await request.post("/api/fixture/recovery-scenario", {
+    headers: {
+      origin: "http://localhost:3100",
+      "x-csrf-token": (await setup.json()).csrf,
+    },
+    data: {},
+  });
+  expect(authored.ok(), await authored.text()).toBe(true);
+  expect(await authored.json()).toEqual({ authored: true });
   await page.goto("/");
   const runtime = await (await page.request.get("/api/login-test")).json();
   expect(runtime.browserSSH).toBe(true);

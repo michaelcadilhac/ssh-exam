@@ -153,6 +153,7 @@ const instructorCookies = new Map<
 const instructorAddresses = {
   prof_additional: 210,
   prof_initial: 211,
+  prof_legacy: 217,
   prof_practice: 212,
   prof_enrollment: 213,
   prof_additional_review: 214,

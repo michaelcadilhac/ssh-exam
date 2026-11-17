@@ -2291,7 +2291,8 @@ export function Workspace({
               {!functionalTest &&
                 !reservation.administratorSandbox &&
                 "Starting closes your other server sessions and processes; save their work first. "}
-              You have {timeLimit(settings.duration)}. The clock never pauses.
+              You have {timeLimit(settings.duration)}. The countdown starts when
+              you confirm.
               Saved files in {directory} are collected when time ends or you
               finish. Unsaved edits are excluded.
             </p>

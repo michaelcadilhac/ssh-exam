@@ -1,4 +1,23 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function diagnostics(page: Page) {
+  const response = await page.request.get("/api/fixture/transport-diagnostics");
+  expect(response.ok(), await response.text()).toBe(true);
+  const value = await response.json();
+  expect(value).toMatchObject({
+    relayReadyAt: expect.any(Object),
+    relayReferences: expect.any(Object),
+    observations: expect.any(Array),
+    attempts: expect.any(Array),
+  });
+  return value;
+}
+
+async function assertBrowserSSH(page: Page) {
+  const response = await page.request.get("/api/login-test");
+  expect(response.ok(), await response.text()).toBe(true);
+  expect((await response.json()).browserSSH).toBe(true);
+}
 
 for (const expires of [false, true])
   test(`real WASM relay ${expires ? "expires at sixty seconds" : "survives a sixteen-second startup delay"} without starting time`, async ({
@@ -6,9 +25,7 @@ for (const expires of [false, true])
   }, info) => {
     test.setTimeout(expires ? 90000 : 45000);
     await page.goto("/");
-    expect(
-      (await (await page.request.get("/api/login-test")).json()).browserSSH,
-    ).toBe(true);
+    await assertBrowserSSH(page);
     await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
     const username = expires ? "relaydiag02" : "relaydiag01";
     await page.getByLabel("Username").fill(username);
@@ -20,9 +37,7 @@ for (const expires of [false, true])
     await expect
       .poll(
         async () => {
-          const data = await (
-            await page.request.get("/api/fixture/transport-diagnostics")
-          ).json();
+          const data = await diagnostics(page);
           return (readyAt = data.relayReadyAt[username] || 0);
         },
         { timeout: 15000 },
@@ -34,9 +49,7 @@ for (const expires of [false, true])
         /Sign-in did not finish|SSH sign-in failed/,
       );
       expect(Date.now() - startedAt).toBeGreaterThanOrEqual(59000);
-      const metadata = await (
-        await page.request.get("/api/fixture/transport-diagnostics")
-      ).json();
+      const metadata = await diagnostics(page);
       const rows = metadata.observations
         .map((r: any) => JSON.parse(r.detail))
         .filter((v: any) => v.username === username);
@@ -57,9 +70,7 @@ for (const expires of [false, true])
       });
       expect(Date.now() - readyAt).toBeGreaterThanOrEqual(16000);
     }
-    const metadata = await (
-      await page.request.get("/api/fixture/transport-diagnostics")
-    ).json();
+    const metadata = await diagnostics(page);
     expect(
       metadata.attempts.filter((a: any) => a.username === username),
     ).toEqual([]);
@@ -77,9 +88,7 @@ test("real WASM SSH loss retains only a correlated close category through gatewa
 }) => {
   test.setTimeout(30000);
   await page.goto("/");
-  expect(
-    (await (await page.request.get("/api/login-test")).json()).browserSSH,
-  ).toBe(true);
+  await assertBrowserSSH(page);
   await page.getByLabel("Exam ID", { exact: true }).fill("sandbox");
   await page.getByLabel("Username").fill("relaydiag03");
   await page
@@ -104,9 +113,7 @@ test("real WASM SSH loss retains only a correlated close category through gatewa
   await expect
     .poll(
       async () => {
-        const data = await (
-          await page.request.get("/api/fixture/transport-diagnostics")
-        ).json();
+        const data = await diagnostics(page);
         rows = data.observations
           .map((r: any) => JSON.parse(r.detail))
           .filter((v: any) => v.username === "relaydiag03");
@@ -120,9 +127,7 @@ test("real WASM SSH loss retains only a correlated close category through gatewa
   expect(rows.every((v: any) => /^[a-f0-9]{24}$/.test(v.relay_reference))).toBe(
     true,
   );
-  const correlation = await (
-    await page.request.get("/api/fixture/transport-diagnostics")
-  ).json();
+  const correlation = await diagnostics(page);
   expect(
     rows.every(
       (v: any) => v.relay_reference === correlation.relayReferences.relaydiag03,

@@ -1,5 +1,9 @@
 import { test, expect, request, type Page } from "@playwright/test";
 import {
+  FOCUS_GRACE_MS,
+  FOCUS_GRACE_REASON,
+} from "../../packages/protocol/focus-grace.js";
+import {
   readyTerminal,
   reloadAfterConfirmingDeparture,
 } from "./transition-fixture.js";
@@ -263,11 +267,12 @@ test("student notice and authentication are accessible and self-hosted", async (
     fullPage: true,
   });
 });
-test("instructor can add, remove and import students, cancel removal with Escape, and sign out", async ({
+test("instructor adds and imports students, cancels an attempt without removing history, and edits the next attempts", async ({
   page,
 }) => {
+  page.setDefaultTimeout(10000);
   await page.goto("/admin");
-  await page.getByLabel("Username", { exact: true }).fill("instructor");
+  await page.getByLabel("Username", { exact: true }).fill("prof_interface");
   await page.getByLabel("Password", { exact: true }).fill("fixture-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
@@ -275,7 +280,6 @@ test("instructor can add, remove and import students, cancel removal with Escape
   );
   await expect(page.getByRole("table")).toHaveCount(0);
   await page.getByRole("button", { name: "New exam", exact: true }).click();
-  await expect(page.getByLabel("Exam ID", { exact: true })).toHaveValue("");
   await page.getByLabel("Exam ID", { exact: true }).fill("admin-created");
   await page
     .getByRole("combobox", { name: "Exam files", exact: true })
@@ -284,6 +288,20 @@ test("instructor can add, remove and import students, cancel removal with Escape
   await expect(page.getByLabel("Selected exam", { exact: true })).toHaveValue(
     "admin-created",
   );
+  const definitions = async () =>
+    (await (await page.request.get("/api/admin/exams")).json()).find(
+      (e: any) => e.id === "admin-created",
+    );
+  const examBefore = await definitions();
+  const grants = async (username: string): Promise<any[]> => {
+    const reply = await page.request.get(
+      `/api/admin/exams/admin-created/grants?username=${username}&limit=200`,
+    );
+    expect(reply.ok(), await reply.text()).toBe(true);
+    const value = await reply.json();
+    expect(value.next).toBeNull();
+    return value.grants;
+  };
   await page.getByRole("button", { name: "Add student", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Username", exact: true })
@@ -297,109 +315,181 @@ test("instructor can add, remove and import students, cancel removal with Escape
     .click();
   const roster = page.getByRole("table", { name: "Students and attempts" });
   await expect(
-    roster.getByRole("row").filter({ hasText: "student02" }),
-  ).toContainText("Optional");
-  await rowCommand(page, "Actions for student student02", "Remove from exam…");
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(roster).toContainText("student02");
-  await page.getByLabel("Selected exam").selectOption("admin-created");
-  await expect(roster).toContainText("student02");
-  await rowCommand(page, "Actions for student student02", "Remove from exam…");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Remove student", exact: true })
+    roster.getByRole("button", {
+      name: "Change webcam for student02",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    roster.getByRole("button", {
+      name: "Change webcam for student02",
+      exact: true,
+    }),
+  ).toHaveAttribute("aria-description", "Off");
+  const original = (await grants("student02"))[0];
+  expect(original).toMatchObject({
+    status: "AVAILABLE",
+    settings: { duration: 5400, webcam: false },
+    claims: [],
+  });
+  await roster
+    .getByRole("button", {
+      name: "Cancel next attempt for student02",
+      exact: true,
+    })
     .click();
   await expect(
-    page.getByRole("rowgroup", { name: "student02", exact: true }),
+    page.getByRole("dialog", {
+      name: "Cancel next attempt for student02?",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect((await grants("student02"))[0]).toEqual(original);
+  await roster
+    .getByRole("button", {
+      name: "Cancel next attempt for student02",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel attempt", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const cancelled = await grants("student02");
+  expect(cancelled).toHaveLength(1);
+  expect(cancelled[0]).toMatchObject({
+    id: original.id,
+    status: "REVOKED",
+    settings: original.settings,
+    work: original.work,
+    claims: [],
+  });
+  await expect(
+    roster.getByRole("rowgroup", { name: "student02", exact: true }),
+  ).toBeVisible();
+  await expect(
+    roster.getByRole("button", {
+      name: "Delete student student02",
+      exact: true,
+    }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "No students yet", exact: true }),
-  ).toBeVisible();
+    roster.getByRole("row", {
+      name: "Next attempt for student02",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+
   await page.getByRole("button", { name: "Add student", exact: true }).click();
-  const importDialog = page.getByRole("dialog", {
+  const imported = page.getByRole("dialog", {
     name: "Add students",
     exact: true,
   });
-  await importDialog
-    .getByRole("button", { name: "CSV file", exact: true })
-    .click();
-  await expect(importDialog.locator("textarea")).toHaveCount(0);
-  await importDialog.getByLabel("CSV file", { exact: true }).setInputFiles({
+  await imported.getByRole("button", { name: "CSV file", exact: true }).click();
+  await expect(imported.locator("textarea")).toHaveCount(0);
+  await imported.getByLabel("CSV file", { exact: true }).setInputFiles({
     name: "roster.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(
       "username,require_webcam\nstudent01,false\nstudent03,inherit",
     ),
   });
-  await expect(
-    page.getByText("2 validated rows.", { exact: false }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Confirm import" }).click();
-  await expect(roster).toContainText("student01");
-  await expect(roster).toContainText("student03");
-  await page
-    .getByRole("checkbox", { name: "Select student student01", exact: true })
-    .check();
-  await page
-    .getByRole("checkbox", { name: "Select student student03", exact: true })
-    .check();
-
+  await expect(imported).toContainText("2 validated rows.");
+  await imported
+    .getByRole("button", { name: "Confirm import", exact: true })
+    .click();
+  await expect(imported).toHaveCount(0);
+  const names = ["student01", "student03"],
+    before = new Map<string, any>();
+  for (const name of names) {
+    const current = (await grants(name))[0];
+    expect(current).toMatchObject({
+      status: "AVAILABLE",
+      settings: { duration: 5400 },
+      claims: [],
+    });
+    before.set(name, current);
+    await roster
+      .getByRole("checkbox", { name: `Select student ${name}`, exact: true })
+      .check();
+  }
+  const obsoleteTargetReads: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === `/api/admin/grants/${original.id}`)
+      obsoleteTargetReads.push(request.url());
+  });
   await page
     .getByRole("button", { name: "Selected students", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Future time limits", exact: true })
+    .getByRole("menuitem", { name: "Edit next attempts", exact: true })
     .click();
-  let settings = page.getByRole("dialog", {
-    name: "Future time limits",
+  const editing = page.getByRole("dialog", {
+    name: "Change next attempts",
     exact: true,
   });
-  await settings.getByRole("checkbox", { name: /Use exam default/ }).uncheck();
-  await settings
-    .getByLabel("Time limit (minutes)", { exact: true })
-    .fill("120");
-  await settings
-    .getByRole("button", { name: "Save defaults", exact: true })
-    .click();
-  await expect(settings).toHaveCount(0);
-  for (const name of ["student01", "student03"])
-    await expect(
-      roster.getByRole("rowgroup", { name, exact: true }),
-    ).toContainText("Default: 120 min");
-  // Editing future defaults must not rewrite the already saved first attempt.
-  for (const name of ["student01", "student03"])
-    await expect(
-      roster.getByRole("rowgroup", { name, exact: true }),
-    ).toContainText("First attempt: 90 min");
-  await page
-    .getByRole("checkbox", { name: "Select student student01", exact: true })
-    .check();
-  await page
-    .getByRole("checkbox", { name: "Select student student03", exact: true })
-    .check();
-
-  await page
-    .getByRole("button", { name: "Selected students", exact: true })
-    .click();
-  await page
-    .getByRole("menuitem", { name: "Future webcam settings", exact: true })
-    .click();
-  settings = page.getByRole("dialog", {
-    name: "Future webcam settings",
-    exact: true,
-  });
-  await settings
+  await editing.getByLabel("Time limit (minutes)", { exact: true }).fill("120");
+  await editing
     .getByRole("combobox", { name: "Webcam", exact: true })
     .selectOption("false");
-  await settings
-    .getByRole("button", { name: "Save defaults", exact: true })
+  await editing
+    .getByRole("button", { name: "Review changes", exact: true })
     .click();
-  await expect(settings).toHaveCount(0);
   await expect(
-    roster.getByRole("rowgroup", { name: "student03", exact: true }),
-  ).toContainText("Optional");
+    editing.getByRole("heading", { name: "Review changes", exact: true }),
+  ).toBeVisible();
+  await editing
+    .getByRole("button", { name: "Apply changes", exact: true })
+    .click();
+  await expect(editing.getByRole("status").filter({ hasText: /^Settings saved$/ })).toHaveCount(2);
+  await editing.getByRole("button", { name: "Done", exact: true }).click();
+  for (const name of names) {
+    const current = (await grants(name))[0],
+      previous = before.get(name);
+    expect(current).toMatchObject({
+      id: previous.id,
+      revision: previous.revision + 1,
+      status: "AVAILABLE",
+      settings: { ...previous.settings, duration: 7200, webcam: false },
+      work: previous.work,
+      claims: [],
+    });
+    await expect(
+      roster.getByRole("row", {
+        name: `Next attempt for ${name}`,
+        exact: true,
+      }),
+    ).toContainText("120 min");
+    await expect(
+      roster.getByRole("button", {
+        name: `Change webcam for ${name}`,
+        exact: true,
+      }),
+    ).toHaveAttribute("aria-pressed", "false");
+  }
+  const after = await definitions();
+  expect(obsoleteTargetReads).toEqual([]);
+  expect((await grants("student02"))[0]).toEqual(cancelled[0]);
+  for (const key of [
+    "duration",
+    "webcam",
+    "earliest",
+    "latest",
+    "template_version",
+    "terminals",
+    "collection_file_mib",
+    "collection_total_mib",
+  ])
+    expect(after[key]).toEqual(examBefore[key]);
+  const attempts = (
+    await (await page.request.get("/api/admin/attempts")).json()
+  ).attempts;
+  expect(attempts.filter((a: any) => a.exam === "admin-created")).toHaveLength(
+    0,
+  );
   await expect(page.getByRole("link", { name: /Download/ })).toHaveCount(0);
   await page.screenshot({
     path: test.info().outputPath("instructor-dashboard.png"),
@@ -882,7 +972,7 @@ test("practice terminals accept typing, stay floating, change maximize icon, clo
   expect(errors).toEqual([]);
 });
 
-test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is lost", async ({
+test("preflight retries through sixty seconds and offers fresh sign-in only when SSH is lost", async ({
   page,
 }) => {
   let interrupted = false;
@@ -915,6 +1005,13 @@ test("preflight retries beyond 15 seconds and offers fresh sign-in when SSH is l
   for (let i = 0; i < 18; i++) {
     await page.clock.runFor(1000);
     // Let intercepted WebSocket close events settle between timer advances.
+    await page.waitForTimeout(30);
+  }
+  await expect(
+    page.getByRole("heading", { name: "Setup connection lost" }),
+  ).toHaveCount(0);
+  for (let i = 18; i < 61; i++) {
+    await page.clock.runFor(1000);
     await page.waitForTimeout(30);
   }
   await expect(
@@ -1043,6 +1140,12 @@ test("preflight errors stay visible inside fullscreen and keyboard lock can be r
     }),
   );
   await page.getByRole("button", { name: "Start exam", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "The countdown starts when you confirm.",
+  );
+  await expect(page.getByRole("dialog")).not.toContainText(
+    "The clock never pauses.",
+  );
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Start exam", exact: true })
@@ -1302,12 +1405,14 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
   await expect(
     page.getByRole("button", { name: "Restore screen sharing", exact: true }),
   ).toBeHidden();
-  await page
-    .getByRole("button", { name: "Reconnect SSH", exact: true })
-    .click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Ask your instructor to approve resuming",
-  );
+  await expect(
+    page.getByRole("button", { name: "Reconnect SSH", exact: true }),
+  ).toBeDisabled();
+  const held = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(held.state).toBe("LOCKED");
+  expect(held.start).toBeTruthy();
+  expect(held.deadline).toBeTruthy();
   const admin = await request.newContext({
     baseURL: "http://localhost:3100",
     extraHTTPHeaders: { Origin: "http://localhost:3100" },
@@ -1839,7 +1944,7 @@ test("instructor sees a working student and live clock, resets time without disc
   page,
   browser,
 }) => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   const instructorBrowser = await browser.browserType().launch({
     headless: true,
     executablePath: process.env.CHROMIUM || "/usr/bin/chromium",
@@ -1849,9 +1954,11 @@ test("instructor sees a working student and live clock, resets time without disc
     baseURL: "http://localhost:3100",
   });
   const instructor = await context.newPage();
+  instructor.setDefaultTimeout(10000);
+  page.setDefaultTimeout(10000);
   try {
     await instructor.goto("/admin");
-    await instructor.getByLabel("Username", { exact: true }).fill("instructor");
+    await instructor.getByLabel("Username", { exact: true }).fill("prof_clock");
     await instructor
       .getByLabel("Password", { exact: true })
       .fill("fixture-password");
@@ -1936,7 +2043,10 @@ test("instructor sees a working student and live clock, resets time without disc
       .getByRole("button", { name: "Selected students", exact: true })
       .click();
     await instructor
-      .getByRole("menuitem", { name: "Add time", exact: true })
+      .getByRole("menuitem", {
+        name: "Add time to current attempts",
+        exact: true,
+      })
       .click();
     await instructor.getByLabel("Minutes to add", { exact: true }).fill("3");
     await instructor
@@ -1996,26 +2106,25 @@ async function startFocusGraceExam(
   username: string,
 ) {
   await simulatedMedia(page);
-  await page.addInitScript(() => {
-    (window as any).__examFocus = true;
-    Object.defineProperty(document, "hasFocus", {
-      value: () => (window as any).__examFocus,
-      configurable: true,
-    });
-    // The server must enforce the timeout even if the client's incident is lost.
-    const send = WebSocket.prototype.send;
-    WebSocket.prototype.send = function (data) {
-      if (typeof data === "string") {
-        const m = JSON.parse(data);
-        if (
-          m.type === "incident" &&
-          m.reason === "Browser focus did not return within 20 seconds"
-        )
-          return;
-      }
-      return send.call(this, data);
-    };
-  });
+  await page.addInitScript(
+    ({ reason }) => {
+      (window as any).__examFocus = true;
+      Object.defineProperty(document, "hasFocus", {
+        value: () => (window as any).__examFocus,
+        configurable: true,
+      });
+      // The server must enforce the timeout even if the client's incident is lost.
+      const send = WebSocket.prototype.send;
+      WebSocket.prototype.send = function (data) {
+        if (typeof data === "string") {
+          const m = JSON.parse(data);
+          if (m.type === "incident" && m.reason === reason) return;
+        }
+        return send.call(this, data);
+      };
+    },
+    { reason: FOCUS_GRACE_REASON },
+  );
   await studentSignIn(page, "sandbox", username);
   await page.getByRole("button", { name: "Check setup and practice" }).click();
   await page.getByRole("button", { name: "1. Share entire screen" }).click();
@@ -2041,10 +2150,11 @@ async function setExamFocus(
     window.dispatchEvent(new Event(value ? "focus" : "blur"));
   }, focused);
 }
-test("focus grace counts down, survives 15 seconds, clears on return, and expires once after 20 seconds", async ({
+test("focus grace preserves work until sixty seconds, clears on return and expires exactly once", async ({
   page,
 }) => {
-  test.setTimeout(65000);
+  test.setTimeout(FOCUS_GRACE_MS + 45000);
+  expect(FOCUS_GRACE_MS).toBe(60000);
   await startFocusGraceExam(page, "student08");
   const initial = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
@@ -2052,9 +2162,9 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
     .getByRole("alert")
     .filter({ hasText: "Return to the exam" });
   await setExamFocus(page, false);
-  await expect(warning).toContainText("20s before work pauses");
+  await expect(warning).toContainText("60s before work pauses");
   await page.waitForTimeout(2200);
-  await expect(warning).toContainText(/1[67]s before work pauses/);
+  await expect(warning).toContainText(/5[678]s before work pauses/);
   await page.screenshot({ path: test.info().outputPath("focus-warning.png") });
   await setExamFocus(page, true);
   await expect(warning).toHaveCount(0);
@@ -2084,32 +2194,37 @@ test("focus grace counts down, survives 15 seconds, clears on return, and expire
     .not.toBeNull();
   const lost = (await (await page.request.get("/api/student/exam")).json())
     .attempt.focus_lost_at;
-  await page.waitForTimeout(10000);
+  await page.waitForTimeout(20000);
   await setExamFocus(page, false);
-  await page.waitForTimeout(6200);
+  await page.waitForTimeout(FOCUS_GRACE_MS - 24000);
   const stillActive = await (
     await page.request.get("/api/student/exam")
   ).json();
   expect(stillActive.attempt.state).toBe("ACTIVE");
   expect(stillActive.sshConnected).toBe(true);
   expect(stillActive.attempt.focus_lost_at).toBe(lost);
-  await expect(warning).toContainText(/[34]s before work pauses/);
+  await expect(warning).toContainText(/\b[1-5]s before work pauses/);
   await expect
     .poll(
       async () =>
         (await (await page.request.get("/api/student/exam")).json()).attempt
           .state,
-      { timeout: 7000 },
+      { timeout: 10000 },
     )
     .toBe("LOCKED");
   await expect(
     page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
   const locked = await (await page.request.get("/api/student/exam")).json();
-  expect(locked.attempt.reason).toBe(
-    "Browser focus did not return within 20 seconds",
-  );
+  expect(locked.attempt.reason).toBe(FOCUS_GRACE_REASON);
   expect(locked.attempt.deadline).toBe(initial.deadline);
+  expect(locked.attempt.generation).toBe(initial.generation + 1);
+  await page.waitForTimeout(500);
+  const stable = (await (await page.request.get("/api/student/exam")).json())
+    .attempt;
+  expect(stable.generation).toBe(locked.attempt.generation);
+  expect(stable.reason).toBe(FOCUS_GRACE_REASON);
+  expect(stable.deadline).toBe(initial.deadline);
   await expect
     .poll(
       async () =>

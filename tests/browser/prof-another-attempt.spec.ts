@@ -294,7 +294,11 @@ for (const width of [1280, 430])
       path: info.outputPath(`single-student-starting-files-${width}.png`),
       fullPage: true,
     });
-    await dialog.getByLabel("Closes", { exact: true }).fill("2026-11-06T23:42");
+    await dialog
+      .getByLabel("Closes", { exact: true })
+      .fill(
+        localDateTime(Date.now() + 7 * 86400000, "minute", "America/Chicago"),
+      );
     await expect(
       dialog.getByRole("button", { name: "Review", exact: true }),
     ).toBeEnabled();
@@ -359,7 +363,11 @@ test("another attempt uses two screens with fetched mixed sources and exact per-
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   expect(f.state.previews).toHaveLength(0);
   await expect(dialog.getByLabel("Opens", { exact: true })).toHaveValue(opens);
-  await dialog.getByLabel("Closes", { exact: true }).fill("2026-11-06T23:42");
+  await dialog
+    .getByLabel("Closes", { exact: true })
+    .fill(
+      localDateTime(Date.now() + 7 * 86400000, "minute", "America/Chicago"),
+    );
   await expect(
     dialog.getByLabel("Time limit (minutes)", { exact: true }),
   ).toHaveValue("");
@@ -409,7 +417,11 @@ test("a lost preview displays its saved intent after reload and a lost confirmat
 }) => {
   const f = await fixture(page),
     dialog = await f.open();
-  await dialog.getByLabel("Closes", { exact: true }).fill("2026-11-06T23:42");
+  await dialog
+    .getByLabel("Closes", { exact: true })
+    .fill(
+      localDateTime(Date.now() + 7 * 86400000, "minute", "America/Chicago"),
+    );
   f.state.dropPreview = true;
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   await expect(
@@ -476,7 +488,11 @@ test("a review polls one cohort, rather than every student, and invalid latest f
   await expect(dialog.getByLabel("Starting files for student01")).toContainText(
     "Latest files need review",
   );
-  await dialog.getByLabel("Closes", { exact: true }).fill("2026-11-06T23:42");
+  await dialog
+    .getByLabel("Closes", { exact: true })
+    .fill(
+      localDateTime(Date.now() + 7 * 86400000, "minute", "America/Chicago"),
+    );
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   await expect(dialog.getByRole("alert")).toBeVisible();
   expect(f.state.previews).toHaveLength(0);
@@ -557,7 +573,11 @@ for (const outsidePage of [false, true])
         },
       ],
     };
-    const dialog = await selectedAction(page, ["student01"], "Add next attempts"),
+    const dialog = await selectedAction(
+        page,
+        ["student01"],
+        "Add next attempts",
+      ),
       oldOpens = localDateTime(Date.now() + 4 * 86400000);
     await expect(
       dialog.getByText("Latest time limit: 1 min 35 sec", { exact: true }),

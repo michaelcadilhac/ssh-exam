@@ -8,13 +8,26 @@ test.beforeEach(async ({ context }) => {
   if (adminCookies.length) await context.addCookies(adminCookies);
 });
 
-async function admin(page: Page) {
+async function admin(page: Page, actor: string) {
   page.setDefaultTimeout(10000);
   await page.goto("/admin");
-  if ((await page.request.get("/api/session")).status() !== 200) {
-    await page.getByLabel("Username", { exact: true }).fill("instructor");
+  const current = await page.request.get("/api/session");
+  if (current.status() === 401) {
+    await page.getByLabel("Username", { exact: true }).fill(actor);
     await page.getByLabel("Password", { exact: true }).fill("fixture-password");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  } else {
+    expect(current.status(), await current.text()).toBe(200);
+    if ((await current.json()).username !== actor) {
+      // Use the real credential API while carrying the preceding workflow's
+      // valid cookie. Each independent scenario then has its own actor budget.
+      const login = await page.request.post("/api/admin/login", {
+        headers: { origin: "http://localhost:3100" },
+        data: { username: actor, password: "fixture-password" },
+      });
+      expect(login.status(), await login.text()).toBe(200);
+      await page.reload();
+    }
   }
   await expect(page.getByLabel("Selected exam")).toBeVisible();
   adminCookies = await page.context().cookies();
@@ -63,7 +76,7 @@ async function open(
 test("retirement shows all 70 exam students when only 66 legacy setup rows exist", async ({
   page,
 }) => {
-  const post = await admin(page),
+  const post = await admin(page, "prof_retirement_roster"),
     definition = await create(page, post),
     students = Array.from({ length: 70 }, (_, i) => ({
       exam: definition.id,
@@ -106,7 +119,10 @@ for (const malformed of ["not-array", "duplicate", "foreign-exam"] as const)
   test(`retirement refuses a ${malformed} student list and refreshes both inputs before enabling the action`, async ({
     page,
   }) => {
-    const post = await admin(page),
+    const post = await admin(
+        page,
+        `prof_retirement_${malformed.replaceAll("-", "_")}`,
+      ),
       definition = await create(page, post),
       student = { exam: definition.id, username: "learner001" };
     let valid = false;
@@ -142,7 +158,7 @@ test("mobile unused deletion retries the identical reviewed request after the re
   page,
 }) => {
   await page.setViewportSize({ width: 430, height: 1000 });
-  const post = await admin(page),
+  const post = await admin(page, "prof_retirement_delete"),
     definition = await create(page, post),
     writes: any[] = [];
   await page.route(
@@ -186,7 +202,7 @@ test("mobile unused deletion retries the identical reviewed request after the re
 test("stale review requires explicit refresh and a failed refresh cannot submit the obsolete review", async ({
   page,
 }) => {
-  const post = await admin(page),
+  const post = await admin(page, "prof_retirement_stale"),
     definition = await create(page, post);
   const dialog = await open(page, "Delete unused exam");
   await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
@@ -230,7 +246,7 @@ test("stale review requires explicit refresh and a failed refresh cannot submit 
 test("archive and restoration retain real historical attempts and disable new-authority controls while archived", async ({
   page,
 }) => {
-  await admin(page);
+  await admin(page, "prof_retirement_history");
   const url = "/api/admin/exams/retirement-history/dashboard",
     original = (await (await page.request.get(url)).json()).students[0]
       .attempts[0];
@@ -256,7 +272,7 @@ test("archive and restoration retain real historical attempts and disable new-au
     page.getByRole("button", { name: "Add student", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: "Exam defaults", exact: true }),
+    page.getByRole("button", { name: "Exam settings", exact: true }),
   ).toBeDisabled();
   const retained = (await (await page.request.get(url)).json()).students[0]
     .attempts[0];
@@ -292,7 +308,7 @@ test("archive and restoration retain real historical attempts and disable new-au
 test("legacy retirement exposes native review status and archives native-only history without enabling deletion", async ({
   page,
 }) => {
-  await admin(page);
+  await admin(page, "prof_retirement_native");
   await page
     .getByLabel("Selected exam")
     .selectOption("retirement-legacy-required");
@@ -343,14 +359,14 @@ test("legacy retirement exposes native review status and archives native-only hi
     .getByLabel("Selected exam")
     .selectOption("retirement-legacy-native");
   await expect(
-    page.getByRole("button", { name: "Exam defaults", exact: true }),
+    page.getByRole("button", { name: "Exam settings", exact: true }),
   ).toBeDisabled();
 });
 
 test("unused grants block archive without silently cancelling or consuming them", async ({
   page,
 }) => {
-  const post = await admin(page),
+  const post = await admin(page, "prof_retirement_grants"),
     definition = await create(page, post);
   await post(`/api/admin/exams/${definition.id}/roster/add`, {
     username: "retirewait",

@@ -51,6 +51,8 @@ const retainedAccounts = {
   retained01: 10031,
   retained02: 10032,
   retained03: 10033,
+  // Slow-link qualification keeps its own active attempt after the spec.
+  retained16: 10052,
 };
 const retainedLossAccounts = {
   retained04: 10034,
@@ -1030,11 +1032,26 @@ for (const [index, username] of [
   "instructor",
   "prof_additional",
   "prof_initial",
+  "prof_legacy",
   "prof_practice",
   "prof_enrollment",
   "prof_additional_review",
   "prof_additional_saved",
   "prof_additional_bulk",
+  ...[
+    "roster",
+    "not_array",
+    "duplicate",
+    "foreign_exam",
+    "delete",
+    "stale",
+    "history",
+    "native",
+    "grants",
+  ].map((name) => `prof_retirement_${name}`),
+  "prof_recovery_setup",
+  "prof_interface",
+  "prof_clock",
   ...Array.from({ length: 7 }, (_, i) => `timezone_instructor_${i + 1}`),
 ].entries())
   store.db
@@ -1151,9 +1168,11 @@ store.db
     "RELEASED",
     "b".repeat(64),
   );
-store.db
-  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
-  .run("versioned-source", "version01", null, null, null, 10021);
+new RosterManagement(store, undefined, "class").add(
+  "versioned-source",
+  { username: "version01" },
+  "fixture-operator",
+);
 definitions.create(
   {
     ...exam,
@@ -1166,40 +1185,54 @@ definitions.create(
 store.db
   .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
   .run("recovery-compatibility", "recovery01", null, null, null, 10046);
-// This compatibility scenario is an EXISTING legacy preparation. A bare unused
-// legacy enrollment no longer permits a first start: it requires reviewed grant
-// issuance. Preserve that production rule instead of bypassing it for this test.
-const recoveryLegacyID = randomUUID();
-const recoveryLegacySettings = JSON.parse(
-  (
+// Author this finite legacy scenario when its test begins, not up to an hour
+// before it runs. Never refresh an existing preparation or change its expiry.
+let recoveryCompatibilityAuthored = false;
+function authorRecoveryCompatibility() {
+  if (
+    recoveryCompatibilityAuthored ||
     store.db
-      .prepare("SELECT config FROM exams WHERE id='recovery-compatibility'")
-      .get() as any
-  ).config,
-);
-store.db
-  .prepare(
-    "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,preflight_started_at) VALUES(?,'recovery-compatibility','recovery01',10046,'PREPARING',?,?,?)",
+      .prepare("SELECT 1 FROM attempts WHERE exam='recovery-compatibility'")
+      .get() ||
+    [...attempts.values()].some((a) => a.exam === "recovery-compatibility")
   )
-  .run(
-    recoveryLegacyID,
-    JSON.stringify(recoveryLegacySettings),
-    hash("authored historical legacy setup page"),
-    Date.now(),
+    throw Error("Synthetic recovery already authored; use a fresh fixture");
+  // This compatibility scenario is an EXISTING legacy preparation. A bare unused
+  // legacy enrollment no longer permits a first start: it requires reviewed grant
+  // issuance. Preserve that production rule instead of bypassing it for this test.
+  const recoveryLegacyID = randomUUID();
+  const recoveryLegacySettings = JSON.parse(
+    (
+      store.db
+        .prepare("SELECT config FROM exams WHERE id='recovery-compatibility'")
+        .get() as any
+    ).config,
   );
-attempts.set(recoveryLegacyID, {
-  id: recoveryLegacyID,
-  exam: "recovery-compatibility",
-  username: "recovery01",
-  uid: 10046,
-  state: "PREPARING",
-  settings: recoveryLegacySettings,
-  transport: hash("retired legacy setup SSH"),
-  generation: 0,
-  start: 0,
-  deadline: 0,
-  original_deadline: 0,
-});
+  store.db
+    .prepare(
+      "INSERT INTO attempts(id,exam,username,uid,state,settings,page_hash,preflight_started_at) VALUES(?,'recovery-compatibility','recovery01',10046,'PREPARING',?,?,?)",
+    )
+    .run(
+      recoveryLegacyID,
+      JSON.stringify(recoveryLegacySettings),
+      hash("authored historical legacy setup page"),
+      Date.now(),
+    );
+  attempts.set(recoveryLegacyID, {
+    id: recoveryLegacyID,
+    exam: "recovery-compatibility",
+    username: "recovery01",
+    uid: 10046,
+    state: "PREPARING",
+    settings: recoveryLegacySettings,
+    transport: hash("retired legacy setup SSH"),
+    generation: 0,
+    start: 0,
+    deadline: 0,
+    original_deadline: 0,
+  });
+  recoveryCompatibilityAuthored = true;
+}
 definitions.create(
   {
     ...exam,
@@ -1452,12 +1485,15 @@ store.db
     Date.now() + 5400000,
     "HELD",
   );
-store.db
-  .prepare("INSERT INTO exams VALUES(?,?)")
-  .run("temporary-access", JSON.stringify({ ...exam, id: "temporary-access" }));
-store.db
-  .prepare("INSERT INTO enrollments VALUES(?,?,?,?,?,?)")
-  .run("temporary-access", "policytest01", null, null, null, 12001);
+definitions.create(
+  { ...exam, id: "temporary-access", template_version: versionHash },
+  "fixture-operator",
+);
+initialRoster.add(
+  "temporary-access",
+  { username: "policytest01" },
+  "fixture-operator",
+);
 // Disposable browser-test instrumentation only; never part of the production app.
 app.post("/api/fixture/diagnostic-relay-close", async (req) => {
   const username = (req.body as any).username;
@@ -1558,6 +1594,17 @@ app.get("/api/fixture/runtime", async () => ({
     .all(),
 }));
 // Fault injection is strictly fixture-only; production has no corresponding route.
+app.post("/api/fixture/recovery-scenario", async (req) => {
+  if (
+    !req.body ||
+    typeof req.body !== "object" ||
+    Array.isArray(req.body) ||
+    Object.keys(req.body).length
+  )
+    throw Error("Use the one synthetic recovery scenario with an empty body");
+  authorRecoveryCompatibility();
+  return { authored: true };
+});
 app.post("/api/fixture/recovery-role", async (req) => {
   const body = req.body as { missing?: unknown };
   if (Object.keys(body).length !== 1 || typeof body.missing !== "boolean")

@@ -15,6 +15,7 @@ async function fixture(page: Page, overrides: Record<string, unknown> = {}) {
   const definition = {
     id: "enrollment-dates",
     name: "Midterm",
+    timezone: "UTC",
     duration: 5400,
     webcam: true,
     terminals: 4,
@@ -173,11 +174,11 @@ test("the existing-exam editor clearly marks exam defaults and their date scope"
   page,
 }, info) => {
   await fixture(page);
-  const open = page.getByRole("button", { name: "Exam defaults", exact: true });
+  const open = page.getByRole("button", { name: "Exam settings", exact: true });
   await expect(open).toBeVisible();
   await open.click({ timeout: 3000 });
   const dialog = page.getByRole("dialog", {
-    name: "Exam defaults",
+    name: "Exam settings",
     exact: true,
   });
   await expect(
@@ -196,10 +197,10 @@ test("the existing-exam editor clearly marks exam defaults and their date scope"
     "2020-01-03T17:18:34.567",
   );
   await expect(dialog).toContainText(
-    "Used for new attempts unless you choose different settings. Existing allowed attempts keep their saved settings.",
+    "Existing time limits, webcam rules and start dates stay unchanged.",
   );
   await expect(
-    dialog.getByRole("button", { name: "Save defaults", exact: true }),
+    dialog.getByRole("button", { name: "Save settings", exact: true }),
   ).toBeVisible();
   await captureDatesDialog(
     page,
@@ -226,7 +227,7 @@ test("new first attempts inherit exact exam dates until the instructor changes t
     "0.001",
   );
   await expect(dialog).toContainText(
-    "These dates apply only to new first attempts.",
+    "These dates apply to attempts created by this import.",
   );
   await captureDatesDialog(page, dialog, info, "add-student-dates");
   await dialog.getByLabel("Username", { exact: true }).fill("newstudent");
@@ -279,7 +280,7 @@ test("changing first-attempt dates requires a fresh CSV review without uploading
   });
   await expect(confirm).toBeEnabled();
   await expect(dialog.locator(".preview")).toContainText(
-    "time limit 120 min (exam default) · webcam optional (exam default)",
+    "time limit 120 min (exam default) · webcam off (exam default)",
   );
   expect(state.previews[0]).toEqual({
     text,
@@ -425,6 +426,7 @@ test.describe("repeated local hour", () => {
     page,
   }) => {
     const { definition, state } = await fixture(page, {
+        timezone: "America/New_York",
         earliest: Date.UTC(2026, 10, 1, 6, 30, 12, 345),
         latest: Date.UTC(2026, 10, 1, 7, 30, 34, 567),
       }),

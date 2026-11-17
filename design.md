@@ -192,6 +192,17 @@ interpretation. A matching live agent/watchdog/source-worker capability is requi
 before changing limits for current permissions or unfinished attempts. This matched release is deployed; it includes the four native binaries
 and three loaded roles. Plan: docs/inline-next-attempt-controls.md.
 
+November16 LOCAL UI corrections: bulk next-attempt editing does not inherit a
+previous single-student dialog's selected attempt. Closing the dialog clears that
+selection and action. The real cancel/import/bulk-edit regression verifies both
+selected attempts change once, with no read or mutation of the cancelled attempt.
+This changes only UI target selection; ownership, revision and claim checks remain
+enforced. The Start confirmation now says the countdown starts on confirmation,
+replacing the false statement that it never pauses; instructor pauses remain
+supported. A rendered failed-Start regression verifies the wording and no clock
+start. Both changes are tested locally, not pushed or deployed; full stress
+qualification remains incomplete.
+
 November2 LOCAL bulk-next fix: use indexed current-only grant pages rather than
 per-student historical reads. The bulk draft is interactive while loading; fresh
 metadata is required before Review. Distinguish selected, editable and omitted

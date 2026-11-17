@@ -1,6 +1,6 @@
 import { instructorSignIn } from "./prof-workflow-fixture.js";
 import { test, expect } from "@playwright/test";
-import { selectedAction } from "./prof-workflow-fixture.js";
+import { additionalDraft } from "./prof-workflow-fixture.js";
 import { simulatedMedia, ready } from "./transition-fixture.js";
 
 test("reviewed NEW legacy grants survive a lost confirmation reply and start their full saved allowance through WASM SSH", async ({
@@ -10,19 +10,20 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
   page.setDefaultTimeout(10000);
   await page.setViewportSize({ width: 430, height: 1000 });
   await simulatedMedia(page);
-  await instructorSignIn(page, "prof_initial");
+  await instructorSignIn(page, "prof_legacy");
   await page.getByLabel("Selected exam").selectOption("legacy-grant");
-  const dialog = await selectedAction(
+  const dialog = await additionalDraft(
     page,
     ["legacy01", "legacy02"],
-    "Allow attempt",
+    "",
+    "materials",
   );
   await expect(dialog.getByLabel("Reason", { exact: true })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Review", exact: true }).click();
   await expect(
     dialog.getByRole("heading", { name: "legacy01", exact: true }),
   ).toBeVisible();
-  await expect(dialog).toContainText("90 min · Webcam optional");
+  await expect(dialog).toContainText("90 min · Webcam off");
   await expect(dialog).toContainText("75 min · Webcam required");
   await expect(dialog).toContainText("Review attempts");
   expect(
@@ -50,7 +51,7 @@ test("reviewed NEW legacy grants survive a lost confirmation reply and start the
     }
   });
   await dialog
-    .getByRole("button", { name: "Allow attempts", exact: true })
+    .getByRole("button", { name: "Add next attempts", exact: true })
     .click();
   await expect(
     dialog.getByRole("button", { name: "Retry same request", exact: true }),
