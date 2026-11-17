@@ -209,6 +209,7 @@ sys.exit(0 if limit>=70 else 1)
             if phase == 'endurance' and args.generator == 'marco':
                 generator = marco_generator(output)
                 env.update(generator.start())
+                commands.insert(0, (['node','--import','tsx','tests/fixtures/stress-https-smoke.ts'],ROOT,100))
                 commands.insert(0, (['node','scripts/stress-generator-smoke.cjs'],ROOT,45))
             for index,(command,cwd,timeout) in enumerate(commands):
                 print(json.dumps({'run':run,'phase':phase,'attempt':attempt,'command':command}),flush=True)

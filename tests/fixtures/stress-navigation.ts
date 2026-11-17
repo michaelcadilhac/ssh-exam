@@ -1,5 +1,69 @@
-import type { Page } from "@playwright/test";
+import type { Browser, BrowserContext, Page } from "@playwright/test";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
+
+export function watchStressNavigation(
+  page: Page,
+  working: () => boolean,
+  report: (path: string) => void,
+) {
+  page.on("framenavigated", (frame) => {
+    if (working() && frame === page.mainFrame())
+      report(new URL(frame.url()).pathname);
+  });
+}
+
+// Ignored synthetic certificates can make a shared Chromium process cancel
+// other contexts' requests during document initialization/navigation. Prepare
+// every real welcome page before any clock starts; later use the existing SPA.
+export async function prepareStressPages<T>(options: {
+  browser: Pick<Browser, "newContext">;
+  origin: string;
+  students: readonly string[];
+  contexts: BrowserContext[];
+  initialize: (page: Page, username: string) => Promise<T>;
+  note: (message: string) => void;
+  spacingMs?: number;
+}) {
+  const { browser, origin, students, contexts, initialize, note } = options;
+  if (
+    origin !== "https://127.0.0.1:9444" ||
+    students.length < 1 ||
+    students.length > 70 ||
+    new Set(students).size !== students.length
+  )
+    throw Error(
+      "Private warmup requires1–70unique synthetic accounts on the loopback HTTPS fixture",
+    );
+  const spacing = options.spacingMs ?? 4000;
+  if (!Number.isInteger(spacing) || spacing < 0 || spacing > 4000)
+    throw Error("Invalid private welcome spacing");
+  const prepared = [];
+  for (const username of students) {
+    const started = Date.now();
+    const context = await browser.newContext({ ignoreHTTPSErrors: true });
+    contexts.push(context); // Owner can clean even a partially prepared cohort.
+    const page = await context.newPage();
+    page.setDefaultTimeout(10000);
+    const data = await initialize(page, username);
+    await openUnauthenticatedStressWelcome(page, origin, note);
+    await page
+      .getByLabel("Username", { exact: true })
+      .waitFor({ state: "visible", timeout: OPERATION_TIMEOUT_MS });
+    prepared.push({ username, context, page, data });
+    note(
+      JSON.stringify({
+        phase: "welcome-prepared",
+        students: prepared.length,
+        total: students.length,
+      }),
+    );
+    if (prepared.length < students.length)
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.max(0, spacing - (Date.now() - started))),
+      );
+  }
+  return prepared;
+}
 
 // Use the existing read-recovery button only after acknowledged authentication
 // and fresh read-only proof of the same signed-in, unstarted synthetic account.

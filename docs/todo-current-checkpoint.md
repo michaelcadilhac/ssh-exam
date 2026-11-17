@@ -1,66 +1,71 @@
-# Current checkpoint — Marco stress generator; endurance incomplete
+# Current checkpoint —70-person fixture ready for next full attempt
 
-Approved target:70 synthetic students/four terminals each,90 real minutes at peak
-and simultaneous protected submission. No institutional MFA, actual student
-accounts or external email. No production change, push or deployment.
-Preserve the original documentation images and all failed receipts.
+Approved:70synthetic students/four terminals each,90real peak minutes and
+simultaneous protected submission. Marco browsers; csc-sys only guarded disposable
+native guest. No actual student accounts/MFA/external email/production change/
+push/deploy. Preserve original documentation images and all failed evidence.
 
-Current milestone: ordinary terminal selection must wait for the real input gate.
-Full endurance4 FAILED12.1min after14 GCC/GDB students/56panes;15th Start200,
-then visible Terminals→Terminal1 click intercepted by div.workspace for5s.
-All15 failure snapshots ACTIVE/gen0, inputs enabled/no visible overlays. Historical
-cause remains unproved. Exact native/Marco/local cleanup independently verified;
-native original preservation FULL. Evidence:var/stress/20261116T194355Z/endurance-4/.
+Current milestone:commit validated test-only initialization/budget increment,
+then full endurance7. No test currently active. Source base4bd3280 plus8test/
+harness files (new tests/fixtures/stress-https-smoke.ts). No product/runtime edit.
+Native v13:/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v13_t7wdue97
+(audit var/stress/native-upload-v13.json):19verified files/65,341,455bytes,
+18reused; only29,264-byte bootstrap changed. Guest manifest/binaries unchanged.
+New70-person parent8192tasks; keep3GiB/no-swap/2CPU/fourhours.1/16 modes and native
+student-policy limits unchanged.30focused overlay checks/all86harness12 pass.
+Actual8192kernel bounds must be verified immediately after next guest startup.
+The stored functions stressActiveBoundsCode still expects4096:change that observer
+expectation to8192 for new70-person units; retain old receipts unchanged.
 
-A focused genuine challenged-capture failure reproduces the inert-ancestor click
-error. RED retained; corrected driver waits for actual toolbar release under the
-existing60s operation budget, never force-clicks or sends early input.
-GREEN verifies6s blocked capture, no early input/incident, recovered selection.
-Eight-context/four-arranged-pane control and delayed-capture recovery pass locally
-and on Marco (remote108.03s total); all8readiness regressions and final typecheck
-pass. Exact Marco cleanup verified. First remote focus failed before tests on an
-overlong synthetic SMTP Unix-socket path; shortening only owned scratch fixed it.
-Full endurance5 FAILED13.6min after16GCC/GDB students/64panes. Seventeenth SSH
-was authenticated; later read failed with Failed to fetch and the supported
-Retry opening exam button. Driver assumed summary, so no setup click existed.
-All16failure snapshots ACTIVE/gen0; exact native/Marco/local cleanup FULL.
-Input-gate telemetry records five5.25–5.53s captureDelayed pauses, all recovered
-without incident/policy lock. One Start readiness-busy400 reconciled unused/
-unstarted before200 retry. These delays/errors remain findings, not erased passes.
-Evidence:var/stress/20261116T194355Z/endurance-5/. Source a803e19/v12.
+Full6(4bd3280/v12) was CONTROLLED STOP after35GCC/GDB students/140panes,34.1min.
+Measured2,183tasks/1.44GB/noOOM at33–34students projected beyond4096 at70.
+Exact qualified abort/nativeFULL/Marco/local cleanup pass; no guest active.
+Host4CPU/8GB/~5.2GBavailable afterstop. Evidence:endurance-6/ under main raw root.
+It retained147net::ERR_NETWORK_CHANGED,67JPEG-fallback409,36expectedinitial401,
+several read/Start refusals. Do not call those147production faults or policy locks.
 
-Current:driver supports the existing read retry once, only after authcomplete200,
-fresh exact student/exam session and null attempt. No credentials/auth completion/
-setup/Start replay. It records lifetime API transport errors and current setup
-screenshots as well as input gates. Focused real SSH completion/recovery4.8s and
-22unit guards/typecheck pass. All5session-transition cases pass9.9s. Next:commit coherent fixture increment
-locally, then start full endurance6. Native binaries remain unchanged;
-reuse v12:/var/tmp/ssh-exam-browser-native-upload.stress20261116T194355Z_v12_fskt6r2j
-(audit var/stress/native-upload-v12.json). No new bundle or product change.
+Bounded TLS probes(var/stress/context-net-N):2HTTPvariants0;3lateHTTPSignored8;
+4static-launch-ignore trial FAILED/reverted;5reusedcontexts+documentnav9;
+6coldwarmGETcancelled(setupfailure);7qualifiedsingle coldGETretry then existing
+pages/onlyfetch0cancellations. One-off probe source evolved between runs; use their
+config/log evidence, not a claim that var source was in the repo manifest.
+No static TLS workaround remains. The actual fleet now preloads70 realwelcome
+pages (media/bootstrap alreadyinstalled) before auth/clocks,4s spacing. Then SPA
+only, zero late navigation, public attempt list empty before first sign-in.
+All contexts are owned before page creation and closed on partial failure.
 
-Collected:861application passes/three explicit real CLI/export/bwrap passes;
-build/typecheck; native races without failures/races;86harness checks;16-client
-WASM sign-in; native editor/timer/recovery and isolated collector-crash retry.
-Native completed phases independently stopped with FULL preservation.
-Full browser2:360passed/threefailed/fiveskipped; fresh five affected/protocol cases
-pass separately, not a full-suite pass. Prof reviewed28rendered UX screenshots.
-Rehearsal10 reached39GCC/GDB students;full2 reached52/208, then missing command echo
-with concurrent local/tmp quota/diagnostic failure (causality unproved).
-118,474raw files hash-preserved onto workspace before stopped/tmp originals removed.
-Full3 rejected a wrong guest manifest before allocation;v12 corrects manifest only.
-Failures remain in report; no70/90/protected-completion pass.
+Permanent preflight uses managed source and frozen manifests:
+marco-generator-smoke-7 weak mutation SURVIVED(0errors), NOT proof.
+smoke8 shared navigation guard detects12actual late navigations(expectedfailure).
+smoke9 positive:HTTP/WS/media/cookie smoke plus13preloadedHTTPS contexts,
+161successful requests/zero failures, exact Marco cleanup, unchanged source.
+27focused stress-navigation checks/final typecheck pass. Existing5session/
+8terminal UI evidence reused for unchanged bodies; app/build/native binaries
+unchanged. New registered endurance commands:0HTTPsmoke,1TLSsmoke,2nativebrowser.
+Ignored observer observe-full.py now selects the last actual command log, not1.
 
-Open P1 baselines:installed worker limit32<70; shared anonymous180/minute bucket
-rejects30of210minimal cold-load requests. Isolated96worker test configuration
-does not fix production or qualify web/native co-location. Generator topology:
-Marco browsers→private forwards→local gateway→guarded csc-sys guest.
-The runtime baseline remainsed09efc/schema37; original data/services unchanged.
+Next:git diff/check, explicit local commit excluding original images/report agent
+file; start full7 --generator marco --native-bundle v13. Wait for actual guest/
+metadata paths; update checkpoint/functions stressActive identity (old6 is stopped).
+Verify actual8192/3GiB/2CPU/fourhours, then70/280→5400s peak→70protected, unique
+receipt and independent native/Marco/local cleanup. No source edits during run.
+At70take actual private gateway PSS via observe-gateway-memory.py for Prof.
+Neither proposals nor partial ramps count as70/90pass.
 
-Manual entry/acceptance:docs/stress-testing.md. Agent report:
-reports/stress/20261116T194355Z/report.md. Prof writes only that report.
-Raw private receipts:var/stress/20261116T194355Z/ and var/stress/focus-2/.
-No push/deploy. Keep recording input-gate transitions and selection delays;
-do not turn temporary verification waits into alleged student violations.
+Earlier:861application/3real CLI-export-bwrap, build/types, native races,
+16-client WASM/editor/timer/recovery/collector-crash passes; full browser2
+360passed/3failed/5skips, fresh5cases pass separately. Prof28rendered UXscreens.
+Largest earlier partial52/208; missingecho with concurrent/tmpquota(causeunproved).
+118,474raw files hash-preserved. Full4capture-inert wait and full5strict read-retry
+driver fixes are local a803e19/4bd3280. Five5.247–5.527s capture gates were actual
+test-topology UX interruptions, no policy locks; do not infer full4cause.
+
+Open P1s:production32workers<70 and shared anonymous180/min rejects30/210.
+Candidate96/paced warmup do not fix production or qualify co-location.
+Topology:Marco→private forwards→local gateway→csc guest. Baselineed09efc/schema37.
+Plan:docs/stress-testing.md; Prof report:reports/stress/20261116T194355Z/report.md.
+Raw:var/stress/20261116T194355Z/ plus context-net probes. Report agent edits only
+report.md; all statuses incomplete until real full evidence. No push/deploy.
 
 ## Deployed baseline
 

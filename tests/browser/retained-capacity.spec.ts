@@ -12,6 +12,8 @@ import {
   openUnauthenticatedStressWelcome,
   waitForStressStartResponse,
   waitForStressExamSummary,
+  prepareStressPages,
+  watchStressNavigation,
 } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
@@ -145,6 +147,8 @@ test(
     let measuring = false;
     let recovering = false;
     let bootstrap = async (): Promise<unknown> => null;
+    const contexts: BrowserContext[] = [];
+    const lateNavigations: { username: string; path: string }[] = [];
     let signInEvents: { event: string; path: string; type?: string }[] = [];
     let setupStudent = "";
     let setupPage: Page | undefined;
@@ -256,20 +260,59 @@ test(
       lastCommand.stage = "verified";
     };
     try {
+      const prepared = stressRun
+        ? await prepareStressPages({
+            browser,
+            origin,
+            students: students.map((student) => student.username),
+            contexts,
+            initialize: async (page, username) => {
+              await generatorHeadroom();
+              setupStudent = username;
+              setupPage = page;
+              bootstrap = await observeWasmBootstrap(page);
+              await simulatedMedia(page, true);
+              return bootstrap;
+            },
+            note: console.log,
+          })
+        : [];
+      if (stressRun) {
+        expect(prepared).toHaveLength(fleetCount);
+        const unstarted = await request.get("/api/admin/attempts", {
+          params: { q: "examq" },
+        });
+        expect(unstarted.ok(), await unstarted.text()).toBe(true);
+        expect((await unstarted.json()).attempts).toEqual([]);
+        console.log(
+          JSON.stringify({
+            phase: "welcome-cohort-ready",
+            students: prepared.length,
+            web_attempts: 0,
+          }),
+        );
+      }
       for (const student of students) {
         if (stressRun) await generatorHeadroom();
-        const context = await browser.newContext({ ignoreHTTPSErrors: true }),
-          page = await context.newPage(),
+        const preloaded = prepared.find(
+          (entry) => entry.username === student.username,
+        );
+        if (stressRun) expect(preloaded?.username).toBe(student.username);
+        const context =
+          preloaded?.context ??
+          (await browser.newContext({ ignoreHTTPSErrors: true }));
+        if (!preloaded) contexts.push(context);
+        const page = preloaded?.page ?? (await context.newPage()),
           opened = new Set<string>(),
           unexpectedLocks: unknown[] = [],
           recoveryReplies: unknown[] = [],
           confirmations = new Map<string, number>(),
           timing = { contacts: 0, states: 0, maxContactMs: 0, maxStateMs: 0 };
         page.setDefaultTimeout(10000);
-        bootstrap = await observeWasmBootstrap(page);
-        await simulatedMedia(page, !!stressRun);
+        bootstrap = preloaded?.data ?? (await observeWasmBootstrap(page));
+        if (!preloaded) await simulatedMedia(page, !!stressRun);
         if (stressRun)
-          await page.addInitScript(() => {
+          await page.evaluate(() => {
             const evidence = {
               transitions: 0,
               events: [] as { at_ms: number; inert: boolean; status: string }[],
@@ -472,7 +515,18 @@ test(
             } catch {}
           });
         });
-        if (stressRun && process.env.EXAM_STRESS_GENERATOR_STATUS)
+        if (stressRun)
+          watchStressNavigation(
+            page,
+            () => fleet.length > 0,
+            (path) =>
+              lateNavigations.push({ username: student.username, path }),
+          );
+        if (preloaded) {
+          await page
+            .getByLabel("Username", { exact: true })
+            .waitFor({ state: "visible", timeout: OPERATION_TIMEOUT_MS });
+        } else if (stressRun && process.env.EXAM_STRESS_GENERATOR_STATUS)
           await openUnauthenticatedStressWelcome(page, origin, console.log);
         else await page.goto(origin);
         await page
@@ -669,6 +723,7 @@ test(
             (unit) => unit.populated === "1" && unit.frozen === "0",
           ),
         ).toBe(true);
+        expect(lateNavigations).toEqual([]);
         console.log(
           JSON.stringify({
             phase: "ramp-progress",
@@ -953,6 +1008,7 @@ test(
             ).toBe(true);
           }
           expect(fleet.flatMap((entry) => entry.unexpectedLocks)).toEqual([]);
+          expect(lateNavigations).toEqual([]);
           const sample = {
             elapsed_seconds: (performance.now() - started) / 1000,
             students: fleet.length,
@@ -1033,6 +1089,8 @@ test(
               protected: completed.snapshots.length,
               simulated_media: true,
               institutional_mfa: false,
+              prepared_welcome_pages: prepared.length,
+              late_navigations: lateNavigations,
               transport_failures: transportFailures,
               input_gates: await Promise.all(
                 fleet.map(async (entry) => ({
@@ -1324,6 +1382,7 @@ test(
           signInEvents,
           setupDiagnostics: { username: setupStudent, requests: setupNetwork },
           lastCommand,
+          lateNavigations,
           transportFailures,
           wasmBootstrap: await bootstrap(),
           publicStates,
@@ -1352,7 +1411,7 @@ test(
       }
       throw error;
     } finally {
-      await Promise.all(fleet.map((entry) => entry.context.close()));
+      await Promise.all(contexts.map((context) => context.close()));
     }
   },
 );

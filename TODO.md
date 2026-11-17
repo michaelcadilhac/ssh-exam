@@ -1,42 +1,42 @@
 # Manual pre-final stress suite — FULL RUN INCOMPLETE
 
-Approved:70synthetic students/four terminals each,90real minutes at peak and
-simultaneous protected submission. No institutional MFA, actual student accounts
-or outbound email. Marco is the selected browser generator; csc-sys hosts only
-the guarded disposable native guest. No production change/push/deployment.
+Target:70synthetic students/four terminals each,90real peak minutes and
+simultaneous protected submission. Marco generates browsers; csc-sys hosts only
+the guarded disposable native guest. No institutional MFA, actual student
+accounts, external email, production change, push or deployment.
 
-Implemented/tested:manual opt-in runner, per-phase manifests/receipts, bounded
-Marco generator, private workspace scratch, independent preservation/cleanup;
-861application checks/three gated CLI/export/bwrap workflows, native races,
-86harness checks,16-client WASM sign-in and editor/timer/recovery/collector-crash
-qualification. Prof reviewed28rendered UX screenshots. Full browser2:
-360passed/threefailed/fiveskipped; fresh five affected/protocol cases pass separately.
-No full-final-candidate browser pass claimed. Original documentation images remain.
+Collected:861application checks/three real CLI-export-bwrap entries for unchanged
+runtime; native races;86harness checks;16-client WASM sign-in; editor/timer/
+recovery/collector-crash interfaces with original preservation and exact cleanup.
+Prof reviewed28rendered screens. Full browser2:360passed/threefailed/fiveskipped;
+fresh5cases pass separately. No full-final-candidate browser pass claimed.
+Original documentation images and earlier failure evidence remain preserved.
 
-Endurance incomplete. Full2 reached52GCC/GDB students/208panes before missing input;
-all53started attempts ACTIVE/gen0. Concurrent/tmp quota failure confirmed,
-causality unproved;118,474raw files hash-preserved on workspace. Full3 refused a
-wrong manifest before allocating a guest;v12 corrects manifest only.
-Full4 failed12.1min on a normal terminal-menu click after14GCC/GDB students;
-15thStart200;all15ACTIVE/gen0. Exact native/Marco/local cleanup passes, original
-native preservation FULL. Historical hit-test cause remains unproved. A focused
-capture-verification failure reproduces inert-toolbar interception. Corrected
-driver waits for real input-gate release under the60s contract; both focused
-regressions pass locally and on Marco, without early input/incident or force clicks.
-All8affected readiness regressions/final typecheck pass. Full5 then failed13.6min
-after16GCC/GDB students/64panes:seventeenth SSH authenticated, later read failed
-with Failed to fetch; supported Retry opening exam was not driven. All16ACTIVE/
-gen0; exact cleanup/FULL preservation. Five5.25–5.53s capture-verification pauses
-recovered without policy locks. Driver now uses that read retry once only after
-authcomplete200, exact signed-in account and null-attempt reconciliation; no
-credentials/Start replay.22unit guards, focused actual SSH recovery and all5session
-transition cases/typecheck pass. Next:fresh full70/90endurance with lifetime HTTP
-failure/input-gate diagnostics, then agent report from completion/failure receipts.
+Endurance incomplete. Largest earlier partial52/208 failed on missing echo with
+concurrent local/tmp quota failure(causality unproved);118,474raw files preserved.
+Full4 menu-click failure led to qualified readiness-gate waiting; full5 exposed
+supported post-auth read recovery, now qualified with strict no-Start/no-credential
+replay. Full6 was deliberately stopped after35GCC/GDB students/140panes when
+measured guest thread demand projected beyond its4096-task budget at70.
+Exact abort/cleanup/preservation FULL. New finite TEST-only8192-task allocation
+keeps3GiB/no-swap/2CPU/fourhours; native student limits and1/16 modes unchanged.
+30focused overlay/86harness12 checks pass; v13bootstrap-only upload verified.
+Actual kernel-bound verification remains pending in the next guest.
 
-Open P1 findings:installed32worker limit<70; shared anonymous180/minute budget
-rejects30of210minimal cold loads. Isolated96worker configuration does not fix
-production or qualify web/native co-location. Suggested solutions in the report.
-Plan:docs/stress-testing.md; checkpoint:docs/todo-current-checkpoint.md;
+TLS experiments exposed fixture-only shared-browser cancellations around late
+HTTPS document initialization/navigation. Preloaded pages with only in-page
+requests had zero cancellations. All70welcome pages now prepare before any clock;
+late navigation is forbidden, and the empty public attempt list is checked.
+Permanent pre-guest HTTPS smoke:13contexts,161successful requests/zero failures,
+existing HTTP/WS/media/cookie smoke and independent cleanup pass. The strengthened
+late-navigation control is detected; its earlier weak mutation remains unproved.
+27focused guards/typecheck pass. Next:coherent local commit, full endurance7,
+70/280/5400s/70protected receipts and agent-authored report. No70/90pass.
+
+Open P1s:installed32workers<70; shared anonymous180/minute bucket rejects30/210
+minimal cold loads. Isolated96workers/paced warmup do not fix those baselines or
+qualify production co-location. Plan:docs/stress-testing.md;
+checkpoint:docs/todo-current-checkpoint.md;
 report:reports/stress/20261116T194355Z/report.md; raw:var/stress/20261116T194355Z/.
 
 # csc-sys migration — ACTIVATED AND VERIFIED ONLINE

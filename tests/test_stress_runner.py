@@ -130,8 +130,9 @@ class ManualStressTests(unittest.TestCase):
         self.assertEqual(code,0)
         generator.start.assert_called_once();generator.close.assert_called_once()
         self.assertEqual(state['phases'][0]['generator'],'marco')
-        self.assertEqual(len(launched.call_args_list),2)
+        self.assertEqual(len(launched.call_args_list),3)
         self.assertEqual(launched.call_args_list[0].args[0],['node','scripts/stress-generator-smoke.cjs'])
+        self.assertEqual(launched.call_args_list[1].args[0],['node','--import','tsx','tests/fixtures/stress-https-smoke.ts'])
         self.assertEqual(launched.call_args.kwargs['env']['EXAM_STRESS_BROWSER_WS'],'ws://127.0.0.1:12345/synthetic')
         with self.assertRaises(SystemExit):self.invoke('--phase','application','--generator','marco')
 

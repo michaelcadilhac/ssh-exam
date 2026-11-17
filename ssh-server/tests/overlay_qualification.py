@@ -195,7 +195,7 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
         'systemd-run', '--quiet', '--wait', '--pipe', '--collect',
         '--service-type=exec', '--unit=' + unit,
         '--property=Delegate=yes', '--property=MemoryMax=' + ('3G' if students > 1 else '1G'),
-        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('4096' if students == 70 else '2048' if students == 16 else '512'),
+        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('8192' if students == 70 else '2048' if students == 16 else '512'),
         '--property=CPUQuota=' + ('200%' if students > 1 else '50%'), '--property=RuntimeMaxSec=' + ('14400' if students == 70 else '900'),
         '--property=TimeoutStopSec=10s', '--property=KillMode=control-group',
         '--property=OOMPolicy=kill', '--', 'systemd-nspawn',
@@ -500,7 +500,7 @@ if __name__ == '__main__':
     parser.add_argument('--browser-gateway-public-key', type=Path,
                         help='Private browser driver only: PUBLIC signing key; never supply a private key')
     parser.add_argument('--browser-students', type=int, choices=(1, 16, 70), default=1,
-                        help='Private browser target;70 is the explicitly requested endurance mode (3GiB/2CPU/4096tasks/180min); owned disk binds only')
+                        help='Private browser target;70 is the explicitly requested endurance mode (3GiB/2CPU/8192tasks/240min); owned disk binds only')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--native-relay', action='store_true', help='Native-install only: also rehearse the matched relay/proxy update using isolated installed nginx code')

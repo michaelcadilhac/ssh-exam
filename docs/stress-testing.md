@@ -26,51 +26,49 @@ Production state, deadlines, services and submissions remain untouched.
    under var/stress/RUN/. Commit coherent validated suite/docs locally; no push/deploy.
 
 Current status:861application checks and three normally gated real CLI/export/
-bwrap workflows pass. Native races,86harness checks,16-client WASM sign-in and
-native editor/timer/recovery/collector-crash workflows pass, with independently
-verified exact cleanup and original preservation. Full browser2 completed360passes,
-threefailures and fiveskips; a fresh five-case run passes separately, without
-erasing that failed full receipt. Prof reviewed28rendered UX screenshots.
+bwrap workflows pass for the unchanged application runtime. Native races,
+86harness checks,16-client WASM sign-in and native editor/timer/recovery/
+collector-crash workflows pass with independent cleanup/preservation. Full
+browser2 completed360passes/threefailures/fiveskips; a separate fresh five-case
+run passes without erasing the full-run failures. Prof reviewed28rendered screens.
+No70-student/90-minute/protected-completion pass exists.
 
-There is no70-student/90-minute/protected-completion pass. Marco is the approved,
-qualified generator. Rehearsal10 reached39GCC/GDB students/156panes; full2 reached
-52/208before a command echo was absent. All53failure states were ACTIVE/gen0.
-Concurrent local/tmp quota exhaustion is confirmed; its causality is unproved.
-118,474raw files from two stopped fixtures were hash-preserved on workspace disk
-before deleting temporary originals. Private scratch now requires40GiB initially/
-8GiB live and is routed to workspace storage. Guest/browser/bridges and synthetic
-allowances use matched finite four-hour bounds, retaining original deadlines.
-Full3 rejected an incorrect guest manifest before allocation;v12 corrects only
-that manifest, with original binaries and all refused evidence retained.
+Marco is the approved generator. Earlier partial ramps/failures remain in the
+agent report. Full6 was a deliberate early stop after35GCC/GDB students/140panes:
+the measured2,183-task guest sample projected beyond its4096-task cap at70.
+Exact private abort and native/Marco/local cleanup pass; host preservation FULL.
+The70-person parent now has8192tasks, retaining3GiB/no-swap/2CPU/fourhours.
+1/16-person modes and all actual student-policy limits are unchanged.30focused
+overlay checks and all86harness12 contracts pass. Audited v13 changes only the
+29,264-byte bootstrap;18other code files/guest manifest/native binaries are reused.
+Actual8192-task kernel verification remains required in the next guest.
 
-Full4 failed12.1min after14GCC/GDB students/56panes;15thStart200, then a normal menu
-click was intercepted by the workspace. All15failure states ACTIVE/gen0. Native,
-Marco and local cleanup independently pass; native preservation FULL. The precise
-historical cause remains unproved. A genuine capture-verification failure
-reproduces the inert-toolbar interception. The corrected driver waits for actual
-verified release within the existing60s operation budget, with no force-click or
-early input. Both new focused cases pass locally and on Marco: eight fullscreen
-workspaces/four arranged panes and six-second blocked-capture/recovery/no-incident.
-All8affected readiness cases and final typecheck pass. The next endurance records
-timestamped input-gate transitions and selection waits;
-it does not silently convert monitoring delays into a pass or student violation.
+Full6 also recorded147Chromium network-change cancellations. Bounded TLS controls
+reproduced eight/nine cancellations during late HTTPS page initialization/
+navigation, and zero with fully loaded pages using only in-page requests.
+This identifies a fixture interaction; it does not attribute every historical
+error or establish a production defect. A rejected static-certificate workaround
+was reverted. Existing per-context certificate settings remain unchanged.
 
-Full5 failed13.6min after16GCC/GDB students/64panes. Seventeenth SSH authenticated,
-then a read failed with Failed to fetch; the existing Retry opening exam button
-was not driven. All16failure states ACTIVE/gen0; exact cleanup/preservation FULL.
-Five5.25–5.53s capture-verification pauses recovered without policy locks. The
-stress driver now uses that read retry once only after acknowledged auth completion,
-fresh exact session and absent attempt, with no credentials/setup/Start replay.
-22unit guards, real SSH completion/retry and all5session-transition cases/typecheck
-pass. Lifetime API failures/current setup screenshots join input-gate telemetry.
-No historical network/capture cause or product fix is inferred. Next:full6.
+The fleet now prepares all70 actual welcome pages before any authentication/clock,
+with four-second spacing, synthetic-media/bootstrap initialization and ownership
+for partial cleanup. It then uses existing SPA pages, forbids late main-frame
+navigation and verifies the public attempt list is empty before sign-in.
+The separate anonymous burst still fails; paced endurance setup is not a cold-
+classroom admission pass. A permanent manual-only HTTPS preflight runs before a
+guest:13preloaded contexts, overlapping requests and the shared navigation guard.
+Its weak initial mutation survived and is explicitly not proof; the strengthened
+control detects12actual late navigations. The positive run passes161HTTPS
+requests/zero failures, plus existing cookie/media/HTTP/WebSocket smoke and exact
+cleanup.27focused guards and final typecheck pass; no new application build is
+needed for these test-only changes. Next:local commit and full endurance7.
 
-Confirmed P1 baselines remain open:installed32connection workers<70; shared
-anonymous180requests/minute bucket rejects30of210minimal cold-load requests.
-The isolated96worker candidate is a test configuration, not a production fix or
-co-location qualification. No production service, configuration or student record
-has changed; baseline remainsed09efc/schema37. No maintenance, push or deployment.
-Per-run report and raw receipts preserve all failures and simulated boundaries.
+Confirmed P1 baselines remain open:installed32workers<70; shared anonymous
+180requests/minute bucket rejects30of210minimal cold loads. Isolated96workers
+does not fix production or qualify co-location on the8GiB class server.
+Production baseline remainsed09efc/schema37; no service/configuration/student
+record changed, maintenance used, source pushed or release deployed.
+Per-run report/raw receipts preserve all failed and controlled-stop evidence.
 
 ## Explicit entry point
 
@@ -143,6 +141,25 @@ pause with continuing work, allowance increase, genuine SSH loss, reviewed
 same-attempt restoration from files, no-expiry approval and protected completion.
 The ordinary browser phase explicitly enables its real gateway-process restart
 fixture; native-only skips are reported separately.
+The Marco path runs both the existing HTTP/WebSocket/media smoke and
+\`tests/fixtures/stress-https-smoke.ts\` before allocating a native guest. The
+HTTPS check prepares13contexts and requires overlapping in-page traffic without
+failures or late document navigation. Its deliberate navigation control is a
+development-only negative check, never enabled by the normal runner. Existing
+per-context synthetic-certificate handling is retained; no production trust store
+or TLS setting changes.
+
+Before the first sign-in, the endurance prepares all70real welcome pages with
+media/bootstrap observers already installed. Four-second spacing preserves normal
+anonymous limits; the separately failed cold-burst baseline remains failed.
+The public attempt list must still be empty. Authentication/setup/work then use
+the existing SPA pages: creating/navigating later documents would inject a shared-
+Chromium fixture fault. Own every context before page creation so partial warmup
+is cleanable. The70-person native parent has8192tasks/3GiB/no-swap/2CPU/fourhours;
+its actual kernel bounds are checked at startup. Smaller cohort bounds and all
+native student-policy limits remain unchanged. These are isolated test budgets,
+not measured production co-location capacity on the8GiB class server.
+
 Each phase freezes its source-input manifest; do not edit test/runner sources
 while it runs. Raw command logs, failures and per-phase bundle identity are kept.
 After each native phase, independently verify its exact owned unit is inactive

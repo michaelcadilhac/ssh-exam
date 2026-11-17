@@ -4,7 +4,55 @@ import {
   openUnauthenticatedStressWelcome,
   waitForStressStartResponse,
   waitForStressExamSummary,
+  prepareStressPages,
 } from "../fixtures/stress-navigation.js";
+
+describe("private cohort welcome preparation", () => {
+  it.each([
+    { origin: "https://ssh-exam.cadilhac.name", students: ["synthetic"] },
+    { origin: "https://127.0.0.1:9444", students: [] },
+    { origin: "https://127.0.0.1:9444", students: ["duplicate", "duplicate"] },
+    {
+      origin: "https://127.0.0.1:9444",
+      students: Array.from({ length: 71 }, (_, i) => `synthetic${i}`),
+    },
+  ])(
+    "refuses invalid scope before creating any context: %j",
+    async (options) => {
+      const browser = { newContext: vi.fn() };
+      await expect(
+        prepareStressPages({
+          ...options,
+          browser,
+          contexts: [],
+          initialize: vi.fn(),
+          note: vi.fn(),
+        }),
+      ).rejects.toThrow("Private warmup");
+      expect(browser.newContext).not.toHaveBeenCalled();
+    },
+  );
+  it("exposes ownership before page creation can fail", async () => {
+    const context = {
+      newPage: vi
+        .fn()
+        .mockRejectedValue(Error("Synthetic page creation failed")),
+    };
+    const browser = { newContext: vi.fn().mockResolvedValue(context) };
+    const contexts: any[] = [];
+    await expect(
+      prepareStressPages({
+        browser,
+        origin: "https://127.0.0.1:9444",
+        students: ["synthetic"],
+        contexts,
+        initialize: vi.fn(),
+        note: vi.fn(),
+      }),
+    ).rejects.toThrow("page creation failed");
+    expect(contexts).toEqual([context]);
+  });
+});
 
 describe("acknowledged exam summary read recovery", () => {
   const identity = { username: "synthetic", exam: "synthetic-exam" };
