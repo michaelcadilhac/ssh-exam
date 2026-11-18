@@ -2,7 +2,7 @@
 
 Local development/tests/commits only. No push/deployment, production changes,
 actual student accounts, institutional MFA or external email. Preserve ten original
-modified doc PNGs. Last coherent local commit cf4b6c1 (Start health recovery). No missing package.
+modified doc PNGs. Last coherent local commit4cd15dd (private setup timings); Start fixcf4b6c1. No missing package.
 
 ## Current milestone / next action
 
@@ -30,15 +30,25 @@ native-recovery-8 PASS591.676s,16/64 original shell/buffer/deadline recovery aft
 verified.352paired events; no credential/body/reply/error logging or new service.
 Receipt:var/stress-remediation/20261118/setup-timing/native-recovery/completion.json.
 The16-mode workload is shells; no GCC/GDB claim. Product build is unchanged from
-Start milestonecf4b6c1. No source/native process is currently running.
+Start milestonecf4b6c1. The16-person runner and native guest are stopped.
 
 Next bounded milestone: investigate the generator's soft memory ceiling. Endurance5
 saved889status samples;13crossed18GiB MemoryHigh, all in the final Start-failure
 minute, while remaining below20GiB MemoryMax. No memory.events/pressure were saved,
 so exact causality is unclassified. Receipt:endurance-5/generator-soft-limit-correlation.json.
-Keep20GiB hard cap/no-swap/host headroom; correct the lower soft ceiling if qualified
-and add aggregate pressure/event observations. Focused harness checks, actual owned
-Marco smoke/cleanup, then an instrumented70/90minute run. No production resize or
+Final generator candidate:21GiB soft=hard (1GiB client-test increase),25GiB
+startup availability and unchanged4GiB live floor/no-swap/8CPU/4096tasks. Saved
+working-set growth projects near20GiB at70clients. Pressure/event counters retained.
+35final harness checks pass. Actual21GiB smoke PASSED with FULL cleanup/frozen inputs:
+ssh-exam-generator-21g-09e2337e9e6d438eaa9e7de5835cb5e9.service;
+var/stress-remediation/20261118/generator-memory/marco-smoke-21g/.
+Prior20GiB smoke2 has FULL cleanup/frozen-input proof; its bounds differ. Only two
+verified stopped PASS-smoke remote directories were removed; local receipts kept.
+First smoke's idle local SSH master was safely stopped from accepting new requests;
+RPC now prevents creating persistent masters. No native guest is active.
+Next: commit the qualified generator/report, then instrumented70/90.
+Keep csc-sys4vCPU/~8GiB unchanged; VM question is optional/pending for this test. No production action. Existing unchanged
+network-churn qualification remains applicable. No production resize or
 student-policy change. Do not repeat unchanged application/native race suites.
 
 At55students native guest used2.461GB/3785tasks, noOOM/task-limit events. CPU

@@ -296,3 +296,37 @@ as a reclaim/throttle boundary even without OOM:
 https://docs.kernel.org/admin-guide/cgroup-v2.html#memory-interface-files .
 Investigate this harness limit before another long ramp, without changing student
 authority or production resources. Receipt:endurance-5/generator-soft-limit-correlation.json.
+
+The finite generator budget is now corrected locally: MemoryHigh=MemoryMax=20GiB,
+with the hard maximum, no-swap,8CPU/4096task limits and independent host/ancestor/
+shared-memory headroom unchanged. Read-only status now retains memory.events,
+memory/CPU pressure, cpu.stat and pids.events before cgroup destruction.10focused
+generator guards and24runner contracts pass; outer/remotePython compiles. Actual
+private Marco smoke is running. This change removes the lower artificial soft
+ceiling; it is not proof that the old timeout was caused solely by reclaim.
+
+Actual Marco smoke2 passes two isolated contexts, real HTTP/WebSocket/media and
+new kernel limit/pressure reads, with frozen inputs and independently verified
+local/remote cleanup.11focused generator and24runner checks pass. The first smoke
+passed browser work but exposed an idle SSH multiplex master retained inside the
+completed local unit. Only its listener was stopped, preserving existing channels;
+RPCs now explicitly prevent creating persistent masters while allowing an existing
+operator connection to be reused. Smoke2 leaves MainPID0 and an empty owned scope.
+This is a test-transport cleanup correction, not a production SSH change.
+Evidence:var/stress-remediation/20261118/generator-memory/marco-smoke-2/completion.json.
+
+The next instrumented full70/90-minute run can proceed on the unchanged4-vCPU/
+roughly8-GiB class host; the optional larger-VM question remains open, not a blocker
+to qualifying this focused generator correction. Full target and actual co-location
+still need measurement. Do not attribute a pass/failure solely to the soft limit.
+
+Before the class run, aligning old generator-memory samples with native student
+checkpoints found5.136/7.796/12.337/15.416/16.205GiB at9/21/40/52/55students.
+The trend approaches20GiB at70clients. The final test-generator budget is21GiB
+soft=hard, with startup availability strengthened from24to25GiB and the live4GiB
+floor unchanged. Native/student/production limits are unchanged. The20GiB smokes
+remain historical qualification of those inputs, not proof of this final budget.
+35final harness checks pass for21GiB. Actual short21GiB smoke passes with complete
+local/remote cleanup and unchanged inputs. Only the two stopped
+PASS-smoke remote directories were removed after token/owner/unit/browser/service
+checks; local evidence remains. Qualify the final budget before the long ramp.

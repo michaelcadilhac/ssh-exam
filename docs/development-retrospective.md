@@ -726,3 +726,29 @@ exact unit-matched SIGKILL metadata, unchanged clocks/holds, continued peer inpu
 and verified protected archives. Active/setup states remain refused. Automatic
 retry stays enabled. Focused checks/typecheck pass; integrated collection is still
 being qualified, not claimed complete from the proposal or component tests.
+
+## November18: inspect the generator's soft limits before blaming host capacity
+
+I emphasized native CPU contention before comparing the saved generator time
+series with MemoryHigh. Endurance5 had889generator samples; its13soft-limit
+crossings all occurred during the final Start-failure minute. The20GiB hard
+limit was not reached, but the18GiB soft boundary can impose reclaim/throttling.
+The old observer omitted memory.events/pressure, so this correlation cannot prove
+the timeout's sole cause. Production-native CPU contention remains a separate
+observation, not evidence against the generator finding.
+
+The private generator now keeps the same20GiB hard cap/no-swap/headroom guards
+and raises only its soft ceiling to that cap. It retains resource events/pressure
+before cleanup.10focused/24runner checks and actual owned Marco browser/network/
+media smoke pass with exact cleanup; the class target still needs its full run.
+AGENTS.md now requires comparing every actor's time series with soft and hard
+bounds before another expensive run or a hardware diagnosis. Start-stage timings
+are also qualified through16/64 recovery, so the next timeout can be located
+without conflating health, handoff and activation. No production changes occurred.
+
+The subsequent sizing review should have preceded those initial smokes: the saved
+client working set projects near20GiB at70students. The final generator budget is
+21GiB with25GiB startup availability and the same4GiB live floor, keeping containment
+finite. The earlier20GiB smoke receipts remain scoped to their original inputs.
+AGENTS.md now requires target-size headroom review before freezing resource bounds,
+so this does not become another sequence of small qualification reruns.

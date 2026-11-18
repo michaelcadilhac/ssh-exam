@@ -232,6 +232,15 @@
   runner before retrying; never terminate unrelated processes or services.
 - Run long qualification in an owned, bounded durable runner and save its identity,
   frozen inputs, output and final status; a tool session is not its lifetime.
+  Before attributing load-test delay or repeating a class ramp, inspect saved
+  time series from every actor against both soft and hard resource limits.
+  Project measured working-set growth to the requested class size and leave
+  headroom before freezing runner bounds, rather than qualifying an undersized
+  fixture and correcting its limits one at a time.
+  Being below MemoryMax with no OOM does not establish headroom: MemoryHigh can
+  throttle first. Retain memory/CPU pressure and event counters before cgroup
+  cleanup. Distinguish generator/bridge constraints from product capacity, and
+  preserve uncertain attribution rather than diagnosing from teardown values.
   When moving tests into a local user service, compare its effective environment
   and persist the complete resource-limit comparison with the ordinary shell,
   including CORE and NOFILE. Verify actual child limits, not only unit declarations;

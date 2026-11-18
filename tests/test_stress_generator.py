@@ -17,6 +17,38 @@ spec.loader.exec_module(generator)
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_rpc_does_not_create_a_persistent_ssh_master(self):
+        with tempfile.TemporaryDirectory() as directory:
+            owned=generator.MarcoGenerator(directory)
+            with mock.patch.object(generator.subprocess,'run',return_value=mock.Mock(returncode=0,stdout='{}')) as run:
+                self.assertEqual(owned.rpc('preflight'),{})
+            args=run.call_args.args[0]
+            self.assertIn('ControlMaster=no',args);self.assertIn('ControlPersist=no',args)
+            self.assertEqual(json.loads(run.call_args.kwargs['input']),{'op':'preflight'})
+
+    def test_actual_cgroup_view_requires_the_qualified_finite_budget_and_retains_pressure(self):
+        function=next(node for node in ast.parse(generator.RPC).body if isinstance(node,ast.FunctionDef) and node.name=='resource_view')
+        namespace={};exec(compile(ast.Module(body=[function],type_ignores=[]),'generator-resource-view','exec'),namespace)
+        with tempfile.TemporaryDirectory() as directory:
+            group=Path(directory)
+            fields={'memory.max':str(21*1024**3),'memory.high':str(21*1024**3),'memory.swap.max':'0','pids.max':'4096','cpu.max':'800000 100000',
+                    'memory.events':'low 0\nhigh 13\nmax 0\noom 0\noom_kill 0','memory.pressure':'some avg10=3.14 avg60=2.00 avg300=1.00 total=100',
+                    'cpu.stat':'usage_usec 50000\nnr_throttled 2','cpu.pressure':'some avg10=0.50 avg60=0.25 avg300=0.10 total=50','pids.events':'max 0'}
+            for name,value in fields.items():(group/name).write_text(value+'\n')
+            state={'MemoryMax':str(21*1024**3),'MemoryHigh':str(21*1024**3),'MemorySwapMax':'0','TasksMax':'4096'}
+            observe=lambda:namespace['resource_view'](state,group)
+            result=observe();self.assertEqual(result['resource_observations']['memory.events'],fields['memory.events']);self.assertEqual(result['resource_observations']['cpu.stat'],fields['cpu.stat'])
+            for name,bad in [('memory.high',str(18*1024**3)),('memory.max','max'),('memory.swap.max','1'),('cpu.max','max 100000'),('pids.max','max')]:
+                (group/name).write_text(bad)
+                with self.assertRaises((AssertionError,ValueError)):observe()
+                (group/name).write_text(fields[name])
+            state['MemoryHigh']=str(18*1024**3)
+            with self.assertRaises(AssertionError):observe()
+            state['MemoryHigh']=str(21*1024**3);state['MemoryMax']=str(20*1024**3)
+            with self.assertRaises(AssertionError):observe()
+            state['MemoryMax']=str(21*1024**3);(group/'memory.events').unlink()
+            with self.assertRaises(FileNotFoundError):observe()
+
     def test_actual_process_limit_view_must_match_declared_private_unit_limits(self):
         import os,re
         function=next(node for node in ast.parse(generator.RPC).body if isinstance(node,ast.FunctionDef) and node.name=='verify_process')

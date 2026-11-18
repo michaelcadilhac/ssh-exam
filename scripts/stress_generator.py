@@ -43,6 +43,15 @@ def free_ports(ports=(9444,9445)):
    s.bind(('127.0.0.1',port))
 def unit_state(unit):
  return dict(line.split('=',1) for line in command(['systemctl','--user','show',unit,'--property=ActiveState,SubState,MainPID,ControlGroup,MemoryCurrent,MemoryPeak,MemoryHigh,MemoryMax,MemorySwapMax,TasksCurrent,TasksMax,RuntimeMaxUSec,LimitCORE,LimitCORESoft,LimitNOFILE,LimitNOFILESoft']).splitlines())
+def resource_view(state,group):
+ # The measured70-client growth approaches20GiB. Reserve21GiB for this owned
+ # generator, with25GiB startup availability and the unchanged4GiB live floor.
+ assert int(state['MemoryMax'])==21*1024**3 and int(state['MemoryHigh'])==21*1024**3 and state['MemorySwapMax']=='0' and state['TasksMax']=='4096'
+ bounds={n:(group/n).read_text().strip() for n in ('memory.max','memory.high','memory.swap.max','pids.max','cpu.max')}
+ quota,period=map(int,bounds['cpu.max'].split());assert quota==8*period
+ assert bounds['memory.max']==str(21*1024**3) and bounds['memory.high']==str(21*1024**3) and bounds['memory.swap.max']=='0' and bounds['pids.max']=='4096'
+ observations={n:(group/n).read_text().strip() for n in ('memory.events','memory.pressure','cpu.stat','cpu.pressure','pids.events')}
+ return {'kernel_bounds':bounds,'resource_observations':observations}
 def verify_process(state,root):
  pid=state['MainPID'];assert int(pid)>1
  p=Path('/proc')/pid;assert p.stat().st_uid==uid
@@ -102,7 +111,7 @@ expected={'ActiveState':'inactive','SubState':'dead','MainPID':'0','UnitFileStat
 if op not in ('stop','ports'):
  assert web()==expected,'Retired exam service changed; no generator action'
 if op=='preflight':
- assert memory()>=24*1024**3,'Marco needs24GiB available before this run'
+ assert memory()>=25*1024**3,'Marco needs25GiB available before this run'
  assert shared_memory()>=12*1024**3,'Private browser run needs12GiB shared-memory headroom'
  assert shutil.disk_usage('/var/tmp').free>=3*1024**3,'Private browser scratch needs3GiB free'
  free_ports()
@@ -139,7 +148,7 @@ else:
    p=root/name;i=p.lstat();assert stat.S_ISREG(i.st_mode) and i.st_uid==uid and i.st_nlink==1 and hashlib.sha256(p.read_bytes()).hexdigest()==digest
   free_ports()
   command(['systemd-run','--user','--quiet','--collect','--service-type=exec','--unit='+unit,
-    '--property=MemoryHigh=18G','--property=MemoryMax=20G','--property=MemorySwapMax=0',
+    '--property=MemoryHigh=21G','--property=MemoryMax=21G','--property=MemorySwapMax=0',
     '--property=CPUQuota=800%','--property=TasksMax=4096','--property=RuntimeMaxSec=14400',
     '--property=LimitCORE=0','--property=LimitNOFILE=524288',
     '--property=TimeoutStopSec=30','--property=KillMode=control-group','--property=UMask=0077','--property=Restart=no',
@@ -156,16 +165,12 @@ else:
   state=unit_state(unit);active=state['ActiveState']=='active' and int(state['MainPID'])>1
   result={'active':active,'unit_state':state,'available_bytes':memory(),'scratch_free_bytes':shutil.disk_usage(root).free,'shared_memory_free_bytes':shared_memory(),'web_service':web()}
   if active:
-   assert int(state['MemoryMax'])==20*1024**3 and int(state['MemoryHigh'])==18*1024**3 and state['MemorySwapMax']=='0' and state['TasksMax']=='4096'
    assert state['RuntimeMaxUSec']=='4h','Private browser lifetime must be finite and match the measured ramp plus90-minute peak budget'
    assert state['LimitCORE']=='0' and state['LimitCORESoft']=='0','Private browser core dumps must stay disabled'
    assert state['LimitNOFILE']=='524288' and state['LimitNOFILESoft']=='524288','Private browser descriptor limits must match the qualified runner'
    result['process_limits']=verify_process(state,root)
    group=Path('/sys/fs/cgroup')/state['ControlGroup'].lstrip('/')
-   bounds={n:(group/n).read_text().strip() for n in ('memory.max','memory.high','memory.swap.max','pids.max','cpu.max')}
-   quota,period=map(int,bounds['cpu.max'].split());assert quota==8*period
-   assert bounds['memory.max']==str(20*1024**3) and bounds['memory.high']==str(18*1024**3) and bounds['memory.swap.max']=='0' and bounds['pids.max']=='4096'
-   result['kernel_bounds']=bounds
+   result.update(resource_view(state,group))
    for parent in group.parents:
     if parent==Path('/sys/fs'):break
     limit=parent/'memory.max';current=parent/'memory.current'
@@ -238,7 +243,10 @@ class MarcoGenerator:
         payload = {'op': op, **fields}
         if self.directory:
             payload.update(directory=self.directory, token=self.token)
-        reply = subprocess.run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'marco',
+        # Reuse an existing operator master if present, but never create an idle
+        # persistent master in this owned test unit after the RPC finishes.
+        reply = subprocess.run(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
+                                '-o', 'ControlMaster=no', '-o', 'ControlPersist=no', 'marco',
                                 shlex.join(['python3', '-c', RPC])], input=json.dumps(payload),
                                text=True, capture_output=True, timeout=45 if op == 'stop' else 25)
         if reply.returncode:
@@ -295,7 +303,7 @@ class MarcoGenerator:
             time.sleep(.1)
         verified = self.rpc('listeners', browser_port=endpoint.port)
         (self.output / 'generator-listeners.json').write_text(json.dumps(verified, indent=2) + '\n')
-        if status['available_bytes'] < 20 * 1024**3:
+        if status['available_bytes'] < 21 * 1024**3:
             raise RuntimeError('Marco ancestor memory budget is insufficient')
         self.publish_status(status)
         self.thread = threading.Thread(target=self.monitor, daemon=True)

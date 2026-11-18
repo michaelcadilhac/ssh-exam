@@ -9,6 +9,14 @@ fenced/reconciled.16focused,72affected application,7browser and actual native
 timer/recovery/protected-finish checks pass; Prof approves the mobile UI.
 VM resource growth is an approved sizing option; no resize/restart/deploy occurred.
 
+Private setup-stage timings now pass16/64 recovery with352settled observations.
+Saved Marco metrics show13soft-memory-limit crossings during the last failed
+Start minute; causality remains unclassified. The final generator uses21GiB soft=hard, with25GiB startup availability and the
+unchanged4GiB live floor, and retains pressure/event counters.35harness checks
+and actual21GiB private Marco browser smoke/cleanup pass.
+A leftover test SSH master led to a non-persistent RPC fix, also qualified.
+Next: instrumented70/90-minute qualification; no production changes.
+
 
 November 17: classroom bootstrap now has a separate bounded public-read budget.
 Seventy same-NAT cold loads, bounded read abuse and unchanged credential/API

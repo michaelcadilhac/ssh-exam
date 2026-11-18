@@ -288,3 +288,16 @@ and all four saved writer files. Report captures/monitoring latencies and any ho
 The gateway runs locally, so production co-location capacity remains a separate
 explicit limitation. Report actual resources rather than implying that a simulated
 permission prompt proves real screen-sharing/fullscreen/keyboard behavior.
+
+## November18 generator memory observations
+
+The final owned Marco candidate uses21GiB for both MemoryHigh and MemoryMax,
+with25GiB startup availability and the unchanged4GiB live host floor. This is a
+1GiB increase to the test-client budget: saved growth checkpoints project close
+to20GiB for70clients, leaving too little margin under the original20GiB cap. The
+no-swap,8CPU/4096task bounds and independent host/shared-memory/ancestor guards
+remain; the finite hard cap is now21GiB. The former18GiB soft ceiling was crossed in the
+last minute of endurance5 despite staying below the hard cap; its causal role
+remains unclassified. Status retains memory.events, memory/CPU pressure, cpu.stat
+and pids.events. Treat hard-limit/teardown values alone as insufficient evidence
+of healthy headroom. Compare the live series and setup-operation timings.
