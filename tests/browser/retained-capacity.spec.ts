@@ -23,7 +23,9 @@ import { readRemoteStressHeadroom } from "../fixtures/stress-generator-status.js
 
 const origin = "https://127.0.0.1:9444";
 const stressRun = process.env.EXAM_STRESS_RUN;
-const fleetCount = stressRun ? 70 : 16;
+const fleetCount = stressRun ? Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS) : 16;
+if (stressRun && ![35, 70].includes(fleetCount))
+  throw Error("Manual endurance requires the explicit 35- or 70-student cohort");
 async function generatorHeadroom() {
   const memory = await readFile("/proc/meminfo", "utf8");
   const available = Number(/MemAvailable:\s+(\d+)/.exec(memory)?.[1]) * 1024;
@@ -34,7 +36,7 @@ async function generatorHeadroom() {
   const scratch = process.env.EXAM_STRESS_LOCAL_SCRATCH;
   if (!scratch)
     throw Error(
-      "The70-person run requires its private workspace scratch; use the manual stress runner",
+      "The endurance run requires its private workspace scratch; use the manual stress runner",
     );
   const filesystem = await statfs(scratch);
   if (Number(filesystem.bavail) * Number(filesystem.bsize) < 8 * 1024 ** 3)
@@ -94,13 +96,13 @@ const snapshot = z.object({
 
 test(
   stressRun
-    ? "seventy native students sustain280 terminals for90 minutes and submit together"
+    ? `${fleetCount} native students sustain ${fleetCount * 4} terminals for 90 minutes and submit together`
     : "sixteen actual native students keep sixty-four monitored SSH terminals and secure independent submissions",
   async ({ browser, request }) => {
     test.skip(
       !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
         process.env.EXAM_BROWSER_NATIVE_STUDENTS !== String(fleetCount),
-      "Requires the exact guarded16-student native capacity fixture",
+      "Requires the exact selected guarded native capacity fixture",
     );
     const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
     const recovery = process.env.EXAM_BROWSER_NATIVE_CAPACITY_RECOVERY === "1";

@@ -110,7 +110,7 @@ def local_scratch(output, short=False):
     if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
         raise RuntimeError('Private stress scratch ownership/mode refused')
     if shutil.disk_usage(scratch).free < 40 * 1024**3:
-        raise RuntimeError('The70-person run needs40GiB free in its private workspace scratch; /tmp is unsuitable for the measured raw recordings')
+        raise RuntimeError('The endurance run needs40GiB free in its private workspace scratch; /tmp is unsuitable for the measured raw recordings')
     probe = scratch / 'write-probe'
     fd = os.open(probe, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     try:
@@ -122,12 +122,13 @@ def local_scratch(output, short=False):
     return scratch
 
 
-def endurance_receipt(output,seconds):
+def endurance_receipt(output,seconds,students=70):
+    assert students in (35,70)
     files=list((output/'browser').rglob('endurance-result.json'))
     if len(files)!=1:
-        return 'Missing unique70-student endurance receipt; skipped/empty tests do not qualify'
+        return f'Missing unique{students}-student endurance receipt; skipped/empty tests do not qualify'
     value=json.loads(files[0].read_text())
-    if (value.get('students'),value.get('terminals'),value.get('requested_seconds'),value.get('protected'),value.get('preservation')) != (70,280,seconds,70,'FULL'):
+    if (value.get('students'),value.get('terminals'),value.get('requested_seconds'),value.get('protected'),value.get('preservation')) != (students,students*4,seconds,students,'FULL'):
         return 'Endurance receipt does not prove the requested fleet, duration, protected work and preservation'
     if value.get('peak_seconds',0)<seconds:
         return 'The requested real peak duration was not completed'
@@ -148,7 +149,9 @@ def main():
     p.add_argument('--native-bundle', required=True, help='Audited code-only bundle in a NEW private csc-sys directory')
     p.add_argument('--run-id', help='Existing run to resume; prior phase receipts are retained')
     p.add_argument('--phase', choices=('all', *PHASES), default='all')
-    p.add_argument('--rehearsal', action='store_true', help='70-student30s harness rehearsal; never a full endurance pass')
+    p.add_argument('--students', type=int, choices=(35,70), default=70,
+                   help='Explicit endurance cohort (four terminals each); recorded per run and never interchangeable')
+    p.add_argument('--rehearsal', action='store_true', help='30s harness rehearsal for the selected cohort; never a full endurance pass')
     p.add_argument('--generator', choices=('local', 'marco'), default='local',
                    help='Browser host for guarded native phases/endurance; Marco uses an owned isolated worker and private SSH forwards')
     args = p.parse_args()
@@ -169,12 +172,14 @@ def main():
     diff = subprocess.check_output(['git','diff','--','apps','packages','browser-ssh','ssh-server','tests','scripts'], cwd=ROOT)
     state = json.loads(metadata.read_text()) if metadata.exists() else {
         'run':run,'started':datetime.now(timezone.utc).isoformat(),'phases':[],
-        'students':70,'terminals':280,'endurance_seconds':30 if args.rehearsal else 5400,
+        'students':args.students,'terminals':args.students*4,'endurance_seconds':30 if args.rehearsal else 5400,
         'source':source,'source_diff_sha256':hashlib.sha256(diff).hexdigest(),
         'native_bundle':args.native_bundle,'mfa':False,'real_student_accounts':False,'outbound_mail':False,
         'environment':'isolated local gateway/browser + guarded private csc-sys guest',
         'limitations':['Browser screen/camera/keyboard permissions and jump authentication are synthetic; institutional MFA is excluded.',
                        'The gateway is local; this does not certify production gateway co-location resource capacity.']}
+    if state.get('students') != args.students or state.get('terminals') != args.students*4:
+        p.error(f'Run ID already records {state.get("students")} students; pass --students {state.get("students")} to resume, or use a fresh run ID for a different cohort')
     if state.get('endurance_seconds') not in (None,30 if args.rehearsal else 5400):
         p.error('Cannot replace a rehearsal with a full run under the same ID')
     state.setdefault('phases',[])
@@ -207,11 +212,12 @@ def main():
             code="""import json,sys;from pathlib import Path
 p=Path('/opt/ssh-exam/deploy/config/config.json');raw=p.read_bytes();assert len(raw)<=65536
 c=json.loads(raw);limit=c.get('connectionWorkers',32);assert isinstance(limit,int) and limit>0
-print(json.dumps({'installed_connection_workers':limit,'required_students':70,'meets_target':limit>=70}))
-sys.exit(0 if limit>=70 else 1)
+required=int(sys.argv[1]);assert required in (35,70)
+print(json.dumps({'installed_connection_workers':limit,'required_students':required,'meets_target':limit>=required}))
+sys.exit(0 if limit>=required else 1)
 """
             commands=[(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=10','csc-sys',
-                       shlex.join(['sudo','-n','python3','-c',code])],ROOT,30)]
+                       shlex.join(['sudo','-n','python3','-c',code,str(args.students)])],ROOT,30)]
         elif phase=='anonymous-burst':
             env['EXAM_STRESS_BASELINE_OUTPUT']=str(output/'baseline.json')
             commands=[(['node','--import','tsx','tests/fixtures/anonymous-bootstrap-burst.ts'],ROOT,60)]
@@ -254,7 +260,7 @@ sys.exit(0 if limit>=70 else 1)
         else:
             env.update(EXAM_STRESS_RUN=run,EXAM_STRESS_OUTPUT=str(output/'browser'),
                        EXAM_STRESS_SECONDS='30' if args.rehearsal else '5400',
-                       EXAM_BROWSER_NATIVE_BUNDLE=args.native_bundle,EXAM_BROWSER_NATIVE_STUDENTS='70',
+                       EXAM_BROWSER_NATIVE_BUNDLE=args.native_bundle,EXAM_BROWSER_NATIVE_STUDENTS=str(args.students),
                        EXAM_BROWSER_NATIVE_RELEASE='1')
             commands=[(['npm','run','test:browser','--','--config','tests/stress.config.ts'],ROOT,14400)]
         state['status']='RUNNING';save()
@@ -331,7 +337,7 @@ sys.exit(0 if limit>=70 else 1)
         if row['status']=='PASSED' and source_manifest()!=inputs:
             row['status']='FAILED';row['reason']='Test source changed during execution; receipt is not qualified'
         if row['status']=='PASSED' and phase=='endurance':
-            refusal=endurance_receipt(output,30 if args.rehearsal else 5400)
+            refusal=endurance_receipt(output,30 if args.rehearsal else 5400,args.students)
             if refusal: row['status']='FAILED';row['reason']=refusal
         row['finished']=datetime.now(timezone.utc).isoformat();save()
         print(json.dumps({'run':run,'phase':phase,'status':row['status']}),flush=True)

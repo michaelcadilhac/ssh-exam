@@ -190,13 +190,13 @@ def write_debugger_inputs(inputs, sources):
 
 
 def candidate_command(unit, guest, inputs, output, students=1, storage=None, profile='enforcement', native_relay=False, debugger=False):
-    assert students in (1, 16, 70)
+    assert students in (1, 16, 35, 70)
     command = [
         'systemd-run', '--quiet', '--wait', '--pipe', '--collect',
         '--service-type=exec', '--unit=' + unit,
         '--property=Delegate=yes', '--property=MemoryMax=' + ('3G' if students > 1 else '1G'),
-        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('8192' if students == 70 else '2048' if students == 16 else '512'),
-        '--property=CPUQuota=' + ('200%' if students > 1 else '50%'), '--property=RuntimeMaxSec=' + ('14400' if students == 70 else '900'),
+        '--property=MemorySwapMax=0', '--property=TasksMax=' + ('8192' if students == 70 else '4096' if students == 35 else '2048' if students == 16 else '512'),
+        '--property=CPUQuota=' + ('200%' if students > 1 else '50%'), '--property=RuntimeMaxSec=' + ('14400' if students in (35, 70) else '900'),
         '--property=TimeoutStopSec=10s', '--property=KillMode=control-group',
         '--property=OOMPolicy=kill', '--', 'systemd-nspawn',
         '--directory=' + str(guest), '--machine=' + unit.removesuffix('.service'),
@@ -227,7 +227,7 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
         assert profile == 'native-install'
         command.append('--bind-ro=' + str(inputs / 'nginx-runtime') + ':/run/ssh-exam-nginx-runtime')
     if debugger:
-        assert students == 70 and profile == 'retained-policy'
+        assert students in (35, 70) and profile == 'retained-policy'
         command.extend(('--bind-ro=' + str(inputs / 'gdb-runtime') + ':/usr/lib/ssh-exam-stress-gdb',
                         '--bind-ro=' + str(inputs / 'gdb-wrapper') + ':/usr/bin/gdb'))
     command.append('--bind-ro=' + str(inputs / 'test.service') + ':/etc/systemd/system/' + SERVICE)
@@ -340,7 +340,7 @@ def run_locked(args):
         'etc/exam-agent/agent.json', 'var/lib/exam-agent/state.json',
         'etc/passwd', 'etc/group', 'etc/shadow', 'etc/ssh/sshd_config',
         *(target.lstrip('/') for target, _ in files.values() if target))]
-    debugger = debugger_sources() if getattr(args, 'browser_students', 1) == 70 else {}
+    debugger = debugger_sources() if getattr(args, 'browser_students', 1) in (35, 70) else {}
     if debugger:
         assert args.profile == 'retained-policy' and args.username == 'examq' and args.browser_gateway_public_key
         host_paths.extend(debugger.values())
@@ -425,13 +425,13 @@ def run_locked(args):
             marker['debugger_manifest_sha256'] = write_debugger_inputs(inputs, debugger)
         (inputs / 'run.json').write_text(json.dumps(marker))
         (inputs / 'run.json').chmod(0o600)
-        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=14340' if students == 70 else 'TimeoutStartSec=840') if students > 1 else UNIT)
+        (inputs / 'test.service').write_text(UNIT.replace('TimeoutStartSec=720', 'TimeoutStartSec=14340' if students in (35, 70) else 'TimeoutStartSec=840') if students > 1 else UNIT)
         command = candidate_command(unit, guest, inputs, output, students, storage, args.profile, native_relay, bool(debugger))
         print('Private test evidence: ' + str(stage), flush=True)
         print('Starting bounded private-overlay qualification; no deployment', flush=True)
         process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        deadline = time.monotonic() + (14430 if students == 70 else 930)
+        deadline = time.monotonic() + (14430 if students in (35, 70) else 930)
         activation_deadline = time.monotonic() + 60
         activated = False
         while process.poll() is None:
@@ -499,8 +499,8 @@ if __name__ == '__main__':
     parser.add_argument('--username', default='examq')
     parser.add_argument('--browser-gateway-public-key', type=Path,
                         help='Private browser driver only: PUBLIC signing key; never supply a private key')
-    parser.add_argument('--browser-students', type=int, choices=(1, 16, 70), default=1,
-                        help='Private browser target;70 is the explicitly requested endurance mode (3GiB/2CPU/8192tasks/240min); owned disk binds only')
+    parser.add_argument('--browser-students', type=int, choices=(1, 16, 35, 70), default=1,
+                        help='Private browser target;35/70 are explicit endurance modes (3GiB/2CPU/4096 or8192tasks/240min); owned disk binds only')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--native-relay', action='store_true', help='Native-install only: also rehearse the matched relay/proxy update using isolated installed nginx code')

@@ -128,7 +128,7 @@ it.each([
   },
 );
 
-it("forwards a delayed legitimate callback in the seventy-student transport without rewriting its signed bytes", async () => {
+it.each([35, 70])("forwards a delayed legitimate callback for %i students without rewriting its signed bytes", async (students) => {
   const reply = Buffer.from(
     '{ "payload": "unchanged signed bytes", "signature": "original" }',
   );
@@ -156,7 +156,7 @@ it("forwards a delayed legitimate callback in the seventy-student transport with
           request,
           port,
           new AbortController().signal,
-          70,
+          students,
           (receipt) => notes.push(receipt),
         );
         expect(result).toEqual({ status: 200, body: reply });
@@ -294,7 +294,7 @@ it("does not replace an origin refusal when optional private diagnostics fail", 
   );
 });
 
-it("bounds an unavailable seventy-student callback before the guest's existing five-second reply limit", async () => {
+it.each([35, 70])("bounds an unavailable %i-student callback before the guest's existing five-second reply limit", async (students) => {
   await gateway(
     () => {},
     async (port) => {
@@ -304,7 +304,7 @@ it("bounds an unavailable seventy-student callback before the guest's existing f
         request,
         port,
         new AbortController().signal,
-        70,
+        students,
         (receipt) => notes.push(receipt),
       );
       expect(result?.status).toBe(503);

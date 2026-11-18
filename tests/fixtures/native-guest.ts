@@ -125,7 +125,7 @@ export async function forwardNativeBridgeRequest(
     // The guest bridge retains its existing five-second reply boundary. Leave
     // return-link margin while accepting ordinary2.7s callbacks at class load;
     // smaller fault scenarios keep their original2.5s transport budget.
-    timeoutMs = students === 70 ? 4000 : 2500;
+    timeoutMs = [35, 70].includes(students) ? 4000 : 2500;
   const note = (source: string, detail: Record<string, unknown>) => {
     try {
       diagnose({
@@ -225,13 +225,14 @@ export async function nativeGuest(
   students = 1,
   large = false,
 ) {
-  if (![1, 16, 70].includes(students))
-    throw Error("Private native capacity must be1,16or70");
-  if (students === 70 && !process.env.EXAM_STRESS_RUN)
+  if (![1, 16, 35, 70].includes(students))
+    throw Error("Private native capacity must be 1, 16, 35 or 70");
+  const endurance = students === 35 || students === 70;
+  if (endurance && !process.env.EXAM_STRESS_RUN)
     throw Error(
-      "Seventy-student endurance requires an explicit manual stress run",
+      "Endurance cohorts require an explicit manual stress run",
     );
-  const httpPort = students === 70 ? 3102 : 3100;
+  const httpPort = endurance ? 3102 : 3100;
   if (large && students !== 16)
     throw Error("Large private workload requires16students");
   if (
@@ -609,7 +610,7 @@ export async function nativeGuest(
       recovery?: "start" | "status" | "restore",
     ) {
       if (
-        ![16, 70].includes(students) ||
+        ![16, 35, 70].includes(students) ||
         attempts.length !== students ||
         new Set(attempts).size !== students
       )
@@ -618,7 +619,7 @@ export async function nativeGuest(
         await collect(
           bridge("inspect"),
           JSON.stringify({ attempts, finish, recovery }) + "\n",
-          students === 70 ? 180000 : 10000,
+          endurance ? 180000 : 10000,
         ),
       );
       if (value.bridge_error)

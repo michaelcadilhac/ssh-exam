@@ -4,10 +4,10 @@ import base from "../playwright.config.js";
 
 if (!process.env.EXAM_STRESS_RUN || !process.env.EXAM_STRESS_OUTPUT)
   throw Error("Use the explicitly invoked manual stress runner");
-if (process.env.EXAM_BROWSER_NATIVE_STUDENTS !== "70")
-  throw Error("The manual fleet requires70 synthetic students");
+if (!["35", "70"].includes(process.env.EXAM_BROWSER_NATIVE_STUDENTS || ""))
+  throw Error("The manual fleet requires an explicit 35- or 70-student cohort");
 if (!process.env.EXAM_STRESS_LOCAL_SCRATCH || process.env.TMPDIR !== process.env.EXAM_STRESS_LOCAL_SCRATCH)
-  throw Error("Use the manual runner's private workspace scratch for the70-person recording load");
+  throw Error("Use the manual runner's private workspace scratch for the selected recording load");
 if (!base.webServer || Array.isArray(base.webServer))
   throw Error("Expected the single existing isolated browser fixture");
 

@@ -71,7 +71,7 @@ def guest_identity():
 
 
 def fixture_accounts(count):
-    assert count in (1, 16, 70)
+    assert count in (1, 16, 35, 70)
     return ['examq'] + ['examq%02d' % value for value in range(1, count)]
 
 
@@ -423,10 +423,10 @@ class CoordinatorOutage:
 def verify_fixture_clock(attempt, students=1):
     """Private browser acceptance: exact original/reset or pause/edit/resume."""
     start, original = attempt['start'], attempt['original_deadline']
-    assert students in (1, 16, 70)
-    expected = 14400000 if students == 70 else 5400000
+    assert students in (1, 16, 35, 70)
+    expected = 14400000 if students in (35, 70) else 5400000
     assert attempt['access_state'] == 'HELD' and original - start == expected
-    if students == 70:
+    if students in (35, 70):
         assert attempt['settings']['duration'] == 14400
         assert not attempt.get('clock_resets')
     resets = attempt.get('clock_resets', [])
@@ -471,9 +471,9 @@ class GuestBridge:
         # The16-student fixture carries32 simultaneous native proof requests,
         # plus16 SSH links,16 bounded relay workers and inspection/Begin traffic.
         # These private transport bounds do not change native authority limits.
-        assert self.students in (1, 16, 70)
-        self.requests = queue.Queue(maxsize=210 if self.students == 70 else 48 if self.students == 16 else 16)
-        self.slots = threading.BoundedSemaphore(420 if self.students == 70 else 96 if self.students == 16 else 32)
+        assert self.students in (1, 16, 35, 70)
+        self.requests = queue.Queue(maxsize=210 if self.students in (35, 70) else 48 if self.students == 16 else 16)
+        self.slots = threading.BoundedSemaphore(420 if self.students in (35, 70) else 96 if self.students == 16 else 32)
         self.failures = []
         self.collection_operation = None
         self.collection_lock = threading.Lock()
@@ -495,7 +495,7 @@ class GuestBridge:
         server = socket.socket(socket.AF_UNIX)
         server.bind(str(OUTPUT / name))
         os.chmod(OUTPUT / name, 0o600)
-        server.listen(256 if self.students == 70 else 64 if self.students == 16 else 16)
+        server.listen(256 if self.students in (35, 70) else 64 if self.students == 16 else 16)
         server.settimeout(.5)
         def accept():
             try:
@@ -553,7 +553,7 @@ class GuestBridge:
     def ssh(self, client):
         with socket.create_connection(('127.0.0.1', 22), timeout=5) as upstream:
             upstream.settimeout(5)
-            copy_streams(client, upstream, timeout=14400 if self.students == 70 else 900 if self.students == 16 else 600)
+            copy_streams(client, upstream, timeout=14400 if self.students in (35, 70) else 900 if self.students == 16 else 600)
 
     def http(self, client):
         with client.makefile('rwb', buffering=0) as stream:
@@ -962,7 +962,7 @@ class GuestBridge:
                 return
             if 'attempts' in request:
                 ids = request['attempts']
-                assert self.students in (16, 70) and len(ids) == self.students and len(set(ids)) == self.students
+                assert self.students in (16, 35, 70) and len(ids) == self.students and len(set(ids)) == self.students
                 snapshots = [self.snapshot(attempt) for attempt in ids]
                 assert {entry['attempt']['username'] for entry in snapshots} == set(fixture_accounts(self.students))
                 if 'recovery' in request:
@@ -990,12 +990,12 @@ class GuestBridge:
                         attempt = entry['attempt']
                         assert attempt['state'] == 'COMPLETED' and attempt['protected'] and attempt['checksum']
                         verify_fixture_clock(attempt, self.students)
-                        if self.students == 70:
+                        if self.students in (35, 70):
                             exported = OUTPUT / ('stress-' + attempt['id'] + '.tar.gz')
                             root_command('examctl', 'export', attempt['id'], '--output', str(exported))
                             verified[attempt['username']] = verify_stress_archive(exported, attempt['username'])
                 resources = {}
-                if self.students == 70:
+                if self.students in (35, 70):
                     for name in ('memory.current', 'memory.peak', 'pids.current', 'cpu.stat'):
                         path = Path('/sys/fs/cgroup') / name
                         resources[name] = path.read_text().strip() if path.is_file() else None
@@ -1165,7 +1165,7 @@ def run_guest(config, prepare_roles, role_snapshot):
             time.sleep(.5)
     print('BROWSER_NATIVE_SOURCE_SYNCED', flush=True)
     try:
-        if not bridge.done.wait(10680 if bridge.students == 70 else 780 if bridge.students == 16 else 540):
+        if not bridge.done.wait(10680 if bridge.students in (35, 70) else 780 if bridge.students == 16 else 540):
             raise TimeoutError('Actual browser/native qualification did not finish')
     finally:
         retain_agent_diagnostics()
@@ -1208,7 +1208,7 @@ def host_bridge(stage, mode):
         client.settimeout(6)
         client.connect(str(target))
         # Stdio uses separate fds. Do not buffer or interpret SSH bytes.
-        lifetime = (14400 if marker.get('browser_students') == 70 else 900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else (200 if mode == 'inspect' and marker.get('browser_students') == 70 else 125 if mode == 'operator' else 8)
+        lifetime = (14400 if marker.get('browser_students') in (35, 70) else 900 if marker.get('browser_students') == 16 else 600) if mode in ('ssh', 'gateway') else (200 if mode == 'inspect' and marker.get('browser_students') in (35, 70) else 125 if mode == 'operator' else 8)
         deadline = time.monotonic() + lifetime
         while time.monotonic() < deadline:
             ready, _, _ = select.select((sys.stdin.buffer, client), (), (), .5)

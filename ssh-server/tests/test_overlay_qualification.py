@@ -133,6 +133,19 @@ class OverlayTests(unittest.TestCase):
             overlay.candidate_command('test.service', Path('/guest'), Path('/input'), Path('/output'),
                                       16, storage, profile='retained-policy', debugger=True)
 
+    def test_thirty_five_students_keep_isolation_debugger_and_finite_resource_limits(self):
+        storage={'work':'/srv/exam-workspace/work','state':'/var/lib/exam-agent'}
+        command=overlay.candidate_command('test.service',Path('/guest'),Path('/input'),Path('/output'),
+                                          35,storage,profile='retained-policy',debugger=True)
+        for flag in ('--property=MemoryMax=3G','--property=MemorySwapMax=0','--property=TasksMax=4096',
+                     '--property=CPUQuota=200%','--property=RuntimeMaxSec=14400','--private-network',
+                     '--read-only','--volatile=overlay','--drop-capability=CAP_SYS_TIME',
+                     '--bind-ro=/input/gdb-runtime:/usr/lib/ssh-exam-stress-gdb'):
+            self.assertIn(flag,command)
+        for count in (34,36):
+            with self.subTest(count=count),self.assertRaises(AssertionError):
+                overlay.candidate_command('test.service',Path('/guest'),Path('/input'),Path('/output'),count,storage)
+
     def test_debugger_hashes_do_not_overflow_the_existing_readiness_marker(self):
         inputs = self.root / 'input'; inputs.mkdir()
         source = self.root / 'public-code'; source.write_bytes(b'public synthetic code')

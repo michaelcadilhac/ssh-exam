@@ -1,5 +1,11 @@
 # Stress remediation — IN PROGRESS, LOCAL ONLY
 
+November 18: instructor requests the full endurance test with 35 students and
+140 terminals because a larger generator is unavailable. Add an explicit bounded
+cohort option, then run all 90 peak minutes and simultaneous protected completion
+under a fresh run ID. Earlier 70-student failures remain preserved and unqualified.
+No production or monitoring-policy change is authorized or needed.
+
 November 18: endurance 7 passed the 70-student / 280-terminal ramp and three
 full-load samples through 140.125 seconds. Marco's 21 GiB browser-generator unit
 then suffered an OOM kill, confirmed by its exact unit journal. Full native,

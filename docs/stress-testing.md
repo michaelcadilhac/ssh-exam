@@ -1,7 +1,7 @@
 # Manual pre-final stress suite
 
 This suite is run only on explicit instructor request, never by deployment.
-Current development target:70 synthetic students/280 terminals and90 real minutes,
+Current requested target:35 synthetic students/140 terminals and90 real minutes,
 followed by simultaneous submission. No institutional MFA, actual student accounts
 or outbound email. Use independent test keys, storage and loopback mail capture.
 Production state, deadlines, services and submissions remain untouched.
@@ -9,10 +9,11 @@ Production state, deadlines, services and submissions remain untouched.
 November 18 capacity gate: the current 21 GiB Marco generator suffered an OOM kill
 after all 70 students / 280 terminals and 140.125 seconds of verified peak work.
 Its exact unit journal and full preservation/cleanup are retained. Do not start
-another full run until more generator headroom is available and its finite budget
+another 70-student run until more generator headroom is available and its finite budget
 is qualified. A request for at least 30 GiB available on Marco, or a larger load
-host, is pending. This is separate from class-server VM sizing. The 90-minute
-endurance and protected fleet completion remain unqualified.
+host, was pending. The instructor instead requests a full 35-student run on the
+existing machines. This is separate from class-server VM sizing. The earlier
+70-student endurance and protected fleet completion remain unqualified.
 
 Rejected observations now remain in generator-status.json, metrics and stderr,
 with their stage/time and private endpoints/log payloads removed. The exact unit
@@ -35,7 +36,7 @@ as the result of the new candidate.
 ## Dependency-ordered milestones
 
 1. Extend the existing guarded disposable native/browser fixture to the explicitly
-   selected70-student endurance mode; retain the existing1/16-student modes.
+   selected35- or70-student endurance mode; retain the existing1/16-student modes.
    Acceptance: bounded resources/lifetime, exact synthetic roster, idle/preservation
    guards, exact code-only bundle, loopback-only callbacks/mail, inspectable cleanup.
    Tests: runner/bridge safety contracts, fixture typecheck, short composed rehearsal.
@@ -145,13 +146,17 @@ hashes before upload and verify them afterward. If a receiver fails, inspect its
 exact destination before retrying; preserve uncertain/partial evidence and use a
 separate new directory. Never change guest or host guards to repair an upload.
 
-Run `npm run test:stress -- --native-bundle /var/tmp/ssh-exam-browser-native-upload.NAME`.
+Run `npm run test:stress -- --students 35 --generator marco --native-bundle /var/tmp/ssh-exam-browser-native-upload.NAME`
+for the currently requested full cohort. `--students 70` retains the larger mode.
+The selected count is recorded permanently for that run ID; repeat it when
+resuming, and use a fresh run ID for a different count. Four terminals, all
+protected submissions and 90 real peak minutes are required for either cohort.
 `--phase harness|build|installed-capacity|anonymous-burst|application|operator-integrations|native-race|browser-signin|browser-corners|native-editor|native-timer-recovery|native-recovery|native-collection|endurance`
 and `--run-id RUN`
 allow resuming an explicitly requested run while retaining every previous receipt.
 Reuse the recorded bundle when its exact code hashes are unchanged; a new phase
 alone does not require rebuilding or uploading the same native binaries.
-The `--rehearsal` option uses30seconds at full70-person load to qualify the harness;
+The `--rehearsal` option uses30seconds at the selected cohort load to qualify the harness;
 it cannot count as a90-minute pass and cannot be promoted under the same run ID.
 The config is separate from default Playwright discovery and deployment scripts.
 

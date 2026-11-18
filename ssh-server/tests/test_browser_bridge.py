@@ -799,17 +799,55 @@ class BrowserBridgeTests(unittest.TestCase):
         stress = bridge.fixture_accounts(70)
         self.assertEqual(len(set(stress)), 70)
         self.assertEqual(stress[-1], 'examq69')
+        smaller=bridge.fixture_accounts(35)
+        self.assertEqual(len(set(smaller)),35)
+        self.assertEqual(smaller[-1],'examq34')
         with mock.patch.object(bridge, 'private_json', return_value={'browser_students':70}):
             fixture = bridge.GuestBridge({})
         self.assertEqual(fixture.requests.maxsize, 210)
         attempt = {'start':1000,'original_deadline':14401000,'deadline':14401000,
                    'settings':{'duration':14400},'access_state':'HELD'}
         bridge.verify_fixture_clock(attempt, 70)
+        bridge.verify_fixture_clock(attempt, 35)
+        with mock.patch.object(bridge,'private_json',return_value={'browser_students':35}):
+            self.assertEqual(bridge.GuestBridge({}).requests.maxsize,210)
         with self.assertRaises(AssertionError):
             bridge.verify_fixture_clock(attempt, 16)
-        for count in (0, 2, 17, 71):
+        for count in (0, 2, 17, 34, 36, 71):
             with self.subTest(count=count), self.assertRaises(AssertionError):
                 bridge.fixture_accounts(count)
+
+    def test_thirty_five_finish_verifies_every_archive_and_refuses_bad_protection_or_clock(self):
+        ids=['%08x-1234-4234-8234-123456789abc' % index for index in range(35)]
+        rows={attempt:{'attempt':{'id':attempt,'username':name,'state':'COMPLETED','protected':True,
+                      'checksum':'f'*64,'start':1000,'deadline':14401000,'original_deadline':14401000,
+                      'settings':{'duration':14400},'access_state':'HELD'}}
+              for attempt,name in zip(ids,bridge.fixture_accounts(35))}
+        def invoke(fixture):
+            server,client=socket.socketpair()
+            try:
+                server.settimeout(2);client.settimeout(2)
+                client.sendall((json.dumps({'attempts':ids,'finish':True})+'\n').encode())
+                fixture.inspect(server)
+                with client.makefile('rb') as stream:return bridge.line(stream)
+            finally:server.close();client.close()
+        with tempfile.TemporaryDirectory() as directory, \
+             mock.patch.object(bridge,'OUTPUT',Path(directory)), \
+             mock.patch.object(bridge,'private_json',return_value={'browser_students':35}), \
+             mock.patch.object(bridge,'root_command',return_value='{}') as command, \
+             mock.patch.object(bridge,'verify_stress_archive',return_value=['verified']) as archive:
+            fixture=bridge.GuestBridge({});fixture.snapshot=lambda attempt:rows[attempt]
+            value=invoke(fixture)
+            self.assertEqual(len(value['snapshots']),35);self.assertEqual(len(value['verified']),35)
+            self.assertTrue(fixture.done.is_set());self.assertEqual(command.call_count,35)
+            self.assertEqual([c.args[1] for c in archive.call_args_list],bridge.fixture_accounts(35))
+            original=dict(rows[ids[0]]['attempt'])
+            for change in ({'protected':False},{'deadline':14401001},{'settings':{'duration':5400}}):
+                with self.subTest(change=change):
+                    fixture.done.clear();command.reset_mock();archive.reset_mock()
+                    rows[ids[0]]['attempt']={**original,**change}
+                    with self.assertRaises(AssertionError):invoke(fixture)
+                    command.assert_not_called();archive.assert_not_called();self.assertFalse(fixture.done.is_set())
 
     def test_stress_export_checks_every_panes_saved_work_and_wrong_student(self):
         for corrupt in (False, True):

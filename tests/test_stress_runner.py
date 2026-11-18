@@ -71,8 +71,9 @@ with tempfile.TemporaryDirectory() as d:
                 output=Path(env['EXAM_STRESS_OUTPUT'])
                 output.mkdir(parents=True)
                 seconds=int(env['EXAM_STRESS_SECONDS'])
-                (output/'endurance-result.json').write_text(json.dumps({'students':70,'terminals':280,
-                    'requested_seconds':seconds,'peak_seconds':seconds,'protected':70,'preservation':'FULL'}))
+                students=int(env['EXAM_BROWSER_NATIVE_STUDENTS'])
+                (output/'endurance-result.json').write_text(json.dumps({'students':students,'terminals':students*4,
+                    'requested_seconds':seconds,'peak_seconds':seconds,'protected':students,'preservation':'FULL'}))
             return self.child
         with mock.patch.object(runner,'ROOT',self.root), \
              mock.patch.object(runner.sys,'argv',['stress','--native-bundle',self.bundle,'--run-id',self.run,*args]), \
@@ -102,6 +103,35 @@ with tempfile.TemporaryDirectory() as d:
         self.assertEqual(code,1);launched.assert_not_called();generator.assert_not_called()
         self.assertEqual(state['phases'][0]['status'],'FAILED')
         self.assertIn('40GiB',state['phases'][0]['reason'])
+
+    def test_explicit_thirty_five_student_run_keeps_full_duration_and_exact_receipt(self):
+        code,state,launched=self.invoke('--phase','endurance','--students','35')
+        self.assertEqual(code,0)
+        self.assertEqual((state['students'],state['terminals'],state['endurance_seconds']),(35,140,5400))
+        env=launched.call_args.kwargs['env']
+        self.assertEqual(env['EXAM_BROWSER_NATIVE_STUDENTS'],'35')
+        self.assertEqual(env['EXAM_STRESS_SECONDS'],'5400')
+        self.child.wait.assert_called_with(timeout=14400)
+
+    def test_existing_run_cohort_cannot_be_relabelled_or_overwritten(self):
+        self.invoke('--phase','endurance','--students','35')
+        path=self.root/'var/stress'/self.run/'run.json';original=path.read_bytes()
+        with self.assertRaises(SystemExit):self.invoke('--phase','endurance','--students','70')
+        self.assertEqual(path.read_bytes(),original)
+        self.assertFalse((path.parent/'endurance-2').exists())
+
+    def test_thirty_five_receipt_requires_exact_count_all_protected_and_full_real_peak(self):
+        directory=self.root/'browser';directory.mkdir()
+        path=directory/'endurance-result.json'
+        valid={'students':35,'terminals':140,'requested_seconds':5400,'peak_seconds':5400,
+               'protected':35,'preservation':'FULL'}
+        path.write_text(json.dumps(valid));self.assertIsNone(runner.endurance_receipt(self.root,5400,35))
+        self.assertIsNotNone(runner.endurance_receipt(self.root,5400,70))
+        for change in ({'students':34},{'terminals':139},{'protected':34},{'peak_seconds':5399},
+                       {'requested_seconds':30},{'preservation':'PARTIAL'},{'pane_refusals':[{'reason':'refused'}]}):
+            with self.subTest(change=change):
+                path.write_text(json.dumps({**valid,**change}))
+                self.assertIsNotNone(runner.endurance_receipt(self.root,5400,35))
 
     def test_scratch_refuses_a_preexisting_symlink_without_touching_its_target(self):
         target=self.root/'untouched';target.mkdir();(target/'sentinel').write_text('preserve')

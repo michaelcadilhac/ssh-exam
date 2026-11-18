@@ -1,4 +1,4 @@
-# Current checkpoint — generator capacity blocks full endurance
+# Current checkpoint — authorized 35-student full endurance
 
 Local development, synthetic tests and commits only. No push/deploy, production
 changes, actual students, institutional MFA or external email. Preserve the ten
@@ -7,39 +7,42 @@ in principle; no resize or production restart has occurred.
 
 ## Current status and exact next action
 
-Endurance 7 failed after the 70-student / 280-terminal GCC/GDB ramp and three full
-fleet samples through 140.125 seconds. The corrected large JSON reply passed.
-Marco's exact owned unit journal proves a kernel OOM kill at its 21 GiB cap on
-November 18, 14:17:12 UTC, with result oom-kill at 14:17:13. The 90-minute peak and
-simultaneous protected fleet completion remain unqualified. This does not establish
-student misconduct or a native connection-loss cause.
+Instructor requests a full 35-student / 140-terminal run, with 90 real peak minutes
+and simultaneous protected submissions. This replaces the requested cohort only;
+a 35-person pass never qualifies 70. Original monitoring, clocks, holds, isolation,
+credential cleanup and archive requirements are unchanged. No open policy question.
 
-All native, Marco, local and observer cleanup/preservation and frozen inputs pass.
-Evidence:var/stress-remediation/20261118/fleet-frame/endurance/completion.json and
-its generator-unit-journal.json. Phase:var/stress/20261117T174000Z/endurance-7/.
-Frozen source:1d57502. Native stage /var/tmp/ssh-exam-overlay-1urld9gk is stopped.
-Last native snapshot:70 ACTIVE/gen0,2.994 GB/4806 tasks, no resource-limit events;
-high CPU pressure. Host remains4 vCPU/~8 GiB. Generator touched MemoryMax; do not
-claim headroom from earlier zero OOM counters. Its final sample was discarded;
-the exact unit journal proves the cause. Never infer failure from teardown rows.
+35-mode plumbing is implemented/tested locally: explicit --students 35|70, immutable
+run cohort, exact receipt count/duration/protection, native roster/debugger and
+finite resources. Six focused cases, all116 Python harness cases,27 transport/reader
+checks and typecheck pass. Product/browser/native-clock build remains byte-identical.
+Earlier qualified application/native-race/CLI/fault evidence applies to unchanged
+product/native binaries; no blanket new-suite pass is claimed.
 
-Awaiting instructor availability of at least30 GiB RAM on Marco (~5 GiB extra),
-or a larger generator host. This is separate from approved csc-sys VM growth.
-Local dev host has16 GiB total/~6.4 GiB available after cleanup; do not blindly move
-70 clients there. Do not repeat the full run with the same undersized budget.
-Proposed only:25 GiB generator cap/29 GiB startup requirement, keeping the4 GiB
-live reserve; qualify actual resources before another ramp. No guard is relaxed.
+Fresh runID:20261118T190606Z. Plan/receipts:
+var/stress-remediation/20261118/stress35/. Exact uploaded bundle:
+/var/tmp/ssh-exam-browser-native-upload.stress20261118T190606Z_v18s35_a87f343e6ea9.
+19files/65,645,427bytes; tar digest932c187f5ea8a27527a9530e45c1cf208d0559e89a7d0061f0b02427f50e2205.
+Only browser_bridge.py, overlay_qualification.py and manifest differ from v17e;
+all native binaries reused byte-for-byte. Generator remains21GiB/25GiBstartup/
+4GiBlive reserve/no swap; native35 uses3GiB/2CPU/4096tasks/no swap/four-hour cap.
+Historical actual35verified generator sample11.065GiB; planning headroom is saved,
+not a90-minute stability claim. No rehearsal substitutes for the full duration.
 
-The diagnostic correction is implemented/tested locally: retain redacted rejected
-observation/stage/time, name each unchanged limit, stop the owned worker even when
-file publication fails, and report the refusal/journal guidance in the real reader.
-Focused Python3, reader11, typecheck and affected harness38 pass. Actual two-context
-Marco HTTP/WS/media, authored exact-unit stop, monitor and reader workflow passes;
-FULL independent Marco/local cleanup, source unchanged and product build unchanged.
-Evidence:var/stress-remediation/20261118/generator-refusal/real-stop/completion.json.
-No test is running. This bounded fix/docs/report is a validated local increment.
-Next: await generator resources, qualify the larger finite budget and resume
-the70/90 target. Nothing is pushed or deployed.
+Next: commit the validated count support, launch the owned durable full run,
+verify actual callback readiness/observer and sample resources. No source/test/build
+edits while it runs. Require all35 protected/byte-verified exports and FULL native/
+Marco/local cleanup; Prof reviews the new report. No push/deploy or production
+configuration/student data changes. Preserve ten original documentation PNGs.
+
+Earlier70attempt7: all70/280 ramp and three samples through140.125s passed, then
+Marco's21GiB generator unit suffered a journal-confirmed OOM kill. Full cleanup,
+preservation and frozen-input checks pass;70/90remains unqualified. Evidence:
+var/stress-remediation/20261118/fleet-frame/endurance/completion.json. The resource
+question is superseded by the requested35-student run, not a promise that70fits.
+Diagnostic fix2822992 preserves rejected observations/stage/time, names unchanged
+guards and still contains workers if diagnostics fail; actual small browser/stop/
+reader workflow and full cleanup pass. No test is currently running.
 
 ## Reusable evidence and source identities
 

@@ -27,6 +27,7 @@ import { z } from "zod";
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
 const students = Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS || "1");
+const endurance = students === 35 || students === 70;
 const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
 const guest = await nativeGuest(
   process.env.EXAM_BROWSER_NATIVE_BUNDLE || "",
@@ -39,7 +40,7 @@ const connectionWorkerEntry = new URL(
   "../../dist/apps/server/src/connection-worker.js",
   import.meta.url,
 );
-// The same compiled worker as production; do not charge70 TS loaders to capacity.
+// The same compiled worker as production; no per-student TS loader overhead.
 readFileSync(connectionWorkerEntry);
 let cleanup = async () => {
   await guest.close();
@@ -108,7 +109,7 @@ const gatewayConfig: Parameters<typeof createApp>[0] = {
   port: gatewayPort,
   data,
   maintenance: false,
-  connectionWorkers: students === 70 ? 96 : 32,
+  connectionWorkers: endurance ? 96 : 32,
   jump: h.jump,
   class: h.class,
   agent: {
@@ -567,12 +568,12 @@ for (const [url, payload] of [
       // Finite test issuance windows cover that ramp without reopening grants.
       latest:
         Date.now() +
-        (students === 70 ? 7200000 : students === 16 ? 1800000 : 600000),
+        (endurance ? 7200000 : students === 16 ? 1800000 : 600000),
       // Four-hour allowance covers the measured sequential ramp plus90 real
       // minutes at peak, without spending that peak interval during setup.
       // No clock reset or fake clock is used by the endurance test.
-      duration: students === 70 ? 14400 : 5400,
-      webcam: students === 70,
+      duration: endurance ? 14400 : 5400,
+      webcam: endurance,
       terminals: 4,
       template: "native-browser",
       template_version: metadata.template,
