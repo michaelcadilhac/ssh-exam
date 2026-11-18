@@ -243,7 +243,11 @@
   smoke does not qualify full-class observation or finalization payloads.
   Being below MemoryMax with no OOM does not establish headroom: MemoryHigh can
   throttle first. Retain memory/CPU pressure and event counters before cgroup
-  cleanup. Distinguish generator/bridge constraints from product capacity, and
+  cleanup. Retain the rejected observation and exact failed clause too; a generic
+  guard label is insufficient. An already-collected unit can require its exact
+  journal to prove an OOM. Diagnostic publication must never skip owned-worker
+  containment; retain a receipt on the existing stderr when file writes fail.
+  Distinguish generator/bridge constraints from product capacity, and
   preserve uncertain attribution rather than diagnosing from teardown values.
   When moving tests into a local user service, compare its effective environment
   and persist the complete resource-limit comparison with the ordinary shell,

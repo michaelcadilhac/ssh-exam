@@ -1,89 +1,67 @@
-# Current checkpoint — instrumented full-class endurance
+# Current checkpoint — generator capacity blocks full endurance
 
-Local development/tests/commits only. No push/deployment, production/student-record
-changes, actual student accounts, institutional MFA or external email. Preserve the
-10 original modified documentation PNGs. No missing package or open policy choice.
-The instructor permits VM growth if needed; VM-management availability is optional
-and pending, not required for the present test. No resize/restart performed.
+Local development, synthetic tests and commits only. No push/deploy, production
+changes, actual students, institutional MFA or external email. Preserve the ten
+original modified documentation PNGs. No package is missing. VM growth is approved
+in principle; no resize or production restart has occurred.
 
-## Current milestone / exact next action
+## Current status and exact next action
 
-Endurance6 FAILED after all70students/280panes passed GCC/GDB ramp checks,
-before the90-minute peak. Fleet observation returned truncated JSON at219264bytes.
-All70failure-time public states were ACTIVE/gen0; no pane refusal/late navigation.
-No70/90minute/protected-fleet-completion pass. FULL independent native/Marco/local/
-observer cleanup and unchanged frozen source/build verified:
-var/stress-remediation/20261118/endurance-instrumented/completion.json.
-Native stage /var/tmp/ssh-exam-overlay-io0adize is stopped; production unchanged.
-Report retains CPU contention, capture fallback responses and callback timeouts
-without assigning them one cause. Generator sampled max20.715GiB, all memory
-limit events/pressure zero. Native65snapshot2.77GB/4449tasks, no limit events,
-CPU stall some90.15%/full63.44%; four-vCPU host remains unchanged.
+Endurance 7 failed after the 70-student / 280-terminal GCC/GDB ramp and three full
+fleet samples through 140.125 seconds. The corrected large JSON reply passed.
+Marco's exact owned unit journal proves a kernel OOM kill at its 21 GiB cap on
+November 18, 14:17:12 UTC, with result oom-kill at 14:17:13. The 90-minute peak and
+simultaneous protected fleet completion remain unqualified. This does not establish
+student misconduct or a native connection-loss cause.
 
-Confirmed private harness bug: unbuffered SocketIO.write may send a partial frame;
-bridge.send ignored its return count. Actual70-snapshot Unix-socket regression
-reproduces truncation with the old code. The correction sends the remaining bytes
-under the existing socket timeout; blocked/closed peers still refuse. Focused3 and
-full43bridge checks pass. Evidence:var/stress-remediation/20261118/fleet-frame/.
-AGENTS.md now requires maximum-size protocol traffic before a long ramp.
+All native, Marco, local and observer cleanup/preservation and frozen inputs pass.
+Evidence:var/stress-remediation/20261118/fleet-frame/endurance/completion.json and
+its generator-unit-journal.json. Phase:var/stress/20261117T174000Z/endurance-7/.
+Frozen source:1d57502. Native stage /var/tmp/ssh-exam-overlay-1urld9gk is stopped.
+Last native snapshot:70 ACTIVE/gen0,2.994 GB/4806 tasks, no resource-limit events;
+high CPU pressure. Host remains4 vCPU/~8 GiB. Generator touched MemoryMax; do not
+claim headroom from earlier zero OOM counters. Its final sample was discarded;
+the exact unit journal proves the cause. Never infer failure from teardown rows.
 
-Short native-editor-10 PASSED91.771s on corrected private v17e, with FULL native/
-local cleanup and unchanged frozen inputs. Actual kernel hold/explicit Continue/
-same SSH/editor buffer/protected finish. Completed owned unit:
-ssh-exam-fleet-frame-native-editor-c904eab69ba54cab894f36cb93339b5f.service;
-wrapper var/stress-remediation/20261118/fleet-frame/native-editor/.
-Frozen source/build manifests and completion.json are there. Only browser_bridge.py
-and manifest changed in the19file65,645,281byte
-bundle. Native binaries are byte-identical to v17d. Private directory:
-/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17e_8044428c9086;
-bundle digest b0648b8c71776c1d9a7a56278ef3790e22ddc906719c921769c84cab25bfd590.
+Awaiting instructor availability of at least30 GiB RAM on Marco (~5 GiB extra),
+or a larger generator host. This is separate from approved csc-sys VM growth.
+Local dev host has16 GiB total/~6.4 GiB available after cleanup; do not blindly move
+70 clients there. Do not repeat the full run with the same undersized budget.
+Proposed only:25 GiB generator cap/29 GiB startup requirement, keeping the4 GiB
+live reserve; qualify actual resources before another ramp. No guard is relaxed.
 
-Next: commit the bounded harness fix and resume the70/90 target. Reuse unchanged
-application/browser/race
-qualification; do not widen timeouts/freshness or replay uncertain Start. VM8CPU/
-16GiB discussion is optional; access/actual resize is not established. No deploy.
+The diagnostic correction is implemented/tested locally: retain redacted rejected
+observation/stage/time, name each unchanged limit, stop the owned worker even when
+file publication fails, and report the refusal/journal guidance in the real reader.
+Focused Python3, reader11, typecheck and affected harness38 pass. Actual two-context
+Marco HTTP/WS/media, authored exact-unit stop, monitor and reader workflow passes;
+FULL independent Marco/local cleanup, source unchanged and product build unchanged.
+Evidence:var/stress-remediation/20261118/generator-refusal/real-stop/completion.json.
+No test is running. This bounded fix/docs/report is a validated local increment.
+Next: await generator resources, qualify the larger finite budget and resume
+the70/90 target. Nothing is pushed or deployed.
 
-## Delivered locally / reusable evidence
+## Reusable evidence and source identities
 
-cf4b6c1: Start retries only an exact authenticated busy health observation once
-with a fresh nonce in the original60s budget. Persistent busy is calm/inline only
-with exact fresh native no-start and no durable Begin intent. No Start, activation
-or authentication replay; unknown/late outcomes stay fenced/reconciled.16focused,
-72affected application,7rendered browser, build/typecheck and actual native timer/
-SSH-loss recovery/protected finish5 pass; Prof approves the mobile flow.
+1d57502 fixes private unbuffered frame short writes: deterministic old-code failure,
+three real-socket checks, all43 bridge checks and actual native editor/Continue/
+same-SSH/buffer/protected finish pass (91.771s, FULL cleanup). Endurance6's original
+70-person pre-peak truncation remains preserved, separately from the OOM failure.
 
-4cd15dd: bounded private setup timings with no bodies/replies/error text/credentials,
-plus cohort driver alignment to the inline confirmation and typed409/no-intent
-proof. Four focused checks/typecheck and native recovery8 PASS591.676s:16/64,
-75s proof outage, original shells/buffers/deadlines,16protected submissions.352
-paired timing events; FULL native/local preservation and cleanup.16mode is shells,
-not GCC/GDB. The70mode uses a tiny startup C compile/GDB breakpoint, not sustained
-heavy C++ compilation. Evidence:var/stress-remediation/20261118/setup-timing/.
+Native v17e: /var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17e_8044428c9086.
+19 files/65,645,281 bytes; digest b0648b8c71776c1d9a7a56278ef3790e22ddc906719c921769c84cab25bfd590.
+Only private bridge/manifest changed from v17d; native binaries are byte-identical.
+Reuse exact Go race/vet and CLI/editor/timer/16-person outage/508 MiB collector
+qualification for unchanged binaries. Start-readiness fix cf4b6c1 passed16 focused,
+72 affected application,7 browser and actual timer/SSH-loss recovery/protected
+finish checks; Prof approved its mobile flow. Private timings4cd15dd passed16/64
+recovery with352 settled observations. Full917 application/3 gated and367 browser/
+12 mode-gated checks,9 gateway restart and16 real-WASM sign-ins remain scoped to
+unchanged product/build inputs. No new artifact derives qualification from an old
+bundle. Installed32 workers and production co-location remain separate open gates.
 
-Previous FAILED endurance5 stopped61/244: student62 Start exceeded60s. Native
-PREPARING/start0/deadline0 but web Begin intent PENDING/unverified: never claim
-fully unreserved or safe replay. FULL native/Marco/local/observer preservation/
-cleanup and unchanged inputs verified. Of889saved generator samples,13crossed
-its18GiB soft limit, all in the final failure minute; hard20GiB not reached.
-No historical events/pressure, so causality remains unclassified. Saved working-set
-growth approached20GiB at70; final generator21GiB adds1GiB margin and strengthens
-startup headroom. No timeout-cure or70/90pass claimed. See phase/endurance-5's
-soft-limit-correlation and growth-at-native-checkpoints receipts.
-
-Native socket fix6a294e2/v17d: deterministic old-code red,7focused security checks,
-full Go race/vet, actual CLI/editor/timer/16-person outage and508MiB collector crash/
-retry/protected-submission passes. No Go/native binary changed afterward; reuse
-those exact inputs. Private uploaded bundle:
-/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f,
-19files65,644,885bytes,digest3156f146c3604ffa619be80acfabdded9cd253e43ac188f91ef5f518d91b5fdd.
-Unchanged broad917application/3gated,367browser/12mode-gated,9gateway restart and
-16realWASM sign-ins remain scoped reusable evidence; affected Start paths above
-were requalified. Installed32worker and real production co-location remain open.
-
-Plan:docs/stress-remediation.md. Agent report:reports/stress/20261117T174000Z/report.md.
-Local report/results are uncommitted while the campaign is active. Original failed
-receipts remain; generator PASS-smoke remote directories were removed only after
-exact ownership/token/unit/browser/service checks, keeping local evidence.
+Plan/evidence:docs/stress-remediation.md. Agent report:reports/stress/20261117T174000Z/report.md.
+Keep failed receipts. No source push or production deployment.
 
 ## Deployed baseline
 

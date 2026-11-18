@@ -1388,6 +1388,54 @@
       "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
       "local_scratch": "/home/micha/src/ssh-exam/var/stress.pz0oko8n",
       "finished": "2026-11-18T12:22:47.978775+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 7,
+      "started": "2026-11-18T12:28:12.225800+00:00",
+      "source": "1d57502ba664c8d7056605296249c1b9d673d9a7",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "dae6cda2749e3fe6bd98330fbd1cbdadaac5dae23562060c58060cf30f93b18a",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17e_8044428c9086",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.485
+        },
+        {
+          "argv": [
+            "node",
+            "--import",
+            "tsx",
+            "tests/fixtures/stress-https-smoke.ts"
+          ],
+          "exit": 0,
+          "seconds": 223.05
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 6318.166
+        }
+      ],
+      "evidence": "var/stress/20261117T174000Z/endurance-7",
+      "generator": "marco",
+      "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261117T174000Z/endurance-7/temporary",
+      "reason": "Marco generator resource/readiness guard refused",
+      "finished": "2026-11-18T14:17:31.251553+00:00"
     }
   ],
   "students": 70,

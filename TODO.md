@@ -1,5 +1,18 @@
 # Stress remediation — IN PROGRESS, LOCAL ONLY
 
+November 18: endurance 7 passed the 70-student / 280-terminal ramp and three
+full-load samples through 140.125 seconds. Marco's 21 GiB browser-generator unit
+then suffered an OOM kill, confirmed by its exact unit journal. Full native,
+Marco, local and observer cleanup/preservation pass. The 90-minute endurance and
+protected fleet completion remain unqualified. The instructor was asked whether
+Marco can have at least 30 GiB available RAM, or a larger generator host can be used.
+
+The diagnostic correction preserves failed guard observations, identifies the
+unchanged limits and returns actionable reader errors. Three focused Python
+checks, 11 reader checks, typechecking, all 38 harness checks and a real two-context
+guard/reader workflow pass, with full cleanup and unchanged product artifacts.
+No new full run, production change or guard relaxation has occurred.
+
 November18: endurance6 reached70students/280verified GCC/GDB panes, then failed
 before peak on a truncated private fleet-observation reply. Full independent
 native/Marco/local/observer cleanup and unchanged inputs are proved; no70/90pass.

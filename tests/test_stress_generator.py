@@ -1,6 +1,7 @@
 """Private browser-worker safety contracts; these tests never contact Marco."""
 import importlib.util
 import ast
+import io
 import json
 from pathlib import Path
 import signal
@@ -114,6 +115,59 @@ class GeneratorTests(unittest.TestCase):
             self.assertEqual([c.args[0] for c in owned.rpc.call_args_list], ['status', 'stop'])
             status = json.loads((Path(directory)/'generator-status.json').read_text())
             self.assertFalse(status['active'])
+
+    def test_each_guard_preserves_the_exact_refused_observation_without_private_endpoints(self):
+        healthy={'active':True,'available_bytes':24*1024**3,'scratch_free_bytes':4*1024**3,
+                 'shared_memory_free_bytes':12*1024**3,'owned_bytes':1024,
+                 'unit_state':{'ActiveState':'active','MemoryMax':str(21*1024**3)},
+                 'resource_observations':{'memory.events':'max 75\noom_kill 0'},
+                 'endpoint':'ws://127.0.0.1/PRIVATE-ENDPOINT',
+                 'worker_log_tail':'PRIVATE-WORKER-LOG'}
+        cases=[('active',False,'unit'),('available_bytes',4*1024**3-1,'available_bytes'),
+               ('scratch_free_bytes',1024**3-1,'scratch_free_bytes'),
+               ('shared_memory_free_bytes',4*1024**3-1,'shared_memory_free_bytes'),
+               ('owned_bytes',2*1024**3+1,'owned_bytes')]
+        for key,bad,reason in cases:
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
+                owned=generator.MarcoGenerator(directory);owned.stop_event=mock.Mock()
+                owned.stop_event.wait.return_value=False
+                observed={**healthy,key:bad};owned.rpc=mock.Mock(side_effect=[observed,{'stopped':True}])
+                output=io.StringIO()
+                with mock.patch('sys.stderr',output):owned.monitor()
+                status=json.loads((Path(directory)/'generator-status.json').read_text())
+                expected={k:v for k,v in observed.items() if k not in ('endpoint','worker_log_tail')}
+                self.assertFalse(status['active']);self.assertEqual(status['refused_observation'],expected)
+                self.assertIn(reason,status['error']);self.assertIn('journal',status['error'])
+                self.assertEqual([c.args[0] for c in owned.rpc.call_args_list],['status','stop'])
+                receipt=(Path(directory)/'generator-metrics.jsonl').read_text()+output.getvalue()
+                self.assertNotIn('PRIVATE-ENDPOINT',receipt);self.assertNotIn('PRIVATE-WORKER-LOG',receipt)
+                self.assertIn('refused_observation',output.getvalue())
+
+    def test_status_rpc_failure_does_not_relabel_the_previous_healthy_sample_as_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            owned=generator.MarcoGenerator(directory);owned.stop_event=mock.Mock()
+            owned.stop_event.wait.side_effect=[False,False]
+            healthy={'active':True,'available_bytes':24*1024**3,'scratch_free_bytes':4*1024**3,
+                     'shared_memory_free_bytes':12*1024**3,'owned_bytes':1024}
+            owned.rpc=mock.Mock(side_effect=[healthy,RuntimeError('Synthetic status transport failed'),{'stopped':True}])
+            with mock.patch('sys.stderr',io.StringIO()):owned.monitor()
+            rows=[json.loads(line) for line in (Path(directory)/'generator-metrics.jsonl').read_text().splitlines()]
+            self.assertTrue(rows[0]['active']);self.assertFalse(rows[1]['active'])
+            self.assertIsNone(rows[1]['refused_observation'])
+            self.assertIn('Synthetic status transport failed',rows[1]['error'])
+            self.assertEqual([c.args[0] for c in owned.rpc.call_args_list],['status','status','stop'])
+
+    def test_failed_status_file_write_still_stops_only_the_owned_generator_and_keeps_stderr_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            # A real filesystem publication error, without filling a shared disk.
+            (Path(directory)/'generator-status.tmp').mkdir()
+            owned=generator.MarcoGenerator(directory);owned.stop_event=mock.Mock()
+            owned.stop_event.wait.return_value=False
+            owned.rpc=mock.Mock(side_effect=[{'active':False},{'stopped':True}]);output=io.StringIO()
+            with mock.patch('sys.stderr',output):owned.monitor()
+            self.assertEqual([c.args[0] for c in owned.rpc.call_args_list],['status','stop'])
+            self.assertIsNotNone(owned.failure)
+            self.assertIn('refused_observation',output.getvalue())
 
     def test_port_guard_refuses_live_listeners_but_accepts_owned_tcp_closing_state(self):
         function = next(node for node in ast.parse(generator.RPC).body

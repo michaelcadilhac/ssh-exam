@@ -768,3 +768,18 @@ rather than report success. Focused3 and full43bridge checks pass. AGENTS.md now
 requires maximum-size request/reply qualification before long ramps. Do not repeat
 hours of setup merely to discover that an observation/finalization message cannot
 cross its private transport. Native enforcement and production remain unchanged.
+
+## November 18: preserve the observation that actually stops a load test
+
+The corrected fleet transport passed all 70 students and the first three peak
+samples. The browser generator then hit its 21 GiB cap and was OOM-killed. The last
+published sample still had zero OOM counters; the failing observation was discarded
+and systemd had already collected the cgroup. Its exact unit journal established
+the cause. A generic readiness error and a schema exception hid useful evidence.
+
+The monitor now retains the rejected observation, stage and time without private
+endpoints or worker-log contents. It names the unchanged guard and still contains
+the owned worker if writing the diagnostic fails. The real cohort reader reports
+the refusal and journal guidance. A small real browser/service-stop/monitor/reader
+workflow passes with complete cleanup. Full endurance needs more generator RAM;
+it must not be repeated with the same undersized budget or a relaxed safety margin.

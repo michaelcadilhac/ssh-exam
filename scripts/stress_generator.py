@@ -9,6 +9,7 @@ import shlex
 import signal
 import socket
 import subprocess
+import sys
 import threading
 import time
 from urllib.parse import urlsplit
@@ -322,16 +323,46 @@ class MarcoGenerator:
             stream.write(json.dumps(value) + '\n')
 
     def monitor(self):
+        observation = None
+        started = None
+        stage = 'wait'
         try:
             while not self.stop_event.wait(5):
                 started = int(time.time() * 1000)
+                observation = None  # An RPC failure is not the previous sample.
+                stage = 'status-rpc'
                 status = self.rpc('status')
-                if not status['active'] or status['available_bytes'] < 4 * 1024**3 or status['scratch_free_bytes'] < 1024**3 or status['shared_memory_free_bytes'] < 4 * 1024**3 or status['owned_bytes'] > 2 * 1024**3:
-                    raise RuntimeError('Marco generator resource/readiness guard refused')
+                observation = {k: v for k, v in status.items()
+                               if k not in ('endpoint', 'worker_log_tail')}
+                violations = []
+                stage = 'resource-guard'
+                if not status['active']:
+                    violations.append('owned browser unit is not running')
+                else:
+                    for name, minimum in (('available_bytes', 4 * 1024**3),
+                                          ('scratch_free_bytes', 1024**3),
+                                          ('shared_memory_free_bytes', 4 * 1024**3)):
+                        if status[name] < minimum:
+                            violations.append(f'{name}={status[name]} below minimum {minimum}')
+                    if status['owned_bytes'] > 2 * 1024**3:
+                        violations.append(f'owned_bytes={status["owned_bytes"]} above maximum {2 * 1024**3}')
+                if violations:
+                    raise RuntimeError('Marco generator resource/readiness guard refused: ' +
+                                       '; '.join(violations) + '; inspect saved status and the journal for ' +
+                                       'ssh-exam-browser-' + self.token + '.service on Marco')
+                stage = 'status-publication'
                 self.publish_status(status, started)
         except Exception as error:
             self.failure = str(error)
-            self.publish_status({'active': False, 'error': self.failure})
+            receipt = {'active': False, 'error': self.failure,
+                       'failure_stage': stage, 'observation_started_ms': started,
+                       'refused_observation': observation}
+            # Keep the rejected sample even if its collected cgroup disappears.
+            # The already-open stderr remains usable when file publication fails.
+            try: print('STRESS_GENERATOR_REFUSAL ' + json.dumps(receipt), file=sys.stderr, flush=True)
+            except OSError: pass
+            try: self.publish_status(receipt)
+            except OSError: pass  # Never let a diagnostic write skip containment.
             try: self.rpc('stop')
             except Exception: pass  # close() must still verify exact owned cleanup.
 

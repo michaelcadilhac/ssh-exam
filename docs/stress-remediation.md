@@ -40,6 +40,32 @@ The instructor confirmed that increasing the class-server VM resources is an
 option if completed measurements require it. Keep sizing proposals separate from
 actual production changes; the current qualification still uses guarded guests.
 
+Endurance 7 passed the corrected full fleet reply, the 70-student / 280-terminal
+GCC/GDB ramp and three peak samples through 140.125 seconds. Marco's exact owned
+unit journal then confirmed an OOM kill at 21 GiB. All native, Marco, local and
+observer cleanup and original preservation pass. The 90-minute endurance and
+protected fleet completion remain unqualified. The pending resource question is
+whether Marco can have at least 30 GiB available RAM or a larger generator host
+can be used. A finite 25 GiB generator cap, 29 GiB startup requirement and unchanged
+4 GiB live reserve are proposed for qualification after resources are available.
+Current code still enforces a 21 GiB cap, 25 GiB startup requirement and 4 GiB
+reserve. Do not repeat the expensive ramp with the same undersized generator.
+
+The monitor discarded its rejected status, hiding which guard stopped the run;
+systemd had also collected the final cgroup counters. The local correction retains
+the redacted observation, stage and time, names each unchanged limit, emits a
+receipt on existing stderr, and still stops its worker when file publication fails.
+The actual cohort reader reports the refusal and journal guidance before parsing
+healthy-only fields. Three focused Python checks, 11 actual-file reader checks,
+typechecking and all 38 affected harness checks pass. A real two-context browser,
+HTTP, WebSocket and media workflow followed by an authored service stop, monitor
+publication and actual reader refusal also passes, with independent local/Marco
+cleanup and unchanged product artifacts. Evidence:
+var/stress-remediation/20261118/generator-refusal/.
+This short case is a clean authored stop, not a new OOM test or full-class pass.
+Its first local verifier confused exclusive binding with closing TCP state;
+the existing qualified listener/reuse guard proves cleanup, preserving that error.
+
 November18: endurance6 reached all70students/280verified GCC/GDB panes but failed
 before peak when the private fleet-observation reply was truncated. Independent
 native/Marco/local/observer cleanup and frozen-input checks pass. The private

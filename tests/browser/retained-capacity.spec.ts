@@ -19,6 +19,7 @@ import {
 } from "../fixtures/stress-navigation.js";
 import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
+import { readRemoteStressHeadroom } from "../fixtures/stress-generator-status.js";
 
 const origin = "https://127.0.0.1:9444";
 const stressRun = process.env.EXAM_STRESS_RUN;
@@ -41,26 +42,7 @@ async function generatorHeadroom() {
       "Local stress scratch has less than8GiB headroom; stop only the owned synthetic test before recording writes fail",
     );
   const remote = process.env.EXAM_STRESS_GENERATOR_STATUS;
-  if (remote) {
-    const status = z
-      .object({
-        host: z.literal("marco"),
-        active: z.literal(true),
-        observed_local_ms: z.number().int(),
-        available_bytes: z.number().int().nonnegative(),
-        minimum_available_bytes: z.literal(4 * 1024 ** 3),
-      })
-      .parse(JSON.parse(await readFile(remote, "utf8")));
-    if (
-      Date.now() < status.observed_local_ms ||
-      Date.now() - status.observed_local_ms > 20000 ||
-      status.available_bytes < status.minimum_available_bytes
-    )
-      throw Error(
-        "Remote browser generator health/headroom is unavailable; abort the owned synthetic test",
-      );
-    return status.available_bytes;
-  }
+  if (remote) return readRemoteStressHeadroom(remote);
   return available;
 }
 const shellQuote = (value: string) =>

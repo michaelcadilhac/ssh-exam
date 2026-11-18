@@ -6,6 +6,21 @@ followed by simultaneous submission. No institutional MFA, actual student accoun
 or outbound email. Use independent test keys, storage and loopback mail capture.
 Production state, deadlines, services and submissions remain untouched.
 
+November 18 capacity gate: the current 21 GiB Marco generator suffered an OOM kill
+after all 70 students / 280 terminals and 140.125 seconds of verified peak work.
+Its exact unit journal and full preservation/cleanup are retained. Do not start
+another full run until more generator headroom is available and its finite budget
+is qualified. A request for at least 30 GiB available on Marco, or a larger load
+host, is pending. This is separate from class-server VM sizing. The 90-minute
+endurance and protected fleet completion remain unqualified.
+
+Rejected observations now remain in generator-status.json, metrics and stderr,
+with their stage/time and private endpoints/log payloads removed. The exact unit
+journal establishes termination cause when its cgroup counters are gone. Diagnostic
+file failure must still stop the owned generator. The actual cohort reader reports
+the refusal and journal guidance, preserving every freshness/headroom check.
+This path passes a small real service-stop workflow; it does not qualify 70 students.
+
 November17 remediation: classroom public reads and transient initial capture
 verification are fixed locally, together with Prof's bounded instructor/copy/
 focus findings and browser SSH command-session pressure. Current application
