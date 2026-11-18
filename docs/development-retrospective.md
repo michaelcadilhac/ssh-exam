@@ -661,3 +661,38 @@ exact runner. Record per-fault identities and outcomes before expensive suites.
 Do not replace a failed receipt with a later pass or attribute the earlier
 70-student failure to this separate runner mistake. Current evidence and remaining
 capacity work: [stress remediation](stress-remediation.md).
+
+## November 17: compare every runtime limit and identify private transport errors
+
+I repaired the core-limit mismatch without persisting the complete shell/service
+comparison. The next durable capacity run inherited NOFILE soft1024, while the
+ordinary shell allows524288. It failed at the59th student's third pane after58
+fully verified students. The immediate native cause is a policy HTTP503; the
+original response producer was not recorded, so descriptor exhaustion is still
+unproved as that run's cause. The failed receipt and FULL cleanup remain.
+
+Focused real-descriptor tests now reproduce signer503 on EMFILE, healthy recovery
+after releasing descriptors and a valid signed response with1100 held descriptors
+under the ordinary limit. A separate real-HTTP control reproduced a healthy2.7s
+callback rejected by the private bridge's2.5s budget. The70-person host-side bridge
+now allows4s within the existing guest5s boundary; smaller scenarios keep2.5s and
+native freshness/deadlines remain unchanged. Diagnostics distinguish origin replies
+from private timeout/descriptor failures without logging signed bytes or secrets.
+
+The manual runner records all inherited/effective RLIMIT values, disables its own
+core dumps and restores descriptor headroom within its unchanged inherited hard
+limit. Low hard limits refuse before allocation. New Marco units explicitly set
+CORE/NOFILE and verify the actual Node process, alongside existing memory/CPU/task,
+network and storage guards. Real service/native workflow qualification must follow
+the focused checks before another class-sized run; numbers printed by a manager
+alone do not establish actual inheritance. These changes repair test execution;
+they do not retroactively explain old failures or establish production capacity.
+
+The first actual-service check also caught my parser rejecting the trailing spaces
+in Linux's real limits output; the fixture had omitted that formatting. This failed
+before any native guest/test command, but the same guard held the private browser
+cleanup. The correction accepts trailing whitespace without relaxing numerical or
+ownership checks. Original refusal and independently verified cleanup recovery stay
+separate. A fresh actual editor/recovery/protected-finish workflow passes, including
+real process limits and FULL host preservation. Use real kernel output in parsing
+regressions; a hand-written approximation was insufficient.

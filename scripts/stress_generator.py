@@ -42,12 +42,18 @@ def free_ports(ports=(9444,9445)):
    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
    s.bind(('127.0.0.1',port))
 def unit_state(unit):
- return dict(line.split('=',1) for line in command(['systemctl','--user','show',unit,'--property=ActiveState,SubState,MainPID,ControlGroup,MemoryCurrent,MemoryPeak,MemoryHigh,MemoryMax,MemorySwapMax,TasksCurrent,TasksMax,RuntimeMaxUSec']).splitlines())
+ return dict(line.split('=',1) for line in command(['systemctl','--user','show',unit,'--property=ActiveState,SubState,MainPID,ControlGroup,MemoryCurrent,MemoryPeak,MemoryHigh,MemoryMax,MemorySwapMax,TasksCurrent,TasksMax,RuntimeMaxUSec,LimitCORE,LimitCORESoft,LimitNOFILE,LimitNOFILESoft']).splitlines())
 def verify_process(state,root):
  pid=state['MainPID'];assert int(pid)>1
  p=Path('/proc')/pid;assert p.stat().st_uid==uid
  assert (p/'cmdline').read_bytes().rstrip(b'\0').split(b'\0')==[b'/usr/bin/node',str(root/'worker.cjs').encode()]
  assert (p/'cgroup').read_text()=='0::'+state['ControlGroup']+'\n'
+ limits=(p/'limits').read_text().splitlines()
+ nofile=next(re.fullmatch(r'Max open files\s+(\d+)\s+(\d+)\s+files',line.rstrip()) for line in limits if line.startswith('Max open files'))
+ core=next(re.fullmatch(r'Max core file size\s+(\d+)\s+(\d+)\s+bytes',line.rstrip()) for line in limits if line.startswith('Max core file size'))
+ assert nofile and nofile.groups()==('524288','524288'),'Actual private Node descriptor limits differ'
+ assert core and core.groups()==('0','0'),'Actual private Node core limit differs'
+ return {'nofile':[int(v) for v in nofile.groups()],'core':[int(v) for v in core.groups()]}
 def listeners(ports):
  found=[]
  for name,allowed in [('tcp','0100007F'),('tcp6','00000000000000000000000001000000')]:
@@ -135,6 +141,7 @@ else:
   command(['systemd-run','--user','--quiet','--collect','--service-type=exec','--unit='+unit,
     '--property=MemoryHigh=18G','--property=MemoryMax=20G','--property=MemorySwapMax=0',
     '--property=CPUQuota=800%','--property=TasksMax=4096','--property=RuntimeMaxSec=14400',
+    '--property=LimitCORE=0','--property=LimitNOFILE=524288',
     '--property=TimeoutStopSec=30','--property=KillMode=control-group','--property=UMask=0077','--property=Restart=no',
     '--property=StandardOutput=append:'+str(root/'worker.log'),
     '--property=StandardError=append:'+str(root/'worker.log'),
@@ -151,7 +158,9 @@ else:
   if active:
    assert int(state['MemoryMax'])==20*1024**3 and int(state['MemoryHigh'])==18*1024**3 and state['MemorySwapMax']=='0' and state['TasksMax']=='4096'
    assert state['RuntimeMaxUSec']=='4h','Private browser lifetime must be finite and match the measured ramp plus90-minute peak budget'
-   verify_process(state,root)
+   assert state['LimitCORE']=='0' and state['LimitCORESoft']=='0','Private browser core dumps must stay disabled'
+   assert state['LimitNOFILE']=='524288' and state['LimitNOFILESoft']=='524288','Private browser descriptor limits must match the qualified runner'
+   result['process_limits']=verify_process(state,root)
    group=Path('/sys/fs/cgroup')/state['ControlGroup'].lstrip('/')
    bounds={n:(group/n).read_text().strip() for n in ('memory.max','memory.high','memory.swap.max','pids.max','cpu.max')}
    quota,period=map(int,bounds['cpu.max'].split());assert quota==8*period

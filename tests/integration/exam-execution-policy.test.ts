@@ -1,4 +1,5 @@
 import { expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
 import { generateKeyPairSync, randomUUID, sign, verify } from "node:crypto";
 import {
   existsSync,
@@ -221,6 +222,44 @@ async function fixture() {
     },
   };
 }
+
+it("reproduces real descriptor exhaustion at the signed policy boundary and recovers without authority changes", () => {
+  const probe = (limit: string, mode: string) => {
+    const output = execFileSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "tests/fixtures/execution-policy-fd-pressure.ts",
+        limit,
+        mode,
+      ],
+      { encoding: "utf8", timeout: 20000, maxBuffer: 65536 },
+    );
+    const receipts = output
+      .split("\n")
+      .filter((line) => line.startsWith("POLICY_FD_RESULT "));
+    expect(receipts).toHaveLength(1);
+    return JSON.parse(receipts[0]!.slice("POLICY_FD_RESULT ".length));
+  };
+  const low = probe("128", "exhaust");
+  expect(low.baseline).toMatchObject({ status: 200, valid: true });
+  expect(low.exhausted).toBe("EMFILE");
+  expect(low.signingError).toBe("EMFILE");
+  expect(low.pressured).toEqual({
+    status: 503,
+    valid: false,
+    error:
+      "Exam settings signer unavailable; preserve the attempt and retry after the gateway is repaired",
+  });
+  expect(low.retried).toMatchObject({ status: 200, valid: true });
+  expect(low.authorityUnchanged).toBe(true);
+  const high = probe("524288", "hold");
+  expect(high.filled).toBe(1100);
+  expect(high.signingError).toBe("");
+  expect(high.pressured).toMatchObject({ status: 200, valid: true });
+  expect(high.authorityUnchanged).toBe(true);
+}, 45000);
 
 it("serves the exact current policy through a nonce-bound authenticated signed HTTP exchange without changing authority", async () => {
   const f = await fixture();

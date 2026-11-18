@@ -240,6 +240,23 @@ not measured production co-location capacity on the8GiB class server.
 
 Each phase freezes its source-input manifest; do not edit test/runner sources
 while it runs. Raw command logs, failures and per-phase bundle identity are kept.
+Each phase also records `runtime-limits.json`: inherited/effective limits, with
+CORE soft0 and descriptor headroom restored only within the runner's inherited
+hard limit (ordinary development baseline524288). An insufficient hard limit
+refuses before class allocation. The4096 floor is a harness refusal guard, not
+proof of capacity at that limit. Marco's owned unit uses CORE0/NOFILE524288 and
+checks the actual Node process as well as systemd declarations; memory, CPU,
+task, network and disk limits remain unchanged.
+
+The private callback forwarder permits4seconds for70-person HTTP forwarding,
+inside the unchanged guest5-second reply boundary. One-/16-person scenarios
+keep2.5seconds. This corrects a reproduced2.7-second healthy callback refusal;
+it changes no native authorization, evidence freshness, deadline or operation
+budget. `callback-failures.jsonl` and the pre-opened stderr distinguish an origin
+HTTP refusal from private timeout/descriptor errors, with bounded fixed metadata
+and response hashes. No signed request/body/key/capture is logged. The periodic
+`gateway-resources.jsonl` records descriptor counts/limits and memory so a later
+failure does not need another expensive ramp merely to discover its source.
 After each native phase, independently verify its exact owned unit is inactive
 with MainPID0 and its private preservation receipt is unchanged. A wrapper exit
 alone is insufficient. Never stop installed exam services as test cleanup.

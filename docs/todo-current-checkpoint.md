@@ -1,74 +1,90 @@
-# Current checkpoint — native stress requalification next
+# Current checkpoint — stress runtime fixes qualified locally
 
-Local development, synthetic tests and local commits only. No push/deployment,
-production configuration/student changes, institutional MFA or external email.
-Preserve the ten original modified documentation PNGs; all 16 original hashes
-were unchanged. No package is missing. All owned local browser units, native
-qualification guests and Marco generators are stopped; private test ports free.
+Local development/tests/commits only. No push/deploy, production changes, actual
+student accounts, MFA or external email. Preserve ten originally modified doc
+PNGs. HEAD c032505; product0d28ae1. No test runner, native guest or Marco generator
+currently remains active. No missing package or unanswered policy question.
 
-Product remains **0d28ae1**; runner/guideline commit **647220f**. This validated
-increment changes only the retained-restart policy-report fixture: inject faults after
-Start, follow actual pending-policy capture suppression, require fresh successful
-capture after the genuine repeated acknowledgement. Focused typecheck/test pass.
+## Next bounded milestone
 
-## Completed local verification
+Freeze/commit the qualified private runtime/callback corrections, then run a fresh
+70-student/280-terminal/90-real-minute endurance through the existing manual entry:
+`scripts/stress-test.py --run-id 20261117T174000Z --phase endurance --generator marco`
+with the exact v16 bundle below. Use a uniquely owned durable local unit, CORE0 /
+NOFILE524288, frozen source/build manifests, bounded lifetime and scoped resource
+observers. Do not edit loaded source or repeat unchanged broad suites. Stop at a
+real refusal, preserve its origin/private transport receipt and diagnose narrowly;
+never reset clocks, replay unknown starts or weaken policy to obtain a pass.
+Acceptance requires all70 students with4 verified native panes each,90 real peak
+minutes, simultaneous protected submissions and independent exact cleanup. Passing
+this topology still does not qualify web/native production co-location.
 
-Under var/stress-remediation/20261117/, each directory has frozen source/build
-manifests, exact owned unit identity, actual result and independent completion.json:
+## Newly qualified private runtime/callback milestone
 
-- application-complete-647220f/: **917 passed, 3 gated, 0 failed**, 420.60s.
-- browser-complete-647220f/: **367 passed, 12 mode-gated, 0 failed/flaky**, 1887.791s.
-- gateway-signin-647220f/: **16 real-WASM clients**, 1 pass/0 skips, 55.122s.
-- gateway-policy-focus-2/: corrected actual lost-report/ack cadence, 1 pass, 27.959s.
-- gateway-restart-corrected/: **9 passed, 0 skipped/failed/flaky**, 123.628s;
-  covers the eight formerly gateway-gated paths plus one overlapping ordinary case.
+- Local runner records every inherited/effective RLIMIT and restores descriptor
+  headroom within its unchanged hard limit; actual child tests open1100FDs. Low
+  hard limits refuse before class allocation. Actual Marco Node limits must match
+  CORE0/NOFILE524288, alongside existing owner/argv/cgroup/network/resource guards.
+- Real signed-policy FD pressure reproduces signer EMFILE503 at soft128; releasing
+  descriptors restores signed200 with unchanged authority.1100heldFDs at524288
+  pass. This is a possible failure path, not attribution of the old class failure.
+- Actual healthy2.7s HTTP callbacks reproduced private2.5s false503. Only70-mode
+  forwarding now allows4s inside the unchanged guest5s;1/16 modes keep2.5s. Fixed
+  diagnostics distinguish origin replies/private failures and record FD/limits,
+  including pre-opened stderr if optional log creation fails. No signed bytes or
+  captures are logged; native authority freshness and deadlines are unchanged.
+-36HTTP/transport,24runner and9generator regressions pass; typecheck passes.
+- Fresh native-editor-6 PASS:95.778s actual browser command, editor buffers,
+  lockout/recovery, gateway restart and protected finish. Deliberately inherited
+  local soft1024 normalized to524288 before children; Marco actual limits and
+  private network confirmed. Frozen source/build unchanged. Independent native
+  FULL, Marco and local cleanup pass. Final receipt:
+  var/stress-remediation/20261117/native-runtime-qualification-2/completion.json.
+- native-editor-5 FAILED before any test command/native allocation: my new parser
+  rejected real /proc/limits trailing whitespace, holding the owned Marco cleanup.
+  Corrected whitespace-only parser and numerical refusal regressions pass. Original
+  failed receipt and separate guarded/independent cleanup recovery are retained;
+  its canonical row is FAILED, never PASS. No production service was affected.
 
-All exact units stopped/inactive/PID0/empty cgroup, source/built unchanged. Services
-use qualified LimitCORE=0, bounded lifetime and control-group cleanup. Unchanged
-production bytes allow reuse of the broad suites; a test-only correction does
-not require another 367-case UI run. Three application operator gates have
-separate actual CLI/export/zsh-bwrap evidence; four native/optional browser gates
-remain separately scoped, never relabelled as ordinary passes.
+## Previous class failure and evidence to preserve
 
-Actual v16 native 16-student/64-terminal 75-second outage recovery and concurrent
-508-MiB collection/isolated worker death pass with original shells/clocks,
-protected completions and FULL original-host preservation. Reuse exact bundle
-(19 files/65,421,056 bytes), unchanged native core:
-/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec.
-Details and retained failed receipts: docs/stress-remediation.md and
-reports/stress/20261117T174000Z/report.md.
+endurance-2 FAILED after58verified students/232terminals; student59's third pane
+was refused. The current private native log confirms fresh execution-policy HTTP503.
+Snapshot remained ACTIVE/gen0, pinned SSH and2unfrozen panes. Original503 producer
+remains UNCLASSIFIED. Failure precedes handoff expiry by~3s; later LOCKED/gen1 rows
+are teardown. Do not attribute this refusal to descriptors/bridge timeout without
+actual evidence. The durable unit's softNOFILE1024 vs ordinary524288 is recorded
+in endurance-2/runtime-limit-comparison.json.95–98%hostCPU/slow growing Start times
+are measured, but the bottleneck is not isolated. Serial ramp itself took79minutes
+to58students;90-minute peak never began. No70/90/protected-submission pass exists.
 
-## Remaining findings and next steps
+Actual guest /var/tmp/ssh-exam-overlay-tk5448mf and unit
+ssh-exam-qualification-fa15168dc0d14f25a682872fd49bec1f.service are stopped with
+independent FULL preservation. Marco/local actors also stopped, portsfree, frozen
+inputs unchanged. Original evidence:var/stress/20261117T174000Z/endurance-2/;
+wrapper:var/stress-remediation/20261117/endurance-current/completion.json.
 
-No 70-student/90-minute pass exists. Endurance attempt1 stopped before peak at
-61 students/244 terminals: the next sign-in hit the old ten-second driver wait.
-A healthy 16-second SSH reproducer now passes under the existing 60-second budget;
-no auth retry added. The actual long wait and historical third-pane refusal remain
-unattributed. Start diagnostic intervals reached57.783s. Original failed native,
-Marco/local cleanup and FULL preservation receipts remain unchanged.
+Exact unchanged nativev16 bundle (19files65,421,056bytes):
+/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec
+manifest beecb1a9f73fac36efde7c32be69ee42d42d42d51be5634cca1fb0989765ee53560.
+No need to rebuild/upload native code for private Node/Python harness corrections.
 
-The first durable broad runs failed because owned services allowed core dumps,
-delaying deliberate worker exits; exact metadata explains only those runner
-failures. Corrected real-fault qualification and later full passes are separate.
-The first gateway file failed during initial setup; the first focused fixture
-correction wrongly required a negative frame suppressed by pendingPolicy. Both
-failed receipts remain beside the later corrected passes, with exact cleanup.
+## Reuse unchanged application/native evidence
 
-Next bounded workflow: run fresh native-editor, then native-timer-recovery using
-scripts/stress-test.py --run-id 20261117T174000Z --generator marco and exact v16
-bundle. Older single-student passes predate proof changes. Read each phase's real
-verdict (aggregate exit may still be1 due retained installed-capacity failure),
-verify exact native/Marco/local cleanup and frozen inputs before the next phase.
-Then fresh70-person ramp,90 real peak minutes and simultaneous protected finish.
-Run long phases in a uniquely owned durable LimitCORE=0 user service; preserve its
-identity/result. No parallel writers to run.json. Keep heavy browser jobs separate.
+var/stress-remediation/20261117/ contains actual completions/manifests/cleanup:
+application-complete-647220f:917pass/3gated/0fail;
+browser-complete-647220f:367pass/12modegated/0fail/flaky;
+gateway-signin-647220f:16realWASMclients/1pass;
+gateway-restart-corrected:9pass/0skip/fail/flaky.
+Actual v16 native16/64 recovery after75s outage and isolated508MiB collection-worker
+crash pass with preserved peers/protected completions. native-editor-4 and
+native-timer-recovery-3 also pass viaMarco. Earlier Core-limit/driver/policy-fixture
+failures retain their own receipts and separate corrected passes. Do not blindly
+rerun unchanged suites or retrofit a cause onto historical failures.
 
-Production's32-worker ceiling still fails the read-only70 gate. Its2-GiB web budget
-and shared4-CPU/~8-GiB capacity remain unqualified; isolated gateway/native results
-are not co-location proof. No resource increase/deployment authorized; no policy
-choice blocks current local tests. Read-only private-guest CPU sampling is prepared
-in var/stress-remediation/20261117/observe-owned-native-cpu.py for the next ramp;
-it reads only owned cgroup process names/ticks, no student files/arguments/env.
+Report:reports/stress/20261117T174000Z/report.md (Prof). Durable dependency plan:
+docs/stress-remediation.md; operation:docs/stress-testing.md. Installed32worker
+ceiling and shared4CPU/~8GiB production capacity remain separate open gates.
 
 ## Deployed baseline
 

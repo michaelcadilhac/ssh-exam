@@ -47,6 +47,23 @@ no consumed attempt/permission/clock; two real-browser and seven affected HTTP
 checks, build and typecheck pass locally. Different errors remain distinct.
 Current [agent report](reports/stress/20261117T174000Z/report.md).
 
+The next class run failed before peak at58verified students/232terminals: the
+59th student's third pane was refused after a fresh policy request returned503.
+The snapshot remained ACTIVE/gen0 with pinned SSH and two unfrozen panes; later
+LOCKED rows were teardown. FULL native/Marco/local preservation and cleanup pass.
+The original503 producer is unclassified. Focused tests separately reproduce
+signer EMFILE and a healthy2.7s callback rejected by the private2.5s bridge. Local
+harness corrections restore descriptor headroom, record complete runtime limits,
+distinguish refusal origins and give only70-person forwarding4s inside the guest's
+unchanged5s boundary. Affected36HTTP/transport and24runner checks pass; actual
+updated service/native qualification now passes the real editor/recovery/protected
+submission workflow (native-editor-6), with actual local/Marco limits, unchanged
+frozen inputs and independent FULL native/Marco/local preservation and cleanup.
+The preceding setup failed before guest allocation because the new limit parser
+rejected Linux trailing whitespace; its failed receipt and guarded cleanup recovery
+are retained, and the formatting regression passes. No native policy or deadline was
+weakened, no70/90-minute pass exists, and no changes are deployed.
+
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
 Approved target: 70 synthetic students, four terminals each, 90 real peak minutes

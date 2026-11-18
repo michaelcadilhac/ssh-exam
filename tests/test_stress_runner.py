@@ -3,6 +3,8 @@ import importlib.util
 import json
 import os
 import socket
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,6 +17,39 @@ spec.loader.exec_module(runner)
 
 
 class ManualStressTests(unittest.TestCase):
+    def test_real_child_inherits_normalized_limits_and_can_open_more_than1024_files(self):
+        code='''import importlib.util,json,os,resource,subprocess,sys,tempfile
+from pathlib import Path
+s=importlib.util.spec_from_file_location('runner',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+soft,hard=resource.getrlimit(resource.RLIMIT_NOFILE);assert hard>=4096
+resource.setrlimit(resource.RLIMIT_NOFILE,(1024,hard))
+with tempfile.TemporaryDirectory() as d:
+ m.prepare_local_runtime(Path(d),True)
+ receipt=json.loads((Path(d)/'runtime-limits.json').read_text());assert receipt['before']['RLIMIT_NOFILE'][0]==1024 and receipt['after']['RLIMIT_CORE'][0]==0
+ child="import json,os,resource; f=[os.open('/dev/null',os.O_RDONLY) for _ in range(1100)]; print(json.dumps({'opened':len(f),'core':resource.getrlimit(resource.RLIMIT_CORE)[0],'nofile':resource.getrlimit(resource.RLIMIT_NOFILE)[0]})); [os.close(v) for v in f]"
+ result=json.loads(subprocess.check_output([sys.executable,'-c',child],text=True));assert result['opened']==1100 and result['core']==0
+ print(json.dumps(result))
+'''
+        result=subprocess.run([sys.executable,'-c',code,str(Path(runner.__file__))],text=True,capture_output=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(json.loads(result.stdout)['opened'],1100)
+
+    def test_low_hard_descriptor_limit_is_preserved_and_refused_before_capacity_work(self):
+        code='''import importlib.util,json,resource,sys,tempfile
+from pathlib import Path
+s=importlib.util.spec_from_file_location('runner',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
+resource.setrlimit(resource.RLIMIT_NOFILE,(1024,1024))
+with tempfile.TemporaryDirectory() as d:
+ try:m.prepare_local_runtime(Path(d),True)
+ except RuntimeError:
+  r=json.loads((Path(d)/'runtime-limits.json').read_text());assert r['error'] and r['after']['RLIMIT_NOFILE']==[1024,1024]
+  print('refused without raising hard limit')
+ else:raise AssertionError('low hard limit accepted')
+'''
+        result=subprocess.run([sys.executable,'-c',code,str(Path(runner.__file__))],text=True,capture_output=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('refused',result.stdout)
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

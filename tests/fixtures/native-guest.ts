@@ -1,6 +1,11 @@
 // Test-only controller for the guarded disposable csc-sys guest. No runtime caller.
 import { spawn, type ChildProcess } from "node:child_process";
-import { appendFileSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  writeFileSync,
+  readFileSync,
+  readdirSync,
+} from "node:fs";
 import { createHash } from "node:crypto";
 import net from "node:net";
 import type { Readable } from "node:stream";
@@ -82,6 +87,96 @@ export function readNativeBridgeRequest(
     if (!seen || raw.length) fail();
   });
   stream.once("error", fail);
+}
+
+export async function forwardNativeBridgeRequest(
+  request: NativeBridgeRequest,
+  httpPort: number,
+  signal: AbortSignal,
+  students: number,
+  diagnose: (receipt: Record<string, unknown>) => void,
+) {
+  const started = performance.now(),
+    // The guest bridge retains its existing five-second reply boundary. Leave
+    // return-link margin while accepting ordinary2.7s callbacks at class load;
+    // smaller fault scenarios keep their original2.5s transport budget.
+    timeoutMs = students === 70 ? 4000 : 2500;
+  const note = (source: string, detail: Record<string, unknown>) => {
+    try {
+      diagnose({
+        at: Date.now(),
+        route: request.path,
+        source,
+        timeout_ms: timeoutMs,
+        elapsed_ms: Math.round(performance.now() - started),
+        ...detail,
+      });
+    } catch {
+      /* A diagnostic failure must never change the original reply. */
+    }
+  };
+  try {
+    if (!/^\/api\/agent\/[a-z-]+$/.test(request.path))
+      throw Object.assign(Error("Invalid private callback path"), {
+        code: "INVALID_PATH",
+      });
+    const headers = new Headers(request.headers);
+    for (const name of ["connection", "host", "content-length"])
+      headers.delete(name);
+    const response = await fetch(
+      `http://127.0.0.1:${httpPort}` + request.path,
+      {
+        method: "POST",
+        headers,
+        body: Buffer.from(request.body, "base64"),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
+      },
+    );
+    const body = Buffer.from(await response.arrayBuffer());
+    if (body.length > 524288)
+      throw Object.assign(Error("Private callback reply exceeds bound"), {
+        code: "REPLY_TOO_LARGE",
+      });
+    if (signal.aborted) return;
+    if (response.status !== 200)
+      note("gateway-response", {
+        status: response.status,
+        replyHash: createHash("sha256").update(body).digest("hex"),
+      });
+    return { status: response.status, body };
+  } catch (error) {
+    if (signal.aborted) return;
+    const e = error as {
+      name?: string;
+      code?: string;
+      cause?: { code?: string };
+    };
+    const code = e.cause?.code ?? e.code ?? "";
+    note("private-transport", {
+      status: 503,
+      reason:
+        e.name === "TimeoutError"
+          ? "fetch-timeout"
+          : ["EMFILE", "ENFILE"].includes(code)
+            ? "descriptor-limit"
+            : "fetch-failed",
+      code: [
+        "EMFILE",
+        "ENFILE",
+        "ECONNRESET",
+        "ECONNREFUSED",
+        "ETIMEDOUT",
+        "INVALID_PATH",
+        "REPLY_TOO_LARGE",
+      ].includes(code)
+        ? code
+        : "other",
+    });
+    return {
+      status: 503,
+      body: Buffer.from('{"error":"Private gateway unavailable"}'),
+    };
+  }
 }
 
 const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
@@ -231,6 +326,44 @@ export async function nativeGuest(
     port: (proxy.address() as net.AddressInfo).port,
     pins: [] as string[],
   };
+  let callbackFailures = 0;
+  const limits = readFileSync("/proc/self/limits", "utf8")
+    .split("\n")
+    .find((line) => line.startsWith("Max open files"));
+  const resourceSnapshot = () => {
+    let fds: number | null = null;
+    try {
+      fds = readdirSync("/proc/self/fd").length;
+    } catch {
+      /* Preserve failure diagnostics even at EMFILE. */
+    }
+    return { pid: process.pid, fds, limits, rss: process.memoryUsage().rss };
+  };
+  const diagnoseCallback = (receipt: Record<string, unknown>) => {
+    if (callbackFailures++ >= 64) return;
+    const row = JSON.stringify({ ...receipt, ...resourceSnapshot() });
+    // stderr is already open and remains usable when opening a new log fails.
+    console.error("NATIVE_CALLBACK_FAILURE " + row);
+    try {
+      appendFileSync(local + "/callback-failures.jsonl", row + "\n", {
+        mode: 0o600,
+      });
+    } catch {
+      /* stderr retains it. */
+    }
+  };
+  const resourceTimer = setInterval(() => {
+    try {
+      appendFileSync(
+        local + "/gateway-resources.jsonl",
+        JSON.stringify({ at: Date.now(), ...resourceSnapshot() }) + "\n",
+        { mode: 0o600 },
+      );
+    } catch {
+      /* The failure path uses pre-opened stderr. */
+    }
+  }, 5000);
+  resourceTimer.unref();
   let completion: Promise<number | null> | undefined;
   return {
     httpPort,
@@ -348,44 +481,32 @@ export async function nativeGuest(
           readNativeBridgeRequest(
             child.stdout!,
             async (request) => {
-              try {
-                if (!/^\/api\/agent\/[a-z-]+$/.test(request.path))
-                  throw Error("Invalid private callback path");
-                const headers = new Headers(request.headers);
-                headers.delete("connection");
-                headers.delete("host");
-                headers.delete("content-length");
-                const response = await fetch(
-                  `http://127.0.0.1:${httpPort}` + request.path,
-                  {
-                    method: "POST",
-                    headers,
-                    body: Buffer.from(request.body, "base64"),
-                    signal: AbortSignal.any([
-                      controller.signal,
-                      AbortSignal.timeout(2500),
-                    ]),
-                  },
-                );
-                const body = Buffer.from(await response.arrayBuffer());
-                if (body.length > 524288)
-                  throw Error("Private callback reply exceeds bound");
-                if (
-                  request.path === "/api/agent/monitoring-continue" &&
-                  response.status !== 200 &&
-                  monitoringRefusals++ < 64
-                ) {
-                  // Fixed error taxonomy only: no signed request, nonce,
-                  // credentials, capture or arbitrary response text is logged.
-                  let reason = "other";
-                  try {
-                    reason =
-                      String(JSON.parse(body.toString()).error).match(
-                        /^Monitoring evidence (ownership|capacity|challenge|technical-gap|policy-blocked|conflict|sequence|clock);/,
-                      )?.[1] || "other";
-                  } catch {
-                    /* Malformed reply remains an unclassified refusal. */
-                  }
+              const response = await forwardNativeBridgeRequest(
+                request,
+                httpPort,
+                controller.signal,
+                students,
+                diagnoseCallback,
+              );
+              if (!response) return;
+              const body = response.body;
+              if (
+                request.path === "/api/agent/monitoring-continue" &&
+                response.status !== 200 &&
+                monitoringRefusals++ < 64
+              ) {
+                // Fixed error taxonomy only: no signed request, nonce,
+                // credentials, capture or arbitrary response text is logged.
+                let reason = "other";
+                try {
+                  reason =
+                    String(JSON.parse(body.toString()).error).match(
+                      /^Monitoring evidence (ownership|capacity|challenge|technical-gap|policy-blocked|conflict|sequence|clock);/,
+                    )?.[1] || "other";
+                } catch {
+                  /* Malformed reply remains an unclassified refusal. */
+                }
+                try {
                   appendFileSync(
                     local + "/monitoring-refusals.jsonl",
                     JSON.stringify({
@@ -398,25 +519,17 @@ export async function nativeGuest(
                     }) + "\n",
                     { mode: 0o600 },
                   );
+                } catch {
+                  /* Optional diagnostics cannot replace a native reply. */
                 }
-                if (!controller.signal.aborted)
-                  child.stdin!.write(
-                    JSON.stringify({
-                      status: response.status,
-                      body: body.toString("base64"),
-                    }) + "\n",
-                  );
-              } catch {
-                if (!controller.signal.aborted)
-                  child.stdin!.write(
-                    JSON.stringify({
-                      status: 503,
-                      body: Buffer.from(
-                        '{"error":"Private gateway unavailable"}',
-                      ).toString("base64"),
-                    }) + "\n",
-                  );
               }
+              if (!controller.signal.aborted)
+                child.stdin!.write(
+                  JSON.stringify({
+                    status: response.status,
+                    body: body.toString("base64"),
+                  }) + "\n",
+                );
             },
             () => {
               controller.abort();
@@ -567,6 +680,7 @@ export async function nativeGuest(
     },
     async close() {
       if (stopping) return;
+      clearInterval(resourceTimer);
       if (stage && runner?.exitCode === null) {
         await collect(bridge("inspect"), '{"abort":true}\n').catch(() => {});
       }

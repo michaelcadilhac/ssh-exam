@@ -17,6 +17,25 @@ spec.loader.exec_module(generator)
 
 
 class GeneratorTests(unittest.TestCase):
+    def test_actual_process_limit_view_must_match_declared_private_unit_limits(self):
+        import os,re
+        function=next(node for node in ast.parse(generator.RPC).body if isinstance(node,ast.FunctionDef) and node.name=='verify_process')
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);process=root/'1001';process.mkdir();owned=root/'worker';owned.mkdir()
+            (process/'cmdline').write_bytes(b'/usr/bin/node\0'+str(owned/'worker.cjs').encode()+b'\0')
+            (process/'cgroup').write_text('0::/owned\n')
+            namespace={'Path':lambda path:root if str(path)=='/proc' else Path(path),'uid':os.getuid(),'re':re}
+            exec(compile(ast.Module(body=[function],type_ignores=[]),'actual-process-limit-guard','exec'),namespace)
+            limits=process/'limits'
+            for suffix in ('', '     ', '\t '):
+                limits.write_text('Max open files            524288               524288               files'+suffix+'\nMax core file size        0                    0                    bytes'+suffix+'\n')
+                result=namespace['verify_process']({'MainPID':'1001','ControlGroup':'/owned'},owned)
+                self.assertEqual(result,{'nofile':[524288,524288],'core':[0,0]})
+            limits.write_text('Max open files            1024                 524288               files\nMax core file size        0                    0                    bytes\n')
+            with self.assertRaisesRegex(AssertionError,'descriptor'):namespace['verify_process']({'MainPID':'1001','ControlGroup':'/owned'},owned)
+            limits.write_text('Max open files            524288               524288               files\nMax core file size        unlimited            unlimited            bytes\n')
+            with self.assertRaisesRegex(AssertionError,'core'):namespace['verify_process']({'MainPID':'1001','ControlGroup':'/owned'},owned)
+
     def test_network_guard_requires_current_owned_pids_and_a_closed_private_link(self):
         function = next(node for node in ast.parse(generator.RPC).body
                         if isinstance(node, ast.FunctionDef) and node.name == 'verify_network')

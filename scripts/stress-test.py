@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import resource
 import shlex
 import shutil
 import signal
@@ -57,6 +58,30 @@ def built_manifest():
         if len(paths)>5000 or total>128*1024**2: raise RuntimeError('Built qualification inputs exceed the bounded code-artifact inventory')
         result[str(path.relative_to(ROOT))]={'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'mode':info.st_mode}
     return result
+
+
+def prepare_local_runtime(output, full_capacity=False):
+    """Match the ordinary developer process inside this owned runner only."""
+    def snapshot():
+        return {name:list(resource.getrlimit(getattr(resource,name)))
+                for name in dir(resource) if name.startswith('RLIMIT_')}
+    before=snapshot();error=None
+    try:
+        _,core_hard=resource.getrlimit(resource.RLIMIT_CORE)
+        resource.setrlimit(resource.RLIMIT_CORE,(0,core_hard))
+        soft,hard=resource.getrlimit(resource.RLIMIT_NOFILE)
+        if soft!=resource.RLIM_INFINITY:
+            available=524288 if hard==resource.RLIM_INFINITY else min(hard,524288)
+            if available>soft:resource.setrlimit(resource.RLIMIT_NOFILE,(available,hard))
+        after=snapshot()
+        if full_capacity and after['RLIMIT_NOFILE'][0]!=resource.RLIM_INFINITY and after['RLIMIT_NOFILE'][0]<4096:
+            raise RuntimeError('The full stress harness needs descriptor headroom above the accidental1024 service default; use an owned unit with LimitNOFILE at least4096 and the qualified recorded limit before allocating browsers/guest')
+    except (OSError,ValueError,RuntimeError) as failure:
+        after=snapshot();error=str(failure)
+    (output/'runtime-limits.json').write_text(json.dumps({
+        'before':before,'after':after,'error':error,
+        'scope':'Only this owned developer runner and its children; hard limits, host and production services unchanged. The minimum is a harness guard, not capacity qualification.'},indent=2)+'\n')
+    if error:raise RuntimeError('Local stress runtime unavailable: '+error)
 
 
 def check_local_ports(ports):
@@ -250,6 +275,7 @@ sys.exit(0 if limit>=70 else 1)
         row['generator'] = 'marco' if use_marco else 'local'
         built = None
         try:
+            prepare_local_runtime(output,phase=='endurance')
             if phase in BUILT_PHASES:
                 built=built_manifest()
                 (output/'built-inputs.json').write_text(json.dumps(built,sort_keys=True)+'\n')

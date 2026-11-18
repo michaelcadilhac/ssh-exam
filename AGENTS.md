@@ -228,13 +228,21 @@
 - Run long qualification in an owned, bounded durable runner and save its identity,
   frozen inputs, output and final status; a tool session is not its lifetime.
   When moving tests into a local user service, compare its effective environment
-  and resource limits with the ordinary test shell. Intentional worker aborts
+  and persist the complete resource-limit comparison with the ordinary shell,
+  including CORE and NOFILE. Verify actual child limits, not only unit declarations;
+  a runner may normalize its own soft limit within its unchanged inherited hard
+  limit. Refuse insufficient headroom before allocating the class. Intentional worker aborts
   require `LimitCORE=0` on that test unit: unlimited core dumping can delay actual
   exit beyond the fault deadline. Do not change host or production defaults.
   Qualify real crash/timeout behavior and exact cleanup in the service before
   broad tests; a print-only smoke is insufficient. Record each injected fault's
   identity and observed outcome so a failure does not require another broad run
-  merely to discover its stage.
+  merely to discover its stage. Private callback transport must distinguish origin
+  refusals from its own timeout/descriptor failures, retaining bounded receipts
+  even when opening a log fails. Qualify delayed healthy HTTP replies, cancellation
+  and finite refusal separately; a bridge-generated503 is not an origin503 or
+  proof of a student violation. Do not widen native authority freshness or reset
+  deadlines to repair a test transport.
 - Use `npm test` for application suites so its native-clock pretest runs in the
   current worktree. Direct Vitest is allowed only after explicitly building and
   verifying that worktree's clock addon. A sibling worktree's generated artifacts
