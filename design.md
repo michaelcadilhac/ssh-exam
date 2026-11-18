@@ -1583,6 +1583,15 @@ Provide writable private `/tmp` and `/var/tmp` with normal sticky-directory perm
 
 Retain private PID, network, IPC, UTS and cgroup namespaces, private `/proc` and `/dev`, zero student capabilities and no-new-privileges. Hide sysfs, host `/run`, private agent configuration/state, protected submissions, all work bases, future templates and private installation trees. Read-only filesystems do not block UNIX socket connections: inventory named host sockets, canonicalize aliases such as `/var/run`, and fail readiness/new pane admission if a socket is outside the private/excluded mounts. Use administrator-controlled `host_filesystem_hidden_paths` for site-specific service socket directories and private exam trees; these are security exclusions, not program allowlists. A live host socket under the student's own home must be quiesced before admission. Validate the real home and its administrator-controlled ancestors before privileged binding; do not follow account-controlled redirections. Do not introduce unreviewed host services/socket paths during an exam. The trusted administrator sandbox retains its real unrestricted home and ordinary environment. A legacy separate-rootfs mode may remain for older installations.
 
+Process-relative UNIX socket names such as `/proc/self/fd/N/...` must never be
+resolved using the inventory process's descriptor table. Verify native private
+control sockets against a complete read-only kernel VFS identity snapshot and
+their canonical private directory, owner, mode and single-link filesystem inode.
+Foreign same-name sockets and unavailable/incomplete identity metadata still
+refuse new admission. This changes no clock, grant, ownership or existing-work
+authority. Local correction and qualification status:
+[host socket inventory](docs/host-socket-inventory.md).
+
 This containment may use established systemd/namespace tooling on the class server; it does not require running the webapp itself with privileges. Use reviewed helpers for namespace/PTY setup instead of fragile ad hoc process tricks. Keep account identity, terminal job control, signals, and editor behavior correct.
 
 At every pause, freeze then terminate the recorded workload, including editors and descendants, and disconnect both student SSH transports. Authorized continuation requires fresh SSH authentication under the same single-use grant; it creates new shells on the existing saved workspace. At finalization, freeze/stop as required to obtain a stable saved-file view, then terminate the workload without giving it a post-deadline opportunity to write more files.

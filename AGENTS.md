@@ -205,6 +205,11 @@
   For absence/no-start receipts, check contradictory durable workspace, submission
   and consumption evidence before the first broad run; a missing canonical row
   alone is not enough. Catching this late requires requalifying native artifacts.
+- Before repeating a long scenario after a state-race fix, audit its entire client
+  and fixture flow against every background state writer. Correct all transient
+  state assertions together. Require durable fault evidence and valid subsequent
+  states; do not disable reconciliation or weaken fault, ownership or protection
+  checks to make a fleeting state observable.
 - Read persistence-helper failure semantics before treating a callback as a
   transaction. Native WithState saves mutations even on callback error: validate
   every affected record before applying any batch change, and test refusal plus

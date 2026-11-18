@@ -74,6 +74,18 @@ failures retained and all cleanup/unchanged inputs verified. No70/90pass yet.
 The instructor permits increasing VM resources if completed sizing measurements
 require it; this is an available option, not a production change or restart now.
 
+Endurance4 stopped after55students/220terminals on a DIFFERENT confirmed native
+bug: a process-relative private socket name was resolved in the wrong process,
+inventing an exposed `/usr` path. The deterministic old-code refusal and corrected
+kernel-identity regression pass, including foreign same-name socket refusals.
+Full native races, actual disposable CLI/editor/timer and16-person outage recovery
+pass with a new audited code-only bundle. Concurrent508MiB collection now passes
+an exactSIGKILL, durable failure, actualCLI retry,14continuing peers and16protected
+submissions, with FULL native/local preservation and cleanup. Earlier fixture
+failures remain separate. Existing work/deadlines/holds are preserved.
+The earlier policy503 remains unclassified. No70/90pass or deployment claimed.
+See [socket correction and evidence](docs/host-socket-inventory.md).
+
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
 Approved target: 70 synthetic students, four terminals each, 90 real peak minutes

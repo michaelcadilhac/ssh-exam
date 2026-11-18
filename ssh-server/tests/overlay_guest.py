@@ -702,6 +702,8 @@ def retained_role_override(role):
             'Environment=EXAM_RETAINED_POLICY_GUEST=1\n')
 
 
+
+
 def prepare_retained_roles(qualify_roles=True):
     # Called only AFTER main's complete private-container/mount/config guards.
     # TestMain dispatches the actual native role functions/factories. No desktop

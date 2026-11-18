@@ -21,10 +21,12 @@ func TestHostFilesystemRejectsUncoveredSockets(t *testing.T) {
 5: 2 0 10000 1 01 5 @abstract-host-socket
 6: 2 0 10000 1 01 6 /unreviewed/service.sock
 7: 2 0 10000 1 01 7 /var/lib/sss/pipes-other/escape.sock
+9: 2 0 0 2 01 9 /unreviewed/datagram.sock
+a: 2 0 0 1 03 10 /retired/stream.sock
 `
-	uncovered := uncoveredHostSockets(table, hostFilesystemMasks(c))
-	if len(uncovered) != 2 || uncovered[0] != "/unreviewed/service.sock" || uncovered[1] != "/var/lib/sss/pipes-other/escape.sock" {
-		t.Fatal(uncovered)
+	uncovered, err := uncoveredHostSockets(table, hostFilesystemMasks(c), c.State)
+	if err != nil || len(uncovered) != 3 || uncovered[0] != "/unreviewed/service.sock" || uncovered[1] != "/var/lib/sss/pipes-other/escape.sock" || uncovered[2] != "/unreviewed/datagram.sock" {
+		t.Fatal(uncovered, err)
 	}
 	for _, path := range []string{"/", "/usr", "/usr/lib", "/work", "/etc", "/home", "/tmp", "/var/tmp", "/etc/../usr"} {
 		c.HostFilesystemHiddenPaths = []string{path}

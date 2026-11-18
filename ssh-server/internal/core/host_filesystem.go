@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -78,18 +79,37 @@ func canonicalHostPath(path string) string {
 	}
 }
 
-func uncoveredHostSockets(table string, masks []string) []string {
+func uncoveredHostSockets(table string, masks []string, state string) ([]string, error) {
 	var missing []string
 	// Abstract UNIX sockets are isolated by --unshare-net. Ordinary pathname
 	// sockets must be behind a private runtime mount or an explicit exclusion.
 	coveredPaths := append([]string{"/tmp", "/var/tmp", "/home", "/root", "/proc", "/dev"}, masks...)
+	var records []hostSocketPath
 	for _, line := range strings.Split(table, "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 8 || !strings.HasPrefix(fields[7], "/") {
 			continue
 		}
-		path := strings.Join(fields[7:], " ")
-		path = canonicalHostPath(path)
+		kind, typeErr := strconv.ParseUint(fields[4], 16, 32)
+		flags, flagsErr := strconv.ParseUint(fields[3], 16, 32)
+		inode, inodeErr := strconv.ParseUint(fields[6], 10, 32)
+		if typeErr != nil || flagsErr != nil || inodeErr != nil {
+			return nil, errors.New("invalid host UNIX socket inventory")
+		}
+		// Connected stream/seqpacket endpoints cannot accept a new pathname
+		// connection. Their inherited names may outlive a retired listener.
+		// Bound datagrams remain reachable without listen and MUST be checked.
+		if (kind == syscall.SOCK_STREAM || kind == syscall.SOCK_SEQPACKET) && flags&0x10000 == 0 {
+			continue
+		}
+		records = append(records, hostSocketPath{inode: uint32(inode), name: strings.Join(fields[7:], " ")})
+	}
+	records, err := resolveHostSocketPaths(records, state)
+	if err != nil {
+		return nil, err
+	}
+	for _, record := range records {
+		path := canonicalHostPath(record.name)
 		covered := false
 		for _, parent := range coveredPaths {
 			if beneath(path, parent) {
@@ -101,7 +121,7 @@ func uncoveredHostSockets(table string, masks []string) []string {
 			missing = append(missing, path)
 		}
 	}
-	return missing
+	return missing, nil
 }
 
 func hostFilesystemIssues(c Config) []string {
@@ -129,7 +149,11 @@ func hostFilesystemIssues(c Config) []string {
 	if err != nil {
 		return append(issues, "cannot inventory host UNIX sockets")
 	}
-	for _, path := range uncoveredHostSockets(string(sockets), hostFilesystemMasks(c)) {
+	uncovered, err := uncoveredHostSockets(string(sockets), hostFilesystemMasks(c), c.State)
+	if err != nil {
+		issues = append(issues, "cannot verify host service socket identity: "+err.Error())
+	}
+	for _, path := range uncovered {
 		issues = append(issues, "host service socket needs an isolation exclusion: "+path)
 	}
 	return issues

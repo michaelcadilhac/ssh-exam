@@ -122,6 +122,14 @@ manifest and upload those19files only to a NEW private
 configuration, student records or submissions belong in an upload. Existing host
 and guest-base idle/preservation checks must pass; never clear or relax them.
 
+Keep the uploaded directory mode0700 and its files mode0600, owned by the SSH
+test account, as in the established private bundles. The browser fixture creates
+its synthetic public gateway key there before invoking the root-only guest
+bootstrap; a root-owned upload blocks that setup. Audit all filenames, sizes and
+hashes before upload and verify them afterward. If a receiver fails, inspect its
+exact destination before retrying; preserve uncertain/partial evidence and use a
+separate new directory. Never change guest or host guards to repair an upload.
+
 Run `npm run test:stress -- --native-bundle /var/tmp/ssh-exam-browser-native-upload.NAME`.
 `--phase harness|build|installed-capacity|anonymous-burst|application|operator-integrations|native-race|browser-signin|browser-corners|native-editor|native-timer-recovery|native-recovery|native-collection|endurance`
 and `--run-id RUN`

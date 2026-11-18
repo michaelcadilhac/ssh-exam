@@ -86,6 +86,7 @@ const snapshot = z.object({
         .passthrough(),
       protected: z.boolean(),
       access_state: z.string(),
+      errors: z.array(z.string()).nullable().transform((errors) => errors ?? []),
       checksum: z.string(),
     })
     .passthrough(),
@@ -219,7 +220,11 @@ test(
         timeout: 15000,
       });
       expect(response.ok(), await response.text()).toBe(true);
-      return response.json();
+      const value = await response.json();
+      expect(value, `Native collection fixture refused ${action}`).not.toHaveProperty(
+        "bridge_error",
+      );
+      return value;
     };
     const command = async (
       entry: (typeof fleet)[number],
@@ -1201,6 +1206,14 @@ test(
       }
       await Promise.all(fleet.slice(0, 2).map(finish));
       if (large) {
+        const workerFailurePrefix =
+          "collection worker exited or exceeded its resource/time bound:";
+        const collectionBefore = snapshot.parse(before.snapshots[0]).attempt;
+        expect(
+          collectionBefore.errors.some((error) =>
+            error.startsWith(workerFailurePrefix),
+          ),
+        ).toBe(false);
         const worker = z.object({
           attempt: z.string().uuid(),
           unit: z.string(),
@@ -1221,13 +1234,15 @@ test(
           .toBe(2);
         const killed = await collection("kill");
         expect(killed.status).toBe("killed");
-        expect(
-          z
-            .array(worker)
-            .length(2)
-            .parse(killed.workers)
-            .every((entry) => entry.writing),
-        ).toBe(true);
+        const killedWorkers = z.array(worker).length(2).parse(killed.workers);
+        expect(killedWorkers.every((entry) => entry.writing)).toBe(true);
+        const target = killedWorkers.find((entry) => entry.attempt === fleet[0].id)!;
+        expect(killed.death).toMatchObject({
+          unit: target.unit,
+          pid: target.pid,
+          exit_code: "killed",
+          exit_status: "9",
+        });
         await expect
           .poll(
             async () => {
@@ -1236,16 +1251,28 @@ test(
               });
               const value = snapshot.parse(await status.json());
               expect(value.attempt).toMatchObject({
-                start: before.snapshots[0].attempt.start,
-                deadline: before.snapshots[0].attempt.deadline,
-                access_state: "HELD",
+                start: collectionBefore.start,
+                deadline: collectionBefore.deadline,
               });
-              return value.attempt.state;
+              expect(["COLLECTION_FAILED", "FINALIZING", "COMPLETED"]).toContain(
+                value.attempt.state,
+              );
+              if (value.attempt.state === "COMPLETED")
+                expect(value.attempt.protected).toBe(true);
+              else expect(value.attempt.access_state).toBe("HELD");
+              // The parent durably records the killed worker's error together
+              // with COLLECTION_FAILED. Tick may advance that transient state
+              // before a browser poll; the error survives automatic retry.
+              return value.attempt.errors.some((error) =>
+                error.startsWith(workerFailurePrefix),
+              );
             },
             { timeout: 15000 },
           )
-          .toBe("COLLECTION_FAILED");
-        expect((await collection("retry-verify")).status).toBe("pending");
+          .toBe(true);
+        expect(["pending", "complete"]).toContain(
+          (await collection("retry-verify")).status,
+        );
       }
       for (const entry of fleet.slice(2)) {
         await command(

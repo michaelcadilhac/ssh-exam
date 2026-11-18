@@ -706,3 +706,23 @@ and reserves policy capacity. A real HTTP regression floods repeated and distinc
 ordinary refusals, then verifies the later policy503 is retained with all original
 responses unchanged. Saturate diagnostic budgets in focused checks before using
 them to justify an expensive run; a single recorded example proves too little.
+
+## November 18: audit the complete scenario before repeating a class ramp
+
+The collection qualification first exposed a test observer dropping a live writer
+when an unrelated descriptor closed during enumeration. Its focused regression
+now distinguishes that race from the archive writer itself closing. The next run
+delivered SIGKILL but the retry fixture demanded a transient COLLECTION_FAILED
+state after automatic reconciliation had already restarted finalization. I fixed
+that server-side guard but missed the earlier browser assertion of the same
+transient state, wasting another seven-minute setup. This partial correction was
+avoidable; these failed qualification runs remain failures with FULL cleanup.
+
+Read the actual coordinator, worker, CLI and entire scenario together before the
+next expensive run. Here, the native parent commits a worker error together with
+COLLECTION_FAILED; that error survives supported automatic retry. The corrected
+oracle requires its absence before injection, a new durable error afterward,
+exact unit-matched SIGKILL metadata, unchanged clocks/holds, continued peer input
+and verified protected archives. Active/setup states remain refused. Automatic
+retry stays enabled. Focused checks/typecheck pass; integrated collection is still
+being qualified, not claimed complete from the proposal or component tests.

@@ -621,6 +621,21 @@ class BrowserBridgeTests(unittest.TestCase):
             with mock.patch.object(bridge, 'Path', side_effect=path), mock.patch.object(bridge.os, 'lstat', side_effect=lstat), mock.patch.object(bridge, 'root_command', return_value=pool_name + '\n') as command:
                 self.assertEqual(fixture.collectors([attempt]), [{'attempt': attempt, 'unit': unit, 'pid': 987654, 'writing': True}])
                 command.assert_called_once_with('systemctl', 'show', 'exam-collection.slice', '--property=ControlGroup', '--value')
+                # /proc/PID/fd is live. An unrelated descriptor can close after
+                # enumeration without invalidating the still-open archive writer.
+                closed = process / 'fd/8'; closed.symlink_to('/closed-before-readlink')
+                real_readlink = os.readlink
+                def readlink(value, *args, **kwargs):
+                    if Path(value) == closed: raise FileNotFoundError('Synthetic descriptor closed after listing')
+                    return real_readlink(value, *args, **kwargs)
+                with mock.patch.object(bridge.os, 'readlink', side_effect=readlink):
+                    self.assertEqual(fixture.collectors([attempt]), [{'attempt': attempt, 'unit': unit, 'pid': 987654, 'writing': True}])
+                closed.unlink()
+                def writer_closed(value, *args, **kwargs):
+                    if Path(value) == process / 'fd/7': raise FileNotFoundError('Synthetic writer closed')
+                    return real_readlink(value, *args, **kwargs)
+                with mock.patch.object(bridge.os, 'readlink', side_effect=writer_closed):
+                    self.assertEqual(fixture.collectors([attempt]), [{'attempt': attempt, 'unit': unit, 'pid': 987654, 'writing': False}])
                 owner = 2000
                 self.assertFalse(fixture.collectors([attempt])[0]['writing'])
                 owner = 0
@@ -644,6 +659,7 @@ class BrowserBridgeTests(unittest.TestCase):
     def test_worker_fault_refuses_unqualified_active_protected_or_nonwriting_targets_before_signal(self):
         fixture = object.__new__(bridge.GuestBridge)
         fixture.large = True; fixture.students = 16; fixture.collection_operation = None
+        fixture.inspection_context = threading.local()
         ids = ['aaaaaaaa-1234-4234-8234-123456789abc', 'bbbbbbbb-1234-4234-8234-123456789abc']
         for state, protected, writing in (('ACTIVE', False, True), ('FINALIZING', True, True), ('FINALIZING', False, False)):
             with self.subTest(state=state, protected=protected, writing=writing):
@@ -656,6 +672,35 @@ class BrowserBridgeTests(unittest.TestCase):
         with mock.patch.object(fixture, 'snapshot') as snapshot, self.assertRaises(AssertionError):
             fixture.collection({'action': 'kill', 'attempts': ids})
         snapshot.assert_not_called()
+
+    def test_collection_death_requires_exact_unit_and_sigkill_metadata(self):
+        unit = 'exam-collection-aaaaaaaa-1234-4234-8234-123456789abc-123456abcdef.service'
+        target = {'unit': unit, 'pid': 987654}
+        good = {'UNIT': unit, 'MESSAGE_ID': '98e322203f7a4ed290d09fe03c09fe15', 'EXIT_CODE': 'killed', 'EXIT_STATUS': '9'}
+        with mock.patch.object(bridge.subprocess, 'run', return_value=types.SimpleNamespace(stdout=json.dumps(good)+'\n')):
+            self.assertEqual(bridge.collection_worker_death(target), {'unit': unit, 'pid': 987654, 'exit_code': 'killed', 'exit_status': '9'})
+        for change in ({'UNIT': 'some-other.service'}, {'EXIT_STATUS': '15'}, {'EXIT_CODE': 'dumped'}, {'MESSAGE_ID': 'unrelated'}):
+            with self.subTest(change=change), mock.patch.object(bridge.subprocess, 'run', return_value=types.SimpleNamespace(stdout=json.dumps(dict(good, **change))+'\n')):
+                with self.assertRaisesRegex(AssertionError, 'SIGKILL receipt unavailable'):
+                    bridge.collection_worker_death(target, timeout=.02)
+
+    def test_collection_retry_accepts_reconciled_finalization_and_refuses_live_attempts(self):
+        ids = ['aaaaaaaa-1234-4234-8234-123456789abc', 'bbbbbbbb-1234-4234-8234-123456789abc']
+        for state in ('COLLECTION_FAILED', 'FINALIZING', 'COMPLETED', 'ACTIVE', 'LOCKED', 'PREPARING'):
+            with self.subTest(state=state):
+                fixture = object.__new__(bridge.GuestBridge)
+                fixture.large = True; fixture.students = 16
+                fixture.collection_operation = {'status': 'killed', 'workers': []}
+                fixture.collection_lock = threading.Lock(); fixture.inspection_context = threading.local()
+                fixture.snapshot = lambda attempt: {'attempt': {'username': 'examq' if attempt == ids[0] else 'examq01', 'state': state}}
+                with mock.patch.object(bridge.threading, 'Thread') as thread:
+                    if state in ('ACTIVE', 'LOCKED', 'PREPARING'):
+                        with self.assertRaises(AssertionError): fixture.collection({'action': 'retry-verify', 'attempts': ids})
+                        thread.assert_not_called()
+                        self.assertEqual(fixture.collection_operation['status'], 'killed')
+                    else:
+                        self.assertEqual(fixture.collection({'action': 'retry-verify', 'attempts': ids})['status'], 'pending')
+                        thread.return_value.start.assert_called_once_with()
 
     def test_large_export_stream_compares_all_bytes_and_refuses_wrong_missing_linked_files(self):
         with tempfile.TemporaryDirectory() as directory:

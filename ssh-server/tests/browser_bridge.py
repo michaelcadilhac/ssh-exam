@@ -118,6 +118,26 @@ def forward_http(path, headers, raw):
             return result['status'], body
 
 
+def collection_worker_death(target, timeout=2):
+    unit = target['unit']
+    assert re.fullmatch(r'exam-collection-[a-f0-9-]{36}-[a-f0-9]{12}\.service', unit)
+    assert isinstance(target['pid'], int) and target['pid'] > 1
+    until = time.monotonic() + timeout
+    while True:
+        remaining = until-time.monotonic()
+        if remaining <= 0: break
+        result = subprocess.run(['journalctl', '--unit=' + unit, '--no-pager', '--output=json', '--lines=20', '--quiet'],
+                                capture_output=True, text=True, check=True, timeout=min(1, remaining))
+        assert len(result.stdout) <= 65536
+        for line in result.stdout.splitlines():
+            value = json.loads(line)
+            if (value.get('UNIT') == unit and value.get('MESSAGE_ID') == '98e322203f7a4ed290d09fe03c09fe15'
+                    and value.get('EXIT_CODE') == 'killed' and value.get('EXIT_STATUS') == '9'):
+                return {'unit': unit, 'pid': target['pid'], 'exit_code': 'killed', 'exit_status': '9'}
+        time.sleep(min(.01, max(0, until-time.monotonic())))
+    raise AssertionError('Exact isolated collection worker SIGKILL receipt unavailable')
+
+
 def root_command(*args):
     return subprocess.run(args, check=True, capture_output=True, text=True, timeout=30).stdout
 
@@ -633,13 +653,18 @@ class GuestBridge:
                     assert (cgroup / 'pids.max').read_text().strip() == '32'
                     writing = False
                     for fd in (process / 'fd').iterdir():
-                        target = Path(os.readlink(fd))
-                        if (target.name == 'submission.tar.gz' and target.parent.parent == Path(self.config['state']) / 'submissions'
-                                and re.fullmatch(r'\.' + re.escape(attempt) + r'\.collect-[A-Za-z0-9]+', target.parent.name)):
-                            flags = dict(row.split(':', 1) for row in (process / 'fdinfo' / fd.name).read_text().splitlines())
-                            info = target.lstat()
-                            writing = writing or ((int(flags['flags'].strip(), 8) & os.O_ACCMODE) != os.O_RDONLY
-                                                  and stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1 and info.st_size > 0)
+                        try:
+                            target = Path(os.readlink(fd))
+                            if (target.name == 'submission.tar.gz' and target.parent.parent == Path(self.config['state']) / 'submissions'
+                                    and re.fullmatch(r'\.' + re.escape(attempt) + r'\.collect-[A-Za-z0-9]+', target.parent.name)):
+                                flags = dict(row.split(':', 1) for row in (process / 'fdinfo' / fd.name).read_text().splitlines())
+                                info = target.lstat()
+                                writing = writing or ((int(flags['flags'].strip(), 8) & os.O_ACCMODE) != os.O_RDONLY
+                                                      and stat.S_ISREG(info.st_mode) and info.st_uid == 0 and info.st_nlink == 1 and info.st_size > 0)
+                        except (FileNotFoundError, ProcessLookupError):
+                            # One descriptor retiring does not retire the process
+                            # or invalidate another positively verified writer.
+                            continue
                     result.append({'attempt': attempt, 'unit': unit, 'pid': int(process.name), 'writing': writing})
             except (FileNotFoundError, ProcessLookupError):
                 continue
@@ -660,6 +685,10 @@ class GuestBridge:
         if action == 'kill':
             assert self.collection_operation is None
             workers = self.collectors(ids)
+            self.inspection_context.current = {'operation': 'collection-kill',
+                'worker_count': len(workers), 'writing_workers': sum(w['writing'] for w in workers),
+                'distinct_attempts': len({w['attempt'] for w in workers}),
+                'states': [entry['attempt']['state'] for entry in snapshots]}
             assert len(workers) == 2 and {w['attempt'] for w in workers} == set(ids) and all(w['writing'] for w in workers)
             assert all(entry['attempt']['state'] == 'FINALIZING' and not entry['attempt']['protected'] for entry in snapshots)
             target = next(worker for worker in workers if worker['attempt'] == ids[0])
@@ -667,16 +696,25 @@ class GuestBridge:
             try:
                 assert target in self.collectors(ids)
                 signal.pidfd_send_signal(pinned, signal.SIGKILL)
+                self.inspection_context.current.update(signal_sent=9, unit=target['unit'])
+                death = collection_worker_death(target)
             finally:
                 os.close(pinned)
-            self.collection_operation = {'status': 'killed', 'workers': workers}
+            descriptor = os.open(OUTPUT / 'collection-worker-death.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(descriptor, 'w') as stream: json.dump(death, stream)
+            self.collection_operation = {'status': 'killed', 'workers': workers, 'death': death}
             return self.collection_operation
         assert action == 'retry-verify'
         with self.collection_lock:
             assert self.collection_operation and self.collection_operation['status'] in ('killed', 'pending', 'complete', 'failed')
             if self.collection_operation['status'] != 'killed':
                 return self.collection_operation
-            assert snapshots[0]['attempt']['state'] == 'COLLECTION_FAILED'
+            # Tick may already have restarted or completed the killed job.
+            # examctl retry is idempotent across these finalization states;
+            # never require a transient failure to persist or admit live work.
+            self.inspection_context.current = {'operation': 'collection-retry',
+                'observed_state': snapshots[0]['attempt']['state']}
+            assert snapshots[0]['attempt']['state'] in ('COLLECTION_FAILED', 'FINALIZING', 'COMPLETED')
             operation = {'status': 'pending', 'workers': self.collection_operation['workers']}
             self.collection_operation = operation
         def retry_verify():
@@ -974,6 +1012,75 @@ class GuestBridge:
                 self.done.set()
 
 
+def qualify_host_socket_inventory(config):
+    """Actual CLI health with inherited FD aliases, only in this private guest."""
+    assert Path('/run/systemd/container').read_text().strip() == 'systemd-nspawn'
+    assert INPUT.is_mount() and OUTPUT.is_mount()
+    marker = json.loads((INPUT / 'run.json').read_text())
+    assert marker['profile'] == 'retained-policy' and marker['driver'] == 'browser' and marker['username'] == 'examq'
+    code = r'''
+import json,os,pathlib,socket,stat,subprocess,sys,tempfile,uuid
+v=json.loads(sys.stdin.read());state=pathlib.Path(v['state']);assert state.is_absolute() and os.geteuid()==0
+assert pathlib.Path('/run/systemd/container').read_text().strip()=='systemd-nspawn'
+parent=state/'terminal-supervisors';created=not parent.exists()
+if created:parent.mkdir(mode=0o700)
+i=parent.lstat();assert stat.S_ISDIR(i.st_mode) and i.st_uid==0 and i.st_mode&0o777==0o700
+name=str(uuid.uuid4())+'.sock';physical=parent/name;foreign=None;other=None;checks=[]
+directory=os.open(parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW);unrelated=os.open('/usr',os.O_RDONLY|os.O_DIRECTORY)
+listener=socket.socket(socket.AF_UNIX,socket.SOCK_SEQPACKET)
+def health(label,expect,protocols=None):
+ command=['/usr/local/sbin/examctl','health']
+ if protocols is not None:
+  command=['systemd-run','--quiet','--wait','--pipe','--collect','--service-type=exec','--unit=qualification-vfs-'+uuid.uuid4().hex,
+   '--property=RuntimeMaxSec=20','--property=TimeoutStopSec=2','--property=KillMode=control-group',
+   '--property=NoNewPrivileges=yes','--property=RestrictAddressFamilies='+protocols,'--',*command]
+ result=subprocess.run(command,stdin=unrelated if protocols is None else subprocess.DEVNULL,capture_output=True,text=True,timeout=25)
+ assert result.returncode==0,{'stage':label,'exit':result.returncode,'diagnostic':result.stderr[-256:]}
+ observed=json.loads(result.stdout);assert observed['host_filesystem'] is True and isinstance(observed['ready'],bool)
+ assert isinstance(observed['missing'],list) and all(isinstance(x,str) for x in observed['missing'])
+ issues=[x for x in observed['missing'] if 'host service socket' in x or 'host UNIX socket' in x or 'socket metadata' in x]
+ if expect=='healthy':assert not issues,{'stage':label,'issues':issues}
+ elif expect=='foreign':assert any('unverified process-relative' in x for x in issues),{'stage':label,'issues':issues}
+ else:assert any('socket metadata unavailable' in x for x in issues),{'stage':label,'issues':issues}
+ checks.append({'stage':label,'socket_issues':issues,'clock_or_grant_operation':False})
+try:
+ os.dup2(directory,0);listener.bind('/proc/self/fd/0/'+name);listener.listen(1);os.chmod(physical,0o600)
+ os.dup2(unrelated,0) # The publisher's directory FD is reused too.
+ health('private inherited alias','healthy')
+ other=pathlib.Path(tempfile.mkdtemp(prefix='qualification-vfs-',dir='/srv'))
+ otherfd=os.open(other,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+ try:
+  os.dup2(otherfd,0);foreign=socket.socket(socket.AF_UNIX,socket.SOCK_SEQPACKET);foreign.bind('/proc/self/fd/0/'+name);foreign.listen(1);os.chmod(other/name,0o600)
+ finally:os.close(otherfd);os.dup2(unrelated,0)
+ health('foreign same-name socket refused','foreign')
+ foreign.close();foreign=None;(other/name).unlink();other.rmdir();other=None
+ health('explicit repair and retry','healthy')
+ health('hardened query unavailable','unavailable','AF_UNIX')
+ health('hardened query available','healthy','AF_UNIX AF_NETLINK')
+ print(json.dumps({'passed':True,'checks':checks,'scope':'Exact CLI health only; synthetic sockets, no attempts/allowances/grants changed'}))
+finally:
+ listener.close()
+ if foreign is not None:foreign.close()
+ if other is not None:
+  (other/name).unlink(missing_ok=True);other.rmdir()
+ physical.unlink(missing_ok=True);os.close(directory);os.close(unrelated)
+ if created:parent.rmdir()
+'''
+    compile(code, 'private-host-socket-inventory', 'exec')
+    result = subprocess.run(['/usr/bin/python3', '-c', code], input=json.dumps({'state': config['state']}),
+                            capture_output=True, text=True, timeout=130)
+    if result.returncode:
+        raise AssertionError('Private CLI socket-identity qualification failed: ' + result.stderr[-2048:])
+    receipt = json.loads(result.stdout)
+    assert receipt['passed'] and len(receipt['checks']) == 5
+    path = OUTPUT / 'host-socket-inventory.json'
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, 'w') as stream:
+        json.dump(receipt, stream)
+    print('HOST_SOCKET_INVENTORY_CLI_VERIFIED private/foreign/repair/hardened-query', flush=True)
+
+
+
 def run_guest(config, prepare_roles, role_snapshot):
     guest_identity()
     public = (INPUT / 'browser-gateway.pub').read_bytes()
@@ -1002,6 +1109,7 @@ def run_guest(config, prepare_roles, role_snapshot):
     root_command('sshd', '-t')
     root_command('systemctl', 'restart', 'ssh.service')
     prepare_roles(qualify_roles=False)
+    qualify_host_socket_inventory(config)
     source = Path('/run/browser-template')
     source.mkdir(mode=0o700)
     for tree in ('work', 'materials'):
