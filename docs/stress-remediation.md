@@ -4,6 +4,14 @@ Requested November 17: implement the suggestions in the manual stress report.
 No push/deployment, production configuration or student-record changes authorized.
 Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
 
+November 18: the instructor reduced the requested endurance cohort to 35 students
+and 140 terminals. That full run passed 90 real peak minutes, original shell/GDB
+input, all 35 protected archive verifications and FULL independent cleanup.
+See the [agent report](../reports/stress/20261118T190606Z/report.md) for measured
+Start friction, capture fallbacks and remaining limits. No test is running and
+nothing is pushed or deployed. This does not qualify the earlier 70-person target
+or the production worker/co-location budget.
+
 ## Dependency-ordered milestones
 
 1. **Classroom startup.** Actual welcome/API routes admit 70 cold clients behind
@@ -29,12 +37,17 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
    WebSocket traffic before guest allocation. Capture and reproduce underlying
    pane refusal through actual public/native entries before changing admission.
    Prove exact owned namespace/process cleanup and host preservation.
-5. **Capacity and final qualification.** Qualify a finite >=70-worker candidate
-   with realistic combined web/native resources; keep installed configuration
-   unchanged. Reuse unchanged evidence, run affected application/native races/
-   builds/browser checks, then one fresh 70-student/280-pane/90-real-minute run
-   and simultaneous protected submissions. Write a new agent-reviewed report.
-   A failure triggers focused diagnosis/remediation, never blind repeated ramps.
+5. **Requested endurance qualification — complete locally.** Reuse unchanged
+   evidence, run affected harness/transport/type checks, then the explicitly
+   selected 35-student/140-terminal/90-real-minute run and simultaneous protected
+   submissions. The November 18 run and agent-reviewed report meet this boundary.
+   Preserve failures and scope; a 35-person pass never qualifies 70.
+6. **Separate production capacity/release gate — open.** Qualify a matched installed
+   worker/CPU/memory budget and actual combined web/native resources. The isolated
+   96-worker candidate changes neither the installed 32-worker limit nor its
+   2-GiB web-service budget. Installation/migration/recovery/reopening remain separate
+   release checks. They do not block recording the completed 35-person result or
+   authorize production changes. Future full stress runs require instructor request.
 
 The instructor confirmed that increasing the class-server VM resources is an
 option if completed measurements require it. Keep sizing proposals separate from
@@ -44,12 +57,12 @@ Endurance 7 passed the corrected full fleet reply, the 70-student / 280-terminal
 GCC/GDB ramp and three peak samples through 140.125 seconds. Marco's exact owned
 unit journal then confirmed an OOM kill at 21 GiB. All native, Marco, local and
 observer cleanup and original preservation pass. The 90-minute endurance and
-protected fleet completion remain unqualified. The pending resource question is
-whether Marco can have at least 30 GiB available RAM or a larger generator host
-can be used. A finite 25 GiB generator cap, 29 GiB startup requirement and unchanged
-4 GiB live reserve are proposed for qualification after resources are available.
-Current code still enforces a 21 GiB cap, 25 GiB startup requirement and 4 GiB
-reserve. Do not repeat the expensive ramp with the same undersized generator.
+protected fleet completion remain unqualified at 70. A larger generator was
+considered; the instructor instead requested the completed 35-person run above.
+The earlier proposed 25-GiB cap/29-GiB startup requirement remains unused and
+unqualified. The actual 35-person run kept the 21-GiB cap, 25-GiB startup guard and
+4-GiB live reserve. Do not repeat the expensive 70-person ramp with the same
+undersized generator or treat its resource question as blocking the 35-person report.
 
 The monitor discarded its rejected status, hiding which guard stopped the run;
 systemd had also collected the final cgroup counters. The local correction retains

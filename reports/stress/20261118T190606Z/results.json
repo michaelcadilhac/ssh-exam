@@ -1,0 +1,68 @@
+{
+  "run": "20261118T190606Z",
+  "started": "2026-11-18T19:10:46.620652+00:00",
+  "phases": [
+    {
+      "phase": "endurance",
+      "attempt": 1,
+      "started": "2026-11-18T19:10:46.662936+00:00",
+      "source": "7fe9f3d9e82efb11a27fc121c740a029319aadff",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "e250b86b6a460439de05d16c7683c5d94493bd98d82d0ba34c606afa664e93c0",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261118T190606Z_v18s35_a87f343e6ea9",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.48
+        },
+        {
+          "argv": [
+            "node",
+            "--import",
+            "tsx",
+            "tests/fixtures/stress-https-smoke.ts"
+          ],
+          "exit": 0,
+          "seconds": 222.665
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 0,
+          "seconds": 7861.775
+        }
+      ],
+      "evidence": "var/stress/20261118T190606Z/endurance-1",
+      "generator": "marco",
+      "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261118T190606Z/endurance-1/temporary",
+      "finished": "2026-11-18T21:25:50.445543+00:00"
+    }
+  ],
+  "students": 35,
+  "terminals": 140,
+  "endurance_seconds": 5400,
+  "source": "7fe9f3d9e82efb11a27fc121c740a029319aadff",
+  "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261118T190606Z_v18s35_a87f343e6ea9",
+  "mfa": false,
+  "real_student_accounts": false,
+  "outbound_mail": false,
+  "environment": "isolated local gateway/browser + guarded private csc-sys guest",
+  "limitations": [
+    "Browser screen/camera/keyboard permissions and jump authentication are synthetic; institutional MFA is excluded.",
+    "The gateway is local; this does not certify production gateway co-location resource capacity."
+  ],
+  "status": "PARTIAL"
+}

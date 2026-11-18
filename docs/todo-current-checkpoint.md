@@ -1,48 +1,45 @@
-# Current checkpoint — authorized 35-student full endurance
+# Current checkpoint — 35-student qualification passed locally
 
-Local development, synthetic tests and commits only. No push/deploy, production
-changes, actual students, institutional MFA or external email. Preserve the ten
-original modified documentation PNGs. No package is missing. VM growth is approved
-in principle; no resize or production restart has occurred.
+Local development, synthetic tests and commits only. No push/deployment,
+production changes, actual students, institutional MFA or external email.
+The ten original modified PNGs are preserved; all 16 image hashes match their
+baseline. No package is missing. No VM resize or production restart occurred.
 
-## Current status and exact next action
+## Completed milestone and remaining scope
 
-Instructor requests a full 35-student / 140-terminal run, with 90 real peak minutes
-and simultaneous protected submissions. This replaces the requested cohort only;
-a 35-person pass never qualifies 70. Original monitoring, clocks, holds, isolation,
-credential cleanup and archive requirements are unchanged. No open policy question.
+The requested 35 students / 140 terminals / 90 real peak minutes PASSED on
+7fe9f3d in fresh run 20261118T190606Z/endurance-1. Peak: 5,405.014 seconds and
+158 clean fleet samples. Original clocks, supervisors and final shell/GDB state
+are preserved. All 35 protected archives verified; simultaneous Finish plus
+verification took 74.544 seconds. Independent native/Marco/local/observer cleanup
+is FULL: original init/browser gone, cgroups empty, four local ports free.
+Source/build manifests are unchanged. No test is running.
 
-35-mode plumbing is implemented/tested locally: explicit --students 35|70, immutable
-run cohort, exact receipt count/duration/protection, native roster/debugger and
-finite resources. Six focused cases, all116 Python harness cases,27 transport/reader
-checks and typecheck pass. Product/browser/native-clock build remains byte-identical.
-Earlier qualified application/native-race/CLI/fault evidence applies to unchanged
-product/native binaries; no blanket new-suite pass is claimed.
+[Prof report](../reports/stress/20261118T190606Z/report.md) is finalized and reviewed.
+Completion and metrics: var/stress-remediation/20261118/stress35/endurance/.
+Count support is implemented/tested: 116 Python harness cases, 27 transport/reader
+cases and typecheck pass. Earlier normal application/browser/race/fault/CLI/build
+checks apply to unchanged product/native artifacts at their original scopes.
+Only endurance was selected in this fresh run: phase PASSED, campaign PARTIAL.
 
-Fresh runID:20261118T190606Z. Plan/receipts:
-var/stress-remediation/20261118/stress35/. Exact uploaded bundle:
-/var/tmp/ssh-exam-browser-native-upload.stress20261118T190606Z_v18s35_a87f343e6ea9.
-19files/65,645,427bytes; tar digest932c187f5ea8a27527a9530e45c1cf208d0559e89a7d0061f0b02427f50e2205.
-Only browser_bridge.py, overlay_qualification.py and manifest differ from v17e;
-all native binaries reused byte-for-byte. Generator remains21GiB/25GiBstartup/
-4GiBlive reserve/no swap; native35 uses3GiB/2CPU/4096tasks/no swap/four-hour cap.
-Historical actual35verified generator sample11.065GiB; planning headroom is saved,
-not a90-minute stability claim. No rehearsal substitutes for the full duration.
+This is not a flawless-experience or production-readiness claim. One Start retry;
+successful Start median 17.888 s / p95 26.242 s / max 29.678 s. All 78 capture/
+lifecycle observations are retained, including 66 video-to-JPEG fallbacks. No
+unexpected lockout or pane refusal was recorded. Four startup callback errors
+precede student setup; no later errors. Generator peak 13.363 GiB under its
+unchanged 21-GiB cap, no memory-limit/OOM events. Native CPU pressure remains high.
 
-Next: commit the validated count support, launch the owned durable full run,
-verify actual callback readiness/observer and sample resources. No source/test/build
-edits while it runs. Require all35 protected/byte-verified exports and FULL native/
-Marco/local cleanup; Prof reviews the new report. No push/deploy or production
-configuration/student data changes. Preserve ten original documentation PNGs.
+The requested 35-person milestone is complete locally. No open policy question
+or deployment action remains for this run. Future work should be a bounded
+startup/media profiling or production-capacity milestone. Installed 32 workers,
+actual web/native co-location and release qualification remain open. The earlier
+70-person failure stays failed; 35 does not qualify 70. Do not automatically
+repeat the full suite or change production to clear these separate gates.
 
-Earlier70attempt7: all70/280 ramp and three samples through140.125s passed, then
-Marco's21GiB generator unit suffered a journal-confirmed OOM kill. Full cleanup,
-preservation and frozen-input checks pass;70/90remains unqualified. Evidence:
-var/stress-remediation/20261118/fleet-frame/endurance/completion.json. The resource
-question is superseded by the requested35-student run, not a promise that70fits.
-Diagnostic fix2822992 preserves rejected observations/stage/time, names unchanged
-guards and still contains workers if diagnostics fail; actual small browser/stop/
-reader workflow and full cleanup pass. No test is currently running.
+Exact bundle/audit: var/stress-remediation/20261118/stress35/bundle/.
+Only two private Python scripts and manifest differ from v17e; native binaries
+are unchanged. Earlier 70-person OOM and FULL cleanup:
+var/stress-remediation/20261118/fleet-frame/endurance/.
 
 ## Reusable evidence and source identities
 

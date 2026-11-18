@@ -6,6 +6,18 @@ followed by simultaneous submission. No institutional MFA, actual student accoun
 or outbound email. Use independent test keys, storage and loopback mail capture.
 Production state, deadlines, services and submissions remain untouched.
 
+November 18 requested 35-person qualification: **PASSED** 5,405.014 real peak
+seconds / 158 fleet samples, original shell/GDB input and all 35 protected archive
+verifications. Simultaneous Finish plus verification took 74.544 seconds. Native,
+Marco, local/observer cleanup and source/build/image preservation are FULL.
+See the [agent report](../reports/stress/20261118T190606Z/report.md) and private
+receipts under var/stress-remediation/20261118/stress35/endurance/.
+The fresh run selects endurance only; prior unchanged normal/fault/race/build/UI
+evidence is explicitly reused. Campaign PARTIAL does not change the selected
+phase's PASSED result or imply all phases were rerun. One Start retry and media/
+lifecycle refusals remain visible in the report. This does not qualify 70 students,
+the installed 32-worker setting, production co-location or a deployment.
+
 November 18 capacity gate: the current 21 GiB Marco generator suffered an OOM kill
 after all 70 students / 280 terminals and 140.125 seconds of verified peak work.
 Its exact unit journal and full preservation/cleanup are retained. Do not start

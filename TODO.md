@@ -1,10 +1,25 @@
-# Stress remediation — IN PROGRESS, LOCAL ONLY
+# Stress remediation — 35-student test passed, local only
 
-November 18: instructor requests the full endurance test with 35 students and
-140 terminals because a larger generator is unavailable. Add an explicit bounded
-cohort option, then run all 90 peak minutes and simultaneous protected completion
-under a fresh run ID. Earlier 70-student failures remain preserved and unqualified.
-No production or monitoring-policy change is authorized or needed.
+November 18: the requested 35-student / 140-terminal run PASSED 5,405 real peak
+seconds and 158 fleet checks, preserved original clocks, supervisors and shell/GDB
+state, then verified all 35 protected submissions. Simultaneous Finish and archive
+verification took 74.5 seconds. Independent native, Marco, local and observer cleanup
+is FULL; source/build inputs and all 16 documentation images remain unchanged.
+Run: 20261118T190606Z. [Agent report](reports/stress/20261118T190606Z/report.md).
+
+Explicit 35/70 cohort support is committed locally as 7fe9f3d; 116 Python harness
+checks, 27 transport/reader checks and typecheck pass. Earlier normal application,
+browser, native race and fault checks apply to unchanged product/native artifacts;
+they were not all rerun under the fresh endurance-only run ID. Its selected phase
+is PASSED; the campaign metadata correctly says PARTIAL.
+
+This is not an error-free experience: one Start retry was needed; successful Start
+responses had a 17.9-second median and 26.2-second p95. Capture/lifecycle refusals are
+retained in the report. No unexpected lockout or work loss was recorded. Generator
+peak was 13.36 GiB; native CPU pressure remains a sizing/performance concern.
+The earlier 70-person failures remain unqualified. Installed 32 workers and actual
+web/native co-location remain separate production gates. No push, deployment,
+production change, actual student, institutional MFA or external email.
 
 November 18: endurance 7 passed the 70-student / 280-terminal ramp and three
 full-load samples through 140.125 seconds. Marco's 21 GiB browser-generator unit
@@ -17,7 +32,7 @@ The diagnostic correction preserves failed guard observations, identifies the
 unchanged limits and returns actionable reader errors. Three focused Python
 checks, 11 reader checks, typechecking, all 38 harness checks and a real two-context
 guard/reader workflow pass, with full cleanup and unchanged product artifacts.
-No new full run, production change or guard relaxation has occurred.
+No production change or guard relaxation occurred in that diagnostic correction.
 
 November18: endurance6 reached70students/280verified GCC/GDB panes, then failed
 before peak on a truncated private fleet-observation reply. Full independent
