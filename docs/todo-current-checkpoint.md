@@ -2,7 +2,7 @@
 
 Local development/tests/commits only. No push/deployment, production changes,
 actual student accounts, institutional MFA or external email. Preserve ten original
-modified doc PNGs. Last coherent local commit6a294e2. No missing package.
+modified doc PNGs. Last coherent local commit cf4b6c1 (Start health recovery). No missing package.
 
 ## Current milestone / next action
 
@@ -24,10 +24,22 @@ recovery, no automatic Start/activation/auth replay. Prior intents, unavailable
 reconciliation and changed conditions retain refusal; no native source changed.
 This fixes confirmed health contention, not the unclassified class-load timeout.
 
-Next bounded result: add bounded private per-operation setup timings to the
-existing native browser fixture, verify them locally and in its actual native
-workflow, then diagnose sizing before another70-person ramp. No new production
-observability API, no payload/error/credential logging. Do not rerun70 blindly.
+Private setup timings now qualify locally:4focused/typecheck and actual
+native-recovery-8 PASS591.676s,16/64 original shell/buffer/deadline recovery after
+75s proof outage +16protected submissions. FULL native/local cleanup/frozen inputs
+verified.352paired events; no credential/body/reply/error logging or new service.
+Receipt:var/stress-remediation/20261118/setup-timing/native-recovery/completion.json.
+The16-mode workload is shells; no GCC/GDB claim. Product build is unchanged from
+Start milestonecf4b6c1. No source/native process is currently running.
+
+Next bounded milestone: investigate the generator's soft memory ceiling. Endurance5
+saved889status samples;13crossed18GiB MemoryHigh, all in the final Start-failure
+minute, while remaining below20GiB MemoryMax. No memory.events/pressure were saved,
+so exact causality is unclassified. Receipt:endurance-5/generator-soft-limit-correlation.json.
+Keep20GiB hard cap/no-swap/host headroom; correct the lower soft ceiling if qualified
+and add aggregate pressure/event observations. Focused harness checks, actual owned
+Marco smoke/cleanup, then an instrumented70/90minute run. No production resize or
+student-policy change. Do not repeat unchanged application/native race suites.
 
 At55students native guest used2.461GB/3785tasks, noOOM/task-limit events. CPU
 pressure some avg10~89.92%, with negligible quota throttling; the4-vCPU host was

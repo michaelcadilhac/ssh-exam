@@ -86,7 +86,10 @@ const snapshot = z.object({
         .passthrough(),
       protected: z.boolean(),
       access_state: z.string(),
-      errors: z.array(z.string()).nullable().transform((errors) => errors ?? []),
+      errors: z
+        .array(z.string())
+        .nullable()
+        .transform((errors) => errors ?? []),
       checksum: z.string(),
     })
     .passthrough(),
@@ -221,9 +224,10 @@ test(
       });
       expect(response.ok(), await response.text()).toBe(true);
       const value = await response.json();
-      expect(value, `Native collection fixture refused ${action}`).not.toHaveProperty(
-        "bridge_error",
-      );
+      expect(
+        value,
+        `Native collection fixture refused ${action}`,
+      ).not.toHaveProperty("bridge_error");
       return value;
     };
     const command = async (
@@ -606,9 +610,10 @@ test(
           const [response] = await Promise.all([
             result,
             (async () => {
-              await page
-                .getByRole("button", { name: "Start exam", exact: true })
-                .click();
+              if (retry === 0)
+                await page
+                  .getByRole("button", { name: "Start exam", exact: true })
+                  .click();
               await page
                 .getByRole("dialog")
                 .getByRole("button", { name: "Start exam", exact: true })
@@ -616,6 +621,8 @@ test(
             })(),
           ]);
           if (response.ok()) break;
+          expect(response.status(), await response.text()).toBe(409);
+          expect((await response.json()).code).toBe("EXAM_SETUP_BUSY");
           const current = (
             await (await page.request.get("/api/student/exam")).json()
           ).attempt;
@@ -632,6 +639,7 @@ test(
             start: null,
             deadline: null,
             permission_status: "AVAILABLE",
+            begin_intent: null,
             retry_reason: "native-readiness-busy",
           });
           expect(view.attempt.state).toBe("PREPARING");
@@ -640,10 +648,13 @@ test(
             retry,
             "Readiness busy did not settle within the bounded fresh-Start workflow",
           ).toBeLessThan(2);
-          await page
-            .getByRole("dialog", { name: "Workspace error" })
-            .getByRole("button", { name: "Close", exact: true })
-            .click({ timeout: 5000 });
+          await expect(
+            page
+              .getByRole("dialog", { name: "Start your exam?" })
+              .getByRole("alert"),
+          ).toHaveText(
+            "The server is checking exam setup. Wait a moment, then try again.",
+          );
           // The next actual Start performs fresh capture/native verification.
           await page.waitForTimeout(250);
         }
@@ -1236,7 +1247,9 @@ test(
         expect(killed.status).toBe("killed");
         const killedWorkers = z.array(worker).length(2).parse(killed.workers);
         expect(killedWorkers.every((entry) => entry.writing)).toBe(true);
-        const target = killedWorkers.find((entry) => entry.attempt === fleet[0].id)!;
+        const target = killedWorkers.find(
+          (entry) => entry.attempt === fleet[0].id,
+        )!;
         expect(killed.death).toMatchObject({
           unit: target.unit,
           pid: target.pid,
@@ -1254,9 +1267,11 @@ test(
                 start: collectionBefore.start,
                 deadline: collectionBefore.deadline,
               });
-              expect(["COLLECTION_FAILED", "FINALIZING", "COMPLETED"]).toContain(
-                value.attempt.state,
-              );
+              expect([
+                "COLLECTION_FAILED",
+                "FINALIZING",
+                "COMPLETED",
+              ]).toContain(value.attempt.state);
               if (value.attempt.state === "COMPLETED")
                 expect(value.attempt.protected).toBe(true);
               else expect(value.attempt.access_state).toBe("HELD");

@@ -19,6 +19,7 @@ import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
 import { managementOperations } from "../../packages/protocol/management.js";
 import { hosts } from "./hosts.js";
 import { nativeGuest } from "./native-guest.js";
+import { nativeSetupTimings } from "./native-setup-timing.js";
 import { browserGatewayProcess } from "./browser-gateway-process.js";
 import type { MonitoringEvidenceLedger } from "../../apps/server/src/monitoring-evidence-ledger.js";
 import { z } from "zod";
@@ -143,7 +144,10 @@ if (gateway) {
 }
 const localApplication = gateway
   ? undefined
-  : await createApp(gatewayConfig, { connectionWorkerEntry });
+  : await createApp(gatewayConfig, {
+      connectionWorkerEntry,
+      onConnection: nativeSetupTimings(),
+    });
 const { app, store } = gateway ?? localApplication!;
 store.db
   .prepare("INSERT INTO admins VALUES(?,?,?)")
@@ -161,6 +165,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     compiledConnectionWorkers: true,
     large,
     gatewayProcess: !!gateway,
+    setupTimings: !gateway,
     gateStall: process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1",
     coordinatorOutage:
       process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1",
@@ -195,6 +200,7 @@ app.get("/api/fixture/native-state", async (req) => {
       start: a?.start,
       deadline: a?.deadline,
       permission_status: permission?.status,
+      begin_intent: a?.grant_begin_intent ?? null,
       retry_reason:
         typeof failure?.detail === "string" &&
         failure.detail.startsWith(

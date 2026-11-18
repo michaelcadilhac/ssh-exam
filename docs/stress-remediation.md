@@ -259,3 +259,40 @@ local generator (unchanged Marco network evidence reused). No70/90pass or repair
 of the separate class-load timeout is claimed. Evidence and cleanup receipts:
 var/stress-remediation/20261118/start-health/. Native race evidence remains
 applicable: no Go/native source or binary changed.
+
+## Private setup-stage timings (under qualification)
+
+The existing native browser fixture now observes fixed health/setup/activation
+operations through its existing onConnection hook. The existing private runner
+stderr retains started/completed/failed markers and monotonic elapsed time. Only
+synthetic examq identities are eligible;128operations/connection and256connections
+bound records. No bodies, replies, error text, credentials or signed values are
+logged. No new process, control service, authority or separate file writer exists.
+Sink failure disables only the observer, not the operation. Times include the
+existing worker/browser SSH/native round trip and diagnostic overhead; they do
+not isolate native CPU cost by themselves. Independent-gateway mode is explicitly
+unobserved; the normal local gateway used for endurance is observed.
+
+Four focused checks cover exact call/result/refusal preservation, omitted private
+payloads, sink failure, record bounds, excluded renewals and non-synthetic accounts.
+Fixture typecheck passes. The updated cohort driver uses the new inline Start
+confirmation, requires typed409 and exact native no-start/web AVAILABLE/no-intent
+proof, and never retries an unknown Start. Actual16-person qualification is in
+progress under var/stress-remediation/20261118/setup-timing/native-recovery/.
+
+The observer and updated cohort driver now pass actual native-recovery-8:
+16students/64original panes,75s proof outage, buffer/deadline recovery and16protected
+submissions,591.676s; FULL native/local cleanup and unchanged inputs.352timing
+events cover16synthetic users with paired outcomes. This16-mode run exercises
+shells, not the70-mode GCC/GDB workload. Median/max whole-call times (ms): health
+1090/1941, account preparation2276/3214, SSH handoff3177.5/4531, activation2450.5/3542.
+No single stage explains the older class timeout at this smaller scale.
+
+A fresh read of endurance5's889saved generator samples found13above its18GiB soft
+limit, all during the final Start-failure minute (09:11:35.352–09:12:46.406UTC).
+The20GiB hard cap was not reached. This is correlation, not proof of the timeout's
+cause; memory.events and pressure were not retained. Linux documents memory.high
+as a reclaim/throttle boundary even without OOM:
+https://docs.kernel.org/admin-guide/cgroup-v2.html#memory-interface-files .
+Investigate this harness limit before another long ramp, without changing student
+authority or production resources. Receipt:endurance-5/generator-soft-limit-correlation.json.
