@@ -237,6 +237,10 @@
   Project measured working-set growth to the requested class size and leave
   headroom before freezing runner bounds, rather than qualifying an undersized
   fixture and correcting its limits one at a time.
+  Before a long class ramp, exercise its largest request/reply frames over the
+  actual stream type with small socket buffers and a delayed reader. Unbuffered
+  writes can be short; require complete delivery or bounded refusal. A small
+  smoke does not qualify full-class observation or finalization payloads.
   Being below MemoryMax with no OOM does not establish headroom: MemoryHigh can
   throttle first. Retain memory/CPU pressure and event counters before cgroup
   cleanup. Distinguish generator/bridge constraints from product capacity, and

@@ -85,7 +85,14 @@ def line(stream):
 def send(stream, value):
     raw = json.dumps(value, separators=(',', ':')).encode() + b'\n'
     assert len(raw) <= MAX_FRAME
-    stream.write(raw)
+    # SocketIO is unbuffered: a successful write can send only part of a large
+    # fleet reply. Continue that same frame under the existing socket timeout.
+    remaining = memoryview(raw)
+    while remaining:
+        written = stream.write(remaining)
+        if written is None or written <= 0:
+            raise BrokenPipeError('Private bridge frame write made no progress')
+        remaining = remaining[written:]
     stream.flush()
 
 

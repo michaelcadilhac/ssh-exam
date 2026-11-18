@@ -752,3 +752,19 @@ client working set projects near20GiB at70students. The final generator budget i
 finite. The earlier20GiB smoke receipts remain scoped to their original inputs.
 AGENTS.md now requires target-size headroom review before freezing resource bounds,
 so this does not become another sequence of small qualification reruns.
+
+## November18: qualify full-class frames before allocating the class
+
+Endurance6 reached70students/280verified panes, then its first fleet observation
+failed because the private bridge ignored a short unbuffered socket write. The
+219264-byte prefix was valid transport progress, not a complete JSON reply. Earlier
+one-/16-student smokes used smaller replies and could not expose this boundary.
+The90-minute peak never began; all failed evidence and full cleanup are retained.
+
+The bounded correction continues the same frame until complete, preserving its
+size limit and socket timeout. Actual Unix sockets with a small send buffer and
+delayed reader reproduce the old truncation; blocked and closed peers must fail
+rather than report success. Focused3 and full43bridge checks pass. AGENTS.md now
+requires maximum-size request/reply qualification before long ramps. Do not repeat
+hours of setup merely to discover that an observation/finalization message cannot
+cross its private transport. Native enforcement and production remain unchanged.

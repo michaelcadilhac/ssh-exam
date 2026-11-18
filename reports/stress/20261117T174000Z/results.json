@@ -1198,6 +1198,196 @@
       "built_inputs_sha256": "ef83f990d9737a2969888860a1d57e5026254051a75eccd457f5c66bbb2f30b4",
       "local_scratch": "/home/micha/src/ssh-exam/var/stress.h9gxirgk",
       "finished": "2026-11-18T07:41:10.112810+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 5,
+      "started": "2026-11-18T07:45:33.360154+00:00",
+      "source": "6a294e20f9ab579b3110bbb67b93f5a3bd79deda",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "2a22d0105a0481491ec50d20bd1c221bf30637a0f3613a30250848eb30f4e1dc",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.429
+        },
+        {
+          "argv": [
+            "node",
+            "--import",
+            "tsx",
+            "tests/fixtures/stress-https-smoke.ts"
+          ],
+          "exit": 0,
+          "seconds": 222.639
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 5012.315
+        }
+      ],
+      "evidence": "var/stress/20261117T174000Z/endurance-5",
+      "generator": "marco",
+      "built_inputs_sha256": "ef83f990d9737a2969888860a1d57e5026254051a75eccd457f5c66bbb2f30b4",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261117T174000Z/endurance-5/temporary",
+      "finished": "2026-11-18T09:13:03.173451+00:00"
+    },
+    {
+      "phase": "native-timer-recovery",
+      "attempt": 5,
+      "started": "2026-11-18T09:39:38.470262+00:00",
+      "source": "6a294e20f9ab579b3110bbb67b93f5a3bd79deda",
+      "source_diff_sha256": "6f5ff6b07c8065a4eae5ae0090b878addc6ed622475e1863dab304a65c50d514",
+      "inputs_sha256": "35ab96d8f3353af54c12e3a971c70d4e63d521cde9bfb296248e68c7e6e0b76a",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "tests/browser/retained-recovery.spec.ts",
+            "--output",
+            "/home/micha/src/ssh-exam/var/stress/20261117T174000Z/native-timer-recovery-5/browser",
+            "--reporter",
+            "list,json"
+          ],
+          "exit": 0,
+          "seconds": 83.783
+        }
+      ],
+      "evidence": "var/stress/20261117T174000Z/native-timer-recovery-5",
+      "generator": "local",
+      "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress.k6y0byuu",
+      "finished": "2026-11-18T09:41:02.401305+00:00"
+    },
+    {
+      "phase": "native-recovery",
+      "attempt": 8,
+      "started": "2026-11-18T09:49:52.041394+00:00",
+      "source": "cf4b6c161e01311cbce7ed6e68ccfa826a2b56f4",
+      "source_diff_sha256": "49ddac8b2b766a4231d10aac37d3e0e43024819177e8016eb74595eac1c5b0d3",
+      "inputs_sha256": "6c76b73250c065de904d1821664dd00d416dc88418cbda6d7c29e430de289879",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "tests/browser/retained-capacity.spec.ts",
+            "--output",
+            "/home/micha/src/ssh-exam/var/stress/20261117T174000Z/native-recovery-8/browser",
+            "--reporter",
+            "list,json"
+          ],
+          "exit": 0,
+          "seconds": 592.616
+        }
+      ],
+      "evidence": "var/stress/20261117T174000Z/native-recovery-8",
+      "generator": "local",
+      "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress.rcik8lrc",
+      "finished": "2026-11-18T09:59:44.797813+00:00"
+    },
+    {
+      "phase": "endurance",
+      "attempt": 6,
+      "started": "2026-11-18T10:29:06.944372+00:00",
+      "source": "d0a2234a2ebaec4846062a701b84472c8e4cec96",
+      "source_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "inputs_sha256": "90e4b75657852ea22493fd0ef0865dc0297f0e1cc3402b4fb0a3b63b6271287a",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f",
+      "status": "FAILED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.428
+        },
+        {
+          "argv": [
+            "node",
+            "--import",
+            "tsx",
+            "tests/fixtures/stress-https-smoke.ts"
+          ],
+          "exit": 0,
+          "seconds": 222.586
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "--config",
+            "tests/stress.config.ts"
+          ],
+          "exit": 1,
+          "seconds": 6079.478
+        }
+      ],
+      "evidence": "var/stress/20261117T174000Z/endurance-6",
+      "generator": "marco",
+      "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261117T174000Z/endurance-6/temporary",
+      "finished": "2026-11-18T12:14:26.840950+00:00"
+    },
+    {
+      "phase": "native-editor",
+      "attempt": 10,
+      "started": "2026-11-18T12:21:16.071474+00:00",
+      "source": "d0a2234a2ebaec4846062a701b84472c8e4cec96",
+      "source_diff_sha256": "9c09a9306c822ddc24b6ab7add2cb944eaa69d44ad53c24e5407e685d8c4be8d",
+      "inputs_sha256": "d12026c0619186fba9d720e21d78b2c1ab1a856ccf607be5595aeed7f3eb7905",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17e_8044428c9086",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "tests/browser/retained-native.spec.ts",
+            "--output",
+            "/home/micha/src/ssh-exam/var/stress/20261117T174000Z/native-editor-10/browser",
+            "--reporter",
+            "list,json"
+          ],
+          "exit": 0,
+          "seconds": 91.771
+        }
+      ],
+      "evidence": "var/stress/20261117T174000Z/native-editor-10",
+      "generator": "local",
+      "built_inputs_sha256": "65d0eeade791aeaae05b580cef7c6fc61ffb95e7d5957920dcbbe93fdeeedf47",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress.pz0oko8n",
+      "finished": "2026-11-18T12:22:47.978775+00:00"
     }
   ],
   "students": 70,

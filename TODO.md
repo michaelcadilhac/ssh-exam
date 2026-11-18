@@ -1,5 +1,13 @@
 # Stress remediation — IN PROGRESS, LOCAL ONLY
 
+November18: endurance6 reached70students/280verified GCC/GDB panes, then failed
+before peak on a truncated private fleet-observation reply. Full independent
+native/Marco/local/observer cleanup and unchanged inputs are proved; no70/90pass.
+The private bridge short-write bug is reproduced and corrected:3focused actual
+socket tests and43affected bridge checks pass. Actual native editor/Continue/
+protected-finish acceptance passes91.771s on v17e, with full cleanup and frozen
+inputs. Native programs are unchanged. Nothing is deployed;70/90remains open.
+
 November18: endurance5 failed at61students/244terminals on student62's60s
 Start-response budget. Full cleanup/preservation is verified; no70/90pass exists.
 The separate confirmed busy-health Start friction is fixed locally: one readonly

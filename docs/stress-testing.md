@@ -143,7 +143,7 @@ The config is separate from default Playwright discovery and deployment scripts.
 Use `--generator marco` with `endurance`, a single-student native phase, or `all` for the approved larger
 generator. It transfers only the existing Playwright runtime and synthetic worker
 to a fresh private Marco directory. Installed Node/Chromium run in an owned user
-service:20GiB maximum RAM,18GiB high watermark, no swap,8CPU quota,4096tasks and a
+service:21GiB maximum RAM and high watermark, no swap,8CPU quota,4096tasks and a
 four-hour lifetime. Fresh profiles, actual cgroup bounds, ancestor headroom and
 loopback-only listeners are verified. Chromium shared pages use existing tmpfs
 under the same memory cgroup;12GiB startup and4GiB live shared-memory headroom

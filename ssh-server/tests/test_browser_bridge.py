@@ -22,6 +22,74 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_full_class_inspection_delivers_one_complete_frame_over_short_socket_writes(self):
+        ids = ['%08x-1234-4234-8234-123456789abc' % index for index in range(70)]
+        snapshots = {attempt: {'attempt': {'username': name},
+                              'supervisor': {'diagnostic': 'synthetic metadata ' * 420}}
+                     for attempt, name in zip(ids, bridge.fixture_accounts(70))}
+        server, client = socket.socketpair()
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
+        server.settimeout(2); client.settimeout(2)
+        errors = []
+        first_write = threading.Event()
+        socket_write = socket.SocketIO.write
+        def observe_write(stream, raw):
+            written = socket_write(stream, raw)
+            first_write.set()
+            return written
+        def respond():
+            try:
+                with mock.patch.object(bridge, 'private_json', return_value={'browser_students': 70}):
+                    fixture = bridge.GuestBridge({})
+                fixture.snapshot = lambda attempt: snapshots[attempt]
+                with mock.patch.object(socket.SocketIO, 'write', observe_write):
+                    fixture.inspect(server)
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                try: server.shutdown(socket.SHUT_WR)
+                except OSError: pass
+        worker = threading.Thread(target=respond)
+        try:
+            client.sendall((json.dumps({'attempts': ids}) + '\n').encode())
+            worker.start()
+            # Begin draining only after the real first socket write returned.
+            self.assertTrue(first_write.wait(2), 'Sender did not reach the frame boundary')
+            with client.makefile('rb') as stream:
+                raw = stream.read(bridge.MAX_FRAME + 1)
+            worker.join(timeout=2)
+            self.assertFalse(worker.is_alive())
+            self.assertEqual(errors, [])
+            self.assertGreater(len(raw), 219264, 'Exercise the failed full-class frame boundary')
+            self.assertLessEqual(len(raw), bridge.MAX_FRAME)
+            self.assertTrue(raw.endswith(b'\n'))
+            self.assertEqual(json.loads(raw)['snapshots'], list(snapshots.values()))
+        finally:
+            client.close(); server.close()
+            if worker.ident is not None: worker.join(timeout=2)
+
+    def test_blocked_frame_write_keeps_the_socket_timeout(self):
+        server, client = socket.socketpair()
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 8192)
+        server.settimeout(.1)
+        started = time.monotonic()
+        try:
+            with server.makefile('wb', buffering=0) as stream:
+                with self.assertRaises(TimeoutError):
+                    bridge.send(stream, {'payload': 'synthetic ' * 50000})
+            self.assertLess(time.monotonic() - started, 1)
+        finally:
+            server.close(); client.close()
+
+    def test_closed_frame_peer_refuses_instead_of_reporting_success(self):
+        server, client = socket.socketpair()
+        client.close()
+        try:
+            with server.makefile('wb', buffering=0) as stream:
+                with self.assertRaises(BrokenPipeError): bridge.send(stream, {'synthetic': True})
+        finally:
+            server.close()
+
     def test_private_agent_diagnostics_are_bounded_and_never_overwrite_a_receipt(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(bridge, 'OUTPUT', Path(directory)):
             result = types.SimpleNamespace(returncode=0, stdout=b'old' + b'x' * 65536)

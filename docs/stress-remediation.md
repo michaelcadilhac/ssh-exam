@@ -40,6 +40,16 @@ The instructor confirmed that increasing the class-server VM resources is an
 option if completed measurements require it. Keep sizing proposals separate from
 actual production changes; the current qualification still uses guarded guests.
 
+November18: endurance6 reached all70students/280verified GCC/GDB panes but failed
+before peak when the private fleet-observation reply was truncated. Independent
+native/Marco/local/observer cleanup and frozen-input checks pass. The private
+bridge ignored partial unbuffered writes;3actual-socket regressions reproduce the
+old defect and43bridge checks pass after correction. Actual native editor/Continue/
+same-SSH/buffer/protected-finish acceptance of v17e passes91.771s, with FULL native/
+local cleanup and unchanged inputs. Native binaries and production are
+unchanged. CPU contention, callback timeouts and capture-verification fallback
+responses remain separate findings; no70/90qualification is claimed.
+
 ## Queued after frozen endurance5: routine Start readiness contention
 
 Three actual starts (students39/44/59) needed a fresh explicit Start after the native
