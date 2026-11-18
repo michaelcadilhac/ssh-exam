@@ -6,8 +6,10 @@ import WebSocket from "ws";
 import { createApp } from "../../apps/server/src/app.js";
 import { hash } from "../../apps/server/src/db.js";
 import { TemplateCatalog } from "../../apps/server/src/template-catalog.js";
+import { AttemptGrants } from "../../apps/server/src/attempt-grants.js";
 import { hosts } from "../fixtures/hosts.js";
 import { freshCapture } from "../fixtures/fresh-capture.js";
+import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
 
 const captureClock = vi.hoisted(() => ({ now: 10000 }));
 vi.mock("../../apps/server/src/monitoring-clock.js", () => ({
@@ -44,6 +46,15 @@ it.each([
   "cancelled-wrong-proof",
   "preflight-before-window",
   "cancelled-uid-change",
+  "health-busy-once",
+  "health-busy-persistent",
+  "health-busy-prior-intent",
+  "health-busy-reconcile-unavailable",
+  "health-different",
+  "health-busy-page-change",
+  "health-busy-settings-change",
+  "health-busy-window-change",
+  "health-busy-capture-stale",
 ])(
   "new enrollment → signed SSH preparation → fresh authenticated grant Begin (%s)",
   async (scenario) => {
@@ -77,8 +88,53 @@ it.each([
     let failed = false,
       verifiedUID = 10001,
       savedSupport = scenario !== "additional-saved-old-native";
-    h.control.command = async (op, b) => {
+    let healthFaultArmed = false;
+    const healthNonces: string[] = [];
+    h.control.command = async (op, b, frame) => {
       operations.push(op);
+      if (op === "health" && healthFaultArmed) {
+        healthNonces.push(frame.nonce);
+        if (healthNonces.length === 1) {
+          const row = store.db
+            .prepare("SELECT * FROM attempts WHERE state='PREPARING'")
+            .get() as any;
+          if (scenario === "health-busy-page-change")
+            store.db
+              .prepare("UPDATE attempts SET page_hash=? WHERE id=?")
+              .run(hash("retired-page"), row.id);
+          if (
+            [
+              "health-busy-settings-change",
+              "health-busy-window-change",
+            ].includes(scenario)
+          ) {
+            const changed = JSON.parse(row.settings);
+            if (scenario === "health-busy-window-change")
+              changed.latest = Date.now() - 1;
+            else changed.duration += 60;
+            store.db
+              .prepare("UPDATE attempts SET settings=? WHERE id=?")
+              .run(JSON.stringify(changed), row.id);
+          }
+          if (scenario === "health-busy-capture-stale")
+            captureClock.now += OPERATION_TIMEOUT_MS + 1;
+        }
+        if (scenario === "health-different")
+          throw Error(
+            "different: native readiness verification already in progress;",
+          );
+        if (
+          healthNonces.length === 1 ||
+          [
+            "health-busy-persistent",
+            "health-busy-prior-intent",
+            "health-busy-reconcile-unavailable",
+          ].includes(scenario)
+        )
+          throw Error(
+            "native readiness verification already in progress; inspect examctl agent status",
+          );
+      }
       if (op === "register") return { uid: verifiedUID };
       if (op === "resolve-course-accounts") return { student: verifiedUID };
       if (op === "health")
@@ -126,6 +182,12 @@ it.each([
       }
       const a = native.get(b.id);
       if (!a) throw Error("Unknown synthetic native attempt");
+      if (
+        op === "inspect-attempt" &&
+        scenario === "health-busy-reconcile-unavailable" &&
+        healthNonces.length === 2
+      )
+        throw Error("Synthetic unavailable no-start reconciliation");
       if (op === "submission-manifest")
         return {
           attempt: { ...a },
@@ -1043,6 +1105,57 @@ it.each([
         grant_begin_intent: null,
       });
       await freshCapture(app, id, page, headers);
+      if (scenario.startsWith("health-")) {
+        if (scenario === "health-busy-prior-intent")
+          new AttemptGrants(store, config.agent.id).begin(
+            store.attempt(id),
+            native.get(id).transport,
+          );
+        healthFaultArmed = true;
+        if (scenario !== "health-busy-once") {
+          const refused = await begin();
+          expect(refused.statusCode, refused.body).toBe(
+            scenario === "health-busy-persistent" ? 409 : 400,
+          );
+          expect(refused.json().code).toBe(
+            scenario === "health-busy-persistent"
+              ? "EXAM_SETUP_BUSY"
+              : undefined,
+          );
+          expect(store.attempt(id)).toMatchObject({
+            state: "PREPARING",
+            start: null,
+            deadline: null,
+          });
+          expect(native.get(id).start).toBe(0);
+          expect(operations.filter((op) => op.startsWith("activate-"))).toEqual(
+            [],
+          );
+          expect(healthNonces).toHaveLength(
+            [
+              "health-different",
+              "health-busy-settings-change",
+              "health-busy-window-change",
+            ].includes(scenario)
+              ? 1
+              : 2,
+          );
+          expect(new Set(healthNonces).size).toBe(healthNonces.length);
+          expect(
+            store.db
+              .prepare(
+                "SELECT count(*) AS n FROM grant_begin_intents WHERE attempt=?",
+              )
+              .get(id),
+          ).toEqual({ n: scenario === "health-busy-prior-intent" ? 1 : 0 });
+          expect(
+            store.db
+              .prepare("SELECT status FROM attempt_grants WHERE id=?")
+              .get(issued.id),
+          ).toEqual({ status: "AVAILABLE" });
+          return;
+        }
+      }
       if (
         [
           "outbound-unavailable",
@@ -1113,6 +1226,13 @@ it.each([
         }
       }
       expect(active.statusCode, active.body).toBe(200);
+      if (scenario === "health-busy-once") {
+        expect(healthNonces).toHaveLength(2);
+        expect(new Set(healthNonces).size).toBe(2);
+        expect(operations.filter((op) => op.startsWith("activate-"))).toEqual([
+          "activate-grant-attempt",
+        ]);
+      }
       expect(store.attempt(id).start!).toBeGreaterThanOrEqual(actual);
       expect(store.attempt(id).deadline! - store.attempt(id).start!).toBe(
         allowance * 1000,

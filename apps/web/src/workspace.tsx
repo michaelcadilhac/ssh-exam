@@ -2377,6 +2377,9 @@ export function Workspace({
             </p>
           )}
           {dialog.kind === "error" && <p>{dialog.message}</p>}
+          {dialog.kind === "begin" && dialog.message && (
+            <p role="alert">{dialog.message}</p>
+          )}
           {dialog.kind === "rename" && (
             <input
               aria-label="Terminal name"
@@ -2402,10 +2405,25 @@ export function Workspace({
                     if (dialogBusy) return;
                     if (d.kind === "signout" || d.kind === "begin") {
                       setDialogBusy(true);
+                      if (d.kind === "begin") setDialog({ ...d, message: "" });
                       try {
                         if (d.kind === "signout") await onSignOut();
                         else await begin();
                         setDialog(null);
+                      } catch (error) {
+                        if (
+                          d.kind === "begin" &&
+                          dialogRef.current?.kind === "begin" &&
+                          attemptRef.current.state === "PREPARING" &&
+                          !attemptRef.current.start &&
+                          error instanceof Error &&
+                          (error as Error & { code?: string }).code ===
+                            "EXAM_SETUP_BUSY"
+                        ) {
+                          setDialog({ ...d, message: error.message });
+                          return;
+                        }
+                        throw error;
                       } finally {
                         setDialogBusy(false);
                       }

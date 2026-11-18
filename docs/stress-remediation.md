@@ -40,6 +40,39 @@ The instructor confirmed that increasing the class-server VM resources is an
 option if completed measurements require it. Keep sizing proposals separate from
 actual production changes; the current qualification still uses guarded guests.
 
+## Queued after frozen endurance5: routine Start readiness contention
+
+Three actual starts (students39/44/59) needed a fresh explicit Start after the native
+health observation was busy. The driver verified native PREPARING/start0 and an
+AVAILABLE permission before retrying; this is startup friction, not a violation
+or a consumed clock. Native `health_observation.go` uses a no-wait per-Engine
+mutex; its observation is never cached/reused as the actual admission guard.
+Begin in app.ts performs separate health checks for handoff/template/legacy/
+practice, then audits/reconciles failures and shows generic setup-failure copy.
+Preflight already translates the exact busy response into concise409 copy.
+
+Prof approved one short retry of ONLY the exact authenticated busy health command,
+using fresh authorization/nonce within the original budget. Keep existing
+“Preparing exam…” stable; no automatic activation/Start/authentication replay,
+health caching, relaxed freshness or skipped admission checks. If still busy,
+prefer inline in the existing confirmation: “The server is checking exam setup.
+Wait a moment, then try again.” Make no global clock/grant claim; active/uncertain
+prior outcomes retain the existing authoritative reconciliation/fenced path.
+
+Implement only after the current frozen run finishes and cleanup is verified.
+Acceptance: busy→healthy gives one student confirmation/one activation/two fresh
+health nonces; persistent busy gives calm recovery/no activation; unrelated errors,
+timeouts and unknown activation retain current handling. Changed page, settings,
+window, transport or monitoring during the wait still refuse at final guards.
+Cover template health after monitoring/handoff as well as legacy, practice and
+preflight. Inspect actual helper signatures/intent-ledger ownership before edits;
+do not infer that a metadata error proves global no-start. Required public route/
+browser/native checks and later-artifact scope must be recorded separately from
+the exact6a294e2 endurance run. This proposal was approved by Prof. The Begin-only health retry and guarded
+inline busy response are implemented locally; focused verification is in progress.
+Preflight keeps its existing one-observation/explicit-retry behavior. Nothing is
+deployed.
+
 ## Progress
 
 - Investigation: report/current code read; initial dirty files are the ten existing
@@ -183,3 +216,46 @@ only the repeated genuine acknowledgement permits a fresh successful positive
 capture. Production code is unchanged from 0d28ae1. The subsequent complete
 nine-case file passes; fresh native single-student checks remain before the
 large cohort. Current identities belong in the checkpoint.
+
+## November18 endurance5 result and sizing next step
+
+Exact6a294e2/v17d failed at61verified students/244terminals before the peak.
+Student62 Start exceeded60s. Its native state remained PREPARING/start0/deadline0;
+the web Begin intent is PENDING/unverified. No automatic replay follows an unknown
+Start. FULL native/Marco/local/observer cleanup and unchanged inputs are proved in
+var/stress-remediation/20261117/endurance-socket-qualified/completion.json.
+
+At55students guest memory was2,461,192,192bytes/3785tasks, noOOM/task-limit events.
+CPU pressure some avg10 reached89.92%; quota throttling was only83,727microseconds
+across40323periods. The4-vCPU host was~98%busy at40. This establishes CPU contention,
+not its external source or the exact Start-timeout cause. Marco peak19,528,949,760
+bytes stayed below20GiB; teardown-current values are not peak measurements.
+User permits resource growth;8vCPU/16GiB is proposed for the next sizing trial,
+with no production resize/restart now. Before another ramp, add bounded synthetic
+command timings and complete the independently confirmed healthBusy Start fix.
+
+### Start contention implementation verification
+
+The new signed-SSH/public-Begin regression fails against the old implementation
+(one busy observation incorrectly aborts setup) and passes after the correction.
+Seven helper checks and eight route checks pass, including two distinct signed
+health nonces with one activation, persistent busy, prior pending intent, page/
+settings/date changes and actual60s capture expiry. Initial fixture failures are
+retained: immutable settings refused before a second signed command, and the
+stale-capture test used an obsolete15s assumption. Their corrected oracles follow
+the actual producer and unchanged60s boundary. Additional unavailable-reconciliation
+and late-browser-reply checks are being completed before the milestone is qualified.
+Private evidence:var/stress-remediation/20261118/start-health/.
+
+The final endurance5 read-only web projection is retained in
+var/stress/20261117T174000Z/endurance-5/target-web-start-state.json.
+
+The Start-health milestone is now implemented/tested locally:16focused checks,
+72affected application checks,7rendered browser cases, current build/typecheck
+and actual native timer/SSH-loss recovery/protected finish pass. Prof approves
+the rendered390px confirmation. Exact native-timer-recovery-5 passes82.856s
+with FULL native/local cleanup and frozen inputs; samev17d native binaries,
+local generator (unchanged Marco network evidence reused). No70/90pass or repair
+of the separate class-load timeout is claimed. Evidence and cleanup receipts:
+var/stress-remediation/20261118/start-health/. Native race evidence remains
+applicable: no Go/native source or binary changed.

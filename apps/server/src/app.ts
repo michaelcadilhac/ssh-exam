@@ -37,6 +37,11 @@ import {
 import { Store, hash, secret, now, type Attempt } from "./db.js";
 import { Agent } from "./agent.js";
 import {
+  isNativeHealthBusy,
+  observeSetupHealth,
+  setupHealthBusyMessage,
+} from "./setup-health.js";
+import {
   ExamExecutionPolicies,
   ExamExecutionPolicyError,
   registerExamExecutionPolicy,
@@ -1707,26 +1712,17 @@ export async function createApp(
         "Sign in through SSH again to verify your course-server identity.",
       );
     const h = await conn.command("health").catch((error: unknown) => {
-      if (
-        !(error instanceof Error) ||
-        !error.message.startsWith(
-          "native readiness verification already in progress;",
-        )
-      )
-        throw error;
+      if (!isNativeHealthBusy(error)) throw error;
       store.audit(
         s.username,
         "preflight-health-busy",
         s.exam!,
         error.message.slice(0, 4096),
       );
-      throw Object.assign(
-        new Error(
-          "The server is checking exam setup. Wait a moment, then try again.",
-          { cause: error },
-        ),
-        { statusCode: 409, code: "EXAM_SETUP_BUSY" },
-      );
+      throw Object.assign(new Error(setupHealthBusyMessage, { cause: error }), {
+        statusCode: 409,
+        code: "EXAM_SETUP_BUSY",
+      });
     });
     if (
       config.browserSSH &&
@@ -2245,11 +2241,11 @@ export async function createApp(
     try {
       if (!a.grant_id && !isSandbox(a.exam)) {
         checkingLegacyRoles = true;
-        requireLegacyRecoveryAgent(await conn.command("health"));
+        requireLegacyRecoveryAgent(await observeSetupHealth(conn));
         checkingLegacyRoles = false;
       }
       if (isSandbox(a.exam))
-        requireSandboxAgent(a.exam, await conn.command("health"));
+        requireSandboxAgent(a.exam, await observeSetupHealth(conn));
       const prepared = await conn.command("inspect-attempt", { id: a.id });
       if (
         a.recovery_preflight &&
@@ -2267,7 +2263,7 @@ export async function createApp(
           throw Error(
             "Automatic exam setup requires browser SSH. Your exam clock has not started.",
           );
-        const h = await conn.command("health");
+        const h = await observeSetupHealth(conn);
         if (!h.fixture && !h.capabilities?.includes("single-sign-in-handoff"))
           throw Error(
             "Class server requires the single-sign-in update before starting.",
@@ -2306,7 +2302,7 @@ export async function createApp(
       requireBeginWindow(a.exam, JSON.parse(a.settings));
       const currentSettings = JSON.parse(a.settings);
       if (currentSettings.template_version) {
-        requireTemplateAgent(currentSettings, await conn.command("health"));
+        requireTemplateAgent(currentSettings, await observeSetupHealth(conn));
         requireTemplateSnapshot(
           currentSettings,
           await conn.command("inspect-attempt", { id: a.id }),
@@ -2416,7 +2412,49 @@ export async function createApp(
         { attempt: a.id, exam: a.exam, username: a.username, reason },
         "Exam activation failed",
       );
-      await life.reconcile(a.id).catch(() => {});
+      const reconciled = await life.reconcile(a.id).catch(() => undefined);
+      const current = store.attempt(a.id);
+      // A health error alone says nothing about an earlier Start. Offer a calm
+      // retry only with exact fresh native no-start evidence AND no durable
+      // Begin intent. Preserve unknown/late activation reconciliation otherwise.
+      if (
+        isNativeHealthBusy(e) &&
+        current.grant_id &&
+        current.state === "PREPARING" &&
+        !current.start &&
+        !current.deadline &&
+        !current.original_deadline &&
+        !current.protected &&
+        !current.checksum &&
+        !current.grant_begin_intent &&
+        current.page_hash === a.page_hash &&
+        current.generation === a.generation &&
+        connections.get(`${a.exam}:${a.username}`) === conn &&
+        conn.alive &&
+        reconciled?.id === a.id &&
+        reconciled.exam === a.exam &&
+        reconciled.username === a.username &&
+        reconciled.uid === a.uid &&
+        reconciled.state === "PREPARING" &&
+        !reconciled.start &&
+        !reconciled.deadline &&
+        !reconciled.original_deadline &&
+        !reconciled.protected &&
+        !reconciled.checksum &&
+        !reconciled.grant_begin_intent &&
+        !store.db
+          .prepare("SELECT 1 FROM grant_begin_intents WHERE attempt=?")
+          .get(a.id) &&
+        store.db
+          .prepare(
+            "SELECT 1 FROM attempt_grants WHERE id=? AND status='AVAILABLE'",
+          )
+          .get(current.grant_id)
+      )
+        throw Object.assign(new Error(setupHealthBusyMessage, { cause: e }), {
+          statusCode: 409,
+          code: "EXAM_SETUP_BUSY",
+        });
       if (checkingMonitoring)
         throw Error(
           "The required monitoring could not be verified. Keep this setup, check your connection and ask your instructor to check the browser and server before retrying. This request did not start a new exam clock.",

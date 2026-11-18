@@ -1,76 +1,61 @@
-# Current checkpoint — collector crash/retry qualification
+# Current checkpoint — stress startup contention
 
 Local development/tests/commits only. No push/deployment, production changes,
 actual student accounts, institutional MFA or external email. Preserve ten original
-modified doc PNGs. HEAD ad9d88b; native socket correction uncommitted. No missing
-package or unanswered policy choice. VM resource growth is approved as an option
-if completed measurements require it; no production resize/restart now.
+modified doc PNGs. Last coherent local commit6a294e2. No missing package.
 
-## Running milestone / exact next action
+## Current milestone / next action
 
-**Native-collection5 PASSED511.524s**:16synthetic students/64terminals,508MiB
-simultaneous collection, exactSIGKILL9, durable parent worker error, actualCLIretry,
-14continuing peers and16protected byte-verified submissions. Same auditedv17d.
-Guest sj0c4ph9/unit70c955f17020403b9eb7cce7198a6a3e stopped/PID0, FULL native/local
-preservation/cleanup, frozen inputs unchanged. Local durable unit4deb748c... stopped
-and cgroup empty. Wrapper:native-socket-collection-4/completion.json.
-Next: commit validated native milestone locally and start new70×4×90min endurance.
-For next cleanup derive UNIQUE stage from native-root.log (stage printed twice).
-No blind full retry after a confirmed failure; fix focused workflow first.
+Endurance5 FAILED at61verified students/244terminals, before70/90-minute peak.
+Student62 Start HTTP response exceeded unchanged60s budget. Native target remains
+PREPARING/start0/deadline0; web Begin intent PENDING/unverified. This is not proof
+that an uncertain Start is safe to replay. Exact phase:var/stress/20261117T174000Z/
+endurance-5; target-native-state.json and private metadata.sqlite preserve outcome.
+FULL native/Marco/local/observer cleanup and unchanged frozen source/build inputs
+verified:var/stress-remediation/20261117/endurance-socket-qualified/completion.json.
+No owned process remains. Production files/authority unchanged.
 
-Exactv17d code-only bundle:19files65,644,885bytes at
-/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f.
-Audit/upload:var/stress-remediation/20261117/native-socket-bundle-4/.
-Digest3156f146c3604ffa619be80acfabdded9cd253e43ac188f91ef5f518d91b5fdd.
-All nativebinaries byte-identical qualifiedv17b; v17c/d change only collector test
-observer/retry/death-receipt code and SHA manifest. Browser assertions are local
-fixtures, not uploaded. All331Go inputs still match completed full race.
+Start-health milestone implemented/tested locally:16focused/72affected application/
+7browser checks pass, build/typecheck pass, Prof approves mobile UI. Actual
+native-timer-recovery-5 passes82.856s, FULL native/local preservation/cleanup and
+unchanged inputs. Evidence:var/stress-remediation/20261118/start-health/. One readonly
+health retry with fresh nonce within60s; guarded calm inline persistent-busy
+recovery, no automatic Start/activation/auth replay. Prior intents, unavailable
+reconciliation and changed conditions retain refusal; no native source changed.
+This fixes confirmed health contention, not the unclassified class-load timeout.
 
-## Implemented / verified locally
+Next bounded result: add bounded private per-operation setup timings to the
+existing native browser fixture, verify them locally and in its actual native
+workflow, then diagnose sizing before another70-person ramp. No new production
+observability API, no payload/error/credential logging. Do not rerun70 blindly.
 
-Endurance4 failed55students/220terminals: scanner resolved a binder's /proc/self/fd
-socket name against its own reused descriptor. Deterministic old-code red confirms
-it. New bounded read-only kernelVFS device/inode check verifies actual private
-native endpoints; foreign/unsafe/unknown metadata still refuses. No clock, grant,
-ownership, hold or monitoring change. See docs/host-socket-inventory.md.
+At55students native guest used2.461GB/3785tasks, noOOM/task-limit events. CPU
+pressure some avg10~89.92%, with negligible quota throttling; the4-vCPU host was
+~98%busy at40. More CPU is warranted for a sizing trial, not yet a proved cure.
+Marco generator peak19.529GB under20GiB, not current steady-state consumption.
+With guest stopped, one2s host sample was79%busy/no steal; known web container
+wasnearly idle andwatchdog~0.8core in separate short samples. OtherCPUunclassified.
+User allows VM resource increases if needed. An asynchronous question asks for
+8vCPU/16GiB availability/VM management; no resize/restart authorized or performed
+as part of production testing. Continue local work while waiting.
 
-Seven focused cases, full Go race290.926s/no failures, Go vet and affected Python
-checks pass. Actualv17b CLI5 private/foreign/repair/hardened-query cases pass;
-editor9 passes102.807s; timer/files-only recovery4 passes110.937s. Recovery7 passes
-589.734s:16students/64original shells recover after75sproof outage, preserving
-buffers/deadlines and protecting16submissions. All have exact frozen inputs and
-FULL native/local (plusMarco for singles) preservation/cleanup.
+## Qualified / reusable evidence
 
-Collector2/3/4 retain separate FAILED receipts with FULL native/local cleanup.
-2: fresh two-writer guard miss; independently reproduced unrelated-FD observer
-false absence fixed (exact prior cause unproved).3: signal delivered/failure seen,
-then fixture retry demanded transient failed state despite normal automatic retry.
-4: real unit-matched SIGKILL exit9 PASSED, but remaining browser poll demanded the
-same transient state. Parent errors[] durably records failure while FINALIZING;
-producer types, transaction and actual snapshot inspected. New oracle requires no
-prior worker error, new durable error plus exactsignal, valid finalization states,
-original interval, HELD while unfinished/protected ifcompleted. No auto retry was
-disabled. Final40 bridge checks/typecheck pass; a baseline implicitany verifier
-error was corrected with typed snapshot parsing. Own partial client/server fix
-wasted one ramp; full-scenario audit rule/retrospective added. Separate full
-collector5 pass above. Evidence:var/stress-remediation/20261117/collection-observer/.
+Exactv17d bundle:19files65,644,885bytes, remote
+/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17d_a04084a4925f,
+digest3156f146c3604ffa619be80acfabdded9cd253e43ac188f91ef5f518d91b5fdd.
+New kernel socket-identity fix has deterministic old-code red,7focused regressions,
+full native Go race290.926s/vet, actual CLI5cases/editor9/timer4/recovery7/collector5
+passes with exact preservation/cleanup. Collector5:16/64,508MiB,exactSIGKILL9,
+durable failure,CLI retry,14continuing peers,16protected byte-verified archives.
+Earlier failed fixture runs remain separate. See docs/host-socket-inventory.md.
 
-## Remaining qualification / reusable evidence
-
-No70-student/90-minute/protected-fleet-completion pass. Installed32worker ceiling
-and actual shared-host capacity remain open. Previous50student nativeguest2.12GiB
-withoutOOM/task events, gateway~1.61GB PSS on DIFFERENT host, Marco generator15.1GiB.
-Host4CPU/~8GiB; latest16test aggregate shows CPU contention, no memory pressure.
-These measurements are not production co-location proof. Old policyHTTP503 remains
-UNCLASSIFIED and distinct from reproduced socket bug; reports retain old failures.
-
-Reuse unchanged917application passes/3gated skips,367browser passes/12modegated/
-0fail/flaky,9gateway-restart cases and16realWASMsign-ins. Do not repeat unchanged
-broad suites. Earlierv16 passes are historical, not proof of new binaries. Prof
-report:reports/stress/20261117T174000Z/report.md. Plan:docs/stress-remediation.md.
-For70 read-only callback diagnostics, prepared private wrapper:
-var/stress-remediation/20261117/follow-endurance-callbacks.py, structured --run/
---attempt/--stage around unchanged qualified observer body. Not launched yet.
+Unchanged application917passes/3gated, browser367passes/12mode-gated,9gateway
+restart and16realWASM sign-ins are reusable for unchanged inputs. No70/90/protected
+fleet pass or production web/native co-location qualification exists. Installed
+32-worker limit remains unchanged. Workload: tiny C compile/GDB breakpoint at
+startup, not sustained heavy C++ builds. Current agent report:
+reports/stress/20261117T174000Z/report.md. Plan:docs/stress-remediation.md.
 
 ## Deployed baseline
 

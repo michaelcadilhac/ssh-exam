@@ -1,5 +1,15 @@
 # Stress remediation — IN PROGRESS, LOCAL ONLY
 
+November18: endurance5 failed at61students/244terminals on student62's60s
+Start-response budget. Full cleanup/preservation is verified; no70/90pass exists.
+The separate confirmed busy-health Start friction is fixed locally: one readonly
+retry within the original budget, distinct signed nonces and calm inline recovery
+only with exact no-start proof and no prior intent. Unknown activation stays
+fenced/reconciled.16focused,72affected application,7browser and actual native
+timer/recovery/protected-finish checks pass; Prof approves the mobile UI.
+VM resource growth is an approved sizing option; no resize/restart/deploy occurred.
+
+
 November 17: classroom bootstrap now has a separate bounded public-read budget.
 Seventy same-NAT cold loads, bounded read abuse and unchanged credential/API
 refusals pass through real middleware; 16 affected security/integration checks,

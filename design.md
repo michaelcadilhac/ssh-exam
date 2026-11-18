@@ -29,6 +29,14 @@ keeps its actionable error. Different native errors are not classified as busy.
 Real WASM/signed-SSH browser tests verify no attempt, grant or clock consumption
 on refusal and a healthy explicit retry. Implemented/tested locally only.
 
+During Start, the exact authenticated busy health observation may be retried once
+with fresh authorization/nonce, within the same60s observation budget. No Start,
+activation or authentication is automatically replayed. A persistent busy result
+receives concise inline recovery only after exact fresh native no-start evidence
+and absence of any durable Begin intent; unknown outcomes retain reconciliation.
+All final page/settings/window/capture/transport checks remain in force. This is
+implemented/tested locally, not a fix claimed for the class-load timeout.
+
 Pane-opening failures have a scoped nonmodal notice. A fixed native gate/channel
 refusal on the exact open operation can offer the existing explicit New terminal
 action; timeout, receipt/ownership mismatch and unknown outcomes cannot. Unconfirmed
