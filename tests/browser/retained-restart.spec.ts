@@ -691,7 +691,12 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   let releaseReports = false;
   const dropped: any[] = [],
     forwarded: any[] = [],
-    receipts: any[] = [];
+    receipts: any[] = [],
+    captures: Record<string, any>[] = [];
+  page.on("request", (request) => {
+    if (isChallengedCapture(request.url()))
+      captures.push(captureMetadata(request));
+  });
   await page.routeWebSocket("**/api/student/session", (socket) => {
     const upstream = socket.connectToServer();
     socket.onMessage((raw) => {
@@ -717,18 +722,6 @@ test("a policy report lost across gateway replacement is acknowledged before pos
       socket.send(raw);
     });
   });
-  // The fault loses the original negative frame too. A later restored-condition
-  // JPEG must not erase the pending negative socket report.
-  await page.route("**/frames/{challenged,binary}", async (route) => {
-    const readiness = captureMetadata(route.request()).readiness;
-    if (
-      ["fullscreen", "visible", "keyboard", "screen"].some(
-        (key) => readiness?.[key] !== true,
-      )
-    )
-      await route.abort("failed");
-    else await route.continue();
-  });
   const original = await begin(page, "retained12"),
     before = await runtime(page),
     owner = JSON.parse(original.registered_owner);
@@ -737,6 +730,7 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   await expect(page.locator(".xterm-rows")).toContainText("policy-private-");
   await page.evaluate(() => document.exitFullscreen());
   await expect.poll(() => dropped.length, { timeout: 5000 }).toBeGreaterThan(0);
+  const policyCutoff = await page.evaluate(() => performance.now());
   await page
     .getByRole("button", { name: "Restore fullscreen", exact: true })
     .click();
@@ -746,6 +740,11 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   });
   if ((await keyboard.getAttribute("aria-pressed")) !== "true")
     await keyboard.click();
+  // Pending policy reports suppress sampling, including after the physical
+  // conditions recover. Observe a full five-second capture cadence; do not
+  // inject initial-setup failures or require a negative frame that cannot exist.
+  await page.waitForTimeout(5500);
+  expect(captures.filter((sample) => sample.monotonic > policyCutoff)).toEqual([]);
   expect(
     (await (await page.request.get("/api/student/exam")).json()).attempt.state,
   ).toBe("ACTIVE");
@@ -765,6 +764,8 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   await expect
     .poll(() => receipts.length, { timeout: 5000 })
     .toBeGreaterThan(0);
+  await page.waitForTimeout(5500);
+  expect(captures.filter((sample) => sample.monotonic > policyCutoff)).toEqual([]);
   const login = await request.post("/api/admin/login", {
     headers: { origin: "http://localhost:3100" },
     data: { username: "instructor", password: "fixture-password" },
@@ -796,10 +797,25 @@ test("a policy report lost across gateway replacement is acknowledged before pos
     generation: original.generation + 1,
     consumed: 0,
   });
+  const resumedCapture = page.waitForResponse(
+    (response) => {
+      if (!isChallengedCapture(response.url()) || response.status() !== 200)
+        return false;
+      const sample = captureMetadata(response.request());
+      return (
+        sample.monotonic > policyCutoff &&
+        ["fullscreen", "visible", "keyboard", "screen"].every(
+          (key) => sample.readiness?.[key] === true,
+        )
+      );
+    },
+    { timeout: 10000 },
+  );
   releaseReports = true;
   await expect
     .poll(() => receipts.length, { timeout: 5000 })
     .toBeGreaterThanOrEqual(2);
+  await resumedCapture;
   const repeated = await (
     await request.get(`/api/admin/attempts/${original.id}/interruption`)
   ).json();

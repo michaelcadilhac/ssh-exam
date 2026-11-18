@@ -1,73 +1,74 @@
-# Current checkpoint — stress remediation; durable test environment qualified
+# Current checkpoint — native stress requalification next
 
-Local development, synthetic tests and local commits only. No push, deployment,
+Local development, synthetic tests and local commits only. No push/deployment,
 production configuration/student changes, institutional MFA or external email.
-Preserve the ten original modified documentation PNGs; all 16 original image
-hashes were unchanged. No package is missing. All owned guests and fixtures are
-currently stopped.
+Preserve the ten original modified documentation PNGs; all 16 original hashes
+were unchanged. No package is missing. All owned local browser units, native
+qualification guests and Marco generators are stopped; private test ports free.
 
-Current product commit: **0d28ae1**, including the Prof-approved student setup-busy
-message, stable public code and private audit. Two real WASM/signed synthetic SSH
-workflows, seven affected HTTP tests, build and typecheck pass. Earlier local
-fixes cover bootstrap budgets, capture recovery, SSH command/channel retirement,
-technical proof v2 and pane-local feedback. The 16-student/64-terminal, 75-second
-outage and fatal collection-worker workflows pass with preserved shells, clocks,
-protected work and FULL original-host preservation. Details are in
-[stress remediation](stress-remediation.md) and the linked feature documents.
+Product remains **0d28ae1**; runner/guideline commit **647220f**. This validated
+increment changes only the retained-restart policy-report fixture: inject faults after
+Start, follow actual pending-policy capture suppression, require fresh successful
+capture after the genuine repeated acknowledgement. Focused typecheck/test pass.
 
-The native core is unchanged since this exact v16 test bundle (19 files,
-65,421,056 bytes):
-`/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec`.
-Reuse it for unchanged native code; do not infer qualification from its name alone.
+## Completed local verification
 
-The latest endurance run **failed before peak at 61 students/244 terminals**.
-The next student's Password wait expired at the driver's old 10-second default.
-A healthy 16-second startup reproduced that driver defect; the corrected 60-second
-wait passes focused tests. The actual long prompt delay remains unexplained.
-Start responses reached 57.783 seconds. The final diagnostic snapshot had 26
-ACTIVE/generation 0 replies and 35 unavailable reads; later LOCKED rows were
-teardown. No pane refusal was captured. No 70-student/90-minute pass exists.
-The exact `ujfqp3d8` guest and Marco/local processes are stopped, with independent
-FULL preservation and cleanup receipts in `var/stress/20261117T174000Z/endurance-1/`.
-The older native third-pane refusal remains unexplained. Production's 32-worker
-ceiling, 2-GiB web budget and combined 4-CPU/~8-GiB capacity are still unqualified.
+Under var/stress-remediation/20261117/, each directory has frozen source/build
+manifests, exact owned unit identity, actual result and independent completion.json:
 
-The ordinary browser run at f76aaf9 was interrupted after 156 successful cases,
-without a final receipt; its recorded orphaned fixture was cleaned up. The first
-durable 0d28ae1 runs then reported application **916 passes/one failure/three gated
-skips**, and browser **96 passes/one failure**, followed by an owned controlled
-stop: one interrupted test and 281 not run. Do not call these complete passes or
-label the JSON's 282 skipped entries as gated skips. Exact cleanup and frozen
-input receipts are in `var/stress-remediation/20261117/` under the corresponding
-`application-complete-0d28ae1/` and `browser-complete-0d28ae1/` directories.
+- application-complete-647220f/: **917 passed, 3 gated, 0 failed**, 420.60s.
+- browser-complete-647220f/: **367 passed, 12 mode-gated, 0 failed/flaky**, 1887.791s.
+- gateway-signin-647220f/: **16 real-WASM clients**, 1 pass/0 skips, 55.122s.
+- gateway-policy-focus-2/: corrected actual lost-report/ack cadence, 1 pass, 27.959s.
+- gateway-restart-corrected/: **9 passed, 0 skipped/failed/flaky**, 123.628s;
+  covers the eight formerly gateway-gated paths plus one overlapping ordinary case.
 
-The two failures were traced to a runner setup mistake: the ordinary shell had
-core limit zero, but the new user services allowed unlimited core dumps. Exact
-unit metadata identifies the deliberate 32-/64-MiB heap workers' SIGABRT dumps
-taking about 3.1/25.4 seconds, beyond their 1.5-/20-second assertions. No core memory
-image was read. Corrected services with **LimitCORE=0** pass all 14 purge process,
-restart and HTTP/SSH checks, and the complete five-fault browser isolation case
-(127.835 seconds; intentional hang 59.948 seconds, heap failure 863 ms). Both
-qualification units are stopped, cgroups empty, ports free and inputs unchanged.
-Their directories are `purge-core0-qualification/` and `isolation-core0-qualification/`.
-This explains those runner failures, not the historical native/endurance findings.
+All exact units stopped/inactive/PID0/empty cgroup, source/built unchanged. Services
+use qualified LimitCORE=0, bounded lifetime and control-group cleanup. Unchanged
+production bytes allow reuse of the broad suites; a test-only correction does
+not require another 367-case UI run. Three application operator gates have
+separate actual CLI/export/zsh-bwrap evidence; four native/optional browser gates
+remain separately scoped, never relabelled as ordinary passes.
 
-Uncommitted changes now contain per-fault diagnostics in two test files plus
-AGENTS.md, the retrospective and accurate progress docs; product code remains
-0d28ae1. Prof updated only the consolidated report (126 valid links). The new rule
-requires a durable owned runner, matching effective limits and real fault/cleanup
-qualification before broad tests; a print-only smoke is insufficient.
+Actual v16 native 16-student/64-terminal 75-second outage recovery and concurrent
+508-MiB collection/isolated worker death pass with original shells/clocks,
+protected completions and FULL original-host preservation. Reuse exact bundle
+(19 files/65,421,056 bytes), unchanged native core:
+/var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v16_t6o567ec.
+Details and retained failed receipts: docs/stress-remediation.md and
+reports/stress/20261117T174000Z/report.md.
 
-Next: commit this validated local increment, then freeze source and built inputs.
-Run the complete application and real-WASM browser suites in uniquely named local
-user services with LimitCORE=0, RemainAfterExit=yes, a two-hour runtime limit,
-45-second stop limit, KillMode=control-group and UMask=0077. Pin PATH, locale,
-commands, outputs and manifests. Use browser max-failures=1 to obtain failure
-receipts promptly. Collect actual JSON results, stop only the exact owned units,
-verify cleanup and compare inputs. Keep the 70-person test separate while local
-RAM is tight; then run its guarded ramp, 90 real peak minutes and simultaneous
-protected submission. No resource increase or deployment is authorized; no policy
-decision blocks the current local tests.
+## Remaining findings and next steps
+
+No 70-student/90-minute pass exists. Endurance attempt1 stopped before peak at
+61 students/244 terminals: the next sign-in hit the old ten-second driver wait.
+A healthy 16-second SSH reproducer now passes under the existing 60-second budget;
+no auth retry added. The actual long wait and historical third-pane refusal remain
+unattributed. Start diagnostic intervals reached57.783s. Original failed native,
+Marco/local cleanup and FULL preservation receipts remain unchanged.
+
+The first durable broad runs failed because owned services allowed core dumps,
+delaying deliberate worker exits; exact metadata explains only those runner
+failures. Corrected real-fault qualification and later full passes are separate.
+The first gateway file failed during initial setup; the first focused fixture
+correction wrongly required a negative frame suppressed by pendingPolicy. Both
+failed receipts remain beside the later corrected passes, with exact cleanup.
+
+Next bounded workflow: run fresh native-editor, then native-timer-recovery using
+scripts/stress-test.py --run-id 20261117T174000Z --generator marco and exact v16
+bundle. Older single-student passes predate proof changes. Read each phase's real
+verdict (aggregate exit may still be1 due retained installed-capacity failure),
+verify exact native/Marco/local cleanup and frozen inputs before the next phase.
+Then fresh70-person ramp,90 real peak minutes and simultaneous protected finish.
+Run long phases in a uniquely owned durable LimitCORE=0 user service; preserve its
+identity/result. No parallel writers to run.json. Keep heavy browser jobs separate.
+
+Production's32-worker ceiling still fails the read-only70 gate. Its2-GiB web budget
+and shared4-CPU/~8-GiB capacity remain unqualified; isolated gateway/native results
+are not co-location proof. No resource increase/deployment authorized; no policy
+choice blocks current local tests. Read-only private-guest CPU sampling is prepared
+in var/stress-remediation/20261117/observe-owned-native-cpu.py for the next ramp;
+it reads only owned cgroup process names/ticks, no student files/arguments/env.
 
 ## Deployed baseline
 

@@ -33,7 +33,14 @@ final receipt; its exact orphaned fixture is stopped. The first durable broad
 runs then exposed a test-runner limit mismatch: unlimited core dumping delayed
 deliberate heap-crash exits past their test deadlines. Owned runners now use the
 shell's LimitCORE=0, qualified by 14 purge checks and a complete five-fault SSH/
-browser case. Original failed receipts remain; full reruns are pending. The known
+browser case. Original failed receipts remain. Fresh broad runs pass 917
+application tests (three gated skips) and 367 browser tests (12 mode-gated skips),
+with zero failures; a separate 16-client sign-in also passes. The complete
+independent-gateway restart group passes all nine cases after correcting its
+policy-fault fixture; both failed fixture receipts remain. Fresh native
+single-student checks still precede the new 70-person endurance. These are local
+results, not deployment readiness.
+The known
 busy preflight message is now concise,
 with an unchanged sign-in and explicit retry, private operator diagnostics and
 no consumed attempt/permission/clock; two real-browser and seven affected HTTP

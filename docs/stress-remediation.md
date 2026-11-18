@@ -159,4 +159,23 @@ units are stopped with unchanged source/built inputs and empty owned cgroups.
 No production setting, timeout or acceptance criterion changed. Per-fault labels
 and bounded state capture improve future diagnosis. AGENTS.md and the retrospective
 require matching runtime limits and real fault qualification before broad tests.
-New complete application/browser runs remain necessary before the fresh cohort.
+Fresh corrected services pass the complete application suite (917 tests, three
+gated skips) and ordinary browser suite (367 tests, 12 mode-gated skips), with
+zero failures/flakes and exact cleanup/frozen-input receipts. A separate
+independent-gateway 16-client sign-in passes. The gated gateway restart file is
+being completed separately; these results do not qualify native-only paths or
+the 70-person endurance. The complete independent-gateway restart file now passes
+all nine cases (zero skips/failures/flakes, 123.628 seconds), including the eight
+formerly gated paths and one overlapping ordinary case, with exact cleanup.
+
+The first independent-gateway group passed seven cases, then failed during the
+lost-policy-report test's initial setup. Its negative-frame fault was installed
+before Start. The first correction reached Start but incorrectly required a
+negative frame despite the real pending-policy guard suppressing sampling. Both
+failed fixtures and exact cleanup are retained. The corrected focused test now
+passes: a genuine lost socket report and first lost acknowledgement preserve
+capture suppression for full sampling intervals through gateway replacement;
+only the repeated genuine acknowledgement permits a fresh successful positive
+capture. Production code is unchanged from 0d28ae1. The subsequent complete
+nine-case file passes; fresh native single-student checks remain before the
+large cohort. Current identities belong in the checkpoint.
