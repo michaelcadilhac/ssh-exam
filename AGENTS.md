@@ -225,6 +225,16 @@
   routine testing. Do not waste a full suite on known-denied listeners. Separate
   permission failures from product regressions and stop only the exact owned test
   runner before retrying; never terminate unrelated processes or services.
+- Run long qualification in an owned, bounded durable runner and save its identity,
+  frozen inputs, output and final status; a tool session is not its lifetime.
+  When moving tests into a local user service, compare its effective environment
+  and resource limits with the ordinary test shell. Intentional worker aborts
+  require `LimitCORE=0` on that test unit: unlimited core dumping can delay actual
+  exit beyond the fault deadline. Do not change host or production defaults.
+  Qualify real crash/timeout behavior and exact cleanup in the service before
+  broad tests; a print-only smoke is insufficient. Record each injected fault's
+  identity and observed outcome so a failure does not require another broad run
+  merely to discover its stage.
 - Use `npm test` for application suites so its native-clock pretest runs in the
   current worktree. Direct Vitest is allowed only after explicitly building and
   verifying that worktree's clock addon. A sibling worktree's generated artifacts

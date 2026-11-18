@@ -636,3 +636,28 @@ reports and honest total/maintenance timing. Individual command bounds, safe
 observation of non-interruptible operations, readiness/idle/recovery guards and
 qualified recovery remain mandatory. Earlier timing targets and validation receipts
 above describe the former policy; they do not impose a current deployment deadline.
+
+## November 17: durable test runners must preserve execution limits
+
+An ordinary browser run lost its tool runner after 156 successful cases. It had
+no final receipt and left four fixture processes behind. These were stopped by
+their recorded PID/start identities, and the result remained interrupted. Broad
+qualification now uses uniquely named, bounded local user services with durable
+identity, input, log and result files.
+
+I qualified that move with a print-only smoke and omitted the shell's zero core
+limit. The services instead inherited unlimited core dumping. Exact-unit journal
+metadata identifies the deliberate heap-fault workers aborting and spending
+about 3.1 seconds and 25.4 seconds finishing dumps, beyond the existing 1.5-second
+purge and 20-second browser assertions. This created two misleading test failures;
+it did not establish a new product defect. No core memory image was read. Applying
+`LimitCORE=0` only to the owned test services restores the intended environment;
+actual purge/process/restart/HTTP and complete SSH-worker fault qualification pass
+with the original deadlines, protected data and healthy peer behavior.
+
+Before another broad run, compare effective runtime limits as well as binaries,
+paths and environment, and exercise real crash/timeout/cleanup behavior in that
+exact runner. Record per-fault identities and outcomes before expensive suites.
+Do not replace a failed receipt with a later pass or attribute the earlier
+70-student failure to this separate runner mistake. Current evidence and remaining
+capacity work: [stress remediation](stress-remediation.md).

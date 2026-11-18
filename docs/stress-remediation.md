@@ -78,7 +78,7 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
   retained; its ordinary browser runner was gracefully interrupted and exact
   cleanup verified. One-/16-person phases share3100; only70-person mode on3102
   can overlap the ordinary suite.
-- Current application evidence: 915 passes/three gated skips; three actual
+- Earlier complete application evidence: 915 passes/three gated skips; three actual
   CLI/export/zsh-bwrap workflows pass separately. The 16/64 recovery and fatal
   collection-worker phases pass. Current milestone: complete browser verification,
   pressure diagnosis, shared-host sizing and a new 70×4×90-minute run. Installed
@@ -128,8 +128,8 @@ cases of 377 declared; no final JSON or exit status was produced. Its exact
 orphaned fixture received a verified-PID graceful shutdown; owned processes and
 ports are gone and source/built inputs stayed unchanged. This is incomplete
 verification, not a complete pass or an attributed product failure. A bounded
-local user-service runner smoke passes with durable output and explicit cleanup;
-the next broad run will use it rather than depending on the tool-session lifetime.
+local user-service runner preserves durable output, but its initial print-only
+smoke did not qualify actual crash behavior. The correction below is required.
 
 Two endurance preflight refusals also exposed a raw operator-oriented native
 readiness message to students. Prof approved the concise inline replacement:
@@ -142,3 +142,21 @@ private diagnostic retained, explicit healthy retry; a different error is not
 misclassified. Seven affected HTTP checks, typecheck and build pass. The first
 two regression setup failures (missing CSRF, fault identity dropped by a wrapper)
 are retained separately; the third red run actually reproduced the raw message.
+
+The first durable broad runs at 0d28ae1 failed: application 916 passes/one failure/
+three gated skips; browser 96 passes/one isolation failure, followed by a controlled
+stop with one interrupted test and 281 not run. Exact cleanup and unchanged inputs
+are proved. The test services inherited unlimited core dumping instead of the
+ordinary shell's zero limit. Exact-unit journal metadata identifies the deliberate
+heap workers taking about 3.1 seconds and 25.4 seconds to finish dumps, exceeding
+the existing 1.5-second and 20-second assertions. Core images were not opened.
+
+The owned test services now explicitly use LimitCORE=0. Actual service-context
+qualification passes all 14 purge process/jobs/HTTP checks and the complete
+five-fault SSH/browser isolation workflow, preserving data and healthy peer work.
+The intentional hang is detected at 59.948 seconds; heap failure at 863 ms. Both
+units are stopped with unchanged source/built inputs and empty owned cgroups.
+No production setting, timeout or acceptance criterion changed. Per-fault labels
+and bounded state capture improve future diagnosis. AGENTS.md and the retrospective
+require matching runtime limits and real fault qualification before broad tests.
+New complete application/browser runs remain necessary before the fresh cohort.

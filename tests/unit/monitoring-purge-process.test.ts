@@ -247,14 +247,23 @@ it.skipIf(process.platform !== "linux")(
         "exit-after-reply",
       ]) {
         const dir = f.target(id);
+        const started = performance.now();
         const error = await process.run(id).then(
           () => {
             throw Error("unexpected purge success");
           },
           (error) => error,
         );
+        console.log(
+          JSON.stringify({
+            phase: "purge-fault-outcome",
+            fault: id,
+            code: error.code,
+            elapsed_ms: Math.round(performance.now() - started),
+          }),
+        );
         expect(error.message).not.toMatch(/PRIVATE|\/tmp|record\.ndjson/);
-        expect(error.code).toBe(
+        expect(error.code, id).toBe(
           id === "hang"
             ? "timeout"
             : id === "forged"

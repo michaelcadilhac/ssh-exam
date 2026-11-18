@@ -29,8 +29,12 @@ refusal remain open. No 70-student/90-minute pass exists. Exact cleanup/evidence
 [proof timing](docs/technical-resume-timing.md).
 
 The ordinary browser run was interrupted after 156 successful cases without a
-final receipt; its exact orphaned fixture is stopped. A durable local runner is
-smoke-tested for the next run. The known busy preflight message is now concise,
+final receipt; its exact orphaned fixture is stopped. The first durable broad
+runs then exposed a test-runner limit mismatch: unlimited core dumping delayed
+deliberate heap-crash exits past their test deadlines. Owned runners now use the
+shell's LimitCORE=0, qualified by 14 purge checks and a complete five-fault SSH/
+browser case. Original failed receipts remain; full reruns are pending. The known
+busy preflight message is now concise,
 with an unchanged sign-in and explicit retry, private operator diagnostics and
 no consumed attempt/permission/clock; two real-browser and seven affected HTTP
 checks, build and typecheck pass locally. Different errors remain distinct.

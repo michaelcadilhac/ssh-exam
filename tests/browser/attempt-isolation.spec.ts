@@ -154,6 +154,8 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
       "hang",
       "heap",
     ].entries()) {
+      const injectedAt = Date.now();
+      console.log(JSON.stringify({ phase: "worker-fault-inject", fault }));
       if (index === 0)
         await admin.request.post(origin + "/api/fixture/mail", {
           headers,
@@ -168,7 +170,50 @@ test("attempt exceptions, unhandled rejections, process death and hangs leave an
       expect(crashedPid).not.toBe(bobPid);
       await expect(
         alice.getByRole("heading", { name: "Instructor review required" }),
-      ).toBeVisible({ timeout: fault === "hang" ? 75000 : 20000 });
+      )
+        .toBeVisible({ timeout: fault === "hang" ? 75000 : 20000 })
+        .catch(async (error) => {
+          const observed = await admin.request
+            .get(origin + "/api/fixture/runtime", { timeout: 3000 })
+            .then((response) => response.json())
+            .catch(() => null);
+          const current = await alice.request
+            .get("/api/student/exam", { timeout: 3000 })
+            .then(async (response) => (await response.json()).attempt)
+            .catch(() => null);
+          await test.info().attach("worker-fault-state", {
+            body: JSON.stringify({
+              fault,
+              elapsed_ms: Date.now() - injectedAt,
+              attempt: current && {
+                state: current.state,
+                generation: current.generation,
+                reason: current.reason,
+                start: current.start,
+                deadline: current.deadline,
+              },
+              workers: observed?.workers?.map((worker: any) => ({
+                username: worker.username,
+                pid: worker.pid,
+              })),
+            }),
+            contentType: "application/json",
+          });
+          await alice
+            .screenshot({
+              path: test.info().outputPath(`worker-fault-${fault}.png`),
+              timeout: 5000,
+            })
+            .catch(() => {});
+          throw error;
+        });
+      console.log(
+        JSON.stringify({
+          phase: "worker-fault-observed",
+          fault,
+          elapsed_ms: Date.now() - injectedAt,
+        }),
+      );
       const data = await runtime();
       expect(data.pid).toBe(initial.pid);
       expect(
