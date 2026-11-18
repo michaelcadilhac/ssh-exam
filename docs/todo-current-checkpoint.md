@@ -2,22 +2,38 @@
 
 Local development/tests/commits only. No push/deploy, production changes, actual
 student accounts, MFA or external email. Preserve ten originally modified doc
-PNGs. HEAD c032505; product0d28ae1. No test runner, native guest or Marco generator
-currently remains active. No missing package or unanswered policy question.
+PNGs. Product0d28ae1; previous private runtime milestone a5b3b16. No test runner,
+native guest or Marco generator remains active. No missing package/policy blocker.
 
 ## Next bounded milestone
 
-Freeze/commit the qualified private runtime/callback corrections, then run a fresh
-70-student/280-terminal/90-real-minute endurance through the existing manual entry:
-`scripts/stress-test.py --run-id 20261117T174000Z --phase endurance --generator marco`
-with the exact v16 bundle below. Use a uniquely owned durable local unit, CORE0 /
-NOFILE524288, frozen source/build manifests, bounded lifetime and scoped resource
-observers. Do not edit loaded source or repeat unchanged broad suites. Stop at a
-real refusal, preserve its origin/private transport receipt and diagnose narrowly;
-never reset clocks, replay unknown starts or weaken policy to obtain a pass.
-Acceptance requires all70 students with4 verified native panes each,90 real peak
-minutes, simultaneous protected submissions and independent exact cleanup. Passing
-this topology still does not qualify web/native production co-location.
+Private diagnostic retention is implemented/tested locally. Commit this coherent
+increment, then a fresh70/280/5400s endurance through the manual runner, uniquely
+owned durable unit, CORE0/NOFILE524288, exactv16 and frozen manifests. Keep scoped
+resource observations; reuse unchanged broad tests. Never edit active test inputs.
+Acceptance: all70students with4verified panes each,90real peak minutes, simultaneous
+protected submissions and independent exact cleanup. Preserve actual refusal and
+its origin/private transport receipt; no unknown-start replay or policy weakening.
+This topology still does not establish web/native production co-location capacity.
+The instructor permits VM resource increases if completed measurements require it;
+no production change/restart is authorized by that sizing option now.
+
+endurance-3 was deliberately stopped after4verified students:64identical monitoring
+409s exhausted a shared diagnostic cap, which could hide the later503 we need to
+identify. No product failure inferred. Original FAILED/command-15 and stop request
+are retained. Independent nativeFULL/Marco/local cleanup and frozen inputs pass:
+var/stress-remediation/20261117/endurance-runtime-corrected/completion.json.
+Exact guest /var/tmp/ssh-exam-overlay-7awsqbqb and all owned actors are stopped.
+
+Recorder now caps repeated kinds and reserves independent policy capacity. Actual
+HTTP flood128duplicate409s plus80distinctordinary kinds retains a later policy503
+and preserves all replies.14transport regressions and typecheck PASS. Fresh actual
+native-editor-7 PASS98.281s,1case/0skip/fail/flaky: editor/recovery/protected finish,
+unchanged source/build and independent FULL native/Marco/local cleanup. Actual9
+retained diagnostics contain4duplicate409samples followed by5distincttransport503
+samples from deliberate gatewayrestart. Receipt:
+var/stress-remediation/20261117/native-diagnostic-budget-qualification/completion.json.
+Guest /var/tmp/ssh-exam-overlay-cucxkos8 is inactive/dead/PID0; original host intact.
 
 ## Newly qualified private runtime/callback milestone
 

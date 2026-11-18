@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import {
   readNativeBridgeRequest,
   forwardNativeBridgeRequest,
+  nativeBridgeDiagnostics,
 } from "../fixtures/native-guest.js";
 
 async function gateway(
@@ -223,6 +224,52 @@ it("distinguishes an origin503 from a private forwarding failure and preserves t
       expect(JSON.stringify(notes)).not.toContain("PRIVATE_REPLY_MARKER");
     },
   );
+});
+
+it("retains a later policy503 after repeated monitoring refusals and a saturated ordinary diagnostic budget", async () => {
+  const notes: Record<string, unknown>[] = [],
+    diagnose = nativeBridgeDiagnostics((receipt) => notes.push(receipt));
+  await gateway(
+    (req, res) => {
+      res.writeHead(req.url === "/api/agent/exam-execution-policy" ? 503 : 409);
+      res.end("fixed refusal");
+    },
+    async (port) => {
+      const send = async (path: string) => {
+        const result = await forwardNativeBridgeRequest(
+          { ...request, path },
+          port,
+          new AbortController().signal,
+          70,
+          diagnose,
+        );
+        expect(result?.status).toBe(
+          path.endsWith("exam-execution-policy") ? 503 : 409,
+        );
+        expect(result?.body.toString()).toBe("fixed refusal");
+      };
+      for (let i = 0; i < 128; i++) await send(request.path);
+      for (let i = 0; i < 80; i++)
+        await send(
+          "/api/agent/probe-" +
+            String.fromCharCode(97 + Math.floor(i / 26), 97 + (i % 26)),
+        );
+      await send("/api/agent/exam-execution-policy");
+    },
+  );
+  expect(notes.length).toBeLessThan(100);
+  expect(
+    notes.filter((receipt) => receipt.route === request.path).length,
+  ).toBeLessThan(10);
+  expect(notes).toContainEqual(
+    expect.objectContaining({
+      route: "/api/agent/exam-execution-policy",
+      source: "gateway-response",
+      status: 503,
+    }),
+  );
+  expect(JSON.stringify(notes)).not.toContain("fixed refusal");
+  expect(JSON.stringify(notes)).not.toContain("original");
 });
 
 it("does not replace an origin refusal when optional private diagnostics fail", async () => {

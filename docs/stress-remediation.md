@@ -36,6 +36,10 @@ Preserve existing screenshots, failed receipts, deadlines, holds and monitoring.
    and simultaneous protected submissions. Write a new agent-reviewed report.
    A failure triggers focused diagnosis/remediation, never blind repeated ramps.
 
+The instructor confirmed that increasing the class-server VM resources is an
+option if completed measurements require it. Keep sizing proposals separate from
+actual production changes; the current qualification still uses guarded guests.
+
 ## Progress
 
 - Investigation: report/current code read; initial dirty files are the ten existing

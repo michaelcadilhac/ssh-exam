@@ -257,6 +257,10 @@ HTTP refusal from private timeout/descriptor errors, with bounded fixed metadata
 and response hashes. No signed request/body/key/capture is logged. The periodic
 `gateway-resources.jsonl` records descriptor counts/limits and memory so a later
 failure does not need another expensive ramp merely to discover its source.
+Diagnostic retention bounds repetitions by kind and reserves independent capacity
+for execution-policy failures. A flood of monitoring refusals must not hide a
+later policy503. This is exercised through actual HTTP after both repeated replies
+and saturation of the ordinary diagnostic budget; response bytes stay unchanged.
 After each native phase, independently verify its exact owned unit is inactive
 with MainPID0 and its private preservation receipt is unchanged. A wrapper exit
 alone is insufficient. Never stop installed exam services as test cleanup.

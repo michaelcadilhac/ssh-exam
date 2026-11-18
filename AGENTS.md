@@ -240,7 +240,8 @@
   merely to discover its stage. Private callback transport must distinguish origin
   refusals from its own timeout/descriptor failures, retaining bounded receipts
   even when opening a log fails. Qualify delayed healthy HTTP replies, cancellation
-  and finite refusal separately; a bridge-generated503 is not an origin503 or
+  and finite refusal separately, including a distinct failure after repetitive
+  diagnostic traffic has saturated its budget; a bridge-generated503 is not an origin503 or
   proof of a student violation. Do not widen native authority freshness or reset
   deadlines to repair a test transport.
 - Use `npm test` for application suites so its native-clock pretest runs in the

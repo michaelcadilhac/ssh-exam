@@ -89,6 +89,31 @@ export function readNativeBridgeRequest(
   stream.once("error", fail);
 }
 
+// The real bridge caller below must retain a later policy refusal even when
+// repeated monitoring replies have exhausted their own log budget.
+export function nativeBridgeDiagnostics(
+  emit: (receipt: Record<string, unknown>) => void,
+) {
+  const ordinary = new Map<string, number>(),
+    policy = new Map<string, number>();
+  return (receipt: Record<string, unknown>) => {
+    const reserved = receipt.route === "/api/agent/exam-execution-policy",
+      counts = reserved ? policy : ordinary,
+      key = JSON.stringify([
+        receipt.route,
+        receipt.source,
+        receipt.status,
+        receipt.reason,
+        receipt.code,
+      ]),
+      count = counts.get(key) ?? 0;
+    if (count >= 4 || (!counts.has(key) && counts.size >= (reserved ? 16 : 64)))
+      return;
+    counts.set(key, count + 1);
+    emit(receipt);
+  };
+}
+
 export async function forwardNativeBridgeRequest(
   request: NativeBridgeRequest,
   httpPort: number,
@@ -326,7 +351,6 @@ export async function nativeGuest(
     port: (proxy.address() as net.AddressInfo).port,
     pins: [] as string[],
   };
-  let callbackFailures = 0;
   const limits = readFileSync("/proc/self/limits", "utf8")
     .split("\n")
     .find((line) => line.startsWith("Max open files"));
@@ -339,8 +363,7 @@ export async function nativeGuest(
     }
     return { pid: process.pid, fds, limits, rss: process.memoryUsage().rss };
   };
-  const diagnoseCallback = (receipt: Record<string, unknown>) => {
-    if (callbackFailures++ >= 64) return;
+  const diagnoseCallback = nativeBridgeDiagnostics((receipt) => {
     const row = JSON.stringify({ ...receipt, ...resourceSnapshot() });
     // stderr is already open and remains usable when opening a new log fails.
     console.error("NATIVE_CALLBACK_FAILURE " + row);
@@ -351,7 +374,7 @@ export async function nativeGuest(
     } catch {
       /* stderr retains it. */
     }
-  };
+  });
   const resourceTimer = setInterval(() => {
     try {
       appendFileSync(

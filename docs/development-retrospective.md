@@ -696,3 +696,13 @@ ownership checks. Original refusal and independently verified cleanup recovery s
 separate. A fresh actual editor/recovery/protected-finish workflow passes, including
 real process limits and FULL host preservation. Use real kernel output in parsing
 regressions; a hand-written approximation was insufficient.
+
+The fresh class ramp was then stopped early after four verified students: a check
+found that64 identical monitoring409s exhausted the single diagnostic cap, which
+would hide a later policy503. This was another test-observability miss, not an
+established product failure. All actors stopped with independent FULL preservation;
+the incomplete receipt stays failed. Retention now caps repeated kinds separately
+and reserves policy capacity. A real HTTP regression floods repeated and distinct
+ordinary refusals, then verifies the later policy503 is retained with all original
+responses unchanged. Saturate diagnostic budgets in focused checks before using
+them to justify an expensive run; a single recorded example proves too little.

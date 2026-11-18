@@ -64,6 +64,16 @@ rejected Linux trailing whitespace; its failed receipt and guarded cleanup recov
 are retained, and the formatting regression passes. No native policy or deadline was
 weakened, no70/90-minute pass exists, and no changes are deployed.
 
+The following class run was deliberately stopped after4verified students because
+64identical monitoring409 diagnostics exhausted their shared log budget. This is
+an incomplete test, not an attributed product failure. FULL native/Marco/local
+preservation and cleanup pass. Per-kind retention now reserves policy capacity;
+14real-HTTP transport regressions and typecheck pass, followed by actual native
+editor/recovery/protected finish (native-editor-7,98.281s) with later distinct
+failures retained and all cleanup/unchanged inputs verified. No70/90pass yet.
+The instructor permits increasing VM resources if completed sizing measurements
+require it; this is an available option, not a production change or restart now.
+
 # Manual pre-final stress suite — IMPLEMENTED LOCALLY; TARGET NOT QUALIFIED
 
 Approved target: 70 synthetic students, four terminals each, 90 real peak minutes
