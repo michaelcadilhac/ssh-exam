@@ -1,65 +1,84 @@
-# Current checkpoint — four-core optimization qualified locally
+# Current checkpoint — approved reusable capture decoders
 
-Instructor: keep csc-sys at four cores; optimize within that limit. Local work,
-synthetic/disposable tests and local commits only. No push/deployment/production
-restart/configuration/record change, actual student/MFA or external email.
-Preserve the ten pre-existing dirty documentation PNGs. All owned tests stopped.
+Keep csc-sys at FOUR cores. Local development/testing/commits only; no push,
+deployment, production service/configuration/record change, actual student/MFA
+or external email. Preserve ten original dirty PNGs. All remote tests stopped.
 
-## Validated increment (based on309e60d)
+## Exact next action — isolated decoder checkout
 
-Four native background discovery paths now use fresh snapshots, avoiding full
-history writes: callback queue, recording offsets, access candidates and recording
-report candidates. Actual acknowledgements/releases/report fences are unchanged
-transactions. No cache, policy, schema, timing or CLI-capability change.
-[Implementation/verification](native-background-cost.md).
+Instructor approved bounded per-stream decoder workers, local only; do NOT
+re-ask (questioncall_ece2ac40affb45ff8be847374968ab39). Runtime entry is authenticated
+binary capture→Monitoring.uploadedFrame→CaptureVideoIngress.accept.
+Feature checkout `/tmp/ssh-exam-decoder-d7e5bfb5`, branch
+`codex/reusable-capture-decoders-d7e5bfb5`, base08ac3f0; node_modules symlinks to
+MAIN's installed dependencies. Its AGENTS.md read; its own native clock pretest
+built successfully. Main source/build have remained frozen. No feature code yet:
+only docs/reusable-capture-decoders.md plan and a meaningful RED HTTP regression
+in tests/integration/capture-video-upload.test.ts (expect same decoder PID across
+three real authenticated uploads and zero processes after app close). Red receipt
+/tmp/ssh-exam-decoder-red.log. Use npm test for its own clock pretest. Worktree
+receipt P/native-small-profile/decoder-worktree.json.
 
-Actual signed callback scan218attempts/872files:6.835s→13.671ms and5.81GB→7.08MB
-allocations. Actual synthetic Watch CPU0.519→0.079core,84.7%reduction, passes the
-unchanged75%target. Earlier72.3%result and203/EXEC copied-mode fixture failure remain.
-Focused race/deadline/access/report/callback checks pass. Full native/CLI races
-pass(core278.113s,CLI7.366s;1735cases incl subtests/137gated skips/0failures).
-Build/vet pass. Earlier broad TMPDIR socket-overflow failure retained; corrected
-focused cases and complete final run pass with TMPDIR=/tmp.
+NEXT implement bounded codec workers and integrate directly with accept and the
+monitoring caller; then focused real HTTP/lifecycle/ownership/crash tests before
+broad/resource/browser qualification. Keep four decode slots/64in-flight source
+operations/5squeue/15sframe/original native authority windows. Strict process/RAM/
+byte/CPU/lifetime caps; retire scope/chain/geometry changes. Failed publish keeps
+last verified prefix, retires speculative worker, retry reconstructs it. No source
+prediction crosses user/page/generation/settings/owner. ACK replay preserves age.
+Use stable physical source key from trusted caller (username+screen/camera),
+separate exact scope; never parse opaque auth ownership in codec. Consider a96
+worker cap with bounded idle LRU retirement; choose/qualify from70-stream load.
 
-Actual Marco→WASM→SSH→guarded csc-sys native editor/hold/Continue/protected Finish
-passes104.043s command time, one student. Source/build and all16documentation image
-hashes match. Independent host/native/base preservation, Marco/local cleanup FULL,
-private3100/3102/9444/9445ports closed. No production change.
-[Agent report](../reports/stress/20261119T194443Z/report.md).
+Streaming feasibility PASS: P/native-small-profile/reusable-decoder-probe2/;
+actual ffmpeg emits each JPEG without next input, cold64–68ms/warm4–10ms. Initial
+and reconstructed-prefix cases exit0/reaped. An initial unsupported-vsync probe
+is retained; installed option is -fps_mode passthrough. Preserve existing limits,
+use -probesize32/-analyzeduration0/-fpsprobesize0/-flush_packets1 and a static
+select=gte(n,bootstrapIndex) filter so cold prefix reconstruction emits only the
+requested new frame. Each IVF packet must yield exactly ONE displayed image;
+validate VP9 superframe/display-header framing, not only metadata. Primary WebM
+spec/libvpx sources browsed (links in feature plan). A tiny header parser must not
+replace full codec verification. Capture stderr boundedly for immediate codec
+errors; do not wait15s on a malformed stream that remains open. Reject/reap crash,
+extra output, bad dimensions, owner changes and late completion without affecting
+peers. No production changes or class-capacity claim from a component pass.
 
-Evidence P=`var/qualification35/profile-20261119T044302Z-8d3c93/`:
-`native-small-profile/idle-callback/`, `callback-native-race-final/`,
-`callback-native-interface/`; actual native evidence `var/stress/20261119T194443Z/`.
-New17-file native manifest58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56;
-audited code-only upload `/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279`.
+## Main latest — class11 FAILED, cleanup FULL
 
-## Exact next action
+[Agent report](../reports/stress/20261119T195353Z/report.md).
+08ac3f0 reached34students/136GCC/GDB panes;35thStart hit60s. Native/web recovery
+observed SAME ACTIVE/gen0/full4hinterval/workspace, not typing readiness. Peak/
+protected Finish NOT reached. Successful HTTPStart median27.515/p9555.041/max59.624s;
+23056accepted/32challenge/361decoder-queue/15image-capacity captures. No memory
+high/max/OOM; observer maxgap5.054s. Independent native/host/config/authority/base,
+Marco/local cleanup and source/build/all16image preservation FULL, privateports
+3100/3102/9444/9445closed. Need stop completed local class/probe unit receipts
+before another host test; all have already exited, remote roles fully stopped.
+After cleanup unchanged installed watchdogPID2590477 uses0.946core, ordinary user
+slice1.979cores. Neither touched. Candidate watchdog at25students sampled0.159core.
+Class test includes old installed stack; don't equate it with future single-stack
+production or blame every wait on one cause. No more blind class repeats.
 
-Commit this coherent local increment, then prepare the existing short35-student
-co-location controller with the new native bundle. Reuse the already-qualified
-read-only test filesystem and unchanged web code/build; guard idle/host/authority
-and private ports again. Preserve former identity and per-run controller inputs.
-Carry the entire bounded ramp+peak+Finish lifetime into all observers. Verify a
-focused real-WASM password prompt before authorizing the broad runner. No source
-edits while running; collect exact cleanup/preservation. Do not infer capacity
-from the single-student or synthetic CPU result.
+## Validated local native increment
 
-## Latest class result and remaining scope
+Commit08ac3f0 removes redundant full-state writes from four background read scans.
+Actual mutations/fences untouched; no cache/schema/clock/policy change.
+[Details](native-background-cost.md).218attempt/872file scan6.835s→13.671ms,
+allocations5.81GB→7.08MB. Actual synthetic Watch0.519→0.079core (84.7%, passes75%
+target). Focused plus full native/CLI races pass(core278.113s/CLI7.366s,1735cases
+incl subtests/137gated skips/0failures), build/vet pass. Actual Marco→WASM→SSH→
+disposable native editor/hold/Continue/protectedFinish PASS104.043s; FULL cleanup/
+preservation. [Report](../reports/stress/20261119T194443Z/report.md). Not deployed.
 
-Class10 on309e60d FAILED after33students/132GCC/GDB terminals. Student34 Start
-exceeded60s; recovery observed original native/webACTIVE and workspace, not typing
-readiness. Peak/Finish not reached. Cleanup/preservation FULL. Source/build and
-all16images preserved. [Agent report](../reports/stress/20261119T175624Z/report.md);
-raw P/native-small-profile/class-10/.
+P=`var/qualification35/profile-20261119T044302Z-8d3c93/`.
+Main native manifest58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56;
+private upload `/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279`.
+Prior class10/probes/native failures remain documented. Main docs/checkpoint dirty
+for this new report; feature branch changes must later be validated/committed and
+merged locally. Do not discard user images or overwrite current checkpoint with
+feature's older snapshot.
 
-299decoder queue expiries/28challenge refusals/1image capacity refusal/21413accepted.
-Observer1100s expiry was not OOM;255.121s native sample gap retained, continuous
-web/host series remains. All old class units/tunnels stopped. Rejected local
-shorter-prediction-group experiment saturated both variants and raised bytes45%.
-No encoding change. Read-only post-cleanup diagnosis: installed idle watchdog
-0.86–0.99core, other user work~2cores. Neither stopped; student work not inspected.
-
-Prepared image lacks private stage labels; no release-ready claim.35co-location,
-current32installed slots, csc-specific Compose/nginx/externalHTTPS/CURRENT recovery
-and70capacity remain open. Prior35/90pass was a different runtime layout. Three-agent
+35co-location/installed32slots/csc-specific Compose/nginx/externalHTTPS/CURRENT
+recovery/70capacity remain open. Prior35/90pass has different topology. Three-agent
 consolidation completed earlier; do not repeat. No deployment authority.

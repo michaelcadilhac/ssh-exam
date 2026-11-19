@@ -1,3 +1,11 @@
+November19 follow-up on08ac3f0: class11 FAILED at34students/136terminals; final
+Start exceeded60s, original native/webACTIVE clock recovered without replay.
+361decoder queue expiries remain. Full independent cleanup/preservation passes;
+production is unchanged. The instructor approved bounded per-stream reusable
+video decoders. Development is isolated from MAIN; authenticated HTTP reuse
+regression is RED, streaming feasibility passes, implementation pending.
+[Class report](reports/stress/20261119T195353Z/report.md).
+
 November19: retain four cores and optimize within them, as instructed. Class-10
 failed at33students/132terminals; peak/Finish were not reached. Lost-Start
 observation found the original native/webACTIVE interval, without replay. Decoder
