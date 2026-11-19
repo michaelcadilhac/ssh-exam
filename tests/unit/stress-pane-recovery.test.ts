@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Page } from "@playwright/test";
+import { runInNewContext } from "node:vm";
 import { recoverRefusedStressPane } from "../fixtures/stress-navigation.js";
 import { observeWasmBootstrap } from "../fixtures/wasm-bootstrap-diagnostics.js";
 
@@ -98,7 +99,8 @@ describe("private native pane diagnostic observer", () => {
     vi.stubGlobal("window", { Worker });
     const page = {
       on: vi.fn(),
-      addInitScript: async (fn: () => void) => fn(),
+      addInitScript: async (source: string) =>
+        runInNewContext(source, { window }),
       evaluate: async (fn: () => unknown) => fn(),
     } as unknown as Page;
     const read = await observeWasmBootstrap(page);
