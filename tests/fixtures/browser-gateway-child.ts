@@ -53,13 +53,19 @@ process.on("message", async (message: any) => {
                   return;
                 }
                 const id = ++sequence;
-                // The fleet observation traverses a bounded 180-second native
-                // reader; its browser client allows 190 seconds. Other private
-                // routes and production timeouts retain their existing bounds.
+                // Fleet reads allow 180 seconds plus a 20-second final cleanup.
+                // The HTTP client allows 210 seconds. Single reads allow 10
+                // seconds plus IPC; neither diagnostic grants work permission.
+                const timeout =
+                  route === "POST /api/fixture/native-fleet"
+                    ? 205_000
+                    : route === "GET /api/fixture/native-state"
+                      ? 15_000
+                      : 10_000;
                 const timer = setTimeout(() => {
                   routes.delete(id);
                   reject(Error("Private fixture route timed out"));
-                }, route === "POST /api/fixture/native-fleet" ? 185_000 : 10_000);
+                }, timeout);
                 routes.set(id, { resolve, reject, timer });
                 send({
                   kind: "fixture-route",

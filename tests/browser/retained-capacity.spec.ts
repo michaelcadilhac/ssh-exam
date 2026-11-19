@@ -197,7 +197,8 @@ test(
       const response = await request.post("/api/fixture/native-fleet", {
         headers,
         data: { attempts: fleet.map((entry) => entry.id), finish },
-        timeout: stressRun ? 190000 : 30000,
+        // Native read:180s (10s for16); final cleanup:20s; then IPC/HTTP.
+        timeout: stressRun ? 210000 : 35000,
       });
       expect(response.ok(), await response.text()).toBe(true);
       const value = await response.json();
@@ -792,7 +793,7 @@ test(
         // refusal should not be hidden until all sixty-four panes have opened.
         const probe = await request.get("/api/fixture/native-state", {
           params: { attempt: entry.id },
-          timeout: 10000,
+          timeout: 20000,
         });
         expect(probe.ok(), await probe.text()).toBe(true);
         const observed = snapshot.parse(await probe.json());

@@ -39,13 +39,14 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
     return { students: 35, payload };
   };
   gateway.app.post("/api/fixture/native-fleet", delayed);
+  gateway.app.get("/api/fixture/native-state", delayed);
   gateway.app.get("/api/fixture/ordinary-slow", delayed);
   gateway.app.get("/api/fixture/healthy", async () => ({ healthy: true }));
   try {
     await gateway.initialized;
     const session = gateway.store.session("admin", "synthetic", null);
     const address = await gateway.app.listen({ port: 0 });
-    const [fleet, ordinary] = await Promise.all([
+    const [fleet, state, ordinary] = await Promise.all([
       fetch(address + "/api/fixture/native-fleet", {
         method: "POST",
         headers: {
@@ -53,6 +54,9 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
           cookie: `session=${session.token}`,
           "x-csrf-token": session.csrf,
         },
+        signal: AbortSignal.timeout(20_000),
+      }),
+      fetch(address + "/api/fixture/native-state", {
         signal: AbortSignal.timeout(20_000),
       }),
       fetch(address + "/api/fixture/ordinary-slow", {
@@ -63,10 +67,12 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
     expect((await ordinary.json()).error).toBe("Private fixture route timed out");
     const result = await fleet.json();
     expect(fleet.status, JSON.stringify({ error: result.error })).toBe(200);
+    expect(state.status).toBe(200);
     expect(result.students).toBe(35);
     const digest = (value: string) =>
       createHash("sha256").update(value).digest("hex");
     expect(digest(result.payload)).toBe(digest(payload));
+    expect(digest((await state.json()).payload)).toBe(digest(payload));
     expect(
       await (await fetch(address + "/api/fixture/healthy")).json(),
     ).toEqual({ healthy: true });
