@@ -7,6 +7,16 @@
 
 ## November 18 local follow-up: video prediction at ownership changes
 
+November19 follow-up: a lost or malformed Start reply is an unknown outcome,
+not proof of refusal. The same confirmation observes the existing authenticated
+status/WebSocket feed for up to60seconds without replaying Start. A same-generation
+ACTIVE result still passes every existing connection/media/focus activation check
+before opening the first terminal. Canonical review/completion stays authoritative;
+unresolved preparation warns that time may already be running and disables another
+Start or a misleading pre-start sign-out. Unmount cancels the owned request/wait.
+No timer, grant, native authorization, monitoring policy or management setting changes.
+Local verification and limits: [Start reply recovery](docs/start-response-recovery.md).
+
 The authenticated capture challenge adds an optional opaque `encoder_context`
 hint derived from the decoder's existing attempt/page/generation/settings/owner/
 source scope. A changed hint resets only that source's browser encoder, so its
@@ -21,7 +31,7 @@ and verification. No clock, monitoring, hold or credential policy changes.
 The former client reproduced one unnecessary JPEG detour at a synthetic owner
 transition; the rebuilt browser now remains on verified VP9. Public HTTP tests
 retain stale-group refusal and unchanged deadlines. Application checks pass 959
-with three gated skips; affected browser qualification is in progress. Local only;
+with three gated skips; all13affected browser checks pass. Local only;
 see [35-student production qualification](docs/production-qualification-35.md).
 
 ## November17 local remediation: fresh technical-recovery proof exchanges

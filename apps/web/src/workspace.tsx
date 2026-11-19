@@ -149,6 +149,7 @@ export function Workspace({
     [resumedGeneration, setResumedGeneration] = useState<number | null>(null),
     [dialog, setDialog] = useState<any>(null),
     [dialogBusy, setDialogBusy] = useState(false),
+    [startOutcomeUnknown, setStartOutcomeUnknown] = useState(false),
     [openAfterBegin, setOpenAfterBegin] = useState(false),
     [finishing, setFinishing] = useState(false),
     [finishError, setFinishError] = useState(""),
@@ -283,6 +284,7 @@ export function Workspace({
   const snapshotEpoch = useRef(0);
   const activationEpoch = useRef(0);
   const activating = useRef(false);
+  const startObservation = useRef<AbortController | null>(null);
   const lastServerSnapshot = useRef<number | null>(null);
   const continuation = useRef(new ContinuationStatusTracker());
   const automaticRecovery = useRef({ busy: false, run: async () => {} });
@@ -1429,6 +1431,7 @@ export function Workspace({
     return () => {
       unsubscribe();
       mounted = false;
+      startObservation.current?.abort();
       bound.current = false;
       browserSSH.setInputEnabled(false);
       window.removeEventListener("offline", offline);
@@ -1543,13 +1546,64 @@ export function Workspace({
         "Waiting for the connection check. Your exam has not started.",
       );
     const epoch = activationEpoch.current;
+    const generation = attemptRef.current.generation || 0;
+    const observation = new AbortController();
+    startObservation.current = observation;
     ++snapshotEpoch.current;
     activating.current = true;
     let result;
     try {
       await capture.current!.verifyForBegin(settings.webcam);
-      result = await api(`/student/attempts/${id}/begin`, conditions(), page);
+      try {
+        result = await api(
+          `/student/attempts/${id}/begin`,
+          conditions(),
+          page,
+          observation.signal,
+        );
+      } catch (error) {
+        if (
+          observation.signal.aborted ||
+          Number.isInteger((error as { status?: number })?.status)
+        )
+          throw error;
+        // The request may have committed. Observe the existing authenticated
+        // status/WS feed; never replay Start or infer no-start from PREPARING.
+        setStartOutcomeUnknown(true);
+        setDialog((current: any) =>
+          current?.kind === "begin"
+            ? { ...current, message: "Checking whether your exam started…" }
+            : current,
+        );
+        const until = performance.now() + OPERATION_TIMEOUT_MS;
+        while (
+          !observation.signal.aborted &&
+          attemptRef.current.state === "PREPARING" &&
+          performance.now() < until
+        )
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        if (observation.signal.aborted)
+          throw new DOMException("Workspace closed", "AbortError");
+        const observed = attemptRef.current;
+        if (
+          observed.state === "ACTIVE" &&
+          (observed.generation || 0) === generation
+        )
+          result = { attempt: observed };
+        else if (observed.state === "PREPARING")
+          throw Error(
+            "We could not confirm whether your exam started. Time may already be running. Keep this page open and contact your instructor.",
+          );
+        else
+          throw Error(
+            observed.state === "LOCKED"
+              ? "Your exam needs instructor review. Close this message to see its current status."
+              : "Exam status changed during setup. Close this message to see its current status.",
+          );
+      }
     } finally {
+      if (startObservation.current === observation)
+        startObservation.current = null;
       activating.current = false;
     }
     ++snapshotEpoch.current;
@@ -1566,6 +1620,7 @@ export function Workspace({
     armed.current = attemptRef.current.state === "ACTIVE";
     if (armed.current) {
       confirmActivation(epoch);
+      setStartOutcomeUnknown(false);
       localLocked.current = false;
       setLocked(false);
       for (const p of [...panes.current.values()]) remove(p.id);
@@ -1773,6 +1828,7 @@ export function Workspace({
         </div>
         <button
           onClick={open}
+          hidden={startOutcomeUnknown && attempt.state === "PREPARING"}
           disabled={
             locked ||
             authenticationGap ||
@@ -1821,7 +1877,10 @@ export function Workspace({
           </div>
         </details>
         {attempt.state === "PREPARING" ? (
-          <button onClick={() => setDialog({ kind: "signout" })}>
+          <button
+            disabled={startOutcomeUnknown}
+            onClick={() => setDialog({ kind: "signout" })}
+          >
             Sign out
           </button>
         ) : (
@@ -1927,6 +1986,7 @@ export function Workspace({
           <button
             className="primary"
             disabled={
+              startOutcomeUnknown ||
               !connected ||
               !interaction() ||
               authenticationGap ||
@@ -1942,10 +2002,17 @@ export function Workspace({
           {settings.webcam && (
             <video id="camera-preview" muted autoPlay playsInline />
           )}
-          <span>
-            Setup expires after {PREFLIGHT_TIMEOUT_MINUTES} minutes. You can
-            sign in again.
-          </span>
+          {startOutcomeUnknown ? (
+            <p role="status">
+              Time may already be running. Keep this page open and contact your
+              instructor.
+            </p>
+          ) : (
+            <span>
+              Setup expires after {PREFLIGHT_TIMEOUT_MINUTES} minutes. You can
+              sign in again.
+            </span>
+          )}
         </div>
       )}
       <main
@@ -1954,15 +2021,17 @@ export function Workspace({
         aria-label="Terminal windows"
         inert={covered}
       >
-        {count === 0 && !ended && (
-          <div className="empty-workspace">
-            <p>
-              {attempt.state === "PREPARING"
-                ? "Open a practice terminal to try your tools before the exam."
-                : "Open a terminal to start working."}
-            </p>
-          </div>
-        )}
+        {count === 0 &&
+          !ended &&
+          !(startOutcomeUnknown && attempt.state === "PREPARING") && (
+            <div className="empty-workspace">
+              <p>
+                {attempt.state === "PREPARING"
+                  ? "Open a practice terminal to try your tools before the exam."
+                  : "Open a terminal to start working."}
+              </p>
+            </div>
+          )}
       </main>
       {preflightRecovery && (
         <div className="lock-overlay">
@@ -2321,7 +2390,9 @@ export function Workspace({
           }}
           title={
             dialog.kind === "begin"
-              ? "Start your exam?"
+              ? dialogBusy
+                ? "Starting exam"
+                : "Start your exam?"
               : dialog.kind === "finish"
                 ? "Finish exam?"
                 : dialog.kind === "close"
@@ -2346,7 +2417,7 @@ export function Workspace({
               Programs in this terminal will stop.
             </p>
           )}
-          {dialog.kind === "begin" && (
+          {dialog.kind === "begin" && !dialog.message && (
             <p>
               {!functionalTest &&
                 !reservation.administratorSandbox &&
@@ -2378,7 +2449,7 @@ export function Workspace({
           )}
           {dialog.kind === "error" && <p>{dialog.message}</p>}
           {dialog.kind === "begin" && dialog.message && (
-            <p role="alert">{dialog.message}</p>
+            <p role={dialogBusy ? "status" : "alert"}>{dialog.message}</p>
           )}
           {dialog.kind === "rename" && (
             <input
@@ -2389,9 +2460,11 @@ export function Workspace({
             />
           )}
           <div className="actions" aria-busy={dialogBusy}>
-            <button disabled={dialogBusy} onClick={() => setDialog(null)}>
-              {dialog.kind === "error" ? "Close" : "Cancel"}
-            </button>
+            {!(dialog.kind === "begin" && dialogBusy) && (
+              <button disabled={dialogBusy} onClick={() => setDialog(null)}>
+                {dialog.kind === "error" ? "Close" : "Cancel"}
+              </button>
+            )}
             {dialog.kind !== "error" && (
               <button
                 className="primary"
