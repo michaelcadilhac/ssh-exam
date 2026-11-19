@@ -185,3 +185,90 @@ The next wrapper includes measured ramp,600-second peak, Finish and cleanup in
 its finite outer lifetimes. It changes neither product timeouts nor acceptance,
 resource caps, authoritative clocks or monitoring. Helpers use the already
 calibrated1GiB allowance from startup. Preserve both failed and final receipts.
+
+## Full-ramp failure retained: private observation deadline
+
+Run8 reached all35students/140terminals and passed two healthy fleet samples
+through77.978seconds at peak. The next read failed in the private HTTP child:
+its generic10-second route timer was shorter than the native fleet reader180s
+and browser190s. All35public failure snapshots remained ACTIVE with enabled
+input, no navigation exit or pane refusal. Later LOCKED rows are after browser
+teardown, not evidence of a live false-positive. The600-second peak and protected
+Finish remain unqualified. Native/base/host/configuration/authority and Marco
+cleanup pass; source/build stayed frozen until cleanup.
+
+Retained708resource samples show aggregate run-window current maximum4312MiB
+versus lifetime4343MiB under4352MiB; web1917MiB under2048MiB, native1566MiB and
+helpers859MiB. All high/max/OOM counters remain zero; host minimum available
+2111MiB. Those tight margins do not establish comfortable production headroom.
+At the26-worker observation, PSS was about557MiB for workers,261MiB for the web
+parent and53MiB for codecs; the larger cgroup charge included848MiB file cache,
+mostly inactive. The first classifier counted the parent as a worker because its
+arguments also include the worker URL; the corrected priority/receipt is retained.
+
+Start median/p95/max27.016/59.399/59.881seconds, with four known-busy retries.
+The439binary409fallback responses remain unattributed. They do not prove that all
+refusals share the fixed ownership-context cause, CPU starvation or a violation.
+The host/test CPU hierarchy uses default weights, no additional ancestor quota;
+unrelated user/system workloads compete. None was altered.
+
+The corrected complete transaction budgets are qualified through actual
+authenticated HTTP/IPC: native180s plus cleanup20s, child205s, browser210s;
+single reader10s/child15s/browser20s. Ordinary private routes retain10seconds.
+A delayed2.18MiB reply passes both observations, old code fails the actual timeout
+oracle, and three affected gateway/observer interfaces pass. Commits7976745 and
+fb51849 change only private diagnostics; production authority remains unchanged.
+
+## Run9: final Start timeout, no class pass
+
+Run9 completed34students/136GCC/GDB terminals, then the35th Start ended without
+an HTTP response at the production60-second limit. Its native row was ACTIVE with
+the original real start/deadline and held account; the web row was still PREPARING
+with no clock copied when the fixture immediately tore down. This is not proof
+that reconciliation permanently fails. The driver did not observe its outcome.
+The600-second peak, full35/140 workload and protected Finish were NOT reached.
+Analysis, raw observations and both records are retained in co-location-9/.
+
+All658resource samples are retained: aggregate observed maximum3888.6MiB versus
+lifetime3915.1MiB under4352; web lifetime1898.9MiB under2048; native1468.7MiB;
+helpers861.9MiB. All high/max/OOM counters were zero. Minimum host available
+memory1973.2MiB. These ramp measurements do not qualify final collection headroom.
+CPU pressure reached92.93% aggregate/89.59% native/72.82% web. Successful Start
+median/p95/max27.394/53.364/56.457seconds. CPU contention is demonstrated; exact
+per-stage attribution is not: the separate compiled application did not install
+the parent fixture's nativeSetupTimings hook, and its stderr retained only a tail.
+Do not claim those missing measurements exist or repeat the same class blindly.
+
+Retained binary-error bodies narrow the capture investigation: run9 has359video
+verification-unavailable409s,18replaced-context409s and9image-worker-capacity400s.
+Run8 has427video-unavailable409s,11context409s and one409without a retained body.
+The common video message merges prediction, queue and codec refusals, so it does
+not establish which internal cause dominated. The same-runtime69ms decode probe
+is not a load benchmark. The context fix does not resolve this remaining capacity
+question or justify weaker freshness, unbounded workers or longer authority.
+
+Release preparation also caught a separate private-image packaging error: local
+build umask077 survived COPY, making public CSS/JS/WASM unreadable toUID10001.
+The healthy API/startup proof did not test that boundary. The corrected generated
+dist modes pass an actual normal-UID red→green check and25served-asset hashes;
+the final image/current-data recovery passes63.405seconds/13signedpolls,41table
+contracts and12negativecontrols with FULL owned cleanup. No production Dockerfile
+or installation changed. Final UIcommit1ab9203 and rebuilt16-client WASM sign-in
+pass are now packaged in Configebb877aa. Details/remaining deployment seams:
+[matched release](pre-final-matched-release.md). This closes the packaging defect,
+not the failed shared-host class-capacity boundary.
+
+Native/base/Marco/local cleanup and original host/config/authority preservation
+are FULL. Source/build were proved unchanged before edits. Exact native/main PIDs
+were zero, listening/live sockets absent, and the only remaining web/bridge PIDs
+were verified sleep sentinels; those were subsequently stopped too. No unrelated
+process or production service was stopped. Raw data and final counters remain.
+
+The confirmed student UI defect is corrected separately: see
+[lost Start reply recovery](start-response-recovery.md). Six focused cases and
+38authenticated grant-Begin cases pass; final affected browser results are recorded
+there. This does not shorten Start or convert run9 into a pass. Next: establish a
+quieter CPU window or available vCPUs, wire/verify existing stage observations in
+the separate application and retain decoder refusal stages before another bounded
+co-location run. The instructor was asked about CPU availability, not RAM or a
+production restart. Local only; no push/deployment.

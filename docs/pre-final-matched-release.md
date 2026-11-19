@@ -9,7 +9,28 @@ and cleanup evidence. The previous 90-minute result belongs to its original byte
 
 ## Frozen candidate and changes
 
-Application source `298276a`, schema 37. Private image
+**Not release ready.** Run9 failed on the final student's60-second Start request;
+there is no ten-minute co-location/Finish pass. The corrected image below includes
+the tested browser recovery, but Start/capture capacity and host-specific cutover
+coverage remain open. Unchanged backend/native proofs retain their exact scope.
+
+Current private image: `ssh-exam-qualification:pre-final-start-recovery-fb51849`,
+Config `ebb877aa7a9b9956b8a73091335f7508c7c818e606a6d69e03ad3fb5a28baced`;
+engine `c213500d69c5c0e64e98ca0f29a11f0111956b7810613030a1d87805c6fe6d14`.
+It contains the exact final UI source committed as1ab9203; the build predates that
+commit, so rebuilt WASM VCS metadata namesfb51849. Frozen source/context and actual
+image bytes are bound in `release-image-final/`. All76backend modules match the
+previous candidate. Native binaries and base runtime dependencies are unchanged.
+
+The former Configbb436d26 is superseded: copying private local build output had
+preserved root-only modes on CSS/JS/WASM. API startup passed while the normal
+application UID could not read those assets. The corrected private recipe runs
+`chmod -R a+rX /app/dist` over generated code only; ownership stays root and the
+container stays read-only. The normal multi-stage project Dockerfile is unchanged.
+Old-image refusal is retained; all25new assets are readable and served with exact
+expected bytes asUID10001. The rebuilt WASM passes16real synthetic SSH sign-ins.
+
+Earlier load candidate source `298276a`, schema 37. Superseded private image
 `ssh-exam-qualification:colocation-298276a-8d3c93`, Config
 `bb436d262fb8e0fbd1d71c401391bf21d245fa37e8dc074a15a4e1cee7029e3a`.
 The image reuses the installed immutable runtime dependencies and native clock;
@@ -25,8 +46,9 @@ configuration/history. Unknown scopes, mismatched source, old-reader compatibili
 and native-unchanged attestations refuse. The relay and SSH remain running.
 There is no SQL migration: schema 37 remains 37.
 
-Proposed installation setting: 40 connection workers, allowing the measured
-35-student class plus five spare slots. This is an installation-file change,
+Proposed installation setting: top-level `connectionWorkers: 40` in the
+application JSON selected by `EXAM_CONFIG`, allowing the target35-student class
+plus five spare slots. This is an installation-file change,
 not an exam setting or an increase already applied. Keep the current web limit
 of 2 GiB/two CPUs only if the final co-location report supports it. Resource limits
 and any CPU recommendation must be settled from the report before release freeze.
@@ -105,6 +127,25 @@ The exact image/new scope passes 63.2 seconds of real startup/current-data recov
 13 signed exchanges, a 62-second publisher delay, expired nonce refusal, 41 table
 contracts, due physical-purge rechecks, 12 mutation refusals and zero extra starts
 at recovery. Private container/data/key cleanup passes. These results qualify
-those scopes, not a production deployment. Final short-load metrics, independent
-cleanup, physical native installation and csc-specific proxy/config/recovery
-coverage must be recorded before a release-readiness claim.
+those scopes, not a production deployment. The exact physical native installer now passes every phase (guard-before, stop,
+backup, install, start, verify, guard-after), four distinct replaced binary inodes,
+three reloaded roles, hardened saved-work support/refusal/recovery and seven actual
+SSH/live-policy/collection/original-deadline checks. Independent native-unit/base
+cleanup and host/configuration/authority preservation are FULL. Its web-stop proof
+is explicitly synthetic; it does not qualify the public proxy. Evidence:
+`var/qualification35/profile-20261119T044302Z-8d3c93/native-install/`.
+
+The corrected final image also passes actual startup/current-data recovery in
+63.405seconds:13signedpolls,25served assets verified,41preserved table contracts,
+12negative controls and no additional restart or snapshot/purge replacement during
+forward recovery. Owned container/synthetic keys/data cleanup passes. Evidence:
+`var/qualification35/profile-20261119T044302Z-8d3c93/final-image-startup-recovery/`.
+The new `--assets-only` mode checks all public files as the configured application
+UID before expensive startup qualification; the full runner also hashes real HTTP
+responses. An OCI Config member without a.json suffix required correcting the
+read-only export verifier; the actual Config digest/rootfs diff IDs are bound.
+
+Short-load cleanup is complete, but its capacity acceptance FAILED. Start latency,
+video/worker refusals, adequate CPU availability and complete peak/Finish coverage
+remain open. Csc-specific proxy/config/recovery coverage is a separate gate before
+a release-readiness claim. The exact final image is prepared locally, not deployed.

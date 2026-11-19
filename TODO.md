@@ -5,8 +5,17 @@ a short 35-student web/native co-location, without deployment. A real-codec brow
 case reproduced avoidable JPEG fallback after capture ownership changes; the
 opaque encoder-context correction passes focused regressions, build/typecheck,
 959 application checks (three gated skips) and 13 affected browser checks. This
-does not claim a new 90-minute pass. Web-only measurement, guarded co-location
-and a matched release/recovery proposal remain in progress:
+does not claim a new 90-minute pass. App-only16-client measurement and exact
+physical native installation/preservation checks pass. A partial26-student ramp
+was retained after its outer bound proved too short; the corrected ten-minute
+co-location follow-up FAILED: run9 completed34students/136terminals, then the
+last Start hit the60-second HTTP limit. Native time had started; immediate test
+teardown prevented observing the eventual web reconciliation. Independent
+native/Marco/local cleanup and original host/configuration/authority preservation
+pass. Lost/malformed Start replies now have a tested, bounded, read-only recovery
+flow: no Start replay, no new clock, and no no-start claim on uncertainty.
+The matched release/recovery procedure is prepared locally; CPU/Start/capture
+capacity and csc-specific proxy/configuration coverage remain separate gates:
 [plan and evidence](docs/production-qualification-35.md).
 
 November 18: the requested 35-student / 140-terminal run PASSED 5,405 real peak

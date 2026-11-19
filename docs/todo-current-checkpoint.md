@@ -1,167 +1,88 @@
-# Current checkpoint — bounded 35-student production qualification
+# Current checkpoint — co-location failed; recovery fixes local
 
-Authorized: profile Start/capture, app-only resource measurement, ten-minute
-35/140 web/native co-location and matched release/recovery preparation. Local or
-agreed disposable tests/commits only. No push/deployment, production change,
-actual students/MFA/email or new90-minute run. Plan:production-qualification-35.md.
+Authorized: Start/capture profiling, separate app/helper measurement, a short
+35-student/140-terminal web/native co-location, and matched release preparation.
+No push/deploy, production changes, actual students, institutional MFA, external
+email or another90-minute run. Plan: [production qualification](production-qualification-35.md).
+Evidence root: var/qualification35/profile-20261119T044302Z-8d3c93/.
 
-Product correction298276a is committed: opaque decoder-context hint resets only
-browser VP9 prediction at ownership changes. Public HTTP/actual-codec red→green,
-959application/3gated and13affected-browser checks, typecheck/build pass. No Go or
-clock/freshness/hold policy changed. App-only16real-WASM clients measured604MiB
-appPSS plus144MiB fixturePSS. Installed32slots remain unchanged.
+## Current outcome
 
-Evidence root:var/qualification35/profile-20261119T044302Z-8d3c93/.
-Run7 was interrupted deliberately after26complete ramps/27successful Starts:
-projected ramp plus required600-second peak exceeded its3000-second wrapper.
-It is FAILED/partial, never a35-person pass. All399resource samples retained:
-aggregate peak3496MiB/web1572/native1173/helpers718; zero memory-limit/OOM events.
-Start median21.1s/p9541.9/max44.0. The host is CPU saturated, including unrelated
-user work and installed watchdog; do not alter those processes. Native/Marco
-cleanup and original host/config/authority preservation are FULL; owned root
-web/bridge sleep sentinels remain only for test preparation. Initial cleanup bind
-refused normal TIME_WAIT; independent listener/connection absence and reuse bind
-pass. No socket was cleared. Details:co-location-7/analysis.json and cleanup receipts.
+Run9 FAILED:34students/136GCC/GDB panes completed setup; student35's Start reached
+its60-second HTTP deadline. Native ACTIVE/original clock and web PREPARING were
+recorded at immediate teardown. Later reconciliation was not observed. The full
+35/140 workload,600-second peak and protected Finish were NOT reached.
 
-Native-install rehearsal PASSED, exact18-file bundle copied from retained
-v18s35 binaries plus unchanged qualified controller. Root driver:
-ssh-exam-native-install-driver-bd80458a490e4fca.service.
-Stage:/var/tmp/ssh-exam-native-install-qualification.bd80458a490e4fca.
-Guest:/var/tmp/ssh-exam-overlay-7gzs0j0y. All four binaries replaced/three roles
-reloaded; hardened source-worker plus7SSH/live-policy/collection/deadline checks
-pass. Independent unit/base cleanup and host/config/authority preservation FULL.
-Receipts:native-install/. The base is now free for the next test.
+658samples: aggregate current/lifetime3888.6/3915.1MiB under4352; web lifetime
+1898.9MiB under2048; zero high/max/OOM events; minimum host available1973.2MiB.
+CPU PSI maxima92.93% aggregate/89.59% native. Successful Start median/p95/max:
+27.394/53.364/56.457s. No collection-headroom or sole-CPU-cause claim. Retained
+capture errors:359video-unavailable409,18context409,9image-capacity400. Separate
+child omitted stage timings; decoder-refusal reason remains uncertain.
 
-Next: newrun8, SAME application/test source,35/140/600-second target and4352MiB/
-no-swap aggregate. Generated wrappers are syntax checked:run-colocation8.py,
-launch-long-local.py,host-refresh-v4.py,host-command-identities-v4.json and
-host-resource-observer-v3.py. Outer finite bounds now include measured ramp,
-peak/Finish/cleanup (driver6600s/local6900s/root7200s). Helpers1GiB from startup;
-web2GiB/twoCPU/native3GiB/twoCPU unchanged. Retain failures and stop on genuine
-host safety guard. Keep source/build frozen while a runner is active.
+[Prof report](../reports/stress/20261119T044302Z/report.md) and
+[release/recovery proposal](pre-final-matched-release.md) are finalized locally.
+No new class or remote test is running. Do not repeat the same ramp blindly.
 
-Root stage:/var/tmp/ssh-exam-colocation.d6568409a935b53e. Run7 resource file is
-combined-resources-run7.jsonl (local copy retained). Root sentinels still use
-sleep3600; refresh-v4 verifies/collects them before new sleep7200 services.
-All previous private guest preservation checks pass. No package is missing.
+## Implemented and tested locally
 
-Release preparation is committed509cb18 in evidence-root/release-worktree/.
-New exactpre-final-monitoring-v2 scope:12focused/72matched-controller cases pass;
-real exact-image startup/current-data recovery63.2s,41tables/13signed polls and
-12mutation refusals/no extra starts. Native controller20cases pass. Proposed
-procedure:worktree/docs/pre-final-matched-release.md. Bring this commit to main
-after source is unfrozen; reconcile already-shared startup-fixture correction.
-Private image engine5965a0b1/Configbb436d26 binds76shared compiled modules; noSQL
-migration (37→37). Native/proxy transports remain explicit seams in image test;
-physical installer is running, csc-specific proxy/config/recovery coverage remains
-separate. No release-ready or deployment claim.
+- `298276a`: decoder-context hint resets browser VP9 prediction on ownership changes.
+ Actual-codec/HTTP red→green,959application checks/3gated skips,13affected browser
+ cases, typecheck/build pass. This explains one fallback cause, not all load errors.
+- `1ab9203`: lost/malformed Start reply observes existing authenticated status/WS;
+ never replays Start or changes clocks. Same-generation ACTIVE still passes every
+ activation guard; unknown keeps Start/sign-out disabled and hides practice cues.
+ Prof approves the rendered desktop result. Six final focused and17affected UI
+ cases,38authenticated grant-Begin scenarios, typecheck/build pass. An earlier
+ 28-case group supplies unchanged network coverage. Details: [Start recovery](start-response-recovery.md).
+- Rebuilt WASM passes16real synthetic SSH sign-ins without attempts/clocks. Two
+ actual setup refusal/retry cases pass. The first combined profile failed because
+ its zero-worker baseline followed those two retained sign-ins; a fresh isolated
+ profile passes. No account/history reset or native Go binary change.
+- `505e4b8`/`7976745`/`fb51849`: bounded private transport/observer corrections; real
+ delayed2.18MiB HTTP/IPC and3affected interfaces pass. Production timeouts unchanged.
 
-Before closing: collect full load/independent root+Marco+local cleanup, ask existing
-Prof to write the final bounded-run report, update TODO/design/operator/checkpoint,
-commit coherent increments. All16documentation image hashes match baseline; ten
-pre-existing dirty PNGs must never be staged. No push/deploy.
+Corrected private image Configebb877aa7a9b9956b8a73091335f7508c7c818e606a6d69e03ad3fb5a28baced
+packages1ab9203UI; its build/WASM VCS metadata predates that commit(fb51849).
+76backend modules are unchanged. Old Configbb436d26 had root-only public assets:
+healthy API did not establish frontend usability. New generated-dist modes pass
+normalUID10001readability and exact served hashes for all25assets. Actual final
+image startup/CURRENT-data recovery passes63.405s/13signedpolls/41table contracts/
+12negativecontrols, with no extra restart or snapshot/purge replacement. Private
+container/keys/data cleanup passes. See release-image-final/ and
+final-image-startup-recovery/command.log. New--assets-only qualification preserves
+this boundary. Native physical installer/7SSH/live-policy/deadline checks already
+pass for unchanged binaries. No SQL migration(schema37).
 
-## Completed baseline
+## Open question and exact next action
 
-Local development, synthetic tests and commits only. No push/deployment,
-production changes, actual students, institutional MFA or external email.
-The ten original modified PNGs are preserved; all 16 image hashes match their
-baseline. No package is missing. No VM resize or production restart occurred.
+A question about a quieter CPU window/additional vCPUs is pending. Existing
+approval permits resource increases if available; none was executed. No additional
+RAM or production restart was requested. Before another bounded class test, wire
+and verify existing stage observations in the separate application, preserve
+specific decoder-refusal stages, and establish a CPU/resource plan. Do not widen
+freshness/timeouts, relax guards or diagnose from aggregate pressure alone.
 
-## Completed milestone and remaining scope
+Full co-location/Finish acceptance and actual csc Compose/nginx/external HTTPS/
+CURRENT-recovery coverage remain release gates. Proposal:connectionWorkers40 in
+EXAM_CONFIG JSON; installed32 unchanged. Matched native/web forward recovery is
+prepared; preserve CURRENT data. NOT READY and no deployment instruction exists.
+Temporary three-agent consolidation was completed earlier; preserve current roles.
 
-The requested 35 students / 140 terminals / 90 real peak minutes PASSED on
-7fe9f3d in fresh run 20261118T190606Z/endurance-1. Peak: 5,405.014 seconds and
-158 clean fleet samples. Original clocks, supervisors and final shell/GDB state
-are preserved. All 35 protected archives verified; simultaneous Finish plus
-verification took 74.544 seconds. Independent native/Marco/local/observer cleanup
-is FULL: original init/browser gone, cgroups empty, four local ports free.
-Source/build manifests are unchanged. No test is running.
+## Preservation and prior baseline
 
-[Prof report](../reports/stress/20261118T190606Z/report.md) is finalized and reviewed.
-Completion and metrics: var/stress-remediation/20261118/stress35/endurance/.
-Count support is implemented/tested: 116 Python harness cases, 27 transport/reader
-cases and typecheck pass. Earlier normal application/browser/race/fault/CLI/build
-checks apply to unchanged product/native artifacts at their original scopes.
-Only endurance was selected in this fresh run: phase PASSED, campaign PARTIAL.
+Run9 native/base/host/config/authority, Marco/local cleanup and pre-edit source/
+build preservation are FULL. Native/server PIDs0; ports3102/9444/9445 closed;
+verified idle web/bridge sentinels stopped; observer ended. Receipts:co-location-9/
+{independent-cleanup,generator-cleanup,input-preservation,final-sentinel-cleanup}.json.
+All16documentation images unchanged; never stage the ten original dirty PNGs.
+No package is missing. Commit only explicit source/docs paths, never all files.
 
-This is not a flawless-experience or production-readiness claim. One Start retry;
-successful Start median 17.888 s / p95 26.242 s / max 29.678 s. All 78 capture/
-lifecycle observations are retained, including 66 video-to-JPEG fallbacks. No
-unexpected lockout or pane refusal was recorded. Four startup callback errors
-precede student setup; no later errors. Generator peak 13.363 GiB under its
-unchanged 21-GiB cap, no memory-limit/OOM events. Native CPU pressure remains high.
-
-The requested 35-person milestone is complete locally. No open policy question
-or deployment action remains for this run. Future work should be a bounded
-startup/media profiling or production-capacity milestone. Installed 32 workers,
-actual web/native co-location and release qualification remain open. The earlier
-70-person failure stays failed; 35 does not qualify 70. Do not automatically
-repeat the full suite or change production to clear these separate gates.
-
-Exact bundle/audit: var/stress-remediation/20261118/stress35/bundle/.
-Only two private Python scripts and manifest differ from v17e; native binaries
-are unchanged. Earlier 70-person OOM and FULL cleanup:
-var/stress-remediation/20261118/fleet-frame/endurance/.
-
-## Reusable evidence and source identities
-
-1d57502 fixes private unbuffered frame short writes: deterministic old-code failure,
-three real-socket checks, all43 bridge checks and actual native editor/Continue/
-same-SSH/buffer/protected finish pass (91.771s, FULL cleanup). Endurance6's original
-70-person pre-peak truncation remains preserved, separately from the OOM failure.
-
-Native v17e: /var/tmp/ssh-exam-browser-native-upload.stress20261117T174000Z_v17e_8044428c9086.
-19 files/65,645,281 bytes; digest b0648b8c71776c1d9a7a56278ef3790e22ddc906719c921769c84cab25bfd590.
-Only private bridge/manifest changed from v17d; native binaries are byte-identical.
-Reuse exact Go race/vet and CLI/editor/timer/16-person outage/508 MiB collector
-qualification for unchanged binaries. Start-readiness fix cf4b6c1 passed16 focused,
-72 affected application,7 browser and actual timer/SSH-loss recovery/protected
-finish checks; Prof approved its mobile flow. Private timings4cd15dd passed16/64
-recovery with352 settled observations. Full917 application/3 gated and367 browser/
-12 mode-gated checks,9 gateway restart and16 real-WASM sign-ins remain scoped to
-unchanged product/build inputs. No new artifact derives qualification from an old
-bundle. Installed32 workers and production co-location remain separate open gates.
-
-Plan/evidence:docs/stress-remediation.md. Agent report:reports/stress/20261117T174000Z/report.md.
-Keep failed receipts. No source push or production deployment.
-
-## Deployed baseline
-
-November12,19:25:21America/Chicago /November13,01:25:21UTC: public DNS/TLS and all
-nine exact assets verified externally. Website runs solely on csc-sys; Marco is
-fenced/stopped/disabled with originals retained. Instructor authorized activation
-and confirmed the one DePaul SMTP test received exactly once.
-
-Unchanged runtimeed09efc/schema37/Config1070db5eb056. Web service enabled,2CPU/2GiB/
-no swap; user10001/read-only/capability boundaries preserved. App trusts only the
-explicitly approved DePaul relay certificate; SMTP STARTTLS verification stays on.
-Agent/watchdog/source-worker/reconciler and CLI use local authenticated HTTPS with
-proxy bypass. SSH/relay unchanged; native control roles restarted for routing.
-All147web attempts/217native histories and41table preservation checks pass,
-including71strictly proved prior-tombstone physical absence rechecks. No histories,
-deadlines, grants or holds reset. Recording-worker pause RELEASED; admissions OPEN.
-
-Local commit a507592: classic/containerd deployment identity correction;53controller
-and4stream regressions pass. Exact csc-sys startup/current-data recovery passes68.4s,
-including62s real publisher wait,60s nonce expiry, purge and11mutation refusals.
-16concurrent GCC/GDB jobs,64private PTYs and32VP9 sources pass bounded shared-host
-sizing. Prior native16/64protocol qualification reused for unchanged binaries;
-no new institutional SSH/MFA/media acceptance claimed. Actual mailTransport.verify,
-CLI notification test/show, instructor inbox confirmation and public Chromium load/
-first-field focus pass. Original16documentation screenshot hashes unchanged.
-
-Own wrapper/fixture/Compose/PID-check errors and omitted reconciler routing were
-corrected without repeating completed mutations or replacing the snapshot. All
-90queued callbacks drained normally; no event was cleared/skipped. No idle guard or
-restart was applied after reopening. No deployment action remains pending.
-
-Details/recovery:docs/csc-web-activation.md; earlier import:docs/csc-web-import.md.
-Private evidence:var/collection-tests/csc-web-activation.20261112/ and root stage
-/var/tmp/ssh-exam-csc-activation-20261112-e7dedea8/. Preserve CURRENT data for any
-future recovery; do not restore the old Marco or cold activation snapshot over it.
-
-Separate follow-ups: future release plans need csc-sys paths/certificate/override
-and external fence observation; known idle source-worker task:null diagnostic.
---all removal remains locally tested/unpushed/undeployed, installed CLI47bda3d
-unchanged. Separate grading-helper installation remains pending. No source push.
+Prior35/140/90-minute endurance PASSED on7fe9f3d with35protected exports/FULLcleanup;
+it used a development-host gateway and does not qualify this co-location or70.
+[Prior report](../reports/stress/20261118T190606Z/report.md). Earlier70-person OOM
+stays failed. Native race/kernel/CLI/editor/timer/outage/collector evidence retains
+its original unchanged-binary scope. Last recorded deployed baseline is November12
+csc-sys activation/runtimeed09efc/schema37; see [csc-web-activation.md](csc-web-activation.md).
+Do not restore the old Marco snapshot over CURRENT data. Separate local--all and
+grading-helper follow-ups remain recorded in TODO; no new installation claim.

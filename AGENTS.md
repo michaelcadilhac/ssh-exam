@@ -42,6 +42,10 @@
   freeze its artifacts and qualify the exact installation, migration, preservation,
   recovery and reopening workflow. Exercise signed-poll expiry during startup and
   actual proxy reload timing; fast mocks do not establish production timing.
+  When packaging local build output, qualify every public asset's readability as
+  the configured application UID and verify served bytes. A root-readable file or
+  healthy API does not prove WASM/CSS/JS is usable; restrictive build umasks can
+  survive COPY into an otherwise healthy image.
   Inventory every startup/background database writer. Seed existing tombstones
   and due physical-purge rechecks as well as recording jobs in the real startup
   fixture; empty tables do not qualify preservation against those writers. Prove

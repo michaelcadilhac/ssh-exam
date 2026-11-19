@@ -32,6 +32,7 @@ from cryptography.hazmat.primitives import serialization
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--image',required=True)
 p.add_argument('--image-receipt',required=True,type=Path)
+p.add_argument('--assets-only',action='store_true',help='Check every packaged web asset as the configured application user; no database or startup fixture')
 p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
 p.add_argument('--proof-repair',action='store_true',help='Qualify proof-only recovery with the ORIGINAL frozen controller/proof, corrected nonce verifier and no service replacement')
@@ -66,6 +67,26 @@ def sql(path,query,args=()):
 base=json.loads(run(docker+['image','inspect',a.image]))[0]
 qualified=json.loads(a.image_receipt.read_text())
 assert base['Id']==qualified['engine_id'] and base['RootFS']['Layers']==qualified['layers'], 'Actual source image differs from verified export/rootfs'
+asset_probe=r'''
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+if(process.getuid()!==10001)throw Error('Asset probe requires the normal application UID10001');
+const root='/app/dist/web',files={};let total=0;
+function visit(dir){fs.accessSync(dir,fs.constants.R_OK|fs.constants.X_OK);
+ for(const name of fs.readdirSync(dir)){
+  const file=path.join(dir,name),s=fs.lstatSync(file);
+  if(s.isSymbolicLink())throw Error('Unexpected asset symlink');
+  if(s.isDirectory())visit(file);
+  else {if(!s.isFile()||Object.keys(files).length>=2000||(total+=s.size)>128*1024*1024)throw Error('Invalid/big asset inventory');
+   const bytes=fs.readFileSync(file);files[file.slice(root.length)]={bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex')};}
+ }}
+visit(root);for(const name of ['/index.html','/ssh/client.wasm','/ssh/wasm_exec.js'])if(!files[name])throw Error('Missing asset '+name);
+console.log(JSON.stringify({uid:process.getuid(),files,total_bytes:total}));
+'''
+assets=json.loads(run(docker+['run','--rm','--network','none','--read-only','--cap-drop','ALL',
+    '--security-opt','no-new-privileges','--entrypoint','node',a.image,'-e',asset_probe]))
+if a.assets_only:
+    print(json.dumps({'status':'PASS','assets':assets,'image':base['Id']}),flush=True)
+    raise SystemExit(0)
 nonce=uuid.uuid4().hex;name='ssh-exam-startup-'+nonce;label='ssh-exam.private-matched-startup'
 container=None;thread=None;failures=[];events={};polls=[];stop=threading.Event()
 with tempfile.TemporaryDirectory(prefix='ssh-exam-matched-startup-') as directory:
@@ -252,6 +273,15 @@ else:
             '--health-cmd',shlex.join(['node','-e',"fetch('http://127.0.0.1:3000/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]),
             '--health-interval','20s','--health-timeout','5s','--health-retries','3','--health-start-period','30s',a.image])
         run(docker+['start',container]);live();health();original=poll(30000)
+        # A healthy API does not prove the application UID can serve WASM/JS.
+        served=json.loads(run(docker+['exec',container,'node','-e',r'''
+const crypto=require('node:crypto'),files=JSON.parse(process.argv[1]);
+(async()=>{for(const [name,wanted] of Object.entries(files)){
+ const r=await fetch('http://127.0.0.1:3000'+name,{signal:AbortSignal.timeout(5000)});
+ const bytes=Buffer.from(await r.arrayBuffer());
+ if(r.status!==200||bytes.length!==wanted.bytes||crypto.createHash('sha256').update(bytes).digest('hex')!==wanted.sha256)throw Error('Served asset mismatch: '+name+' HTTP'+r.status);
+}console.log(JSON.stringify({served_assets:Object.keys(files).length,uid:process.getuid()}))})().catch(e=>{console.error(e);process.exit(1)});
+''',json.dumps(assets['files'])]))
         # Stable historical inputs make independent startup writers observable.
         # The expired legacy history is already scrubbed during this warm boot.
         run(docker+['exec',container,'node','-e',"const fs=require('node:fs');fs.chmodSync('/data/monitoring',0o700);fs.writeFileSync('/data/submissions/preserved-synthetic.txt','protected synthetic submission',{mode:0o600});fs.writeFileSync('/data/monitoring-video-deploy.pause','private qualification pause',{mode:0o600})"])
@@ -375,6 +405,7 @@ else:
         assert inspection['HostConfig']['ReadonlyRootfs'] and inspection['HostConfig']['NetworkMode']=='none' and inspection['HostConfig']['CapDrop']==['ALL']
         print(json.dumps({'status':'PASS','reviewed_scope':a.reviewed_scope,'base_image':base['Id'],'qualified_export_config':qualified['config_id'],'rootfs_layers_match':True,'proof_only_repair':bool(proof_repair),'signed_poll_lifetime_ms':60000,
             'actual_startup_wait_seconds':elapsed,'publisher_interval_seconds':a.fresh_after_seconds,
+            'packaged_assets':assets,'served_assets':served,
             'old_ready_blocked':events['old_ready_blocked'],'expired_policy_blocked':events['expired_support_blocked'],'nonce_live_at_start':True,
             'real_signed_polls':len(polls),'production_wait_predicate':True,'preservation':result,
             'physical_purge_rechecks':1,'original_verifier':old_refusal,'negative_controls':mutation_refusals,
