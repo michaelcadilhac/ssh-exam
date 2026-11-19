@@ -1,4 +1,20 @@
-# Current checkpoint — 35-student qualification passed locally
+# Current checkpoint — profile and qualify 35-student production layout
+
+The instructor authorized the next bounded work: profile Start/capture fallback,
+measure web-only resources, short guarded web/native co-location qualification,
+and a matched release/rollback recommendation. No push/deployment or production
+change. No new 90-minute run. Plan and acceptance:
+[production qualification](production-qualification-35.md).
+
+Current milestone: video ownership-scope fallback reproduced and fixed locally.
+Focused HTTP/actual-codec browser regressions, typecheck/build, 959 application
+checks (three gated skips), and all 13 affected browser checks pass. Evidence:
+var/qualification35/profile-20261119T044302Z-8d3c93/.
+No test is running. Next: measure actual application processes separately from
+helpers, freeze finite resource bounds, then run the short guarded co-location
+check. Installed web inventory confirms 32 slots, 2 GiB/two CPUs; it is unchanged.
+
+## Completed baseline
 
 Local development, synthetic tests and commits only. No push/deployment,
 production changes, actual students, institutional MFA or external email.

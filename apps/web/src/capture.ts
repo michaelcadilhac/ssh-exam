@@ -20,6 +20,7 @@ export class Capture {
   busy = new Map<string, Promise<boolean>>();
   private abort = new AbortController();
   private encoder = new CaptureEncoder();
+  private encoderContexts = new Map<string, string | undefined>();
   private videoRetryAt = new Map<string, number>();
   private setups = new Map<string, Promise<MediaStream | undefined>>();
   constructor(
@@ -184,6 +185,17 @@ export class Capture {
     const captured = Date.now(),
       monotonic = performance.now();
     if (challenge?.upload?.binary === "jpeg-v1") {
+      if (challenge.upload.video === "vp9-v1") {
+        const context =
+          typeof challenge.encoder_context === "string" &&
+          /^[a-f0-9]{64}$/.test(challenge.encoder_context)
+            ? challenge.encoder_context
+            : undefined;
+        if (this.encoderContexts.get(source) !== context) {
+          this.encoder.reset(source);
+          this.encoderContexts.set(source, context);
+        }
+      }
       if (
         !forceJPEG &&
         challenge.upload.video === "vp9-v1" &&

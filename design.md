@@ -5,6 +5,25 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 18 local follow-up: video prediction at ownership changes
+
+The authenticated capture challenge adds an optional opaque `encoder_context`
+hint derived from the decoder's existing attempt/page/generation/settings/owner/
+source scope. A changed hint resets only that source's browser encoder, so its
+next upload is a fresh VP9 keyframe. The server still refuses stale prediction
+groups; no decoder state crosses an ownership boundary. The hint is not execution
+authority and contains no native owner fields. It adds no durable state, setting,
+management operation or migration. Old clients ignore it; missing hints retain
+the existing bounded fresh-JPEG recovery. ACK loss, expired challenges, decoder
+restart and concurrent ownership changes still require the existing fresh sample
+and verification. No clock, monitoring, hold or credential policy changes.
+
+The former client reproduced one unnecessary JPEG detour at a synthetic owner
+transition; the rebuilt browser now remains on verified VP9. Public HTTP tests
+retain stale-group refusal and unchanged deadlines. Application checks pass 959
+with three gated skips; affected browser qualification is in progress. Local only;
+see [35-student production qualification](docs/production-qualification-35.md).
+
 ## November17 local remediation: fresh technical-recovery proof exchanges
 
 Technical Continue v2 keeps the idempotent recovery operation separate from a

@@ -431,6 +431,16 @@ export class Monitoring {
     this.live.set(a.id, entry);
     return entry;
   }
+  private captureVideoScope(a: Attempt, page: string, source: string) {
+    return JSON.stringify([
+      a.id,
+      page,
+      a.generation,
+      a.settings,
+      a.registered_owner,
+      source,
+    ]);
+  }
   captureChallenge(a: Attempt, page: string, source: unknown) {
     a = this.currentCapture(a, page);
     const row = this.store.db
@@ -449,7 +459,13 @@ export class Monitoring {
       if (live.tickets.size > 32)
         live.tickets.delete(live.tickets.keys().next().value!);
     }
-    return ticket;
+    // An encoding hint only: freshness and ownership are still validated from
+    // the challenge/current attempt. Never disclose native owner internals or
+    // carry decoder prediction state across an ownership boundary.
+    return {
+      ...ticket,
+      encoder_context: hash(this.captureVideoScope(a, page, ticket.source)),
+    };
   }
   challengedFrame(a: Attempt, input: any, page: string) {
     return this.frame(a, input, page, true);
@@ -464,14 +480,7 @@ export class Monitoring {
     const { version, encoding, ...input } = metadata;
     if (encoding === "jpeg")
       return this.challengedFrame(a, { ...input, data: image }, page);
-    const scope = JSON.stringify([
-      a.id,
-      page,
-      a.generation,
-      a.settings,
-      a.registered_owner,
-      metadata.source,
-    ]);
+    const scope = this.captureVideoScope(a, page, metadata.source);
     return this.uploadVideo.accept(scope, metadata, image, (jpeg) =>
       this.frame(a, { ...input, data: jpeg }, page, true, true),
     );

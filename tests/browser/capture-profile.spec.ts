@@ -4,7 +4,10 @@ import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { fixture, ready } from "./transition-fixture.js";
 import { decodeCaptureUpload } from "../../packages/protocol/capture-upload.js";
-import { CaptureVideoIngress } from "../../apps/server/src/capture-video-ingress.js";
+import {
+  CaptureVideoIngress,
+  CaptureVideoUnavailable,
+} from "../../apps/server/src/capture-video-ingress.js";
 import { randomUUID } from "node:crypto";
 
 for (const transport of [
@@ -306,8 +309,9 @@ test("webcam off never offers or acquires a camera through setup, start and resu
   await expect
     .poll(
       () =>
-        mediaRequests.filter((r) => isChallengedCapture("http://fixture.invalid" + r.path))
-          .length,
+        mediaRequests.filter((r) =>
+          isChallengedCapture("http://fixture.invalid" + r.path),
+        ).length,
     )
     .toBeGreaterThanOrEqual(2);
 
@@ -331,4 +335,137 @@ test("webcam off never offers or acquires a camera through setup, start and resu
   expect(new Set(mediaRequests.map((request) => request.source))).toEqual(
     new Set(["screen"]),
   );
+});
+
+test("video uses a fresh keyframe after the server capture owner changes", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  const runtime = await page.request.get("/api/login-test");
+  expect((await runtime.json()).browserSSH).toBe(true);
+  const f = await fixture(page);
+  expect(f.reservation().settings.webcam).toBe(false);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "mediaDevices", {
+      value: {
+        getDisplayMedia: async () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1280;
+          canvas.height = 720;
+          const context = canvas.getContext("2d")!;
+          let n = 0;
+          const paint = () => {
+            context.fillStyle = "#122140";
+            context.fillRect(0, 0, 1280, 720);
+            context.fillStyle = "white";
+            context.font = "24px monospace";
+            context.fillText("$ synthetic owner transition " + n++, 20, 40);
+          };
+          paint();
+          setInterval(paint, 200);
+          const stream = canvas.captureStream(10),
+            track = stream.getVideoTracks()[0];
+          const settings = track.getSettings.bind(track);
+          track.getSettings = () => ({
+            ...settings(),
+            displaySurface: "monitor",
+          });
+          return stream;
+        },
+      },
+    });
+  });
+  const ingress = new CaptureVideoIngress();
+  let owner = 0,
+    after = 0,
+    refusals = 0,
+    inFlight = 0;
+  const frames: {
+    owner: number;
+    encoding: string;
+    key?: boolean;
+    chain?: string;
+  }[] = [];
+  await page.route("**/api/student/attempts/*/capture-challenges", (route) =>
+    route.fulfill({
+      json: {
+        challenge: randomUUID(),
+        after_sequence: after,
+        valid_for_ms: 60000,
+        encoder_context: String(owner).repeat(64),
+        upload: { binary: "jpeg-v1", video: "vp9-v1" },
+      },
+    }),
+  );
+  await page.route("**/api/student/attempts/*/frames/binary", async (route) => {
+    inFlight++;
+    try {
+      const { metadata, image } = decodeCaptureUpload(
+        route.request().postDataBuffer()!,
+      );
+      if (metadata.encoding === "vp9")
+        await ingress.accept(
+          "screen:" + owner,
+          metadata,
+          Buffer.from(image),
+          async (jpeg) => jpeg,
+        );
+      frames.push({
+        owner,
+        encoding: metadata.encoding,
+        key: metadata.video?.key,
+        chain: metadata.video?.chain,
+      });
+      after = metadata.seq;
+      await route.fulfill({ json: { ok: true } });
+    } catch (error) {
+      if (!(error instanceof CaptureVideoUnavailable)) throw error;
+      refusals++;
+      await route.fulfill({
+        status: 409,
+        json: {
+          code: "capture_video_reset",
+          error: "Fresh prediction group required",
+        },
+      });
+    } finally {
+      inFlight--;
+    }
+  });
+  try {
+    f.model.bind.release();
+    await page.goto("/");
+    await page
+      .getByRole("button", { name: "Check setup and practice", exact: true })
+      .click({ timeout: 10000 });
+    await expect(
+      page.getByRole("button", { name: "Practice terminal", exact: true }),
+    ).toBeEnabled({ timeout: 10000 });
+    await page
+      .getByRole("button", { name: "1. Share entire screen", exact: true })
+      .click({ timeout: 10000 });
+    await expect
+      .poll(() => frames.filter((x) => x.owner === 0).length, {
+        timeout: 12000,
+      })
+      .toBeGreaterThanOrEqual(2);
+    expect(frames[0]).toMatchObject({ encoding: "vp9", key: true });
+    expect(frames[1]).toMatchObject({ encoding: "vp9", key: false });
+    // A single source cannot overlap its next upload. Wait for the previous
+    // response to settle before changing the synthetic server owner.
+    await expect.poll(() => inFlight).toBe(0);
+    owner = 1;
+    await expect
+      .poll(() => frames.filter((x) => x.owner === 1).length, {
+        timeout: 15000,
+      })
+      .toBeGreaterThanOrEqual(2);
+    const next = frames.filter((x) => x.owner === 1);
+    expect(refusals).toBe(0);
+    expect(next[0]).toMatchObject({ encoding: "vp9", key: true });
+    expect(next[0].chain).not.toBe(frames[0].chain);
+    expect(next[1]).toMatchObject({ encoding: "vp9", key: false });
+  } finally {
+    await ingress.close();
+  }
 });

@@ -1,5 +1,14 @@
 # Stress remediation — 35-student test passed, local only
 
+November 19: the next authorized milestone profiles Start/capture and qualifies
+a short 35-student web/native co-location, without deployment. A real-codec browser
+case reproduced avoidable JPEG fallback after capture ownership changes; the
+opaque encoder-context correction passes focused regressions, build/typecheck,
+959 application checks (three gated skips) and 13 affected browser checks. This
+does not claim a new 90-minute pass. Web-only measurement, guarded co-location
+and a matched release/recovery proposal remain in progress:
+[plan and evidence](docs/production-qualification-35.md).
+
 November 18: the requested 35-student / 140-terminal run PASSED 5,405 real peak
 seconds and 158 fleet checks, preserved original clocks, supervisors and shell/GDB
 state, then verified all 35 protected submissions. Simultaneous Finish and archive

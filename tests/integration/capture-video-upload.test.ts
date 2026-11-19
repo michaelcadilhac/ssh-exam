@@ -401,3 +401,49 @@ it.each([
     }
   },
 );
+
+it("capture encoder context changes with generation while stale prediction groups still refuse", async () => {
+  const f = await fixture(),
+    before = f.store.attempt(f.id)!;
+  const ticket = async () => {
+    const reply = await f.app.inject({
+      method: "POST",
+      url: f.url + "/capture-challenges",
+      headers: f.headers,
+      payload: { source: "screen" },
+    });
+    expect(reply.statusCode, reply.body).toBe(200);
+    return reply.json();
+  };
+  try {
+    const initial = await ticket();
+    expect(initial.encoder_context).toMatch(/^[a-f0-9]{64}$/);
+    const key = await f.metadata(0);
+    expect((await f.post(key, samples()[0])).statusCode).toBe(200);
+    expect((await ticket()).encoder_context).toBe(initial.encoder_context);
+    // The SSH/native adapter is synthetic; exercise the public capture routes
+    // after its generation writer advances, without reusing an old authority.
+    f.store.db
+      .prepare("UPDATE attempts SET generation=generation+1 WHERE id=?")
+      .run(f.id);
+    const changed = await ticket();
+    expect(changed.encoder_context).toMatch(/^[a-f0-9]{64}$/);
+    expect(changed.encoder_context).not.toBe(initial.encoder_context);
+    const delta = await f.metadata(1),
+      refused = await f.post(delta, samples()[1]);
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json(), refused.body).toMatchObject({
+      error:
+        "Take a fresh JPEG capture; video verification is temporarily unavailable",
+    });
+    const fresh = await f.metadata(0);
+    expect((await f.post(fresh, samples()[0])).statusCode).toBe(200);
+    expect((await f.post(key, samples()[0])).statusCode).toBe(409);
+    const after = f.store.attempt(f.id)!;
+    expect(after.start).toBe(before.start);
+    expect(after.deadline).toBe(before.deadline);
+    expect(after.original_deadline).toBe(before.original_deadline);
+  } finally {
+    await f.close();
+  }
+});
