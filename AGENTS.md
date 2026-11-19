@@ -202,6 +202,9 @@
   fork/IPC and password prompt under its exact runtime and browser-script loader.
   Include measured ramp, required peak, Finish and cleanup in every outer runner
   lifetime; a finite service cap does not correct a shorter inner wait.
+  Trace long diagnostics through every HTTP/IPC/reader deadline and qualify a
+  delayed complete class reply through the actual adapter, not only its reader.
+  Keep private diagnostic budgets separate from production/authority timeouts.
 - Before broad qualification, review each new durable/intermediate state for
   inspection, cancellation, crash/restart, expiry, stale completion and admission
   bypass. No pending operation may become an indefinite account reservation or
