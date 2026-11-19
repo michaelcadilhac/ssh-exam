@@ -3,14 +3,21 @@
 import { readFileSync } from "node:fs";
 import { createApp } from "../../apps/server/src/app.js";
 import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
+import { gatewayProfile } from "./gateway-profile.js";
 process.once("disconnect", () => process.exit(0));
 if (!process.connected) throw Error("Private fixture parent required");
 const workers: IsolatedConnection[] = [];
 const config = JSON.parse(readFileSync(process.argv[2], "utf8"));
+const profile =
+  process.argv[4] === "profile" ? gatewayProfile(config.data) : undefined;
 const { app } = await createApp(config, {
   connectionWorkerEntry: new URL(process.argv[3]),
-  onConnection: (connection) => workers.push(connection),
+  onConnection: (connection) => {
+    workers.push(connection);
+    profile?.onConnection(connection);
+  },
 });
+profile?.attach(app);
 const routes = new Map<
   number,
   {
@@ -96,6 +103,9 @@ process.on("message", async (message: any) => {
           .filter((w) => w.alive)
           .map((w: any) => ({ username: w.username, pid: w.child.pid }));
         break;
+      case "profile":
+        result = profile?.snapshot() ?? null;
+        break;
       case "fault": {
         const worker = workers.findLast(
           (w) => w.username === message.args.username && w.alive,
@@ -112,6 +122,7 @@ process.on("message", async (message: any) => {
       }
       case "shutdown":
         await app.close();
+        profile?.close();
         send({ kind: "reply", id: message.id, result: { closed: true } });
         process.disconnect!();
         return;

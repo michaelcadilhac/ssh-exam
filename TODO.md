@@ -18,6 +18,12 @@ The matched release/recovery procedure is prepared locally; CPU/Start/capture
 capacity and csc-specific proxy/configuration coverage remain separate gates:
 [plan and evidence](docs/production-qualification-35.md).
 
+The diagnostic follow-up is implemented/tested locally: the separate application
+retains Start-operation durations and specific capture refusal stages in bounded
+private traces. Real-WASM setup and authenticated capture/restart interfaces verify
+the workflow. This is observation, not a performance fix or another load pass.
+[Operation and limits](docs/start-capture-profiling.md).
+
 November 18: the requested 35-student / 140-terminal run PASSED 5,405 real peak
 seconds and 158 fleet checks, preserved original clocks, supervisors and shell/GDB
 state, then verified all 35 protected submissions. Simultaneous Finish and archive

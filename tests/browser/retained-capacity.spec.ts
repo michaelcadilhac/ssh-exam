@@ -122,6 +122,14 @@ test(
     expect(metadata.large).toBe(large);
     expect(metadata.capacityRecovery).toBe(recovery);
     expect(metadata.compiledConnectionWorkers).toBe(true);
+    if (metadata.coLocation)
+      expect(metadata.profile).toMatchObject({
+        version: 1,
+        stageSupport: true,
+        failed: false,
+        truncated: false,
+        closed: false,
+      });
     expect(metadata.candidateConnectionWorkers).toBe(
       metadata.coLocation ? 40 : stressRun ? 96 : 32,
     );

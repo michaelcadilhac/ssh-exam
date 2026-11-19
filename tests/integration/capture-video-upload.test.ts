@@ -68,10 +68,10 @@ function samples(size = "128x72") {
   sampleCache.set(size, packets);
   return packets;
 }
-async function fixture() {
+async function fixture(profile = false) {
   // Own the complete SSH/authentication/binding transaction. A seeded attempt
   // row alone is deliberately insufficient for authenticated capture.
-  const base = await liveMonitoring({ webcam: false });
+  const base = await liveMonitoring({ webcam: false, profile });
   const { app, store, id, headers } = base;
   const dir = store.dir,
     url = `/api/student/attempts/${id}`,
@@ -330,7 +330,7 @@ it.each([
 ])(
   "video %s refusal starts no clock or work and a fresh JPEG remains usable",
   async (reason) => {
-    const f = await fixture(),
+    const f = await fixture(true),
       before = f.store.attempt(f.id);
     try {
       const metadata = await f.metadata(
@@ -352,7 +352,10 @@ it.each([
             if (reason === "decoder-killed") {
               expect(decoder.pids).toHaveLength(1);
               process.kill(-decoder.pids[0], "SIGKILL");
-              await expect(task).rejects.toMatchObject({ signal: "SIGKILL" });
+              await expect(task).rejects.toMatchObject({
+                signal: "SIGKILL",
+                stage: "codec-signal",
+              });
               return task;
             }
             const jpeg = await task;
@@ -375,6 +378,27 @@ it.each([
       );
       expect(refused.statusCode, refused.body).toBeGreaterThanOrEqual(400);
       expect(refused.statusCode).toBeLessThan(500);
+      expect(refused.json()).not.toHaveProperty("stage");
+      const profile = f.profile!.snapshot();
+      expect(profile).toMatchObject({ failed: false, truncated: false });
+      const text = readFileSync(profile.path, "utf8");
+      const rows = text
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      const rejection = rows.findLast(
+        (row) => row.type === "capture" && row.status >= 400,
+      );
+      expect(rejection?.attempt).toBe(f.id);
+      const expected: Record<string, string> = {
+        missing: "prediction-chain",
+        "wrong-previous": "prediction-chain",
+        "invalid-codec": "codec-exit",
+        "decoder-killed": "codec-signal",
+      };
+      if (expected[reason]) expect(rejection.stage).toBe(expected[reason]);
+      expect(text).not.toContain(metadata.challenge);
+      expect(text).not.toMatch(/shared-password|csrf|private_reply/);
       expect(f.store.db.prepare("SELECT count(*) n FROM frames").get()).toEqual(
         { n: f.initialFrames },
       );

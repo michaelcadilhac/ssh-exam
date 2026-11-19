@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile, stat, writeFile } from "node:fs/promises";
 
 for (const mode of ["busy", "different"] as const)
   test(`setup health ${mode} preserves sign-in and consumes no exam time or permission`, async ({
@@ -109,4 +110,45 @@ for (const mode of ["busy", "different"] as const)
     ).json();
     expect(final.grants).toEqual([{ status: "AVAILABLE" }]);
     expect(signIns).toBe(1);
+    if (
+      process.env.EXAM_BROWSER_PROFILE_COMPILED === "1" &&
+      process.env.EXAM_BROWSER_GATEWAY_PROCESS === "1"
+    ) {
+      const runtime = await (
+        await page.request.get("/api/fixture/runtime")
+      ).json();
+      expect(runtime.profile).toMatchObject({
+        version: 1,
+        stageSupport: true,
+        failed: false,
+        truncated: false,
+        closed: false,
+      });
+      const file = await stat(runtime.profile.path);
+      expect(file.mode & 0o777).toBe(0o600);
+      expect(file.nlink).toBe(1);
+      const text = await readFile(runtime.profile.path, "utf8");
+      const rows = text
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      const health = rows.filter(
+        (row) =>
+          row.type === "setup" &&
+          row.username === username &&
+          row.operation === "command:health",
+      );
+      expect(health.some((row) => row.event === "failed")).toBe(true);
+      expect(health.some((row) => row.event === "completed")).toBe(true);
+      expect(health.filter((row) => row.event === "started")).toHaveLength(2);
+      expect(text).not.toMatch(
+        /shared-password|csrf|answers|nonce|private_reply/,
+      );
+      const saved = info.outputPath("setup-profile.jsonl");
+      await writeFile(saved, text, { mode: 0o600 });
+      await info.attach("setup-profile.jsonl", {
+        path: saved,
+        contentType: "application/x-ndjson",
+      });
+    }
   });

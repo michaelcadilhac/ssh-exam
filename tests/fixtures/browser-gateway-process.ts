@@ -10,7 +10,7 @@ type App = Awaited<ReturnType<typeof createApp>>["app"];
 export function browserGatewayProcess(
   config: Config,
   workerEntry: URL,
-  options: { detached?: boolean; execPath?: string } = {},
+  options: { detached?: boolean; execPath?: string; profile?: boolean } = {},
 ) {
   const store = new Store(config.data);
   const configFile = config.data + "/fixture-gateway.json";
@@ -72,22 +72,26 @@ export function browserGatewayProcess(
     const childEntry = existsSync(compiled)
       ? compiled
       : new URL("./browser-gateway-child.ts", import.meta.url);
-    child = fork(childEntry, [configFile, workerEntry.href], {
-      execArgv: [
-        ...(childEntry.pathname.endsWith(".ts") ? ["--import", "tsx"] : []),
-        "--unhandled-rejections=strict",
-      ],
-      ...(options.execPath ? { execPath: options.execPath } : {}),
-      env: {
-        PATH: process.env.PATH,
-        LANG: "C.UTF-8",
-        TZ: process.env.TZ,
-        NODE_ENV: "test",
+    child = fork(
+      childEntry,
+      [configFile, workerEntry.href, ...(options.profile ? ["profile"] : [])],
+      {
+        execArgv: [
+          ...(childEntry.pathname.endsWith(".ts") ? ["--import", "tsx"] : []),
+          "--unhandled-rejections=strict",
+        ],
+        ...(options.execPath ? { execPath: options.execPath } : {}),
+        env: {
+          PATH: process.env.PATH,
+          LANG: "C.UTF-8",
+          TZ: process.env.TZ,
+          NODE_ENV: "test",
+        },
+        stdio: ["ignore", "ignore", "pipe", "ipc"],
+        serialization: "advanced",
+        detached: options.detached ?? false,
       },
-      stdio: ["ignore", "ignore", "pipe", "ipc"],
-      serialization: "advanced",
-      detached: options.detached ?? false,
-    });
+    );
     const target = child;
     let detail = "",
       settled = false;
@@ -186,6 +190,7 @@ export function browserGatewayProcess(
       return child.pid;
     },
     workers: () => call("workers"),
+    profile: () => call("profile"),
     fault: (username: string, fault: string) =>
       call("fault", { username, fault }),
     async restart(mode: "kill" | "graceful" = "kill") {
@@ -209,8 +214,8 @@ export function browserGatewayProcess(
       if (mode === "graceful") await Promise.all([call("shutdown"), exit]);
       else await exit;
       launch();
-      await listen();
-      return { previous, current: child.pid };
+      const address = await listen();
+      return { previous, current: child.pid, address };
     },
   };
 }

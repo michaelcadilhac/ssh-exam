@@ -1,6 +1,6 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createHash, generateKeyPairSync } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { browserGatewayProcess } from "../fixtures/browser-gateway-process.js";
 
@@ -32,6 +32,7 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
       },
     },
     new URL("../fixtures/faulting-connection-worker.ts", import.meta.url),
+    { profile: true },
   );
   const payload = "x".repeat(2_184_550);
   const delayed = async () => {
@@ -45,7 +46,7 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
   try {
     await gateway.initialized;
     const session = gateway.store.session("admin", "synthetic", null);
-    const address = await gateway.app.listen({ port: 0 });
+    let address = await gateway.app.listen({ port: 0 });
     const [fleet, state, ordinary] = await Promise.all([
       fetch(address + "/api/fixture/native-fleet", {
         method: "POST",
@@ -64,7 +65,9 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
       }),
     ]);
     expect(ordinary.status).toBe(400);
-    expect((await ordinary.json()).error).toBe("Private fixture route timed out");
+    expect((await ordinary.json()).error).toBe(
+      "Private fixture route timed out",
+    );
     const result = await fleet.json();
     expect(fleet.status, JSON.stringify({ error: result.error })).toBe(200);
     expect(state.status).toBe(200);
@@ -79,6 +82,71 @@ it("a slow complete fleet observation survives its private HTTP adapter while or
     expect(
       gateway.store.db.prepare("SELECT count(*) n FROM attempts").get(),
     ).toEqual({ n: 0 });
+    const profile = await gateway.profile();
+    expect(profile).toMatchObject({
+      version: 1,
+      stageSupport: true,
+      records: 0,
+      failed: false,
+      truncated: false,
+    });
+    const observeRefusal = async () => {
+      const reply = await fetch(
+        address +
+          "/api/student/attempts/11111111-1111-4111-8111-111111111111/frames/binary",
+        {
+          method: "POST",
+          headers: {
+            origin: "http://localhost:3000",
+            "content-type": "application/vnd.ssh-exam-capture",
+          },
+          body: "do-not-record-pixels-or-private-body",
+        },
+      );
+      expect([401, 403]).toContain(reply.status);
+      await reply.text();
+    };
+    await observeRefusal();
+    await vi.waitFor(
+      async () =>
+        expect(await gateway.profile()).toMatchObject({
+          records: 1,
+          failed: false,
+          truncated: false,
+        }),
+      { timeout: 3000 },
+    );
+    const prior = readFileSync(profile.path, "utf8");
+    expect(JSON.parse(prior).stage).toBe("other");
+    const restarted = await gateway.restart("graceful");
+    address = restarted.address;
+    expect(restarted.previous).not.toBe(restarted.current);
+    await observeRefusal();
+    await vi.waitFor(
+      async () =>
+        expect(await gateway.profile()).toMatchObject({
+          records: 1,
+          failed: false,
+          truncated: false,
+        }),
+      { timeout: 3000 },
+    );
+    const retained = readFileSync(profile.path, "utf8");
+    expect(retained.startsWith(prior)).toBe(true);
+    expect(retained).not.toContain("do-not-record-pixels-or-private-body");
+    const rows = retained
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(rows.map((row) => row.pid)).toEqual([
+      restarted.previous,
+      restarted.current,
+    ]);
+    expect(await gateway.profile()).toMatchObject({
+      records: 1,
+      failed: false,
+      truncated: false,
+    });
   } finally {
     await gateway.app.close();
     rmSync(data, { recursive: true, force: true });

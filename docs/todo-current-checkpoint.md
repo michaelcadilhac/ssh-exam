@@ -8,6 +8,16 @@ Evidence root: var/qualification35/profile-20261119T044302Z-8d3c93/.
 
 ## Current outcome
 
+Follow-up: the missing separate-application Start/decoder diagnostics are now wired
+and tested locally. See [profiling workflow](start-capture-profiling.md) for exact
+entries, private log bounds, public refusal invariants, evidence and next measurement.
+13focused cases, all25combined affected application cases and three real-WASM
+browser cases pass, including an explicit Start/activation with a verified terminal.
+Build/typecheck pass. Actual JSONL files survive fixture cleanup.
+No new csc-sys profile or resource change has run. Old prepared image Configebb877aa
+does not contain the new private backend stage labels; don't reuse it as a profiled
+runtime. Native binaries and student policy remain unchanged.
+
 Run9 FAILED:34students/136GCC/GDB panes completed setup; student35's Start reached
 its60-second HTTP deadline. Native ACTIVE/original clock and web PREPARING were
 recorded at immediate teardown. Later reconciliation was not observed. The full
@@ -58,9 +68,9 @@ pass for unchanged binaries. No SQL migration(schema37).
 
 A question about a quieter CPU window/additional vCPUs is pending. Existing
 approval permits resource increases if available; none was executed. No additional
-RAM or production restart was requested. Before another bounded class test, wire
-and verify existing stage observations in the separate application, preserve
-specific decoder-refusal stages, and establish a CPU/resource plan. Do not widen
+RAM or production restart was requested. Stage observations and specific decoder
+refusal labels are now verified locally. Next bind the updated private runtime
+and obtain a bounded native profile under an established CPU/resource plan. Do not widen
 freshness/timeouts, relax guards or diagnose from aggregate pressure alone.
 
 Full co-location/Finish acceptance and actual csc Compose/nginx/external HTTPS/

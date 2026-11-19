@@ -132,6 +132,7 @@ const gateway =
   process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1"
     ? browserGatewayProcess(gatewayConfig, connectionWorkerEntry, {
         detached: true,
+        profile: coLocation,
         ...(coLocation
           ? { execPath: process.env.EXAM_BROWSER_GATEWAY_EXEC }
           : {}),
@@ -175,7 +176,8 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     compiledConnectionWorkers: true,
     large,
     gatewayProcess: !!gateway,
-    setupTimings: !gateway,
+    setupTimings: !gateway || coLocation,
+    profile: gateway ? await gateway.profile() : null,
     coLocation,
     gateStall: process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1",
     coordinatorOutage:

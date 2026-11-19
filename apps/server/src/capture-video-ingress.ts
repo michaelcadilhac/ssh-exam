@@ -3,10 +3,27 @@ import { accessSync, constants } from "node:fs";
 import type { CaptureUploadMetadata } from "../../../packages/protocol/capture-upload.js";
 import { captureDigest, withCaptureReceipt } from "./capture-upload-receipt.js";
 
+export type CaptureVideoStage =
+  | "unavailable"
+  | "closed"
+  | "missing-video"
+  | "source-busy"
+  | "ingress-capacity"
+  | "prediction-chain"
+  | "prediction-limit"
+  | "queue-timeout"
+  | "codec-spawn"
+  | "codec-timeout"
+  | "codec-output"
+  | "codec-signal"
+  | "codec-exit";
 export class CaptureVideoUnavailable extends Error {
   readonly statusCode = 409;
   readonly code = "capture_video_reset";
-  constructor(readonly signal?: NodeJS.Signals) {
+  constructor(
+    readonly signal?: NodeJS.Signals,
+    readonly stage: CaptureVideoStage = "unavailable",
+  ) {
     super(
       "Take a fresh JPEG capture; video verification is temporarily unavailable",
     );
@@ -45,7 +62,10 @@ export class CaptureVideoIngress {
   }>();
   private requests = new Set<Promise<void>>();
   private slots = 0;
-  private waiting: { resolve: () => void; reject: () => void }[] = [];
+  private waiting: {
+    resolve: () => void;
+    reject: (stage?: CaptureVideoStage) => void;
+  }[] = [];
   private stopped = false;
   get active() {
     return this.jobs.size;
@@ -76,14 +96,13 @@ export class CaptureVideoIngress {
   ): Promise<T> {
     this.prune();
     const v = metadata.video;
-    if (
-      this.stopped ||
-      !this.available ||
-      !v ||
-      this.busy.has(scope) ||
-      this.busy.size >= 64
-    )
-      throw new CaptureVideoUnavailable();
+    if (this.stopped) throw new CaptureVideoUnavailable(undefined, "closed");
+    if (!this.available) throw new CaptureVideoUnavailable();
+    if (!v) throw new CaptureVideoUnavailable(undefined, "missing-video");
+    if (this.busy.has(scope))
+      throw new CaptureVideoUnavailable(undefined, "source-busy");
+    if (this.busy.size >= 64)
+      throw new CaptureVideoUnavailable(undefined, "ingress-capacity");
     this.busy.add(scope);
     let finish!: () => void;
     const pending = new Promise<void>((resolve) => {
@@ -104,13 +123,13 @@ export class CaptureVideoIngress {
           prior.width !== v.width ||
           prior.height !== v.height)
       )
-        throw new CaptureVideoUnavailable();
+        throw new CaptureVideoUnavailable(undefined, "prediction-chain");
       const packets = v.key ? [packet] : [...prior!.packets, packet];
       if (
         packets.length > 12 ||
         packets.reduce((n, p) => n + p.length, 0) > 4 * 1024 * 1024
       )
-        throw new CaptureVideoUnavailable();
+        throw new CaptureVideoUnavailable(undefined, "prediction-limit");
       const header = Buffer.alloc(32);
       header.write("DKIF");
       header.writeUInt16LE(32, 6);
@@ -129,7 +148,7 @@ export class CaptureVideoIngress {
       }
       const ivf = Buffer.concat(parts),
         decoded = await this.slot(() => this.decode(ivf, packets.length - 1));
-      if (this.stopped) throw new CaptureVideoUnavailable();
+      if (this.stopped) throw new CaptureVideoUnavailable(undefined, "closed");
       const initial = captureDigest(decoded);
       const jpeg = withCaptureReceipt(decoded, {
         encoding: "vp9-upload-v1",
@@ -162,7 +181,7 @@ export class CaptureVideoIngress {
     }
   }
   private async slot<T>(work: () => Promise<T>): Promise<T> {
-    if (this.stopped) throw new CaptureVideoUnavailable();
+    if (this.stopped) throw new CaptureVideoUnavailable(undefined, "closed");
     if (this.slots >= 4)
       await new Promise<void>((resolve, reject) => {
         const waiter = {
@@ -170,21 +189,21 @@ export class CaptureVideoIngress {
             clearTimeout(timer);
             resolve();
           },
-          reject: () => {
+          reject: (stage: CaptureVideoStage = "closed") => {
             clearTimeout(timer);
-            reject(new CaptureVideoUnavailable());
+            reject(new CaptureVideoUnavailable(undefined, stage));
           },
         };
         const timer = setTimeout(() => {
           const index = this.waiting.indexOf(waiter);
           if (index !== -1) this.waiting.splice(index, 1);
-          waiter.reject();
+          waiter.reject("queue-timeout");
         }, 5000);
         this.waiting.push(waiter);
       });
     else this.slots++;
     try {
-      if (this.stopped) throw new CaptureVideoUnavailable();
+      if (this.stopped) throw new CaptureVideoUnavailable(undefined, "closed");
       return await work();
     } finally {
       const next = this.waiting.shift();
@@ -249,6 +268,7 @@ export class CaptureVideoIngress {
       const done = new Promise<void>((resolve) => {
         resolveDone = resolve;
       });
+      let refusal: CaptureVideoStage | undefined;
       const job = {
         pid: child.pid,
         kill: () => {
@@ -259,27 +279,44 @@ export class CaptureVideoIngress {
         done,
       };
       this.jobs.add(job);
-      const timer = setTimeout(job.kill, 15_000),
+      const timer = setTimeout(() => {
+          refusal = "codec-timeout";
+          job.kill();
+        }, 15_000),
         parts: Buffer[] = [];
       let bytes = 0;
       child.stdout.on("data", (part: Buffer) => {
         bytes += part.length;
-        if (bytes > 1_490_000) job.kill();
-        else parts.push(part);
+        if (bytes > 1_490_000) {
+          refusal = "codec-output";
+          job.kill();
+        } else parts.push(part);
       });
       child.stdin.on("error", () => {});
       child.once("error", () => {
         clearTimeout(timer);
         this.jobs.delete(job);
         resolveDone();
-        reject(new CaptureVideoUnavailable());
+        reject(new CaptureVideoUnavailable(undefined, "codec-spawn"));
       });
       child.once("close", (code, signal) => {
         clearTimeout(timer);
         this.jobs.delete(job);
         resolveDone();
         if (code !== 0 || signal || bytes < 32 || bytes > 1_490_000)
-          reject(new CaptureVideoUnavailable(signal ?? undefined));
+          reject(
+            new CaptureVideoUnavailable(
+              signal ?? undefined,
+              refusal ??
+                (this.stopped
+                  ? "closed"
+                  : signal
+                    ? "codec-signal"
+                    : code !== 0
+                      ? "codec-exit"
+                      : "codec-output"),
+            ),
+          );
         else resolve(Buffer.concat(parts));
       });
       child.stdin.end(ivf);

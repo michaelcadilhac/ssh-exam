@@ -40,7 +40,11 @@ const diagnosticAccounts = {
   relaydiag02: 10048,
   relaydiag03: 10049,
 };
-const setupHealthAccounts = { setupbusy01: 12050, setupbusy02: 12051 };
+const setupHealthAccounts = {
+  setupbusy01: 12050,
+  setupbusy02: 12051,
+  setupbusy03: 12052,
+};
 const setupHealthFailures = new Map<string, string>();
 // Fault-isolation intentionally leaves paused accounts held. Never reuse those
 // identities in another spec's fresh sandbox preflight.
@@ -798,7 +802,9 @@ const connectionWorkerEntry = new URL(
 );
 const gateway =
   process.env.EXAM_BROWSER_GATEWAY_PROCESS === "1"
-    ? browserGatewayProcess(gatewayConfig, connectionWorkerEntry)
+    ? browserGatewayProcess(gatewayConfig, connectionWorkerEntry, {
+        profile: process.env.EXAM_BROWSER_PROFILE_COMPILED === "1",
+      })
     : undefined;
 await gateway?.initialized;
 const { app, store } =
@@ -1619,6 +1625,7 @@ app.get("/api/fixture/runtime", async () => ({
   pid: gateway?.pid ?? process.pid,
   fixturePID: process.pid,
   gatewayProcess: !!gateway,
+  profile: gateway ? await gateway.profile() : null,
   retainedInspections,
   retainedAttempts: store.db
     .prepare(

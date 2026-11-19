@@ -7,6 +7,12 @@
 
 ## November 18 local follow-up: video prediction at ownership changes
 
+November19 profiling adds private refusal-stage metadata to capture exceptions;
+public messages/statuses and all resource/freshness/clock checks remain unchanged.
+Only manual qualification fixtures record the stages and native-operation timings.
+Their bounded private log cannot authorize or replay work. No management setting,
+schema or production endpoint is added. [Profiling workflow](docs/start-capture-profiling.md).
+
 November19 follow-up: a lost or malformed Start reply is an unknown outcome,
 not proof of refusal. The same confirmation observes the existing authenticated
 status/WebSocket feed for up to60seconds without replaying Start. A same-generation

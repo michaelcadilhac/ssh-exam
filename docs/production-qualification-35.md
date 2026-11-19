@@ -267,8 +267,9 @@ process or production service was stopped. Raw data and final counters remain.
 The confirmed student UI defect is corrected separately: see
 [lost Start reply recovery](start-response-recovery.md). Six focused cases and
 38authenticated grant-Begin cases pass; final affected browser results are recorded
-there. This does not shorten Start or convert run9 into a pass. Next: establish a
-quieter CPU window or available vCPUs, wire/verify existing stage observations in
-the separate application and retain decoder refusal stages before another bounded
-co-location run. The instructor was asked about CPU availability, not RAM or a
+there. This does not shorten Start or convert run9 into a pass. The missing stage
+observations/refusal labels are now verified through the actual separate test
+application, including an explicit Start. [Profiling workflow](start-capture-profiling.md).
+Next: bind that updated runtime and collect a bounded native profile under an
+established CPU/resource plan before another class run. The instructor was asked about CPU availability, not RAM or a
 production restart. Local only; no push/deployment.

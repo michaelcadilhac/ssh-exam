@@ -1,6 +1,7 @@
 // Private stress fixture only. Observe existing calls without changing their
 // arguments, replies, refusals, authorization or timeout. Existing runner stderr
-// supplies durable storage; no extra file, socket, process or authority is added.
+// supplies durable storage in direct mode; the separate gateway uses a bounded
+// private JSONL sink. No process, socket or execution authority is added.
 import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
 
 type Connection = Pick<
@@ -43,7 +44,10 @@ export function nativeSetupTimings(
     enabled = true;
   return (connection: Connection) => {
     const username = connection.username;
-    if (!/^examq(?:\d{2})?$/.test(username) || ++connectionSequence > 256)
+    if (
+      !/^(?:examq(?:\d{2})?|setupbusy0[123])$/.test(username) ||
+      ++connectionSequence > 256
+    )
       return;
     const identity = connectionSequence;
     let operations = 0;

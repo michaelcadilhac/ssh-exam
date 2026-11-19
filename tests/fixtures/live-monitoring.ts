@@ -8,6 +8,7 @@ import { createApp } from "../../apps/server/src/app.js";
 import { hash } from "../../apps/server/src/db.js";
 import type { IsolatedConnection } from "../../apps/server/src/connection-process.js";
 import { hosts } from "./hosts.js";
+import { gatewayProfile } from "./gateway-profile.js";
 
 // Real authenticated SSH channels and HTTP/WebSocket interfaces; the SSH host's
 // shell/native policy are simulated. This is not privileged freezer qualification.
@@ -16,6 +17,7 @@ export async function liveMonitoring(
     renewalReceipts?: boolean;
     ownedAttempt?: boolean;
     webcam?: boolean;
+    profile?: boolean;
   } = {},
 ) {
   const h = await hosts({ mfaDelayMs: 10 });
@@ -49,9 +51,11 @@ export async function liveMonitoring(
     maintenance: false,
   };
   let connection: IsolatedConnection | undefined;
+  const profile = options.profile ? gatewayProfile(data) : undefined;
   const { app, store, life, monitoring } = await createApp(config, {
     onConnection: (value) => {
       connection = value;
+      profile?.onConnection(value);
     },
     logStream: new Writable({
       write(_c, _e, done) {
@@ -59,10 +63,12 @@ export async function liveMonitoring(
       },
     }),
   });
+  profile?.attach(app);
   const sockets: WebSocket[] = [];
   const close = async () => {
     sockets.forEach((ws) => ws.terminate());
     await app.close();
+    profile?.close();
     await h.close();
     rmSync(data, { recursive: true, force: true });
   };
@@ -237,6 +243,7 @@ export async function liveMonitoring(
       store,
       life,
       monitoring,
+      profile,
       h,
       get connection() {
         return connection!;
