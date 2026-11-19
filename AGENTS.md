@@ -198,6 +198,10 @@
   receipt. Freeze the relevant inputs, collect/read completion, then edit or
   launch broad qualification. Run independent checks as separate structured
   commands so a later successful command cannot hide an earlier failure.
+- Before allocating a class in a new runtime layout, prove one actual worker
+  fork/IPC and password prompt under its exact runtime and browser-script loader.
+  Include measured ramp, required peak, Finish and cleanup in every outer runner
+  lifetime; a finite service cap does not correct a shorter inner wait.
 - Before broad qualification, review each new durable/intermediate state for
   inspection, cancellation, crash/restart, expiry, stale completion and admission
   bypass. No pending operation may become an indefinite account reservation or

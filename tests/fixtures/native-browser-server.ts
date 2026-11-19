@@ -27,6 +27,12 @@ import { z } from "zod";
 const origin = "https://127.0.0.1:9444";
 const data = mkdtempSync(tmpdir() + "/ssh-exam-browser-native-");
 const students = Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS || "1");
+const coLocation = process.env.EXAM_BROWSER_COLOCATION === "1";
+if (
+  coLocation &&
+  (process.getuid?.() !== 0 || students !== 35 || !process.env.EXAM_STRESS_RUN)
+)
+  throw Error("Co-location requires the owned root 35-student manual fixture");
 const endurance = students === 35 || students === 70;
 const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
 const guest = await nativeGuest(
@@ -109,7 +115,7 @@ const gatewayConfig: Parameters<typeof createApp>[0] = {
   port: gatewayPort,
   data,
   maintenance: false,
-  connectionWorkers: endurance ? 96 : 32,
+  connectionWorkers: coLocation ? 40 : endurance ? 96 : 32,
   jump: h.jump,
   class: h.class,
   agent: {
@@ -126,6 +132,9 @@ const gateway =
   process.env.EXAM_BROWSER_NATIVE_GATEWAY_PROCESS === "1"
     ? browserGatewayProcess(gatewayConfig, connectionWorkerEntry, {
         detached: true,
+        ...(coLocation
+          ? { execPath: process.env.EXAM_BROWSER_GATEWAY_EXEC }
+          : {}),
       })
     : undefined;
 if (gateway) {
@@ -167,6 +176,7 @@ app.get("/api/fixture/native-ready", async (_req, reply) => {
     large,
     gatewayProcess: !!gateway,
     setupTimings: !gateway,
+    coLocation,
     gateStall: process.env.EXAM_BROWSER_NATIVE_GATE_STALL === "1",
     coordinatorOutage:
       process.env.EXAM_BROWSER_NATIVE_COORDINATOR_OUTAGE === "1",
@@ -567,8 +577,7 @@ for (const [url, payload] of [
       // Marco's real intercontinental16-person ramp exceeded ten minutes.
       // Finite test issuance windows cover that ramp without reopening grants.
       latest:
-        Date.now() +
-        (endurance ? 7200000 : students === 16 ? 1800000 : 600000),
+        Date.now() + (endurance ? 7200000 : students === 16 ? 1800000 : 600000),
       // Four-hour allowance covers the measured sequential ramp plus90 real
       // minutes at peak, without spending that peak interval during setup.
       // No clock reset or fake clock is used by the endurance test.

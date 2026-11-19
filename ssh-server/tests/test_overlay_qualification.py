@@ -20,6 +20,19 @@ guest_spec.loader.exec_module(guest)
 
 
 class OverlayTests(unittest.TestCase):
+    def test_colocation_uses_only_the_exact_owned_aggregate_slice(self):
+        arguments=('test.service',Path('/guest'),Path('/input'),Path('/output'))
+        storage={'work':'/srv/exam-workspace/work','state':'/var/lib/exam-agent'}
+        owned='ssh-exam-colocation-'+'a'*16+'.slice'
+        command=overlay.candidate_command(*arguments,35,storage,'retained-policy',qualification_slice=owned)
+        self.assertIn('--slice='+owned,command)
+        self.assertIn('--property=MemoryMax=3G',command)
+        for wrong in ('system.slice','ssh-exam.service','ssh-exam-colocation-bad.slice'):
+            with self.subTest(slice=wrong),self.assertRaises(AssertionError):
+                overlay.candidate_command(*arguments,35,storage,'retained-policy',qualification_slice=wrong)
+        with self.assertRaises(AssertionError):
+            overlay.candidate_command(*arguments,16,storage,'retained-policy',qualification_slice=owned)
+
     def test_shared_policy_probe_contract_accepts_both_exact_profiles_and_verified_installation(self):
         guest.require_execution_policy_profile({'profile':'execution-policy','username':'examq'}, 'examq')
         nonce = '11111111-1111-4111-8111-111111111111'

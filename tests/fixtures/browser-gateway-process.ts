@@ -1,7 +1,7 @@
 // Private browser-fixture adapter: SSH/relay remain in the parent while the
 // actual HTTP application lives in a killable child. Never imported by runtime.
 import { fork, type ChildProcess } from "node:child_process";
-import { lstatSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, writeFileSync } from "node:fs";
 import type { createApp } from "../../apps/server/src/app.js";
 import { Store } from "../../apps/server/src/db.js";
 
@@ -10,7 +10,7 @@ type App = Awaited<ReturnType<typeof createApp>>["app"];
 export function browserGatewayProcess(
   config: Config,
   workerEntry: URL,
-  options: { detached?: boolean } = {},
+  options: { detached?: boolean; execPath?: string } = {},
 ) {
   const store = new Store(config.data);
   const configFile = config.data + "/fixture-gateway.json";
@@ -68,22 +68,26 @@ export function browserGatewayProcess(
     });
   };
   const launch = () => {
-    child = fork(
-      new URL("./browser-gateway-child.ts", import.meta.url),
-      [configFile, workerEntry.href],
-      {
-        execArgv: ["--import", "tsx", "--unhandled-rejections=strict"],
-        env: {
-          PATH: process.env.PATH,
-          LANG: "C.UTF-8",
-          TZ: process.env.TZ,
-          NODE_ENV: "test",
-        },
-        stdio: ["ignore", "ignore", "pipe", "ipc"],
-        serialization: "advanced",
-        detached: options.detached ?? false,
+    const compiled = new URL("./browser-gateway-child.js", import.meta.url);
+    const childEntry = existsSync(compiled)
+      ? compiled
+      : new URL("./browser-gateway-child.ts", import.meta.url);
+    child = fork(childEntry, [configFile, workerEntry.href], {
+      execArgv: [
+        ...(childEntry.pathname.endsWith(".ts") ? ["--import", "tsx"] : []),
+        "--unhandled-rejections=strict",
+      ],
+      ...(options.execPath ? { execPath: options.execPath } : {}),
+      env: {
+        PATH: process.env.PATH,
+        LANG: "C.UTF-8",
+        TZ: process.env.TZ,
+        NODE_ENV: "test",
       },
-    );
+      stdio: ["ignore", "ignore", "pipe", "ipc"],
+      serialization: "advanced",
+      detached: options.detached ?? false,
+    });
     const target = child;
     let detail = "",
       settled = false;

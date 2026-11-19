@@ -785,10 +785,15 @@ const gatewayConfig: Parameters<typeof createApp>[0] = {
     to: ["instructor@example.edu"],
   },
   maintenance: false,
+  ...(process.env.EXAM_BROWSER_PROFILE_COMPILED === "1"
+    ? { connectionWorkers: 40 }
+    : {}),
   preflightIdleMs: 5000,
 };
 const connectionWorkerEntry = new URL(
-  "../fixtures/faulting-connection-worker.ts",
+  process.env.EXAM_BROWSER_PROFILE_COMPILED === "1"
+    ? "../../dist/apps/server/src/connection-worker.js"
+    : "../fixtures/faulting-connection-worker.ts",
   import.meta.url,
 );
 const gateway =

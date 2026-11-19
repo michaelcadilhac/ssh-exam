@@ -23,9 +23,13 @@ import { readRemoteStressHeadroom } from "../fixtures/stress-generator-status.js
 
 const origin = "https://127.0.0.1:9444";
 const stressRun = process.env.EXAM_STRESS_RUN;
-const fleetCount = stressRun ? Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS) : 16;
+const fleetCount = stressRun
+  ? Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS)
+  : 16;
 if (stressRun && ![35, 70].includes(fleetCount))
-  throw Error("Manual endurance requires the explicit 35- or 70-student cohort");
+  throw Error(
+    "Manual endurance requires the explicit 35- or 70-student cohort",
+  );
 async function generatorHeadroom() {
   const memory = await readFile("/proc/meminfo", "utf8");
   const available = Number(/MemAvailable:\s+(\d+)/.exec(memory)?.[1]) * 1024;
@@ -96,7 +100,7 @@ const snapshot = z.object({
 
 test(
   stressRun
-    ? `${fleetCount} native students sustain ${fleetCount * 4} terminals for 90 minutes and submit together`
+    ? `${fleetCount} native students sustain ${fleetCount * 4} terminals and submit together`
     : "sixteen actual native students keep sixty-four monitored SSH terminals and secure independent submissions",
   async ({ browser, request }) => {
     test.skip(
@@ -118,7 +122,9 @@ test(
     expect(metadata.large).toBe(large);
     expect(metadata.capacityRecovery).toBe(recovery);
     expect(metadata.compiledConnectionWorkers).toBe(true);
-    expect(metadata.candidateConnectionWorkers).toBe(stressRun ? 96 : 32);
+    expect(metadata.candidateConnectionWorkers).toBe(
+      metadata.coLocation ? 40 : stressRun ? 96 : 32,
+    );
     const students = z
       .array(
         z.object({ username: z.string(), uid: z.number().int().min(1000) }),
@@ -1029,9 +1035,12 @@ test(
       };
       if (stressRun) {
         const seconds = Number(process.env.EXAM_STRESS_SECONDS || "5400");
-        if (![30, 5400].includes(seconds))
+        if (
+          ![30, 5400].includes(seconds) &&
+          !(seconds === 600 && metadata.coLocation === true)
+        )
           throw Error(
-            "Only the30s rehearsal or90-minute full endurance is supported",
+            "Use the30s rehearsal,90-minute endurance, or explicit ten-minute co-location qualification",
           );
         const started = performance.now();
         expect(

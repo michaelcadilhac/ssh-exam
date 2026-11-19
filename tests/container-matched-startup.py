@@ -85,7 +85,7 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-matched-startup-') as director
         (repair/'preservation-60.py').write_bytes((ROOT/'scripts/web-ui-ops/preservation.py').read_bytes())
         deploy=proof_repair.load_controller(frozen/'deploy-web-ui',repair)
     data=root/'data';data.mkdir();data.chmod(0o2770)
-    fixture=root/'fixture';fixture.mkdir(mode=0o750)
+    fixture=root/'fixture';fixture.mkdir(mode=0o750);fixture.chmod(0o750)
     project=root/'project';(project/'deploy/config').mkdir(parents=True)
     state=root/'controller';state.mkdir(mode=0o700)
     agent=ed25519.Ed25519PrivateKey.generate();gateway=ed25519.Ed25519PrivateKey.generate()
@@ -384,6 +384,16 @@ else:
                      'Systemd start/inspect dispatched only to this exact owned Docker container; no production or institutional SSH/media',
                      'Real preservation runs in readonly root Python helper over synthetic binds; actual app monitoring owner10001/mode0700 unchanged',
                      'Recovery native receipt/public proxy transport are synthetic; real resume/preservation/coverage/phase files and candidate HTTP are exercised; pause release is deferred'] }),flush=True)
+    except BaseException:
+        # Keep the actual failing image's startup evidence before removing only
+        # this owned container. Configuration/key files are never copied out.
+        evidence=Path(os.environ.get('EXAM_TEST_OUTPUT_DIR',str(ROOT/'var')))
+        evidence.mkdir(parents=True,exist_ok=True,mode=0o700)
+        if container:
+            captured=subprocess.run(docker+['logs','--tail','100',container],capture_output=True,text=True,timeout=10)
+            receipt=evidence/('startup-failure-'+nonce+'.log')
+            receipt.write_text((captured.stdout+captured.stderr)[-32768:]);receipt.chmod(0o600)
+        raise
     finally:
         stop.set()
         if thread:thread.join(timeout=10)

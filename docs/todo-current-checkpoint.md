@@ -1,18 +1,65 @@
-# Current checkpoint — profile and qualify 35-student production layout
+# Current checkpoint — bounded 35-student production qualification
 
-The instructor authorized the next bounded work: profile Start/capture fallback,
-measure web-only resources, short guarded web/native co-location qualification,
-and a matched release/rollback recommendation. No push/deployment or production
-change. No new 90-minute run. Plan and acceptance:
-[production qualification](production-qualification-35.md).
+Authorized: profile Start/capture, app-only resource measurement, ten-minute
+35/140 web/native co-location and matched release/recovery preparation. Local or
+agreed disposable tests/commits only. No push/deployment, production change,
+actual students/MFA/email or new90-minute run. Plan:production-qualification-35.md.
 
-Current milestone: video ownership-scope fallback reproduced and fixed locally.
-Focused HTTP/actual-codec browser regressions, typecheck/build, 959 application
-checks (three gated skips), and all 13 affected browser checks pass. Evidence:
-var/qualification35/profile-20261119T044302Z-8d3c93/.
-No test is running. Next: measure actual application processes separately from
-helpers, freeze finite resource bounds, then run the short guarded co-location
-check. Installed web inventory confirms 32 slots, 2 GiB/two CPUs; it is unchanged.
+Product correction298276a is committed: opaque decoder-context hint resets only
+browser VP9 prediction at ownership changes. Public HTTP/actual-codec red→green,
+959application/3gated and13affected-browser checks, typecheck/build pass. No Go or
+clock/freshness/hold policy changed. App-only16real-WASM clients measured604MiB
+appPSS plus144MiB fixturePSS. Installed32slots remain unchanged.
+
+Evidence root:var/qualification35/profile-20261119T044302Z-8d3c93/.
+Run7 was interrupted deliberately after26complete ramps/27successful Starts:
+projected ramp plus required600-second peak exceeded its3000-second wrapper.
+It is FAILED/partial, never a35-person pass. All399resource samples retained:
+aggregate peak3496MiB/web1572/native1173/helpers718; zero memory-limit/OOM events.
+Start median21.1s/p9541.9/max44.0. The host is CPU saturated, including unrelated
+user work and installed watchdog; do not alter those processes. Native/Marco
+cleanup and original host/config/authority preservation are FULL; owned root
+web/bridge sleep sentinels remain only for test preparation. Initial cleanup bind
+refused normal TIME_WAIT; independent listener/connection absence and reuse bind
+pass. No socket was cleared. Details:co-location-7/analysis.json and cleanup receipts.
+
+Native-install rehearsal PASSED, exact18-file bundle copied from retained
+v18s35 binaries plus unchanged qualified controller. Root driver:
+ssh-exam-native-install-driver-bd80458a490e4fca.service.
+Stage:/var/tmp/ssh-exam-native-install-qualification.bd80458a490e4fca.
+Guest:/var/tmp/ssh-exam-overlay-7gzs0j0y. All four binaries replaced/three roles
+reloaded; hardened source-worker plus7SSH/live-policy/collection/deadline checks
+pass. Independent unit/base cleanup and host/config/authority preservation FULL.
+Receipts:native-install/. The base is now free for the next test.
+
+Next: newrun8, SAME application/test source,35/140/600-second target and4352MiB/
+no-swap aggregate. Generated wrappers are syntax checked:run-colocation8.py,
+launch-long-local.py,host-refresh-v4.py,host-command-identities-v4.json and
+host-resource-observer-v3.py. Outer finite bounds now include measured ramp,
+peak/Finish/cleanup (driver6600s/local6900s/root7200s). Helpers1GiB from startup;
+web2GiB/twoCPU/native3GiB/twoCPU unchanged. Retain failures and stop on genuine
+host safety guard. Keep source/build frozen while a runner is active.
+
+Root stage:/var/tmp/ssh-exam-colocation.d6568409a935b53e. Run7 resource file is
+combined-resources-run7.jsonl (local copy retained). Root sentinels still use
+sleep3600; refresh-v4 verifies/collects them before new sleep7200 services.
+All previous private guest preservation checks pass. No package is missing.
+
+Release preparation is committed509cb18 in evidence-root/release-worktree/.
+New exactpre-final-monitoring-v2 scope:12focused/72matched-controller cases pass;
+real exact-image startup/current-data recovery63.2s,41tables/13signed polls and
+12mutation refusals/no extra starts. Native controller20cases pass. Proposed
+procedure:worktree/docs/pre-final-matched-release.md. Bring this commit to main
+after source is unfrozen; reconcile already-shared startup-fixture correction.
+Private image engine5965a0b1/Configbb436d26 binds76shared compiled modules; noSQL
+migration (37→37). Native/proxy transports remain explicit seams in image test;
+physical installer is running, csc-specific proxy/config/recovery coverage remains
+separate. No release-ready or deployment claim.
+
+Before closing: collect full load/independent root+Marco+local cleanup, ask existing
+Prof to write the final bounded-run report, update TODO/design/operator/checkpoint,
+commit coherent increments. All16documentation image hashes match baseline; ten
+pre-existing dirty PNGs must never be staged. No push/deploy.
 
 ## Completed baseline
 

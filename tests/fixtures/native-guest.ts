@@ -206,18 +206,29 @@ export async function forwardNativeBridgeRequest(
 
 const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
 const remote = (args: string[], detached = false) =>
-  spawn(
-    "ssh",
-    [
-      "-o",
-      "BatchMode=yes",
-      "-o",
-      "ConnectTimeout=10",
-      "csc-sys",
-      args.map(quote).join(" "),
-    ],
-    { stdio: ["pipe", "pipe", "pipe"], detached },
-  );
+  process.env.EXAM_BROWSER_COLOCATION === "1"
+    ? (() => {
+        if (process.getuid?.() !== 0 || !process.env.EXAM_STRESS_RUN)
+          throw Error(
+            "Local native transport requires the owned root manual fixture",
+          );
+        return spawn(args[0], args.slice(1), {
+          stdio: ["pipe", "pipe", "pipe"],
+          detached,
+        });
+      })()
+    : spawn(
+        "ssh",
+        [
+          "-o",
+          "BatchMode=yes",
+          "-o",
+          "ConnectTimeout=10",
+          "csc-sys",
+          args.map(quote).join(" "),
+        ],
+        { stdio: ["pipe", "pipe", "pipe"], detached },
+      );
 
 export async function nativeGuest(
   bundle: string,
@@ -229,9 +240,7 @@ export async function nativeGuest(
     throw Error("Private native capacity must be 1, 16, 35 or 70");
   const endurance = students === 35 || students === 70;
   if (endurance && !process.env.EXAM_STRESS_RUN)
-    throw Error(
-      "Endurance cohorts require an explicit manual stress run",
-    );
+    throw Error("Endurance cohorts require an explicit manual stress run");
   const httpPort = endurance ? 3102 : 3100;
   if (large && students !== 16)
     throw Error("Large private workload requires16students");
@@ -423,6 +432,12 @@ export async function nativeGuest(
             keyfile,
             "--browser-students",
             String(students),
+            ...(process.env.EXAM_BROWSER_COLOCATION === "1"
+              ? [
+                  "--qualification-slice",
+                  process.env.EXAM_BROWSER_QUALIFICATION_SLICE || "",
+                ]
+              : []),
             ...(large ? ["--browser-large"] : []),
             ...(process.env.EXAM_BROWSER_NATIVE_RELEASE === "1"
               ? ["--release-native"]

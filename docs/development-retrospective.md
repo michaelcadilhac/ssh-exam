@@ -1,5 +1,19 @@
 # Development retrospective — October 22, 2026
 
+November19 co-location follow-up: new runtime scaffolding cost avoidable retries.
+A Docker export lacks runtime devices such as/dev/null; a valid Node path and
+clock/codec smoke did not prove actual worker fork/IPC. Then bare tsx injected an
+outer__name helper into serialized browser observer code, so the observer itself
+broke an otherwise initialized SSH worker. Actual fork/IPC and password-prompt
+checks now precede class allocation; a loader-level regression rejects the former
+observer. Finally the3000-second wrapper omitted the slower shared-host ramp
+before the ten-minute peak. Its26-student partial run was retained and closed,
+not counted as qualification; corrected finite bounds include ramp/peak/Finish/
+cleanup. These are test-orchestration errors, not reasons to widen monitoring
+freshness, clear production work or weaken load acceptance. Detailed receipts:
+production-qualification-35.md. The remedy is a complete first-client probe and
+measured orchestration bounds, not another expanding helper architecture.
+
 October26 C17 follow-up: the new mandatory legacy recovery probe was verified in
 its own SSH/web/browser cases, but the first full run found8 older retained tests
 sharing a different empty-capability fixture. Search shared producers, not only

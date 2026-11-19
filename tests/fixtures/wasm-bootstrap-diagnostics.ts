@@ -28,18 +28,20 @@ export async function observeWasmBootstrap(page: Page) {
     if (value && network.length < 24)
       network.push({ path: value, event: "failed" });
   });
-  await page.addInitScript(() => {
-    const events: { event: string; worker?: number }[] = [];
-    (window as any).__examBootstrapEvents = events;
-    const admissions: { worker: number; error: string }[] = [];
-    (window as any).__examPaneRefusals = admissions;
+  // Raw browser source is deliberate: tsx's keep-names transform can otherwise
+  // inject an outer __name helper into the serialized Worker constructor.
+  await page.addInitScript(`(() => {
+    const events = [];
+    window.__examBootstrapEvents = events;
+    const admissions = [];
+    window.__examPaneRefusals = admissions;
     const Base = window.Worker;
     let next = 0;
     window.Worker = class extends Base {
-      constructor(url: string | URL, options?: WorkerOptions) {
+      constructor(url, options) {
         super(url, options);
         const worker = ++next;
-        const note = (event: string) => {
+        const note = (event) => {
           if (events.length < 24) events.push({ event, worker });
         };
         note("created");
@@ -59,7 +61,7 @@ export async function observeWasmBootstrap(page: Page) {
         this.addEventListener("error", () => note("worker-error"));
       }
     };
-  });
+  })();`);
   return async () => ({
     network,
     worker: await page
