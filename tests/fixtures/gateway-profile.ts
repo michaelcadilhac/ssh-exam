@@ -71,7 +71,7 @@ export function gatewayProfile(data: string) {
       const line = Buffer.from(
         JSON.stringify({ pid: process.pid, ...row }) + "\n",
       );
-      if (records >= 16_384 || bytes + line.length > 8 * 1024 * 1024) {
+      if (records >= 65_536 || bytes + line.length > 8 * 1024 * 1024) {
         truncated = true;
         return;
       }

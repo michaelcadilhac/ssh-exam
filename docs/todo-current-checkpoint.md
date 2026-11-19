@@ -46,3 +46,10 @@ profiled image. Co-location and csc-specific Compose/nginx/external HTTPS/CURREN
 recovery remain release gates. Proposed 40 slots; installed 32 unchanged. Schema 37;
 no release-ready/deployed claim. Three-agent consolidation was completed earlier;
 preserve current roles. [Release/recovery proposal](pre-final-matched-release.md).
+
+Cohort preparation: the private sink now permits65,536rows while retaining the
+8MiB byte cap;38focused navigation/sink tests, real12-second child HTTP/restart,
+typecheck and private compilation pass. Only gateway-profile.js changes in the
+compiled runtime. Unknown Start observation preserves the original failed verdict
+and saves before/after facts instead of tearing down during UI recovery. No
+product byte or native binary changed in these preparation corrections.

@@ -321,4 +321,33 @@ describe("public stress Start stages", () => {
       "without an HTTP response",
     );
   });
+  it("observes an already-sent unknown Start without changing the failure or replaying it", async () => {
+    const page = {
+      waitForRequest: vi.fn().mockResolvedValue({ response: async () => null }),
+    };
+    const observe = vi.fn().mockResolvedValue(undefined);
+    await expect(waitForStressStartResponse(page, vi.fn(), observe)).rejects.toThrow(
+      "without an HTTP response",
+    );
+    expect(observe).toHaveBeenCalledTimes(1);
+    expect(page.waitForRequest).toHaveBeenCalledTimes(1);
+  });
+  it("keeps the transport error if outcome observation also refuses", async () => {
+    const error = new Error("transport closed");
+    const page = {
+      waitForRequest: vi.fn().mockResolvedValue({ response: async () => { throw error; } }),
+    };
+    const observe = vi.fn().mockRejectedValue(new Error("observation unavailable"));
+    const note = vi.fn();
+    await expect(waitForStressStartResponse(page, note, observe)).rejects.toBe(error);
+    expect(observe).toHaveBeenCalledTimes(1);
+    expect(note).toHaveBeenCalledWith(JSON.stringify({ phase: "start-outcome-observation-unavailable" }));
+  });
+  it("never treats a preparation failure as an unknown Start", async () => {
+    const error = new Error("no request was sent");
+    const page = { waitForRequest: vi.fn().mockRejectedValue(error) };
+    const observe = vi.fn();
+    await expect(waitForStressStartResponse(page, vi.fn(), observe)).rejects.toBe(error);
+    expect(observe).not.toHaveBeenCalled();
+  });
 });

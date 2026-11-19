@@ -599,7 +599,34 @@ test(
         await ready(page, !!stressRun);
         for (let retry = 0; retry < 3; retry++) {
           const result = stressRun
-            ? waitForStressStartResponse(page, console.log)
+            ? waitForStressStartResponse(page, console.log, async () => {
+                const observe = async () => {
+                  const reply = await page.request.get("/api/student/exam", {
+                    timeout: 3000,
+                  });
+                  const attempt = (await reply.json()).attempt;
+                  if (!attempt?.id) return { state: attempt?.state ?? null };
+                  const native = await request.get(
+                    `/api/fixture/native-state?attempt=${encodeURIComponent(attempt.id)}`,
+                    { headers, timeout: 5000 },
+                  );
+                  return { web: attempt, native: await native.json() };
+                };
+                const before = await observe().catch(() => ({ unavailable: true }));
+                const workspaceVisible = await page
+                  .getByRole("button", { name: "Finish exam", exact: true })
+                  .waitFor({ state: "visible", timeout: OPERATION_TIMEOUT_MS })
+                  .then(() => true, () => false);
+                const after = await observe().catch(() => ({ unavailable: true }));
+                const path = test.info().outputPath("unknown-start-outcome.json");
+                await mkdir(test.info().outputDir, { recursive: true });
+                await writeFile(
+                  path,
+                  JSON.stringify({ username: student.username, before, after, workspaceVisible, verdict: "FAILED_START_RESPONSE" }),
+                  { mode: 0o600 },
+                );
+                console.log(JSON.stringify({ phase: "start-outcome-observed", username: student.username, workspaceVisible }));
+              })
             : page.waitForResponse(
                 (response) =>
                   new URL(response.url()).pathname.endsWith("/begin") &&

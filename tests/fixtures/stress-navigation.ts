@@ -231,6 +231,7 @@ export async function openUnauthenticatedStressWelcome(
 export async function waitForStressStartResponse(
   page: Pick<Page, "waitForRequest">,
   note: (message: string) => void,
+  observeUnknown?: () => Promise<void>,
 ) {
   const started = performance.now();
   const request = await page.waitForRequest(
@@ -269,6 +270,19 @@ export async function waitForStressStartResponse(
       }),
     );
     return response;
+  } catch (error) {
+    clearTimeout(timer);
+    // Keep the original failure verdict. The manual cohort may observe the
+    // already-sent request's recovery before it closes the student's page.
+    // Preparation refusals above never enter this branch; Start is not replayed.
+    if (observeUnknown) {
+      try {
+        await observeUnknown();
+      } catch {
+        note(JSON.stringify({ phase: "start-outcome-observation-unavailable" }));
+      }
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }

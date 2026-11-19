@@ -105,22 +105,24 @@ it("bounds the observation log while continuing each real command once", async (
   const p = gatewayProfile(dir);
   let calls = 0;
   try {
-    for (let n = 0; n < 65; n++) {
+    for (let n = 0; n < 257; n++) {
       const c = connection();
       const original = c.command;
       p.onConnection(c);
       for (let i = 0; i < 128; i++) await c.command("health");
       calls += original.mock.calls.length;
     }
-    expect(calls).toBe(65 * 128);
+    expect(calls).toBe(257 * 128);
     expect(p.snapshot()).toMatchObject({
-      records: 16384,
       truncated: true,
       failed: false,
     });
+    expect(p.snapshot().records).toBeGreaterThan(32768);
+    expect(p.snapshot().records).toBeLessThanOrEqual(65536);
+    expect(statSync(p.snapshot().path).size).toBeLessThanOrEqual(8 * 1024 * 1024);
     expect(
       readFileSync(p.snapshot().path, "utf8").trim().split("\n"),
-    ).toHaveLength(16384);
+    ).toHaveLength(p.snapshot().records);
   } finally {
     p.close();
     rmSync(dir, { recursive: true, force: true });

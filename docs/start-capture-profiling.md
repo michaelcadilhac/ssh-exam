@@ -31,7 +31,7 @@ The profile hooks and file writer exist only in test fixtures.
 ## Storage, recovery and inspection
 
 The fixture's private data directory contains `qualification-profile.jsonl`, mode
-0600. Each process records at most16,384rows; the file has an8MiB cumulative byte
+0600. Each process records at most65,536rows; the file has an8MiB cumulative byte
 budget. Complete prior records remain across an application restart, with PID
 correlation. Symlinks, wrong ownership/modes, incomplete prior lines and full logs
 cannot masquerade as a fresh healthy profile. Errors/full logs remain inspectable
@@ -106,3 +106,11 @@ attribution. Full independent cleanup and frozen-input preservation pass.
 [Agent measurement report](../reports/stress/20261119T173903Z/report.md).
 No class-capacity or production-readiness claim follows; the exact next action is
 the already-planned instrumented35-person short co-location under unchanged caps.
+
+Before the next class ramp, the row ceiling was sized for about32,000capture
+observations during the measured ramp plus peak. The8MiB byte ceiling is unchanged;
+38focused harness/sink cases and actual separate-process HTTP/restart pass. The
+class driver also observes an already-sent unanswered Start for the existing
+60-second UI recovery window, saving public/native before/after facts before
+teardown. It still throws the original timeout and fails qualification, never
+replays Start, and does not observe a preparation failure as a started request.
