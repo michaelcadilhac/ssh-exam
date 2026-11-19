@@ -355,16 +355,20 @@ func (e *Engine) reconcileTerminalRecordingReports() error {
 		unit  string
 		proof PaneInstance
 	}
-	var pending []expected
-	if err := e.WithState(func() error {
-		for unit, proof := range e.state.PaneInstances {
-			if proof.Recording != "" {
-				pending = append(pending, expected{unit, proof})
-			}
-		}
-		return nil
-	}); err != nil {
+	// Discover candidates without a write transaction. Each actual report is
+	// still checked against its exact canonical identity/revision below.
+	snapshot, err := readStateSnapshot(e.Config.State)
+	if err != nil {
 		return err
+	}
+	if snapshot.Caps == nil {
+		return errTerminalRecordingReport
+	}
+	var pending []expected
+	for unit, proof := range snapshot.PaneInstances {
+		if proof.Recording != "" {
+			pending = append(pending, expected{unit, proof})
+		}
 	}
 	var problems []error
 	sort.Slice(pending, func(i, j int) bool {

@@ -1,0 +1,61 @@
+{
+  "run": "20261119T194443Z",
+  "started": "2026-11-19T19:44:43.543239+00:00",
+  "phases": [
+    {
+      "phase": "native-editor",
+      "attempt": 1,
+      "started": "2026-11-19T19:44:43.584358+00:00",
+      "source": "309e60d06b07ad8e17beb18a9d14234601f79562",
+      "source_diff_sha256": "81dfee70cc2b891943fc0210df5f1574f0aae8b7bb69f532769e05761bcb0e29",
+      "inputs_sha256": "74d7fa2fc5b81baa523976e6edb51b895c2db985adc2f7238ed4cf8b43279f36",
+      "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279",
+      "status": "PASSED",
+      "commands": [
+        {
+          "argv": [
+            "node",
+            "scripts/stress-generator-smoke.cjs"
+          ],
+          "exit": 0,
+          "seconds": 5.43
+        },
+        {
+          "argv": [
+            "npm",
+            "run",
+            "test:browser",
+            "--",
+            "tests/browser/retained-native.spec.ts",
+            "--output",
+            "/home/micha/src/ssh-exam/var/stress/20261119T194443Z/native-editor-1/browser",
+            "--reporter",
+            "list,json"
+          ],
+          "exit": 0,
+          "seconds": 104.043
+        }
+      ],
+      "evidence": "var/stress/20261119T194443Z/native-editor-1",
+      "generator": "marco",
+      "built_inputs_sha256": "9c5644aaa243f291724f3221ce62d6f29293774869b4be4bb53bb2454bdfd708",
+      "local_scratch": "/home/micha/src/ssh-exam/var/stress/20261119T194443Z/native-editor-1/temporary",
+      "finished": "2026-11-19T19:46:46.647896+00:00"
+    }
+  ],
+  "students": 35,
+  "terminals": 140,
+  "endurance_seconds": 5400,
+  "source": "309e60d06b07ad8e17beb18a9d14234601f79562",
+  "source_diff_sha256": "81dfee70cc2b891943fc0210df5f1574f0aae8b7bb69f532769e05761bcb0e29",
+  "native_bundle": "/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279",
+  "mfa": false,
+  "real_student_accounts": false,
+  "outbound_mail": false,
+  "environment": "isolated local gateway/browser + guarded private csc-sys guest",
+  "limitations": [
+    "Browser screen/camera/keyboard permissions and jump authentication are synthetic; institutional MFA is excluded.",
+    "The gateway is local; this does not certify production gateway co-location resource capacity."
+  ],
+  "status": "PARTIAL"
+}

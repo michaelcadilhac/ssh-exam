@@ -331,16 +331,20 @@ func (e *Engine) collectionProcessFailed(id, job string, cause error) {
 // every shared-state read. Unknown/unverified records remain held until this
 // independently verified, fenced operation succeeds.
 func (e *Engine) reconcileAccessOutside(only string) error {
-	var ids []string
-	if err := e.WithState(func() error {
-		for _, a := range e.state.Attempts {
-			if (only == "" || a.ID == only) && a.Start > 0 && a.State == "COMPLETED" && accessHeld(a) && ((sandboxAttempt(a) && !e.temporaryPolicy(a)) || restrictionElapsed(a)) {
-				ids = append(ids, a.ID)
-			}
-		}
-		return nil
-	}); err != nil {
+	// Selection grants no release. The isolated collection worker revalidates
+	// canonical state and protected bytes before changing any account hold.
+	snapshot, err := readStateSnapshot(e.Config.State)
+	if err != nil {
 		return err
+	}
+	if snapshot.Caps == nil {
+		return errors.New("invalid administrator state; access reconciliation denied")
+	}
+	var ids []string
+	for _, a := range snapshot.Attempts {
+		if (only == "" || a.ID == only) && a.Start > 0 && a.State == "COMPLETED" && accessHeld(a) && ((sandboxAttempt(a) && !e.temporaryPolicy(a)) || restrictionElapsed(a)) {
+			ids = append(ids, a.ID)
+		}
 	}
 	var failures []error
 	for _, id := range ids {

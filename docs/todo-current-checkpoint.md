@@ -1,55 +1,65 @@
-# Current checkpoint — native profiling qualified; class gate open
+# Current checkpoint — four-core optimization qualified locally
 
-Authorized: bounded Start/capture diagnostics, separate app/helper measurement,
-short35-student/140-terminal co-location and matched local release preparation.
-No push/deploy, production changes, actual students, institutional MFA, external
-email or another90-minute run. [Plan](production-qualification-35.md).
-Evidence: var/qualification35/profile-20261119T044302Z-8d3c93/.
+Instructor: keep csc-sys at four cores; optimize within that limit. Local work,
+synthetic/disposable tests and local commits only. No push/deployment/production
+restart/configuration/record change, actual student/MFA or external email.
+Preserve the ten pre-existing dirty documentation PNGs. All owned tests stopped.
 
-## Current validated outcome
+## Validated increment (based on309e60d)
 
-Backend diagnostic/source revision e49aeca plus the test-only single-student
-co-location extension. Actual normal-budget and two-core comparison native
-browser workflows PASS82.917/81.957 seconds: Start, forced/graceful web replacement,
-verified hold/Continue, retained SSH/editor state, protected Finish/archive and
-original clocks/holds. Native exit0; independent host/configuration/authority/base,
-Marco/local cleanup and frozen inputs are FULL. All16 documentation images remain
-unchanged; preserve the ten pre-existing dirty PNGs. No remote test is running.
+Four native background discovery paths now use fresh snapshots, avoiding full
+history writes: callback queue, recording offsets, access candidates and recording
+report candidates. Actual acknowledgements/releases/report fences are unchanged
+transactions. No cache, policy, schema, timing or CLI-capability change.
+[Implementation/verification](native-background-cost.md).
 
-Actual traces span four app PIDs per run. Native-operation Start spans 14.085 and
-10.487 seconds; CPU contributes, not a complete latency/class-failure explanation.
-One prediction-chain refusal per run is followed by accepted uploads; no other
-capture stage is reproduced. No memory high/max/OOM events; web never throttled.
-[Measurement report](../reports/stress/20261119T173903Z/report.md) details budgets,
-owned setup failures/corrections and limits. Raw evidence:native-small-profile/
-run-{4,5}/{analysis,independent-cleanup,input-preservation}.json.
-32 overlay runner contracts and typecheck pass. Native Go artifacts unchanged.
+Actual signed callback scan218attempts/872files:6.835s→13.671ms and5.81GB→7.08MB
+allocations. Actual synthetic Watch CPU0.519→0.079core,84.7%reduction, passes the
+unchanged75%target. Earlier72.3%result and203/EXEC copied-mode fixture failure remain.
+Focused race/deadline/access/report/callback checks pass. Full native/CLI races
+pass(core278.113s,CLI7.366s;1735cases incl subtests/137gated skips/0failures).
+Build/vet pass. Earlier broad TMPDIR socket-overflow failure retained; corrected
+focused cases and complete final run pass with TMPDIR=/tmp.
 
-## Next integrated result
+Actual Marco→WASM→SSH→guarded csc-sys native editor/hold/Continue/protected Finish
+passes104.043s command time, one student. Source/build and all16documentation image
+hashes match. Independent host/native/base preservation, Marco/local cleanup FULL,
+private3100/3102/9444/9445ports closed. No production change.
+[Agent report](../reports/stress/20261119T194443Z/report.md).
 
-Run the already-planned short 35/140 co-location with these verified diagnostics,
-unchanged class caps and a ten-minute peak, then all 35 protected exports. Inspect
-per-operation/capture-stage traces at any failure; do not widen timeouts/freshness
-or blame CPU alone. Busy/memory guards mean no test. No policy decision is needed
-for this existing bounded diagnostic scope. No new vCPU/RAM or production change.
+Evidence P=`var/qualification35/profile-20261119T044302Z-8d3c93/`:
+`native-small-profile/idle-callback/`, `callback-native-race-final/`,
+`callback-native-interface/`; actual native evidence `var/stress/20261119T194443Z/`.
+New17-file native manifest58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56;
+audited code-only upload `/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279`.
 
-Run 9 remains FAILED: 34 students/136 panes; final Start 60s/native ACTIVE/web PREPARING at
-immediate teardown, no peak/Finish. Successful Start median/p95/max 27.394/53.364/
-56.457s; 359 generic video409, 18 context409, 9 image-capacity400 were not classified then.
-Original cleanup/preservation FULL. Prior 35/140/90-minute run 7fe9f3d PASSED on a
-separate development-host web application; it does not qualify co-location or70.
+## Exact next action
 
-Local fixes 298276a/1ab9203/e49aeca retain their original focused/affected application,
-WASM/browser/build/native scope. [Profiling details](start-capture-profiling.md).
-Old prepared image Configebb877aa lacks the new stage labels; do not call it the
-profiled image. Co-location and csc-specific Compose/nginx/external HTTPS/CURRENT
-recovery remain release gates. Proposed 40 slots; installed 32 unchanged. Schema 37;
-no release-ready/deployed claim. Three-agent consolidation was completed earlier;
-preserve current roles. [Release/recovery proposal](pre-final-matched-release.md).
+Commit this coherent local increment, then prepare the existing short35-student
+co-location controller with the new native bundle. Reuse the already-qualified
+read-only test filesystem and unchanged web code/build; guard idle/host/authority
+and private ports again. Preserve former identity and per-run controller inputs.
+Carry the entire bounded ramp+peak+Finish lifetime into all observers. Verify a
+focused real-WASM password prompt before authorizing the broad runner. No source
+edits while running; collect exact cleanup/preservation. Do not infer capacity
+from the single-student or synthetic CPU result.
 
-Cohort preparation: the private sink now permits65,536rows while retaining the
-8MiB byte cap;38focused navigation/sink tests, real12-second child HTTP/restart,
-typecheck and private compilation pass. Only gateway-profile.js changes in the
-compiled runtime. Unknown Start observation preserves the original failed verdict
-and saves before/after facts instead of tearing down during UI recovery. No
-product byte or native binary changed in these preparation corrections.
+## Latest class result and remaining scope
+
+Class10 on309e60d FAILED after33students/132GCC/GDB terminals. Student34 Start
+exceeded60s; recovery observed original native/webACTIVE and workspace, not typing
+readiness. Peak/Finish not reached. Cleanup/preservation FULL. Source/build and
+all16images preserved. [Agent report](../reports/stress/20261119T175624Z/report.md);
+raw P/native-small-profile/class-10/.
+
+299decoder queue expiries/28challenge refusals/1image capacity refusal/21413accepted.
+Observer1100s expiry was not OOM;255.121s native sample gap retained, continuous
+web/host series remains. All old class units/tunnels stopped. Rejected local
+shorter-prediction-group experiment saturated both variants and raised bytes45%.
+No encoding change. Read-only post-cleanup diagnosis: installed idle watchdog
+0.86–0.99core, other user work~2cores. Neither stopped; student work not inspected.
+
+Prepared image lacks private stage labels; no release-ready claim.35co-location,
+current32installed slots, csc-specific Compose/nginx/externalHTTPS/CURRENT recovery
+and70capacity remain open. Prior35/90pass was a different runtime layout. Three-agent
+consolidation completed earlier; do not repeat. No deployment authority.

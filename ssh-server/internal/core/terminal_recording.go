@@ -247,17 +247,19 @@ func (e *Engine) bridgeRecordedPTY(original, master *os.File, done <-chan struct
 // Push trusted recorded bytes only. Offsets are durable, deliveries idempotent;
 // a browser neither supplies these bytes nor acknowledges their delivery.
 func (e *Engine) deliverRecordings(client *http.Client, key ed25519.PrivateKey) error {
-	var attempts []*Attempt
-	if err := e.WithState(func() error {
-		for _, a := range e.state.Attempts {
-			if a.Start > 0 {
-				v := *a
-				attempts = append(attempts, &v)
-			}
-		}
-		return nil
-	}); err != nil {
+	// DeliverCallbacks owns delivery.lock for this entire pass. No other
+	// sender can advance these offsets. Recording writers only append; read
+	// offsets once without rewriting the full history for each idle file.
+	// A successful HTTP reply still commits and rechecks its offset below.
+	snapshot, err := readStateSnapshot(e.Config.State)
+	if err != nil {
 		return err
+	}
+	var attempts []*Attempt
+	for _, a := range snapshot.Attempts {
+		if a.Start > 0 {
+			attempts = append(attempts, a)
+		}
 	}
 	sent := 0
 	for _, a := range attempts {
@@ -281,10 +283,7 @@ func (e *Engine) deliverRecordings(client *http.Client, key ed25519.PrivateKey) 
 				return errors.New("invalid private recording entry")
 			}
 			name := a.ID + ":" + pane
-			var offset int64
-			if err := e.WithState(func() error { offset = e.state.RecordingOffsets[name]; return nil }); err != nil {
-				return err
-			}
+			offset := snapshot.RecordingOffsets[name]
 			f, err := os.Open(filepath.Join(dir, entry.Name()))
 			if err != nil {
 				return err

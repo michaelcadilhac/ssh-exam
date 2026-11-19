@@ -202,15 +202,20 @@ func (e *Engine) DeliverCallbacks() error {
 	}()
 	// Bound each pass so a backlog cannot monopolize recovery.
 	for n := 0; n < 20; n++ {
-		var event *CallbackEvent
-		if err = e.WithState(func() error {
-			if len(e.state.Events) > 0 {
-				v := e.state.Events[0]
-				event = &v
-			}
-			return nil
-		}); err != nil {
+		// Every producer queues its event in the same durable transaction as
+		// its change. Reading that queue must not rewrite all historical state.
+		// The delivery flock serializes senders; acknowledgement below still
+		// rechecks the canonical head under the normal state transaction.
+		snapshot, err := readStateSnapshot(e.Config.State)
+		if err != nil {
 			return err
+		}
+		if snapshot.Caps == nil {
+			return errors.New("invalid administrator state; callback delivery denied")
+		}
+		var event *CallbackEvent
+		if len(snapshot.Events) > 0 {
+			event = &snapshot.Events[0]
 		}
 		if event == nil {
 			break

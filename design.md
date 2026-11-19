@@ -7,6 +7,15 @@
 
 ## November 18 local follow-up: video prediction at ownership changes
 
+November19 four-core optimization: callback queues, terminal recording offsets,
+access-release candidates and recording-report candidates are discovered from
+fresh committed snapshots. The delivery flock, per-second scheduling, bounded
+passes and durable exact acknowledgements are unchanged. No cached execution
+authority, policy, timing or schema change. Actual releases/reports still recheck
+their canonical fences. Synthetic Watch CPU falls84.7%; full native/CLI races and
+actual guarded native acceptance pass, with full preservation/cleanup. Local only;
+co-location remains open. [Implementation and evidence](docs/native-background-cost.md).
+
 November19 profiling adds private refusal-stage metadata to capture exceptions;
 public messages/statuses and all resource/freshness/clock checks remain unchanged.
 Only manual qualification fixtures record the stages and native-operation timings.

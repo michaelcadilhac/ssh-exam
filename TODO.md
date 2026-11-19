@@ -1,3 +1,14 @@
+November19: retain four cores and optimize within them, as instructed. Class-10
+failed at33students/132terminals; peak/Finish were not reached. Lost-Start
+observation found the original native/webACTIVE interval, without replay. Decoder
+queue expiry and high CPU competition are now measured; independent cleanup and
+preservation are FULL. [Agent report](reports/stress/20261119T175624Z/report.md).
+Redundant native history/recording writes are fixed locally: synthetic Watch CPU
+falls84.7%, with focused regressions, full native/CLI races, build/vet and actual
+guarded native acceptance passing. Full preservation/cleanup is verified; nothing
+is deployed and co-location remains unqualified.
+[Verification and remaining gates](docs/native-background-cost.md).
+
 November19 diagnostic follow-up: actual csc-sys single-student profiling passes
 Start, web-process replacement, hold/Continue and protected export with full
 preservation. A private CPU comparison reduces the native-operation Start span
