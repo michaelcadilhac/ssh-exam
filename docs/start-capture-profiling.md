@@ -88,3 +88,21 @@ choosing a performance change or repeating the full35-student peak. The prior
 run9 failure remains failed. The former prepared image Configebb877aa does not
 contain these new backend labels: compile and bind the updated test runtime before
 using its profile-support gate. No push/deployment is authorized.
+
+## Actual csc-sys diagnostic qualification
+
+The single-student co-location path now exercises the same separate application,
+real WASM/native SSH, protected Finish and restart recorder before a class ramp.
+Its existing half-core/1GiB native defaults remain; only an explicit owned slice
+accepts this mode, alongside the existing35-person mode. Wrong slices/profiles
+and16-person co-location still refuse. All32 runner contracts and typecheck pass.
+
+Actual normal-budget and two-core comparison workflows pass82.917/81.957seconds,
+including forced/graceful application replacements, hold/Continue, editor and
+archive preservation. Native-operation Start spans are14.085/10.487seconds;
+CPU contributes but does not explain all latency. Both traces identify one
+prediction-chain refusal followed by accepted uploads, without class-load codec
+attribution. Full independent cleanup and frozen-input preservation pass.
+[Agent measurement report](../reports/stress/20261119T173903Z/report.md).
+No class-capacity or production-readiness claim follows; the exact next action is
+the already-planned instrumented35-person short co-location under unchanged caps.

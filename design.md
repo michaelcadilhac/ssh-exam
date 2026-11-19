@@ -10,6 +10,9 @@
 November19 profiling adds private refusal-stage metadata to capture exceptions;
 public messages/statuses and all resource/freshness/clock checks remain unchanged.
 Only manual qualification fixtures record the stages and native-operation timings.
+The separate recorder now passes actual csc-sys Start, process replacement and
+protected Finish in a guarded single-student profile. Native single-student and
+class budgets remain distinct; a private CPU comparison is measurement only.
 Their bounded private log cannot authorize or replay work. No management setting,
 schema or production endpoint is added. [Profiling workflow](docs/start-capture-profiling.md).
 

@@ -27,11 +27,16 @@ class OverlayTests(unittest.TestCase):
         command=overlay.candidate_command(*arguments,35,storage,'retained-policy',qualification_slice=owned)
         self.assertIn('--slice='+owned,command)
         self.assertIn('--property=MemoryMax=3G',command)
+        single=overlay.candidate_command(*arguments,1,None,'retained-policy',qualification_slice=owned)
+        self.assertIn('--slice='+owned,single)
+        self.assertIn('--property=MemoryMax=1G',single)
         for wrong in ('system.slice','ssh-exam.service','ssh-exam-colocation-bad.slice'):
             with self.subTest(slice=wrong),self.assertRaises(AssertionError):
                 overlay.candidate_command(*arguments,35,storage,'retained-policy',qualification_slice=wrong)
         with self.assertRaises(AssertionError):
             overlay.candidate_command(*arguments,16,storage,'retained-policy',qualification_slice=owned)
+        with self.assertRaises(AssertionError):
+            overlay.candidate_command(*arguments,1,None,'enforcement',qualification_slice=owned)
 
     def test_shared_policy_probe_contract_accepts_both_exact_profiles_and_verified_installation(self):
         guest.require_execution_policy_profile({'profile':'execution-policy','username':'examq'}, 'examq')

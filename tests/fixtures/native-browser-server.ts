@@ -30,9 +30,13 @@ const students = Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS || "1");
 const coLocation = process.env.EXAM_BROWSER_COLOCATION === "1";
 if (
   coLocation &&
-  (process.getuid?.() !== 0 || students !== 35 || !process.env.EXAM_STRESS_RUN)
+  (process.getuid?.() !== 0 ||
+    ![1, 35].includes(students) ||
+    !process.env.EXAM_STRESS_RUN)
 )
-  throw Error("Co-location requires the owned root 35-student manual fixture");
+  throw Error(
+    "Co-location requires an owned root single-student profile or35-student manual fixture",
+  );
 const endurance = students === 35 || students === 70;
 const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
 const guest = await nativeGuest(

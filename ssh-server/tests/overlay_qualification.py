@@ -210,7 +210,7 @@ def candidate_command(unit, guest, inputs, output, students=1, storage=None, pro
         '--bind=' + str(output) + ':/run/ssh-exam-qualification-output',
     ]
     if qualification_slice is not None:
-        assert students == 35 and profile == 'retained-policy'
+        assert students in (1, 35) and profile == 'retained-policy'
         assert re.fullmatch(r'ssh-exam-colocation-[a-f0-9]{16}\.slice', qualification_slice)
         command.insert(2, '--slice=' + qualification_slice)
     if students > 1:
@@ -286,7 +286,7 @@ def run_locked(args):
     native_relay = getattr(args, 'native_relay', False)
     qualification_slice = getattr(args, 'qualification_slice', None)
     if qualification_slice is not None:
-        assert args.profile == 'retained-policy' and args.browser_students == 35 and args.browser_gateway_public_key
+        assert args.profile == 'retained-policy' and args.browser_students in (1, 35) and args.browser_gateway_public_key
         assert re.fullmatch(r'ssh-exam-colocation-[a-f0-9]{16}\.slice', qualification_slice)
         state = subprocess.run(['systemctl','show',qualification_slice,'--property=ActiveState,MemoryMax,MemorySwapMax'],
                                capture_output=True,text=True,check=True,timeout=10).stdout
@@ -514,7 +514,7 @@ if __name__ == '__main__':
     parser.add_argument('--browser-students', type=int, choices=(1, 16, 35, 70), default=1,
                         help='Private browser target;35/70 are explicit endurance modes (3GiB/2CPU/4096 or8192tasks/240min); owned disk binds only')
     parser.add_argument('--browser-large', action='store_true', help='Private16-student large-worker fault/export qualification; no production limit change')
-    parser.add_argument('--qualification-slice', help='Private35 co-location only: exact owned 4352-MiB/no-swap aggregate test budget')
+    parser.add_argument('--qualification-slice', help='Private1/35 co-location only: exact owned 4352-MiB/no-swap aggregate test budget')
     parser.add_argument('--release-native', action='store_true', help='Guarded browser qualification only: use actual release roles without the compiled test readiness override')
     parser.add_argument('--native-relay', action='store_true', help='Native-install only: also rehearse the matched relay/proxy update using isolated installed nginx code')
     parser.add_argument('--cleanup-peer', action='store_true', help='Private retained-policy fixture: current monitored Begin, framed input and a healthy peer during manual workspace cleanup')

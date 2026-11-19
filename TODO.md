@@ -1,3 +1,10 @@
+November19 diagnostic follow-up: actual csc-sys single-student profiling passes
+Start, web-process replacement, hold/Continue and protected export with full
+preservation. A private CPU comparison reduces the native-operation Start span
+from14.085to10.487seconds; it does not diagnose the class failure. Specific capture
+stages now survive real restarts. No production change or new class pass.
+[Report and exact next action](reports/stress/20261119T173903Z/report.md).
+
 # Stress remediation — 35-student test passed, local only
 
 November 19: the next authorized milestone profiles Start/capture and qualifies
