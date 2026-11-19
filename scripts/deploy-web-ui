@@ -7,8 +7,10 @@ positive idle/native drain, then takes a stopped incremental snapshot. Failures
 retain the admission fence. Rollback selects the retained previous image with
 CURRENT data; it never restores a database or directly touches native services.
 The exact reviewed-web-native scopes live-exam-execution-policy-v1 and
-files-only-resume-v1, plus monitoring-timeouts-v2 with its explicitly pinned relay,
-return WAITING_NATIVE after their durable stopped snapshot.
+files-only-resume-v1 and pre-final-monitoring-v2, plus monitoring-timeouts-v2
+with its explicitly pinned relay, return WAITING_NATIVE after their durable
+stopped snapshot. The pre-final scope updates the four native binaries and
+matched web/CLI while retaining the relay; it is forward-only with CURRENT data.
 Run the separately qualified
 native controller, bridge its nonce-bound transition and fresh after-guard, then
 resume this command. It admits only the matched candidate and forward recovery;
@@ -122,7 +124,7 @@ class Rollout:
             relay_update = self.settings.get('reviewed_scope') in ('monitoring-timeouts-v2', 'disconnect-diagnostics-v1')
             if relay_update:
                 names.add('exam-ssh-relay')
-            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2', 'review-countdown-policy-v1', 'disconnect-diagnostics-v1')
+            if (self.release['schema'] != 37 or self.settings.get('reviewed_scope') not in ('live-exam-execution-policy-v1', 'files-only-resume-v1', 'monitoring-timeouts-v2', 'review-countdown-policy-v1', 'disconnect-diagnostics-v1', 'pre-final-monitoring-v2')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or self.settings.get('previous_reader_policy_compatible') is not False

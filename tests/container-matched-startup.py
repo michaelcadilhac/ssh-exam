@@ -36,7 +36,7 @@ p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
 p.add_argument('--proof-repair',action='store_true',help='Qualify proof-only recovery with the ORIGINAL frozen controller/proof, corrected nonce verifier and no service replacement')
 p.add_argument('--old-preservation',type=Path,help='Exact historical verifier blob for hosts without the original Git object; its digest is pinned')
-p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1','disconnect-diagnostics-v1','binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1'),default='live-exam-execution-policy-v1')
+p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1','disconnect-diagnostics-v1','pre-final-monitoring-v2','binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
 WEB_ONLY_SCOPES=('binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1')
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'

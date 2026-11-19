@@ -196,6 +196,30 @@ class MatchedNative(unittest.TestCase):
                 self.assertEqual(f.stopped_calls(),[])
 
 
+class PreFinalMonitoring(MatchedNative):
+    """Matched proof-exchange/socket fixes retain the relay and CURRENT data."""
+    def setUp(self):
+        super().setUp()
+        self.f.release['fast_ui']['reviewed_scope']='pre-final-monitoring-v2'
+        (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+
+    def test_scope_is_exact_and_never_claims_old_writer_compatibility(self):
+        original=json.loads(json.dumps(self.f.release))
+        for number,(key,value) in enumerate([
+            ('reviewed_scope','pre-final-monitoring-v1'),
+            ('reviewed_scope','pre-final-monitoring-v2-extra'),
+            ('qualified_source','f'*40),
+            ('previous_reader_policy_compatible',True),
+            ('unchanged_backend_protocol_native',True),
+        ]):
+            with self.subTest(field=key,value=value):
+                self.f.state=self.f.root/('invalid-pre-final-'+str(number))
+                self.f.release=json.loads(json.dumps(original));self.f.release['fast_ui'][key]=value
+                (self.f.bundle/'release.json').write_text(json.dumps(self.f.release))
+                self.f.cli('prepare',expect=1)
+                self.assertEqual(self.f.stopped_calls(),[])
+
+
 class FilesOnlyResume(MatchedNative):
     """Run the same public installation/recovery/refusal matrix for this scope."""
     def setUp(self):
