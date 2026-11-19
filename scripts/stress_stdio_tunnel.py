@@ -143,8 +143,12 @@ def main():
     parser.add_argument('--remote',type=Path)
     parser.add_argument('--smoke',action='store_true')
     parser.add_argument('--listen',type=int,nargs=2,default=(9444,9445))
+    parser.add_argument('--lifetime',type=int,default=3600,metavar='SECONDS',
+                        help='Finite transport lifetime (1..14400 seconds); set both ends to cover the test and cleanup')
     parser.add_argument('--command',nargs=argparse.REMAINDER)
     args=parser.parse_args()
+    if not 1<=args.lifetime<=14400:
+        parser.error('--lifetime must be between 1 and 14400 seconds')
     if args.remote:
         stage=args.remote;assert os.getuid()==0 and re.fullmatch(r'/var/tmp/ssh-exam-colocation\.[a-f0-9]{16}',str(stage))
         assert stage.stat().st_uid==0 and stage.stat().st_mode&0o777==0o700
@@ -155,7 +159,7 @@ def main():
         assert state(unit)['ActiveState']=='active','Owned target fixture unavailable'
         budget=state('ssh-exam-colocation-bridge-'+token+'.service');assert budget['ActiveState']=='active' and token in budget['ControlGroup']
         Path('/sys/fs/cgroup'+budget['ControlGroup']+'/cgroup.procs').write_text(str(os.getpid()))
-        pump(sys.stdin.buffer,sys.stdout.buffer,remote=True)
+        pump(sys.stdin.buffer,sys.stdout.buffer,remote=True,lifetime=args.lifetime)
     else:
         assert args.command and len(set(args.listen))==2 and all(1024<p<65536 for p in args.listen)
         listeners=[];child=None
@@ -163,7 +167,7 @@ def main():
             for index,port in enumerate(args.listen):
                 listener=socket.socket();listener.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);listener.bind(('127.0.0.1',port));listener.listen(128);listeners.append((listener,index))
             child=subprocess.Popen(args.command,stdin=subprocess.PIPE,stdout=subprocess.PIPE)
-            outcome=pump(child.stdout,child.stdin,listeners)
+            outcome=pump(child.stdout,child.stdin,listeners,lifetime=args.lifetime)
             if outcome=='eof':
                 assert child.wait(timeout=5)==0,'Owned remote transport exited unsuccessfully'
         finally:

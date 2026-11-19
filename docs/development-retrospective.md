@@ -797,3 +797,23 @@ the owned worker if writing the diagnostic fails. The real cohort reader reports
 the refusal and journal guidance. A small real browser/service-stop/monitor/reader
 workflow passes with complete cleanup. Full endurance needs more generator RAM;
 it must not be repeated with the same undersized budget or a relaxed safety margin.
+
+## November 19: an outer test deadline does not extend its transport
+
+Class14 reached all 35 students and 140 verified terminals, then completed eight
+full-load observations through 324.9 seconds. The private opaque tunnel expired
+at its default one hour, closing the synthetic connections during the next fleet
+observation. Its own traceback identifies the finite-lifetime assertion. The
+surrounding services had two-hour bounds; I checked those and missed the inner
+transport. This was an avoidable harness error, not evidence of a production
+disconnect. The run remains incomplete: no ten-minute peak or protected Finish
+pass is inferred from the earlier observations.
+
+Both CLI entries now accept an explicit finite lifetime. Actual socket regressions
+verify delivery followed by expiry, peer/listener cleanup, invalid-bound refusal,
+large binary frames, half-closes and short writes. The launch plan must cover the
+entire ramp, peak, Finish and cleanup at every layer, and pass the same reviewed
+lifetime to both ends. Short accelerated expiry checks precede another long run.
+Production monitoring freshness, student deadlines and account holds are unchanged.
+The original failure and full independent host/guest/Marco/local preservation
+receipts remain under the class14 evidence directory.

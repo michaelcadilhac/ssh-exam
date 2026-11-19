@@ -92,5 +92,54 @@ class StreamTunnel(unittest.TestCase):
         self.assertNotEqual(child.returncode,0)
         self.assertIn(b'Malformed private transport frame',child.stderr)
 
+    def test_configured_lifetime_carries_data_then_expires_and_reaps_its_peer(self):
+        child=None;server=None;thread=None
+        with tempfile.TemporaryDirectory(prefix='stdio-lifetime-') as directory:
+            log=Path(directory)/'transport.log'
+            try:
+                server=Server(('127.0.0.1',9444),Echo)
+                thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+                ports=[]
+                for _ in range(2):
+                    with socket.socket() as probe:probe.bind(('127.0.0.1',0));ports.append(probe.getsockname()[1])
+                remote="import os,sys;print('REMOTE_PID='+str(os.getpid()),file=sys.stderr,flush=True)\n"+REMOTE
+                with log.open('wb') as output:
+                    child=subprocess.Popen([sys.executable,str(SCRIPT),'--lifetime','2','--listen',*map(str,ports),'--command',sys.executable,'-u','-c',remote,str(SCRIPT)],stdout=output,stderr=subprocess.STDOUT)
+                    until=time.monotonic()+5
+                    while True:
+                        self.assertIsNone(child.poll(),log.read_text())
+                        try:
+                            probe=socket.create_connection(('127.0.0.1',ports[0]),timeout=.1);probe.close();break
+                        except OSError:
+                            self.assertLess(time.monotonic(),until);time.sleep(.02)
+                    time.sleep(.4)
+                    with socket.create_connection(('127.0.0.1',ports[0]),timeout=2) as sock:
+                        sock.settimeout(2);sock.sendall(b'configured lifetime');sock.shutdown(socket.SHUT_WR)
+                        body=bytearray()
+                        while raw:=sock.recv(4096):body.extend(raw)
+                    self.assertEqual(body,b'configured lifetime')
+                    self.assertNotEqual(child.wait(timeout=5),0)
+                text=log.read_text()
+                self.assertIn('Private transport finite lifetime expired',text)
+                peer=int(next(line.split('=',1)[1] for line in text.splitlines() if line.startswith('REMOTE_PID=')))
+                self.assertFalse(Path('/proc',str(peer)).exists(),'Expired local transport left its peer alive')
+                for port in ports:
+                    with socket.socket() as probe:
+                        probe.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);probe.bind(('127.0.0.1',port))
+            finally:
+                if child and child.poll() is None:child.terminate();child.wait(timeout=10)
+                if server:server.shutdown();server.server_close()
+                if thread:thread.join(timeout=2);self.assertFalse(thread.is_alive())
+
+    def test_invalid_lifetime_refuses_before_launching_its_command(self):
+        with tempfile.TemporaryDirectory(prefix='stdio-lifetime-refusal-') as directory:
+            marker=Path(directory)/'must-not-start'
+            for value in ('0','-1','14401','nan'):
+                with self.subTest(value=value):
+                    r=subprocess.run([sys.executable,str(SCRIPT),'--lifetime',value,'--command',sys.executable,'-c','from pathlib import Path;Path('+repr(str(marker))+').write_text("started")'],capture_output=True,timeout=5)
+                    self.assertEqual(r.returncode,2)
+                    self.assertIn(b'lifetime',r.stderr)
+                    self.assertFalse(marker.exists())
+
 
 if __name__=='__main__':unittest.main()

@@ -138,6 +138,11 @@
   a protocol: real WASM checks require EXAM_BROWSER_SSH=1, not the Node fallback.
   Browser fixtures serve dist/web: rebuild after browser source changes before
   qualification. A test against stale built assets does not verify the edit.
+  Before allocating a remote guest or browser fleet, compare every active web
+  asset at the actual serving path and its staging mirror with the frozen local
+  build. A Git commit can change Go WASM build metadata and its digest without
+  changing executable code; stage the exact pinned artifact rather than relaxing
+  an exact-byte verifier. Keep this comparison in the real qualification entry.
   Typecheck changed test fixtures before broad qualification; the production
   server build excludes them and does not catch their type errors.
   Before a privileged cross-language interface run, read the actual wire producer
@@ -243,6 +248,10 @@
   runner before retrying; never terminate unrelated processes or services.
 - Run long qualification in an owned, bounded durable runner and save its identity,
   frozen inputs, output and final status; a tool session is not its lifetime.
+  Inventory inner transport, guest, browser and observer lifetimes against the
+  complete ramp, peak, Finish and cleanup budget before allocation. Assert their
+  ordering in the launch plan and test accelerated expiry through both transport
+  entries; extending an outer service never extends an inner timeout.
   Before attributing load-test delay or repeating a class ramp, inspect saved
   time series from every actor against both soft and hard resource limits.
   Project measured working-set growth to the requested class size and leave
@@ -260,6 +269,11 @@
   containment; retain a receipt on the existing stderr when file writes fail.
   Distinguish generator/bridge constraints from product capacity, and
   preserve uncertain attribution rather than diagnosing from teardown values.
+  A stopped owned test cgroup can retain file cache and kernel memory. Inventory
+  it before capacity planning. Reclaim only an exactly identified empty test
+  cgroup after proving zero processes, no mappings/dirty/writeback pages and
+  preserved authority; retain before/after receipts. Never drop global caches,
+  reclaim production cgroups or relax admission/headroom guards to obtain a pass.
   When moving tests into a local user service, compare its effective environment
   and persist the complete resource-limit comparison with the ordinary shell,
   including CORE and NOFILE. Verify actual child limits, not only unit declarations;

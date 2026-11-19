@@ -1,10 +1,21 @@
-November19 follow-up on08ac3f0: class11 FAILED at34students/136terminals; final
-Start exceeded60s, original native/webACTIVE clock recovered without replay.
-361decoder queue expiries remain. Full independent cleanup/preservation passes;
-production is unchanged. The instructor approved bounded per-stream reusable
-video decoders. Development is isolated from MAIN; authenticated HTTP reuse
-regression is RED, streaming feasibility passes, implementation pending.
-[Class report](reports/stress/20261119T195353Z/report.md).
+November19 class14 reached35students/140verified terminals and eight peak checks
+through324.9seconds, then its PRIVATE test tunnel expired at its default one hour.
+The run remains incomplete; protected Finish was not reached. Full independent
+preservation/cleanup passes. Both tunnel CLI entries now accept explicit finite
+lifetimes; four local interface regressions and accelerated actual remote expiry
+pass. The next plan checks all inner/outer lifetimes before allocation. Prof keeps
+59.705-second Start latency and nine recovered input pauses affecting eight
+students as required performance findings. No production policy/timeouts changed.
+The exact native installation and csc-sys nginx/private-TLS reload checks pass;
+class capacity still requires the fresh full run. [Report](reports/stress/20261119T220749Z/report.md).
+
+November19 decoder follow-up implemented/tested locally asbf11e59 (not deployed):
+985application cases and10actual-WASM/browser scenarios pass. Bounded8-retained/
+16-total isolated decoders pass840/840uploads from70authored streams in the actual
+csc-sys runtime,342MiB peak,zero memory events and FULL process/authority cleanup.
+Failed prototypes/fixtures remain documented; Prof reviewed unchanged UI behavior.
+Fresh35-student co-location remains pending; class11's34-student failure is not
+reclassified. [Qualification report](reports/stress/20261119T214006Z/report.md).
 
 November19: retain four cores and optimize within them, as instructed. Class-10
 failed at33students/132terminals; peak/Finish were not reached. Lost-Start

@@ -9,35 +9,36 @@ and cleanup evidence. The previous 90-minute result belongs to its original byte
 
 ## Frozen candidate and changes
 
-**Not release ready.** Run9 failed on the final student's60-second Start request;
-there is no ten-minute co-location/Finish pass. The corrected image below includes
-the tested browser recovery, but Start/capture capacity and host-specific cutover
-coverage remain open. Unchanged backend/native proofs retain their exact scope.
+**Not release ready.** Class14 reached all 35 students / 140 verified terminals,
+but its private transport expired at one hour, interrupting the peak after eight
+successful observations through 324.9 seconds. The corrected transport needs a
+fresh complete ten-minute peak and protected simultaneous Finish. Earlier failed
+ramps remain failed. Startup latency and capture queue refusals are retained
+performance concerns; component passes do not close class capacity.
 
-Current private image: `ssh-exam-qualification:pre-final-start-recovery-fb51849`,
-Config `ebb877aa7a9b9956b8a73091335f7508c7c818e606a6d69e03ad3fb5a28baced`;
-engine `c213500d69c5c0e64e98ca0f29a11f0111956b7810613030a1d87805c6fe6d14`.
-It contains the exact final UI source committed as1ab9203; the build predates that
-commit, so rebuilt WASM VCS metadata namesfb51849. Frozen source/context and actual
-image bytes are bound in `release-image-final/`. All76backend modules match the
-previous candidate. Native binaries and base runtime dependencies are unchanged.
+Current source: `bf11e59`. Private image: `ssh-exam-qualification:decoder-bf11e59`.
+Config: `86e4a9b48e39b815cc7e3b4a8c30a5a37d0e3cc07a258737cb736002e9839003`.
+Engine: `1850aabf4e3f3a90c6910c9b806c34325a0edace8138328b6321bebb857940cf`.
+The streamed export binds the Config bytes, tag and all 16 rootfs diff IDs; the
+engine identifier is deliberately recorded separately. All 25 public assets are
+served with their expected bytes as UID10001. The image retains the installed
+immutable runtime dependencies and native clock. Generated code is readable by
+the application user; the root remains read-only and root-owned.
 
-The former Configbb436d26 is superseded: copying private local build output had
-preserved root-only modes on CSS/JS/WASM. API startup passed while the normal
-application UID could not read those assets. The corrected private recipe runs
-`chmod -R a+rX /app/dist` over generated code only; ownership stays root and the
-container stays read-only. The normal multi-stage project Dockerfile is unchanged.
-Old-image refusal is retained; all25new assets are readable and served with exact
-expected bytes asUID10001. The rebuilt WASM passes16real synthetic SSH sign-ins.
+The candidate includes bounded reusable capture decoders and the earlier Start
+reply recovery and capture-context fixes. The matched native bundle includes
+`08ac3f0`'s background-read optimization; native source is unchanged by the decoder
+increment. Its manifest SHA256 is
+`58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56`;
+the retained private bundle is
+`/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279`.
 
-Earlier load candidate source `298276a`, schema 37. Superseded private image
-`ssh-exam-qualification:colocation-298276a-8d3c93`, Config
-`bb436d262fb8e0fbd1d71c401391bf21d245fa37e8dc074a15a4e1cee7029e3a`.
-The image reuses the installed immutable runtime dependencies and native clock;
-76 shared compiled modules match the disposable co-location application. Native
-binaries are the exact retained v18s35 bundle used for the 35-student test, not a
-new build inferred from an old pass. Preserve the complete SHA256 manifests in
-`var/qualification35/profile-20261119T044302Z-8d3c93/`.
+Image context, receipts and class inputs are under
+`var/qualification35/profile-20261119T044302Z-8d3c93/` in `release-image-decoder/`
+and `native-small-profile/class-14/`. Prior image identities and their failed
+qualification evidence remain retained; they are not the current candidate.
+The transport correction changes manual-test infrastructure only; the exact
+application/native bytes and their existing qualification remain unchanged.
 
 The exact `reviewed-web-native` / `pre-final-monitoring-v2` scope uses the existing
 stopped, nonce-bound handoff and forward recovery. It requires the exact source,
@@ -122,6 +123,36 @@ reconciler are independent safety roles, not duplicate agents to consolidate.
 
 ## Local evidence and remaining gates
 
+The current decoder image passes actual startup and CURRENT-data recovery in
+63.19 seconds: 13 signed exchanges, a 62-second publisher delay, 25 served asset
+hashes, 41 table contracts, seeded purge rechecks and explicit mutation/expiry
+refusals. Recovering the already-running candidate adds zero starts and preserves
+the original snapshot and current purge ledger. Owned containers, synthetic keys
+and data are removed. Evidence: `decoder-image-startup-recovery/`.
+
+Read-only csc-sys inventory validates the actual two-file Compose configuration
+with `/etc/ssh-exam/ssh-exam.env`: base `/opt/ssh-exam/docker-compose.yml` plus
+`/etc/ssh-exam/compose.csc-sys.yml`. The override alone is incomplete; that first
+verification error was corrected without changing production. The current service
+uses UID10001, a read-only root, 2 GiB/two CPUs and loopback3001. Its certificate
+paths use `/etc/letsencrypt/live/ssh-exam.cadilhac.name/`, not the former web
+host's certificate. The isolated four-worker maintenance/reload fixture passes
+locally and on installed csc-sys nginx1.24 in a private network namespace. Actual
+reload/reopening takes 0.24 seconds; synthetic TLS keys, listeners and workers are
+removed. The exact current native bundle also passes physical installation,
+four binary replacements, three role reloads and seven real SSH, collection and
+original-deadline checks. Independent process/base cleanup is FULL. Evidence:
+`native-install-decoder/`, `csc-proxy-qualified-result.json` and
+`release-host-independent-cleanup.json`.
+No service, configuration, student record, SMTP delivery or production data was
+changed by this inventory or qualification.
+
+### Earlier candidate evidence, retained scope
+
+The following receipts predate the current native bundle and decoder image. They
+qualify unchanged controller contracts; the new exact-image and physical-installer
+receipts above establish the current artifact identities separately.
+
 Twelve focused new-scope controller cases and all 72 matched-mode cases pass.
 The exact image/new scope passes 63.2 seconds of real startup/current-data recovery:
 13 signed exchanges, a 62-second publisher delay, expired nonce refusal, 41 table
@@ -145,7 +176,7 @@ UID before expensive startup qualification; the full runner also hashes real HTT
 responses. An OCI Config member without a.json suffix required correcting the
 read-only export verifier; the actual Config digest/rootfs diff IDs are bound.
 
-Short-load cleanup is complete, but its capacity acceptance FAILED. Start latency,
-video/worker refusals, adequate CPU availability and complete peak/Finish coverage
-remain open. Csc-specific proxy/config/recovery coverage is a separate gate before
-a release-readiness claim. The exact final image is prepared locally, not deployed.
+Earlier short-load cleanup is complete, but those failed capacity results remain
+failed. Class14 must establish complete peak/Finish coverage and report latency,
+capture recovery and CPU availability. Current native installation and csc-specific
+proxy/configuration coverage remain separate gates. Nothing here is deployed.
