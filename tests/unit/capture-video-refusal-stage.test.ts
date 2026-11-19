@@ -61,7 +61,7 @@ it("distinguishes actual invalid-codec termination from an absent prediction", a
       ingress.accept(
         "synthetic",
         metadata(),
-        Buffer.alloc(64, 17),
+        Buffer.concat([Buffer.from([0x82]), Buffer.alloc(63, 17)]),
         async () => {},
       ),
     ).rejects.toMatchObject({ stage: "codec-exit" });

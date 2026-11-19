@@ -481,8 +481,14 @@ export class Monitoring {
     if (encoding === "jpeg")
       return this.challengedFrame(a, { ...input, data: image }, page);
     const scope = this.captureVideoScope(a, page, metadata.source);
-    return this.uploadVideo.accept(scope, metadata, image, (jpeg) =>
-      this.frame(a, { ...input, data: jpeg }, page, true, true),
+    return this.uploadVideo.accept(
+      scope,
+      metadata,
+      image,
+      (jpeg) => this.frame(a, { ...input, data: jpeg }, page, true, true),
+      // Trusted stable physical source; the exact scope above still binds all
+      // ownership facts. A new attempt/page retires the prior decoder promptly.
+      hash(JSON.stringify([a.username, metadata.source])),
     );
   }
   private currentCapture(a: Attempt, page: string) {

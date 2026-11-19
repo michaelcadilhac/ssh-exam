@@ -7,6 +7,16 @@
 
 ## November 18 local follow-up: video prediction at ownership changes
 
+November19 local decoder optimization reuses a bounded isolated process within
+one exact screen/camera ownership context. Retention is8 workers with a
+resolution-weighted budget; all live/retiring processes are capped at16, with
+four decode slots and the existing queue/frame/freshness/CPU/output limits.
+Overflow reconstructs only a verified prefix; failed publication retires
+speculation, and ownership changes cannot reuse or retire a successor's worker.
+No durable permission, policy, schema or management setting changes. Actual
+70-stream csc-sys component verification passes with342MiB peak and FULL cleanup;
+full class co-location remains open. [Lifecycle and evidence](docs/reusable-capture-decoders.md).
+
 November19 four-core optimization: callback queues, terminal recording offsets,
 access-release candidates and recording-report candidates are discovered from
 fresh committed snapshots. The delivery flock, per-second scheduling, bounded

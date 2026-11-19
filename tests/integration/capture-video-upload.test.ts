@@ -68,10 +68,10 @@ function samples(size = "128x72") {
   sampleCache.set(size, packets);
   return packets;
 }
-async function fixture(profile = false) {
+async function fixture(profile = false, webcam = false) {
   // Own the complete SSH/authentication/binding transaction. A seeded attempt
   // row alone is deliberately insufficient for authenticated capture.
-  const base = await liveMonitoring({ webcam: false, profile });
+  const base = await liveMonitoring({ webcam, profile });
   const { app, store, id, headers } = base;
   const dir = store.dir,
     url = `/api/student/attempts/${id}`,
@@ -87,12 +87,15 @@ async function fixture(profile = false) {
     chain,
     admin,
     initialFrames,
-    async metadata(index: number): Promise<CaptureUploadMetadata> {
+    async metadata(
+      index: number,
+      source: "screen" | "webcam" = "screen",
+    ): Promise<CaptureUploadMetadata> {
       const reply = await app.inject({
         method: "POST",
         url: url + "/capture-challenges",
         headers,
-        payload: { source: "screen" },
+        payload: { source },
       });
       expect(reply.statusCode, reply.body).toBe(200);
       const ticket = reply.json();
@@ -100,7 +103,7 @@ async function fixture(profile = false) {
       return {
         version: 1,
         encoding: "vp9",
-        source: "screen",
+        source,
         seq: ticket.after_sequence + 1,
         captured: Date.now(),
         monotonic: 1,
@@ -111,7 +114,7 @@ async function fixture(profile = false) {
           focus: true,
           keyboard: true,
           screen: true,
-          webcam: false,
+          webcam,
         },
         video: {
           chain,
@@ -132,6 +135,179 @@ async function fixture(profile = false) {
     },
   };
 }
+
+it("authenticated VP9 uploads reuse one isolated decoder and close it with the application", async () => {
+  const f = await fixture(),
+    before = f.store.attempt(f.id);
+  let owner: number | undefined;
+  try {
+    for (let index = 0; index < 3; index++) {
+      const reply = await f.post(await f.metadata(index), samples()[index]);
+      expect(reply.statusCode, reply.body).toBe(200);
+      expect(f.monitoring.uploadVideo.pids).toHaveLength(1);
+      owner ??= f.monitoring.uploadVideo.pids[0];
+      expect(f.monitoring.uploadVideo.pids).toEqual([owner]);
+      expect(f.monitoring.uploadVideo.active).toBe(0);
+    }
+    expect(f.store.attempt(f.id)).toEqual(before);
+  } finally {
+    await f.close();
+  }
+  expect(f.monitoring.uploadVideo.pids).toEqual([]);
+});
+
+it("failed authenticated publication preserves the verified prefix and retries in a fresh worker", async () => {
+  const f = await fixture(),
+    before = f.store.attempt(f.id);
+  try {
+    expect((await f.post(await f.metadata(0), samples()[0])).statusCode).toBe(
+      200,
+    );
+    const originalPID = f.monitoring.uploadVideo.pids[0];
+    const publish = vi
+      .spyOn(f.monitoring, "frame")
+      .mockRejectedValueOnce(
+        Object.assign(new Error("synthetic publication refusal"), {
+          statusCode: 409,
+        }),
+      );
+    const refused = await f.post(await f.metadata(1), samples()[1]);
+    expect(refused.statusCode, refused.body).toBe(409);
+    expect(publish).toHaveBeenCalledTimes(1);
+    publish.mockRestore();
+    await vi.waitFor(() =>
+      expect(f.monitoring.uploadVideo.pids).not.toContain(originalPID),
+    );
+    expect(f.store.db.prepare("SELECT count(*) n FROM frames").get()).toEqual({
+      n: f.initialFrames + 1,
+    });
+    const retry = await f.post(await f.metadata(1), samples()[1]);
+    expect(retry.statusCode, retry.body).toBe(200);
+    const replacementPID = f.monitoring.uploadVideo.pids[0];
+    expect(replacementPID).toBeDefined();
+    expect(replacementPID).not.toBe(originalPID);
+    expect((await f.post(await f.metadata(2), samples()[2])).statusCode).toBe(
+      200,
+    );
+    expect(f.monitoring.uploadVideo.pids).toEqual([replacementPID]);
+    expect(f.store.attempt(f.id)).toEqual(before);
+    expect(
+      f.store.db.prepare("SELECT count(*) n FROM incidents").get(),
+    ).toEqual({ n: 0 });
+  } finally {
+    await f.close();
+  }
+});
+
+it("late publication from an old generation cannot replace the current source worker", async () => {
+  const f = await fixture(),
+    before = f.store.attempt(f.id)!;
+  let release!: () => void, reached!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const entered = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
+  let pending: ReturnType<typeof f.post> | undefined;
+  try {
+    const original = f.monitoring.frame.bind(f.monitoring);
+    vi.spyOn(f.monitoring, "frame").mockImplementationOnce(async (...args) => {
+      reached();
+      await gate;
+      return original(...args);
+    });
+    pending = f.post(await f.metadata(0), samples()[0]);
+    await Promise.race([
+      entered,
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(Error("old publication boundary missing")),
+          3000,
+        ).unref(),
+      ),
+    ]);
+    const oldPID = f.monitoring.uploadVideo.pids[0];
+    f.store.db
+      .prepare("UPDATE attempts SET generation=generation+1 WHERE id=?")
+      .run(f.id);
+    const fresh = await f.post(await f.metadata(0), samples()[0]);
+    expect(fresh.statusCode, fresh.body).toBe(200);
+    const owner = f.monitoring.uploadVideo.pids.find((pid) => pid !== oldPID);
+    expect(owner).toBeDefined();
+    release();
+    const refused = await pending;
+    expect(refused.statusCode, refused.body).toBe(409);
+    expect((await f.post(await f.metadata(1), samples()[1])).statusCode).toBe(
+      200,
+    );
+    await vi.waitFor(() =>
+      expect(f.monitoring.uploadVideo.pids).toEqual([owner]),
+    );
+    const after = f.store.attempt(f.id)!;
+    expect([after.start, after.deadline, after.original_deadline]).toEqual([
+      before.start,
+      before.deadline,
+      before.original_deadline,
+    ]);
+    expect(f.store.db.prepare("SELECT count(*) n FROM frames").get()).toEqual({
+      n: f.initialFrames + 2,
+    });
+  } finally {
+    release();
+    await pending;
+    await f.close();
+  }
+});
+
+it("a killed screen decoder leaves the same student's camera and authenticated session healthy", async () => {
+  const f = await fixture(true, true),
+    before = f.store.attempt(f.id);
+  try {
+    expect((await f.post(await f.metadata(0), samples()[0])).statusCode).toBe(
+      200,
+    );
+    const screenPID = f.monitoring.uploadVideo.pids[0];
+    expect(
+      (await f.post(await f.metadata(0, "webcam"), samples()[0])).statusCode,
+    ).toBe(200);
+    const cameraPID = f.monitoring.uploadVideo.pids.find(
+      (pid) => pid !== screenPID,
+    );
+    expect(cameraPID).toBeDefined();
+    const decoder = f.monitoring.uploadVideo as any,
+      decode = decoder.decode.bind(decoder);
+    vi.spyOn(decoder, "decode").mockImplementationOnce(
+      async (...args: unknown[]) => {
+        const task = decode(...args);
+        process.kill(-screenPID, "SIGKILL");
+        await expect(task).rejects.toMatchObject({
+          signal: "SIGKILL",
+          stage: "codec-signal",
+        });
+        return task;
+      },
+    );
+    const refused = await f.post(await f.metadata(1), samples()[1]);
+    expect(refused.statusCode, refused.body).toBe(409);
+    expect(
+      (await f.post(await f.metadata(1, "webcam"), samples()[1])).statusCode,
+    ).toBe(200);
+    expect(f.monitoring.uploadVideo.pids).toEqual([cameraPID]);
+    expect((await f.app.inject({ url: "/health/live" })).statusCode).toBe(200);
+    expect((await f.post(await f.metadata(0), samples()[0])).statusCode).toBe(
+      200,
+    );
+    expect(f.monitoring.uploadVideo.pids).toHaveLength(2);
+    expect(f.store.attempt(f.id)).toEqual(before);
+    expect(
+      f.store.db.prepare("SELECT count(*) n FROM incidents").get(),
+    ).toEqual({ n: 0 });
+  } finally {
+    await f.close();
+  }
+  expect(f.monitoring.uploadVideo.pids).toEqual([]);
+});
 
 it("authenticated VP9 samples preserve canonical images, exact retry age, review media and protected clocks", async () => {
   const f = await fixture(),
