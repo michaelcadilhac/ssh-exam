@@ -5,6 +5,13 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+November19: the matched runtimef8abea7 described below is now deployed on csc-sys,
+with controller5fa4b10. Fifteen students/60terminals pass the reduced600s release
+gate; larger35/70capacity remains unqualified. External assets, native roles and
+all41preservation contracts pass. No schema or exam-policy change was introduced
+by the deployment; the worker ceiling remains32. Earlier local-only notes below
+record the development evidence preceding this deployment.
+
 ## November 18 local follow-up: video prediction at ownership changes
 
 November19 local Start correction validates template features from the existing

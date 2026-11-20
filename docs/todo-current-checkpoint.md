@@ -1,30 +1,24 @@
-Controller portability follow-up: originalattempt53cd7909 CANCELLED safely after
-/usr/bin/nginx patherror;site/originalconfig ONLINE,no service restart. Background
-pause released. Corrected nginx lookup uses existing fixedadminPATH; focused CLI
-regression RED/GREEN, fullweb/matchedtests andactualcscnginx-t pass. Prepare NEW
-private stage/state for corrected controller; keep runtime/image/native unchanged.
-Commit290eb33 and preceding release commits PUSHED.
+# Current checkpoint — matched release deployed and online
 
-# Current checkpoint — fifteen-person PASS; authorized push and matched deployment
+November19,2026. Instructor requested15students/60terminals then commit/push/deploy.
+Class21 passed600.924speak/20fleetchecks/all15protected submissions+archives;
+independent native/base/observer/Marco/local cleanup FULL. Source/build preserved.
+Runtime/imagef8abea7; harness2395473; deployment controller5fa4b10. All pushed.
+Reports: reports/stress/20261120T020804Z/report.md and deployment.json.
 
-Instructor authorized15students/60terminals then commit/push/deploy after success.
-Class21 PASSED600.924speak/20checks/all15protected submissions+archives; FULL root,
-base,observer,Marco/local cleanup,source/build preservation. No realstudent/MFA/mail.
-Runtime/imagef8abea7; private harness2395473. Report: reports/stress/20261120T020804Z/report.md.
-Preserve10existing dirty docs PNGs. Production still online; no cutover yet.
+Production csc-sys ONLINE,externalHTTPS/all25assets exact,41data contracts preserved,
+matched native roles healthy. Schema37unchanged;32connectionworkers/2GiB/twoCPUweb/
+4hostcores retained. SSH/relay preserved. Cutover460.5s. Old nginx-path attempt
+53cd7909 cancelled safely before restart; corrective54web+72matchedtests pass.
+Expiredafter-guard refreshed through qualifiedSAME-candidate/CURRENT recovery;
+zero extra web starts,originalsnapshot/ledger preserved,backgroundpause RELEASED.
 
-Frozen plan: var/qualification35/profile-20261119T044302Z-8d3c93/urgent-release-plan/.
-Remote stage /var/tmp/ssh-exam-pre-final-20261120-f8abea7-53cd7909; state=stage+-state.
-Exact image startup/CURRENT recovery64.378s; actual native install and csc proxy
-qualification pass. Schema37unchanged; retain32workers/2GiB/twoCPUweb/4hostcores.
-Backup media warmed once9996objects/1703356361bytes; native snapshot~275MiB.
-All pre-existing qualification failures remain;35/70capacity remains unqualified.
+Remote completed stage:/var/tmp/ssh-exam-pre-final-20261120-f8abea7-9bf5d1a1;
+state=stage+-state. Private local evidence:
+var/qualification35/profile-20261119T044302Z-8d3c93/nginx-release-plan/.
+Recordingbaseline reused1,703,356,361bytes; no new media copy atcutover. Current
+DBsnapshot268,439,552bytes; nativebackup328,273,920bytes. Keep recovery evidence.
 
-NEXT: commit/report,push; obtain real native-before proof after cleanup with private
-P/csc_guard_bridge.py --release-dir P/guard-bridge-plan before (only web destinations
-changed fromMarco tocsc-sys; validation/protocol unchanged). Webprepare online;
-freshbefore thenwebapply->WAITING_NATIVE; bridgehandoff; native stop/backup/install/
-start/verify plus freshguards; bridgeafter; webresume; externalHTTPS/assets and
-preservation checks. Full exact procedure/recovery: docs/pre-final-matched-release.md.
-No new feature/rebuild/expanded tests. Announce reopening immediately. If fenced
-failure: reportheldstate,one30sreadonlypass,qualified forward/CURRENT recoveryonly.
+Deployment task complete.35/70co-location capacity remains unqualified; do not
+claim this is a fresh90-minute pass. Optional larger-class work/Finish diagnostics
+are separate future work,not deployment blockers. Preserve10existingdirtydocsPNGs.

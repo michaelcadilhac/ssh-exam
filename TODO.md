@@ -1,3 +1,9 @@
+November19 matched release DEPLOYED on csc-sys and externally verified online.
+Runtimef8abea7; controller5fa4b10. All25publicassets match,41data contracts preserved,
+native roles verified,32connection limit unchanged,SSH/relay retained. Cutover460.5s.
+Expiredafter-guard recovered using fresh proof and SAME running candidate/CURRENT
+data,with no extra restart/snapshot replacement. [Deployment receipt](reports/stress/20261120T020804Z/deployment.json).
+
 November19 urgent qualification PASSED locally:15students/60terminals,600.924s
 peak,20fleetchecks,all15protected submissions/archives,15.891s simultaneousFinish.
 Original clocks/history/authority preserved; independent cleanup FULL. Runtimef8abea7,

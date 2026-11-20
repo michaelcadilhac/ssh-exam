@@ -1,4 +1,4 @@
-# Pre-final matched release — prepared locally, not deployed
+# Pre-final matched release — deployed November19,2026
 
 November 19, 2026. This procedure covers the matched monitoring proof-exchange,
 complete native socket writes, Start-readiness handling and capture-context fixes.
@@ -9,7 +9,14 @@ and cleanup evidence. The previous 90-minute result belongs to its original byte
 
 ## Frozen candidate and changes
 
-**Reduced qualification passed; deployment authorized, not yet executed.**
+**Deployed and externally verified online.** Runtimef8abea7/controller5fa4b10;
+all25publicassets,41preservation contracts,matched native roles and unchanged32worker
+ceiling pass. Cutover460.5seconds. An expired90-second after-guard required the
+rehearsed fresh-proof/SAME-candidate recovery; no extra restart,original snapshot
+replacement or historical data restore occurred. The original nginx-path failure
+was cancelled while the original site remained online. [Deployment receipt](../reports/stress/20261120T020804Z/deployment.json).
+
+**Reduced qualification passed.**
 Class21 completed15students/60terminals,600.924seconds at peak,20fleet checks,
 all15protected submissions/archives and FULL independent cleanup. Start median/
 maximum11.468/17.148seconds; simultaneous Finish/archive verification15.891seconds.

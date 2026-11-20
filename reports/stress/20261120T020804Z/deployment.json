@@ -1,0 +1,28 @@
+{
+  "status": "DEPLOYED_ONLINE",
+  "runtime_revision": "f8abea767471c349257f484f73b128b48f83d1b9",
+  "controller_revision": "5fa4b10",
+  "image_config_id": "sha256:eb6abc21a5a16636261ab42b6fe3640d4bc84940fff866edc6f4c5f37761511d",
+  "online_at": "2026-11-20T02:53:43.553729+00:00",
+  "cutover_seconds": 460.51943919062614,
+  "external_assets": 25,
+  "preserved_tables": 41,
+  "connection_workers": 32,
+  "extra_web_starts_during_recovery": 0,
+  "schema": 37,
+  "backup": {
+    "phase": "BACKUP_COMPLETE",
+    "snapshot": "/var/tmp/ssh-exam-pre-final-20261120-f8abea7-9bf5d1a1-state/snapshot",
+    "files": 10123,
+    "database_bytes": 268439552,
+    "new_monitoring_objects": 0,
+    "copied_bytes_excluding_database": 559596,
+    "reused_monitoring_bytes": 1703356361,
+    "verification": "new bytes hashed; unchanged shared objects identity-checked"
+  },
+  "native_backup_bytes": 328273920,
+  "relay_unchanged": true,
+  "recovery": "Expired90-second native guard refreshed; same candidate/CURRENT data resumed; original snapshot retained",
+  "earlier_attempt": "Cancelled before web/native restart after nginx path error; original site remained online",
+  "scope": "15students/60terminals/600s; larger35/70capacity unqualified"
+}
