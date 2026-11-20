@@ -624,10 +624,12 @@ export async function nativeGuest(
       finish = false,
       recovery?: "start" | "status" | "restore",
     ) {
+      const participants =
+        students === 35 && attempts.length === 15 ? 15 : students;
       if (
         ![16, 35, 70].includes(students) ||
-        attempts.length !== students ||
-        new Set(attempts).size !== students
+        attempts.length !== participants ||
+        new Set(attempts).size !== participants
       )
         throw Error("The complete exact synthetic fleet is required");
       const value = JSON.parse(

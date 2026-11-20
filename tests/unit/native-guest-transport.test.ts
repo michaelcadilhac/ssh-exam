@@ -1,12 +1,53 @@
 import { it, expect, vi } from "vitest";
 import { PassThrough } from "node:stream";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createServer, type RequestListener } from "node:http";
 import type { AddressInfo } from "node:net";
 import {
   readNativeBridgeRequest,
   forwardNativeBridgeRequest,
   nativeBridgeDiagnostics,
+  nativeGuest,
 } from "../fixtures/native-guest.js";
+
+it("admits exactly fifteen participants through the actual thirty-five-account adapter", async () => {
+  vi.stubEnv("EXAM_STRESS_RUN", "focused-fifteen-adapter");
+  const local = mkdtempSync(tmpdir() + "/fifteen-native-adapter-");
+  const fixture = await nativeGuest(
+    "/var/tmp/ssh-exam-browser-native-upload.synthetic",
+    local,
+    35,
+    false,
+  );
+  const ids = Array.from(
+    { length: 35 },
+    (_, index) =>
+      `${index.toString(16).padStart(8, "0")}-1234-4234-8234-123456789abc`,
+  );
+  try {
+    // No guest or SSH is started: a valid selection must reach the next
+    // transport boundary, while invalid selections must stop at the adapter.
+    await expect(fixture.inspectMany(ids.slice(0, 15))).rejects.toThrow(
+      "Private guest has not started",
+    );
+    await expect(fixture.inspectMany(ids)).rejects.toThrow(
+      "Private guest has not started",
+    );
+    for (const invalid of [
+      ids.slice(0, 14),
+      ids.slice(0, 16),
+      Array(15).fill(ids[0]),
+    ])
+      await expect(fixture.inspectMany(invalid)).rejects.toThrow(
+        "The complete exact synthetic fleet is required",
+      );
+  } finally {
+    await fixture.close();
+    rmSync(local, { recursive: true, force: true });
+    vi.unstubAllEnvs();
+  }
+});
 
 async function gateway(
   handler: RequestListener,

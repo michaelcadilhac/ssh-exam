@@ -9,24 +9,33 @@ and cleanup evidence. The previous 90-minute result belongs to its original byte
 
 ## Frozen candidate and changes
 
-**Not release ready.** Class14 reached all 35 students / 140 verified terminals,
-but its private transport expired at one hour, interrupting the peak after eight
-successful observations through 324.9 seconds. The corrected transport needs a
-fresh complete ten-minute peak and protected simultaneous Finish. Earlier failed
-ramps remain failed. Startup latency and capture queue refusals are retained
-performance concerns; component passes do not close class capacity.
+**Awaiting the explicitly reduced qualification.** The instructor now requests
+15 simultaneous students/60terminals, followed by commit/push/deployment if it
+passes. Class18 reached all15students/60verified terminals, then failed on a missed
+shared-adapter count check; it did not reach peak or Finish. That private adapter
+now passes its actual-call regression and is being staged for a fresh600-second
+peak/protected simultaneous Finish. Use the same four-core guarded co-location.
+The35-account disposable fixture opens
+only15participants; the root diagnostic refuses any other native participant.
+Earlier35/70 failures remain failed, including class15's lost34th Start response.
+No larger-capacity or flawless-experience claim follows from a15-person pass.
 
-Current source: `bf11e59`. Private image: `ssh-exam-qualification:decoder-bf11e59`.
-Config: `86e4a9b48e39b815cc7e3b4a8c30a5a37d0e3cc07a258737cb736002e9839003`.
-Engine: `1850aabf4e3f3a90c6910c9b806c34325a0edace8138328b6321bebb857940cf`.
+Current frozen runtime source: `f8abea7`. Image:
+`ssh-exam-qualification:start-f8abea7`.
+Config: `eb6abc21a5a16636261ab42b6fe3640d4bc84940fff866edc6f4c5f37761511d`.
+Engine: `ab6ad6475588515859036fc24ed4ecafb3c635d97435007acb68188952bebf4f`.
 The streamed export binds the Config bytes, tag and all 16 rootfs diff IDs; the
 engine identifier is deliberately recorded separately. All 25 public assets are
 served with their expected bytes as UID10001. The image retains the installed
 immutable runtime dependencies and native clock. Generated code is readable by
 the application user; the root remains read-only and root-owned.
 
-The candidate includes bounded reusable capture decoders and the earlier Start
-reply recovery and capture-context fixes. The matched native bundle includes
+The candidate includes the bounded request-local Start feature check, reusable
+capture decoders and earlier Start reply recovery/capture-context fixes. The new
+image passes64.38seconds of actual signed-poll startup/CURRENT-data recovery,
+25served asset hashes,41table contracts and physical-purge mutation controls.
+No extra restart or snapshot/ledger replacement occurs during recovery.
+The matched native bundle includes
 `08ac3f0`'s background-read optimization; native source is unchanged by the decoder
 increment. Its manifest SHA256 is
 `58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56`;
@@ -34,11 +43,13 @@ the retained private bundle is
 `/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279`.
 
 Image context, receipts and class inputs are under
-`var/qualification35/profile-20261119T044302Z-8d3c93/` in `release-image-decoder/`
-and `native-small-profile/class-14/`. Prior image identities and their failed
-qualification evidence remain retained; they are not the current candidate.
-The transport correction changes manual-test infrastructure only; the exact
-application/native bytes and their existing qualification remain unchanged.
+`var/qualification35/profile-20261119T044302Z-8d3c93/`, chiefly
+`release-image-fifteen/`, `fifteen-image-startup-recovery/`,
+`native-small-profile/class-18-fifteen/` and `urgent-release-plan/`.
+The short-run native bundle changes ONLY the private inspection helper to accept
+the exact15-person subset; all four production binary hashes remain identical to
+the physically qualified original bundle. Original bundles and failed receipts
+remain intact. The source/build inputs stay frozen throughout the class run.
 
 The exact `reviewed-web-native` / `pre-final-monitoring-v2` scope uses the existing
 stopped, nonce-bound handoff and forward recovery. It requires the exact source,
@@ -47,12 +58,11 @@ configuration/history. Unknown scopes, mismatched source, old-reader compatibili
 and native-unchanged attestations refuse. The relay and SSH remain running.
 There is no SQL migration: schema 37 remains 37.
 
-Proposed installation setting: top-level `connectionWorkers: 40` in the
-application JSON selected by `EXAM_CONFIG`, allowing the target35-student class
-plus five spare slots. This is an installation-file change,
-not an exam setting or an increase already applied. Keep the current web limit
-of 2 GiB/two CPUs only if the final co-location report supports it. Resource limits
-and any CPU recommendation must be settled from the report before release freeze.
+Retain the installed32connection-worker limit,2GiB/two-CPU web bound and four host
+cores for this urgent15-person release. The disposable fixture's ceiling is40;
+the report must retain that distinction and observed actual worker count. It
+cannot qualify32/35/70students. The former40-worker proposal for35students is
+deferred; no installation-setting or exam-policy change is required here.
 
 ## Before requesting deployment
 
