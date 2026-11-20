@@ -1,3 +1,9 @@
+November19 urgent qualification PASSED locally:15students/60terminals,600.924s
+peak,20fleetchecks,all15protected submissions/archives,15.891s simultaneousFinish.
+Original clocks/history/authority preserved; independent cleanup FULL. Runtimef8abea7,
+harness2395473. Push/deployment explicitly authorized and now executing; not yet
+deployed. Larger35/70capacity remains unqualified. [Agent report](reports/stress/20261120T020804Z/report.md).
+
 November19 class15 FAILED at the34th Start after33students/132verified terminals.
 The response was lost; read-only recovery found the SAME ACTIVE native/web attempt
 and visible workspace, preserving its original interval without replay. Full

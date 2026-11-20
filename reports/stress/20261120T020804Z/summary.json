@@ -1,0 +1,20 @@
+{
+  "students": 15,
+  "terminals": 60,
+  "requested_seconds": 600,
+  "peak_seconds": 600.9244896409999,
+  "submission_seconds": 15.890699592000106,
+  "preservation": "FULL",
+  "protected": 15,
+  "simulated_media": true,
+  "institutional_mfa": false,
+  "late_navigations": [],
+  "pane_refusals": [],
+  "peak_checks": 20,
+  "max_state_ms": 299.14062199997716,
+  "max_contact_ms": 298.2212780000409,
+  "transport_events": 7,
+  "cleanup": "FULL",
+  "runtime_revision": "f8abea767471c349257f484f73b128b48f83d1b9",
+  "harness_revision": "2395473"
+}

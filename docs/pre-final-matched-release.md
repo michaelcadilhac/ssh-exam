@@ -9,16 +9,15 @@ and cleanup evidence. The previous 90-minute result belongs to its original byte
 
 ## Frozen candidate and changes
 
-**Awaiting the explicitly reduced qualification.** The instructor now requests
-15 simultaneous students/60terminals, followed by commit/push/deployment if it
-passes. Class18 reached all15students/60verified terminals, then failed on a missed
-shared-adapter count check; it did not reach peak or Finish. That private adapter
-now passes its actual-call regression and is being staged for a fresh600-second
-peak/protected simultaneous Finish. Use the same four-core guarded co-location.
-The35-account disposable fixture opens
-only15participants; the root diagnostic refuses any other native participant.
-Earlier35/70 failures remain failed, including class15's lost34th Start response.
-No larger-capacity or flawless-experience claim follows from a15-person pass.
+**Reduced qualification passed; deployment authorized, not yet executed.**
+Class21 completed15students/60terminals,600.924seconds at peak,20fleet checks,
+all15protected submissions/archives and FULL independent cleanup. Start median/
+maximum11.468/17.148seconds; simultaneous Finish/archive verification15.891seconds.
+No unexpected lockout or mid-work input pause was observed. The seven retained
+request/HTTP events and prior larger-run failures remain in the
+[agent report](../reports/stress/20261120T020804Z/report.md). The35-account fixture
+opens only15participants and preserves all31baseline histories. This qualifies
+neither35/70students nor a new90-minute endurance run.
 
 Current frozen runtime source: `f8abea7`. Image:
 `ssh-exam-qualification:start-f8abea7`.
