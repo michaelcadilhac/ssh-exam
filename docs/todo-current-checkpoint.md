@@ -1,3 +1,10 @@
+Controller portability follow-up: originalattempt53cd7909 CANCELLED safely after
+/usr/bin/nginx patherror;site/originalconfig ONLINE,no service restart. Background
+pause released. Corrected nginx lookup uses existing fixedadminPATH; focused CLI
+regression RED/GREEN, fullweb/matchedtests andactualcscnginx-t pass. Prepare NEW
+private stage/state for corrected controller; keep runtime/image/native unchanged.
+Commit290eb33 and preceding release commits PUSHED.
+
 # Current checkpoint — fifteen-person PASS; authorized push and matched deployment
 
 Instructor authorized15students/60terminals then commit/push/deploy after success.

@@ -152,7 +152,7 @@ class FastUI(unittest.TestCase):
                     db.execute('UPDATE agent_snapshot SET payload=?', (json.dumps(self.snapshot()),))
                     if self.mutate_grant: db.execute("UPDATE attempt_grants SET status='REVOKED'")
             return ''
-        if args[0] == '/usr/bin/nginx': return ''
+        if args[0] == 'nginx': return ''
         if args[0] == '/usr/bin/docker':
             if args[1:3] == ['image', 'load']: return 'synthetic image loaded'
             if args[1:3] == ['image', 'inspect']:
@@ -678,6 +678,26 @@ class FastUI(unittest.TestCase):
         result, _ = self.cli('resume')
         self.assertEqual(result['phase'], 'ONLINE')
         self.assertEqual(len(self.stopped_calls()), 1)
+
+    def test_nginx_in_sbin_uses_the_fixed_administrative_path(self):
+        self.cli('prepare')
+        original = self.command
+        calls = []
+        def installed_command(arguments, timeout=30):
+            if Path(str(arguments[0])).name != 'nginx':
+                return original(arguments, timeout)
+            def execute(argv, **options):
+                if argv[0] != 'nginx':
+                    raise FileNotFoundError('nginx is installed in /usr/sbin only')
+                self.assertEqual(options['env']['PATH'], '/usr/sbin:/usr/bin:/sbin:/bin')
+                self.assertEqual(argv, ['nginx', '-t'])
+                calls.append(argv)
+                return deploy.subprocess.CompletedProcess(argv, 0, stdout='', stderr='')
+            with patch.object(deploy.subprocess, 'run', execute):
+                return REAL_COMMAND(arguments, timeout)
+        with patch.object(self, 'command', installed_command):
+            self.assertEqual(self.cli('apply')[0]['phase'], 'ONLINE')
+        self.assertEqual(len(calls), 2)
 
     def test_fencing_failure_before_install_has_supported_guarded_resume(self):
         self.cli('prepare')

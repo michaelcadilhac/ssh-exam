@@ -527,11 +527,11 @@ class Rollout:
         original = self.site.read_bytes()
         replace_file(self.site, content)
         try:
-            command(['/usr/bin/nginx', '-t'], timeout=15)
+            command(['nginx', '-t'], timeout=15)
             command(['/usr/bin/systemctl', 'reload', 'nginx.service'], timeout=15)
         except BaseException:
             replace_file(self.site, original)
-            command(['/usr/bin/nginx', '-t'], timeout=15)
+            command(['nginx', '-t'], timeout=15)
             command(['/usr/bin/systemctl', 'reload', 'nginx.service'], timeout=15)
             raise
 

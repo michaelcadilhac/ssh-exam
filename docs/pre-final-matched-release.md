@@ -189,3 +189,13 @@ Earlier short-load cleanup is complete, but those failed capacity results remain
 failed. Class14 must establish complete peak/Finish coverage and report latency,
 capture recovery and CPU availability. Current native installation and csc-specific
 proxy/configuration coverage remain separate gates. Nothing here is deployed.
+
+November19 deployment execution found a controller portability error: it assumed
+/usr/bin/nginx, while csc-sys installs /usr/sbin/nginx. The original site/config
+remained online; the existing pre-stop cancel workflow released its owned
+recording pause. No web/native restart or student record change occurred. The
+controller now resolves nginx through its existing fixed administrative PATH.
+An actual-CLI regression fails before the correction and passes afterward; full
+web/matched-controller suites and the actual csc nginx syntax check pass. Earlier
+physical proxy-reload qualification applies unchanged. Preserve the cancelled
+state and prepare a fresh pinned state; never overwrite its failed evidence.
