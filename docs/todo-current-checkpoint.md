@@ -1,41 +1,42 @@
-# Current checkpoint — fix the missed15-person adapter; conditional push/deploy authorized
+# Current checkpoint — preserve fixture history; next15-person run, then authorized release
 
-Runtime/image remainf8abea767471c349257f484f73b128b48f83d1b9. Instructor requests
-15students/60terminals,600speak/protectedFinish,thencommit/PUSH/DEPLOY after success.
-Keep4hostcores;syntheticaccounts/mediaonly,noMFA/mail. Preserve10originaldirtyPNGs.
-
+Instructor explicitly requests15students/60terminals thenCOMMIT/PUSH/DEPLOYafter
+successful600speak/protectedFinish. Keep4cores. No realstudents/MFA/mail. Preserve
+10originaldirtyPNGs. Runtime/imagef8abea7unchanged; currentHEAD7faf0dc(privateadapter).
 P=var/qualification35/profile-20261119T044302Z-8d3c93/;N=P/native-small-profile/.
-Class18FAILEDafter15starts/60verifiedGCC-GDBpanes in13.7min. EveryStartHTTP200;
-max19.239s. Firstfleetinspectionhit aMISSEDTypeScriptadaptercount35check, before
-reaching the rootbridge. Root/browser had15support; actual nativeGuest.inspectMany
-wasmissed. This is OURsetupbug; nopeak/Finishqualification. Source/buildpreserved
-BEFOREedits, root/base/observer/Marco/localcleanupFULL. Report:
-reports/stress/20261120T012412Z/report.md. Raw:N/class-18-fifteen/.
-No root/Marco test isrunning now; original authority/binaries/configuration intact.
 
-CurrentUNCOMMITTEDsourcefix:tests/fixtures/native-guest.ts accepts only35or the
-explicit15uniqueIDs inside35fixture. tests/unit/native-guest-transport.test.ts
-callsACTUALnativeGuest.inspectMany withoutstartingaguest: valid15/35mustreach
-Privateguesthasnotstarted;14/16/duplicatesmustrefuseatcountguard. OldcodeRED,
-focusedGREEN;all17transportcases/typecheckpass. Module-only tsccompiled output
-N/compiled-fifteen-adapter/tests/fixtures/native-guest.js. DiffagainstACTUALroot
-module isONLYthecountguard. Compiledactualinterface5checksPASS:
-N/fifteen-compiled-adapter-result.json; SHA2e9555638fa0c1a19ba553d60259fa890ae4aa584c37982255fdeb69acf4c887.
-Rootbefore2copiesmatch SHA3ef461795e84d663b3a3f8ae420d87705a12a9cc755e51c9f3d0fc7189e4bee4.
-Rootbridgealreadyacceptsexactfirst15/noothernativeparticipant(45testsPASS);
-all upstream/downstream count/completion checks audited before repeating.
-Application/frontend/fournativebinaries/imagebitsUNCHANGED;doNOTrebuildthem.
+Class18:15/60ramp,allStart200/max19.239s;failedonmissedTSadaptercount35. Actual
+nativeGuest.inspectMany regressionRED/GREEN,17transportcases/typecheck/compile
+pass. Newcompiledmodule SHA2e9555638fa0c1a19ba553d60259fa890ae4aa584c37982255fdeb69acf4c887
+isinstalledintwoownedtestcopies;allapp/frontend/native/imagebytesunchanged.
+Report:reports/stress/20261120T012412Z/report.md. CleanupFULLandfrozeninputspreserved.
+Class19failedstartupguard4MiBshort,beforeanyrootactor;MarcoFULLcleanup.
+Class20passedoriginalmemoryguard/focusafterexactemptytestcachereclaim. Intentionally
+stoppedEARLYbecauseinspectionofclass18'sprivate statefound31pre-existing
+historicalqualificationrecords,whichthenewsubsetguardwouldwronglyreject. No peak/
+Finishpass. ExactmainSIGTERM->native/base/observer/Marco/localcleanupFULL; source/
+buildpreservedBEFOREedits. N/class-20-fifteen/. No guest/browsertestrunningnow.
 
-NEXT:commitvalidatedPRIVATEharnessfix+failure/docrecords locally(no pushyet).
-PrepareNEWprivateprofile with3unchanged7200scontrols andtheonecompiledadapter;
-installONLYtwoownedtestmodulecopies, baselinepin+backup. Keepnativebundle clone
-/var/tmp/ssh-exam-browser-native-upload.fifteencfa5594756b34a59
+ValidatedlocalfixONLYssh-server/tests/browser_bridge.py+test_browser_bridge.py:
+GuestBridgecapturescanonicalpreexistinghistoryBEFOREpublishingreadymetadata.
+15subsetrequiresallbaselineIDs/valuesunchangedandnoothernewparticipant. Mutated/
+deleted/newhistory,extraaccount,incomplete/duplicatefleetsstillrefuse. Rootmetadata
+addsOPTIONALhistorical_attempt_countfor35fixture. FocusRED/GREEN,all45bridgechecks
+PASS6.33s,pycompilePASS. AuditconfirmsconstructorBEFOREbrowser-readypublication.
+NEXT:committhisprivateharnessfix+checkpoint;freezeNEWprivateprofile/bundlecloning
+current17-filetestbundleandchangingONLYbrowser_bridge.py. KeepactualNodeadapter2e
+andfrozenruntimef8. Currentbundle=/var/tmp/ssh-exam-browser-native-upload.fifteencfa5594756b34a59,
 manifest4903e47de6e59f58ff6ff7ea09678a4a6b4b62aef222fdb25cdaa7d2ea407bcb.
-Original17bundle/4nativebinariesunchanged. Newplan.source=currentharnesscommit,
-runtime_source=f8; participants15. Guard/reclaimonlyexactemptycleantestcache if
-needed, preservingoriginal5376MiBstartupfloor andallproductionauthority/files.
-RunactualWASM/passwordfocus,READPASSbeforecontinue;then15/60/600s/protectedFinish.
-No repeat of the unchanged faultysetup;no skippingpeak or archiveproof.
+PrepareNEWprofile(controls7200s);nativebundle4GoexecutablesMUSTstayidentical.
+Currentstage=/var/tmp/ssh-exam-colocation.d6568409a935b53e;
+latestprofile=stage/profile-db0fa3b5be354725(alreadylaunched,DO NOTreuse).
+Reclaimatmost512MiBONLYexactEMPTY/CLEAN/UNMAPPEDownedtestsliceifneeded,preserve
+alloriginalguards/4352MiBaggregate/5376MiBstartupfloor/productionauthority/files.
+Capturebefore/afterreceipt;nosystemcacheorproductioncgroupchanges.
+RunfreshactualWASMfocusandREADPASS. Beforecontinuing,rereadRootguest's
+output/browser-ready.jsonandrequirehistorical_attempt_count31;observer-launch.json
+identifiestheexactnative_stage. Then15/60/600s/protectedFinishandFULLcleanup.
+No morechangingunrelatedfeatures,appimageorGoartifacts. No push/deployuntilpass.
 
 ## Release preparation completed in parallel, NOT deployed
 

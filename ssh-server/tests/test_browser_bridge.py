@@ -26,8 +26,11 @@ class BrowserBridgeTests(unittest.TestCase):
         ids = ['%08x-1234-4234-8234-123456789abc' % i for i in range(15)]
         snapshots = {key: {'attempt': {'username': name}}
                      for key, name in zip(ids, bridge.fixture_accounts(35)[:15])}
-        state = {'attempts': {key: value['attempt'] for key, value in snapshots.items()}}
-        with mock.patch.object(bridge, 'private_json', return_value={'browser_students': 35}):
+        history = {'username': 'fixture-history', 'state': 'COMPLETED', 'protected': True}
+        state = {'attempts': {'historical': history, **{key: value['attempt'] for key, value in snapshots.items()}}}
+        def initial(path, **_kwargs):
+            return {'attempts': {'historical': history}} if path.name == 'state.json' else {'browser_students': 35}
+        with mock.patch.object(bridge, 'private_json', side_effect=initial):
             fixture = bridge.GuestBridge({'state': '/synthetic-only'})
         fixture.snapshot = lambda key: snapshots[key]
         def invoke(selected):
@@ -44,6 +47,15 @@ class BrowserBridgeTests(unittest.TestCase):
         self.assertFalse(fixture.done.is_set())
         with self.assertRaises(AssertionError): invoke(ids[:-1])
         with self.assertRaises(AssertionError): invoke([ids[0]] * 15)
+        history['protected'] = False
+        with self.assertRaises(AssertionError): invoke(ids)
+        history['protected'] = True
+        state['attempts'].pop('historical')
+        with self.assertRaises(AssertionError): invoke(ids)
+        state['attempts']['historical'] = history
+        state['attempts']['new-history'] = dict(history)
+        with self.assertRaises(AssertionError): invoke(ids)
+        state['attempts'].pop('new-history')
         state['attempts']['unreported'] = {'username': 'examq15'}
         with self.assertRaises(AssertionError): invoke(ids)
         state['attempts'].pop('unreported')

@@ -468,6 +468,16 @@ class GuestBridge:
         self.done = threading.Event()
         self.students = private_json(INPUT / 'run.json').get('browser_students', 1)
         self.large = private_json(INPUT / 'run.json').get('browser_large', False)
+        # Metadata is published only after construction. Pin existing private
+        # history before any browser may create an attempt; never treat it as
+        # an extra participant or permit it to change/disappear during the run.
+        self.preexisting_attempts = {}
+        if self.students == 35 and config.get('state'):
+            initial = private_json(Path(config['state']) / 'state.json', atomic_snapshot=True)
+            self.preexisting_attempts = {
+                key: json.dumps(value, sort_keys=True, separators=(',', ':'))
+                for key, value in initial.get('attempts', {}).items()
+            }
         # The16-student fixture carries32 simultaneous native proof requests,
         # plus16 SSH links,16 bounded relay workers and inspection/Begin traffic.
         # These private transport bounds do not change native authority limits.
@@ -968,7 +978,12 @@ class GuestBridge:
                     # participants. Refuse if any other account has an attempt.
                     accounts = accounts[:15]
                     state = private_json(Path(self.config['state']) / 'state.json', atomic_snapshot=True)
-                    assert all(a['username'] in accounts for a in state['attempts'].values())
+                    assert all(
+                        key in state['attempts'] and
+                        json.dumps(state['attempts'][key], sort_keys=True, separators=(',', ':')) == value
+                        for key, value in self.preexisting_attempts.items())
+                    assert all(a['username'] in accounts or key in self.preexisting_attempts
+                               for key, a in state['attempts'].items())
                 assert self.students in (16, 35, 70) and len(ids) == len(accounts) and len(set(ids)) == len(accounts)
                 snapshots = [self.snapshot(attempt) for attempt in ids]
                 assert {entry['attempt']['username'] for entry in snapshots} == set(accounts)
@@ -1148,6 +1163,8 @@ def run_guest(config, prepare_roles, role_snapshot):
             assert observed[name]['hash'] == initial_roles[name]['hash'] and observed[name]['exe'] == initial_roles[name]['exe'] and observed[name]['retained_enabled']
         return observed
     bridge = GuestBridge(config, role_ready=role_ready)
+    if students == 35:
+        metadata['historical_attempt_count'] = len(bridge.preexisting_attempts)
     for name, handler in (('ssh.sock', bridge.ssh), ('http.sock', bridge.http),
                           ('gateway.sock', bridge.gateway), ('inspect.sock', bridge.inspect)):
         bridge.serve(name, handler)
