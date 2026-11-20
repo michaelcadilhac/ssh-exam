@@ -34,6 +34,9 @@ test("account setup stays in the same preflight without a second sign-in screen"
     .getByRole("button", { name: "Start exam", exact: true })
     .click();
   await expect(
+    page.getByRole("heading", { name: "Starting exam", exact: true }),
+  ).toBeVisible();
+  await expect(
     page.getByRole("heading", { name: "Sign in to your exam" }),
   ).toHaveCount(0);
   expect(await page.evaluate(() => !!document.fullscreenElement)).toBe(true);
@@ -41,7 +44,12 @@ test("account setup stays in the same preflight without a second sign-in screen"
   await expect(
     page.getByRole("button", { name: "Finish exam", exact: true }),
   ).toBeEnabled();
-  await onlyScreens(page, ["Start your exam?", "preflight", "active"]);
+  await onlyScreens(page, [
+    "Start your exam?",
+    "Starting exam",
+    "preflight",
+    "active",
+  ]);
 });
 
 // Actual WASM SSH, signed receipts, certificate authentication and HTTP routes.

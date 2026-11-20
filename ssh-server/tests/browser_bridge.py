@@ -962,9 +962,16 @@ class GuestBridge:
                 return
             if 'attempts' in request:
                 ids = request['attempts']
-                assert self.students in (16, 35, 70) and len(ids) == self.students and len(set(ids)) == self.students
+                accounts = fixture_accounts(self.students)
+                if self.students == 35 and len(ids) == 15:
+                    # Explicit short qualification: provisioned accounts are not
+                    # participants. Refuse if any other account has an attempt.
+                    accounts = accounts[:15]
+                    state = private_json(Path(self.config['state']) / 'state.json', atomic_snapshot=True)
+                    assert all(a['username'] in accounts for a in state['attempts'].values())
+                assert self.students in (16, 35, 70) and len(ids) == len(accounts) and len(set(ids)) == len(accounts)
                 snapshots = [self.snapshot(attempt) for attempt in ids]
-                assert {entry['attempt']['username'] for entry in snapshots} == set(fixture_accounts(self.students))
+                assert {entry['attempt']['username'] for entry in snapshots} == set(accounts)
                 if 'recovery' in request:
                     assert self.students == 16 and not self.large and not request.get('finish')
                     assert request['recovery'] in ('start', 'status', 'restore')

@@ -1,6 +1,15 @@
 # Manual pre-final stress suite
 
 This suite is run only on explicit instructor request, never by deployment.
+November19 urgent release instruction reduces the next qualification to15students/
+60terminals,600seconds at peak and protected simultaneous Finish. This uses
+EXAM_STRESS_PARTICIPANTS=15 with the existing35-account disposable fixture; only
+the first15may have native attempts. The root diagnostic refuses extra or hidden
+participants, duplicate IDs and incomplete snapshots. Provisioned unused accounts
+are not counted as tested students. A15-person pass cannot qualify35or70.
+The instructor explicitly authorizes commit/push/deployment after this pass;
+existing preservation, fresh drain and prepared release/recovery gates still apply.
+
 Current requested target:35 synthetic students/140 terminals and90 real minutes,
 followed by simultaneous submission. No institutional MFA, actual student accounts
 or outbound email. Use independent test keys, storage and loopback mail capture.

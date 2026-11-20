@@ -23,12 +23,17 @@ import { readRemoteStressHeadroom } from "../fixtures/stress-generator-status.js
 
 const origin = "https://127.0.0.1:9444";
 const stressRun = process.env.EXAM_STRESS_RUN;
-const fleetCount = stressRun
+const fixtureCount = stressRun
   ? Number(process.env.EXAM_BROWSER_NATIVE_STUDENTS)
   : 16;
-if (stressRun && ![35, 70].includes(fleetCount))
+const fleetCount = Number(process.env.EXAM_STRESS_PARTICIPANTS || fixtureCount);
+if (
+  (stressRun && ![35, 70].includes(fixtureCount)) ||
+  (fleetCount !== fixtureCount &&
+    !(stressRun && fixtureCount === 35 && fleetCount === 15))
+)
   throw Error(
-    "Manual endurance requires the explicit 35- or 70-student cohort",
+    "Use the complete selected cohort, or explicitly select15 participants in the35-account disposable fixture",
   );
 async function generatorHeadroom() {
   const memory = await readFile("/proc/meminfo", "utf8");
@@ -105,7 +110,7 @@ test(
   async ({ browser, request }) => {
     test.skip(
       !process.env.EXAM_BROWSER_NATIVE_BUNDLE ||
-        process.env.EXAM_BROWSER_NATIVE_STUDENTS !== String(fleetCount),
+        process.env.EXAM_BROWSER_NATIVE_STUDENTS !== String(fixtureCount),
       "Requires the exact selected guarded native capacity fixture",
     );
     const large = process.env.EXAM_BROWSER_NATIVE_LARGE === "1";
@@ -137,8 +142,9 @@ test(
       .array(
         z.object({ username: z.string(), uid: z.number().int().min(1000) }),
       )
-      .length(fleetCount)
-      .parse(metadata.students);
+      .length(fixtureCount)
+      .parse(metadata.students)
+      .slice(0, fleetCount);
     expect(new Set(students.map((student) => student.uid)).size).toBe(
       fleetCount,
     );

@@ -7,6 +7,16 @@
 
 ## November 18 local follow-up: video prediction at ownership changes
 
+November19 local Start correction validates template features from the existing
+pre-handoff health response, before restricting the account. Only an identical
+template/version within that same request may reuse that feature declaration.
+The current source snapshot, page/settings/window/capture and actual native
+admission remain freshly verified; no execution authority or readiness is cached.
+Nine focused handoff cases,991application cases,38grant-Begin scenarios,
+15affected browser workflows and actual native restart/editor/hold/Continue/
+protected-Finish acceptance pass locally. Class capacity remains separate.
+[Trace and verification](docs/start-capture-profiling.md).
+
 November19 local decoder optimization reuses a bounded isolated process within
 one exact screen/camera ownership context. Retention is8 workers with a
 resolution-weighted budget; all live/retiring processes are capped at16, with

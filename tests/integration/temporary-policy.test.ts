@@ -9,12 +9,25 @@ import { hash } from "../../apps/server/src/db.js";
 import { freshCapture } from "../fixtures/fresh-capture.js";
 
 it.each([
-  [false, false],
-  [true, false],
-  [false, true],
+  [false, false, false, false, false, false],
+  [true, false, false, false, false, false],
+  [false, true, false, false, false, false],
+  [false, false, true, false, false, false],
+  [true, false, true, false, false, false],
+  [false, true, true, false, false, false],
+  [false, false, true, true, false, false],
+  [false, false, true, false, true, false],
+  [false, false, true, false, false, true],
 ])(
-  "automatic handoff failure=%s replaced-page=%s never starts time before protected SSH is ready",
-  async (failHandoff, replacedPage) => {
+  "automatic handoff failure=%s replaced-page=%s versioned=%s native-refusal=%s unsupported=%s template-change=%s preserves Begin guards",
+  async (
+    failHandoff,
+    replacedPage,
+    versioned,
+    nativeRefusal,
+    unsupported,
+    templateChange,
+  ) => {
     const h = await hosts();
     const dir = mkdtempSync(tmpdir() + "/temporary-access-");
     const config = {
@@ -30,6 +43,7 @@ it.each([
     const { app, store } = await createApp(config);
     const operations: string[] = [];
     let remote: any;
+    let changedTemplateSupport = false;
     vi.spyOn(
       Connection.prototype,
       "supportsAutomaticHandoff",
@@ -47,6 +61,17 @@ it.each([
           store.db
             .prepare("UPDATE attempts SET page_hash=? WHERE id='setup'")
             .run(hash("replacement-page"));
+        if (templateChange) {
+          const changed = {
+            ...JSON.parse(store.attempt("setup").settings),
+            template_version: "b".repeat(64),
+          };
+          store.db
+            .prepare("UPDATE attempts SET settings=? WHERE id='setup'")
+            .run(JSON.stringify(changed));
+          remote.settings = changed;
+          changedTemplateSupport = true;
+        }
       });
     h.control.command = async (op, body) => {
       operations.push(op);
@@ -60,7 +85,16 @@ it.each([
         return {
           ready: true,
           fixture: true,
-          capabilities: ["recovery-allowance-sync-v1"],
+          capabilities: [
+            "recovery-allowance-sync-v1",
+            ...(unsupported || changedTemplateSupport
+              ? []
+              : [
+                  "immutable-template-versions-v1",
+                  "exact-template-begin-v1",
+                  "private-workspace-staging",
+                ]),
+          ],
         };
       if (op === "prepare-account-policy") {
         Object.assign(remote, {
@@ -69,11 +103,15 @@ it.each([
         });
         return { ...remote };
       }
-      if (op === "activate-attempt") {
+      if (op === "activate-attempt" || op === "activate-versioned-attempt") {
+        if (nativeRefusal)
+          throw Error("Fresh native Begin guard refused after handoff");
+        const started = Date.now();
         Object.assign(remote, {
           state: "ACTIVE",
-          start: Date.now(),
-          deadline: Date.now() + 5400000,
+          start: started,
+          deadline: started + 5400000,
+          original_deadline: started + 5400000,
           access_state: "HELD",
           policy_state: "HELD",
         });
@@ -92,6 +130,7 @@ it.each([
         earliest: 0,
         latest: Date.now() + 600000,
         template: "test",
+        ...(versioned ? { template_version: "a".repeat(64) } : {}),
         terminals: 4,
       };
       store.db
@@ -183,6 +222,7 @@ it.each([
         state: "PREPARING",
         start: 0,
         account_policy_required: true,
+        settings: { ...settings },
       };
       const headers = {
         origin,
@@ -191,6 +231,7 @@ it.each([
         "x-page-instance": page,
       };
       await freshCapture(app, "setup", page, headers);
+      const beforeBegin = operations.length;
       const begun = await app.inject({
         method: "POST",
         url: "/api/student/attempts/setup/begin",
@@ -204,12 +245,27 @@ it.each([
           webcam: false,
         },
       });
-      expect(handoff).toHaveBeenCalledOnce();
-      if (failHandoff || replacedPage) {
+      const beginOperations = operations.slice(beforeBegin);
+      const activation = versioned
+        ? "activate-versioned-attempt"
+        : "activate-attempt";
+      if (unsupported) {
+        expect(handoff).not.toHaveBeenCalled();
+        expect(beginOperations).not.toContain("prepare-account-policy");
+      } else expect(handoff).toHaveBeenCalledOnce();
+      if (
+        failHandoff ||
+        replacedPage ||
+        nativeRefusal ||
+        unsupported ||
+        templateChange
+      ) {
         expect(begun.statusCode).toBe(400);
         expect(store.attempt("setup").start).toBeNull();
         expect(store.attempt("setup").deadline).toBeNull();
-        expect(operations).not.toContain("activate-attempt");
+        expect(store.attempt("setup").original_deadline).toBeNull();
+        if (nativeRefusal) expect(beginOperations).toContain(activation);
+        else expect(beginOperations).not.toContain(activation);
       } else {
         expect(begun.statusCode, begun.body).toBe(200);
         expect(begun.json().requiresReauthentication).toBeUndefined();
@@ -218,8 +274,16 @@ it.each([
           operations.indexOf("automatic-handoff"),
         );
         expect(operations.indexOf("automatic-handoff")).toBeLessThan(
-          operations.indexOf("activate-attempt"),
+          operations.indexOf(activation),
         );
+        expect(
+          store.attempt("setup").deadline! - store.attempt("setup").start!,
+        ).toBe(5400000);
+      }
+      if (versioned && !templateChange) {
+        // One legacy readiness observation and one handoff feature observation;
+        // template support needs no third expensive system readiness scan.
+        expect(beginOperations.filter((op) => op === "health")).toHaveLength(2);
       }
     } finally {
       vi.restoreAllMocks();

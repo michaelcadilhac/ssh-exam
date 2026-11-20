@@ -10,6 +10,7 @@ import { AttemptGrants } from "../../apps/server/src/attempt-grants.js";
 import { hosts } from "../fixtures/hosts.js";
 import { freshCapture } from "../fixtures/fresh-capture.js";
 import { OPERATION_TIMEOUT_MS } from "../../packages/protocol/timeouts.js";
+import { MONITORING_EVIDENCE_WINDOW_MS } from "../../packages/protocol/monitoring-evidence.js";
 
 const captureClock = vi.hoisted(() => ({ now: 10000 }));
 vi.mock("../../apps/server/src/monitoring-clock.js", () => ({
@@ -89,6 +90,7 @@ it.each([
       verifiedUID = 10001,
       savedSupport = scenario !== "additional-saved-old-native";
     let healthFaultArmed = false;
+    let rejectedVerificationStatus: number | undefined;
     const healthNonces: string[] = [];
     h.control.command = async (op, b, frame) => {
       operations.push(op);
@@ -304,7 +306,7 @@ it.each([
           scenario === "capture-stale-at-outbound" && !failed;
         if (staleCapture) {
           failed = true;
-          captureClock.now += 15001;
+          captureClock.now += MONITORING_EVIDENCE_WINDOW_MS + 1;
         }
         const response = await app.inject({
           method: "POST",
@@ -324,8 +326,7 @@ it.each([
           request.grant.issuance_order !== a.grant.issuance_order ||
           request.grant.initial_grant !== a.grant.initial_grant
         ) {
-          expect(response.statusCode).toBe(409);
-          expect(a.start).toBe(0);
+          rejectedVerificationStatus = response.statusCode;
           throw Error("Synthetic wrong-scope fresh verification refused");
         }
         expect(response.statusCode, response.body).toBe(200);
@@ -1168,6 +1169,8 @@ it.each([
       ) {
         const refused = await begin();
         expect(refused.statusCode, refused.body).toBe(400);
+        if (scenario !== "outbound-unavailable")
+          expect(rejectedVerificationStatus).toBe(409);
         expect(store.attempt(id)).toMatchObject({
           state: "PREPARING",
           start: null,

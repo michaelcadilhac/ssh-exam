@@ -22,6 +22,34 @@ spec.loader.exec_module(bridge)
 
 
 class BrowserBridgeTests(unittest.TestCase):
+    def test_short_cohort_inspects_exact_fifteen_and_refuses_unreported_participants(self):
+        ids = ['%08x-1234-4234-8234-123456789abc' % i for i in range(15)]
+        snapshots = {key: {'attempt': {'username': name}}
+                     for key, name in zip(ids, bridge.fixture_accounts(35)[:15])}
+        state = {'attempts': {key: value['attempt'] for key, value in snapshots.items()}}
+        with mock.patch.object(bridge, 'private_json', return_value={'browser_students': 35}):
+            fixture = bridge.GuestBridge({'state': '/synthetic-only'})
+        fixture.snapshot = lambda key: snapshots[key]
+        def invoke(selected):
+            stream = io.BytesIO((json.dumps({'attempts': selected}) + '\n').encode())
+            client = mock.Mock()
+            client.makefile.return_value.__enter__ = mock.Mock(return_value=stream)
+            client.makefile.return_value.__exit__ = mock.Mock(return_value=False)
+            with mock.patch.object(bridge, 'private_json', return_value=state), \
+                 mock.patch.object(bridge, 'send') as reply:
+                fixture.inspect(client)
+                return reply.call_args.args[1]
+        result = invoke(ids)
+        self.assertEqual(result['snapshots'], list(snapshots.values()))
+        self.assertFalse(fixture.done.is_set())
+        with self.assertRaises(AssertionError): invoke(ids[:-1])
+        with self.assertRaises(AssertionError): invoke([ids[0]] * 15)
+        state['attempts']['unreported'] = {'username': 'examq15'}
+        with self.assertRaises(AssertionError): invoke(ids)
+        state['attempts'].pop('unreported')
+        snapshots[ids[-1]]['attempt']['username'] = 'examq15'
+        with self.assertRaises(AssertionError): invoke(ids)
+
     def test_full_class_inspection_delivers_one_complete_frame_over_short_socket_writes(self):
         ids = ['%08x-1234-4234-8234-123456789abc' % index for index in range(70)]
         snapshots = {attempt: {'attempt': {'username': name},

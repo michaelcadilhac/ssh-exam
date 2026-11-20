@@ -114,3 +114,28 @@ class driver also observes an already-sent unanswered Start for the existing
 60-second UI recovery window, saving public/native before/after facts before
 teardown. It still throws the original timeout and fails qualification, never
 replays Start, and does not observe a preparation failure as a started request.
+
+## Bounded Start correction after class15
+
+Class15 reached33students/132verified GCC/GDB panes before the34th Start lost its
+HTTP reply. Its original workspace became visible and web/native read-only status
+confirmed the same ACTIVE interval. The run remains FAILED; full preservation and
+cleanup pass. See [the agent report](../reports/stress/20261120T002218Z/report.md).
+
+The trace attributes6.694seconds to a redundant post-handoff template-feature
+query. The student Begin route now validates support from the existing pre-handoff
+health response and remembers only the exact template/version within that one
+request. An unchanged selection reuses this feature declaration; a changed
+selection requires a new query. Unsupported templates refuse before account
+restriction. This introduces no shared cache or durable/intermediate state.
+Readiness, live authority, current source snapshot, page/settings/window/capture
+and actual native authorization remain freshly checked. Existing cancellation,
+restart and retry behavior is unchanged; a remembered declaration cannot start an
+attempt. No native binary, management command, policy or timeout changes.
+
+Nine focused HTTP/SSH cases cover successful and failed handoff, replaced page,
+unsupported versions, changed source and late native refusal. The unchanged
+native Engine regression proves health observation never replaces actual Begin
+guards. The application suite passes991cases with three opt-in skips. Remaining
+browser/native/class evidence is recorded in the current checkpoint; a unit or
+component pass is not a class-capacity result.

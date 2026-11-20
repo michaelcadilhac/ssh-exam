@@ -1,3 +1,11 @@
+November19 class15 FAILED at the34th Start after33students/132verified terminals.
+The response was lost; read-only recovery found the SAME ACTIVE native/web attempt
+and visible workspace, preserving its original interval without replay. Full
+independent cleanup/preservation passes. The corrected private tunnel did not
+expire. A duplicate post-handoff template-feature query cost6.694s in the failing
+trace; its bounded request-local removal is being qualified. No new class pass,
+production change or release-readiness claim. [Report](reports/stress/20261120T002218Z/report.md).
+
 November19 class14 reached35students/140verified terminals and eight peak checks
 through324.9seconds, then its PRIVATE test tunnel expired at its default one hour.
 The run remains incomplete; protected Finish was not reached. Full independent

@@ -2238,6 +2238,7 @@ export async function createApp(
     busy.add(a.id);
     let checkingMonitoring = false;
     let checkingLegacyRoles = false;
+    let templateFeatureCheck: { template: string; version: string } | undefined;
     try {
       if (!a.grant_id && !isSandbox(a.exam)) {
         checkingLegacyRoles = true;
@@ -2268,6 +2269,12 @@ export async function createApp(
           throw Error(
             "Class server requires the single-sign-in update before starting.",
           );
+        requireTemplateAgent(settings, h);
+        if (settings.template_version)
+          templateFeatureCheck = {
+            template: settings.template,
+            version: settings.template_version,
+          };
         for (const c of conn.panes.values()) await c.close();
         conn.panes.clear();
         const secured = await conn.command("prepare-account-policy", {
@@ -2302,7 +2309,16 @@ export async function createApp(
       requireBeginWindow(a.exam, JSON.parse(a.settings));
       const currentSettings = JSON.parse(a.settings);
       if (currentSettings.template_version) {
-        requireTemplateAgent(currentSettings, await observeSetupHealth(conn));
+        // Reuse only this request's feature declaration check for the exact
+        // same template. Never cache readiness/authority: native activation
+        // still runs fresh admission, and the current source/page/settings are
+        // checked again below after the protected SSH handoff.
+        if (
+          !templateFeatureCheck ||
+          templateFeatureCheck.template !== currentSettings.template ||
+          templateFeatureCheck.version !== currentSettings.template_version
+        )
+          requireTemplateAgent(currentSettings, await observeSetupHealth(conn));
         requireTemplateSnapshot(
           currentSettings,
           await conn.command("inspect-attempt", { id: a.id }),

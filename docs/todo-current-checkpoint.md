@@ -1,110 +1,77 @@
-# Current checkpoint — explicit test-transport lifetime; class rerun next
+# Current checkpoint — urgent 15-student qualification, then authorized release
 
-Keep csc-sys at FOUR cores. Local development, coherent commits and guarded
-synthetic qualification only. No push/deploy, production service/configuration/
-record changes, real student accounts, MFA or external email. Preserve the ten
-original dirty documentation PNGs; all 16 image hashes remain unchanged. No open
-policy question. A progress/ETA question is not a pause.
+Latest instructor instruction: test15 simultaneous students/60terminals instead
+of35; if successful, commit, PUSH AND DEPLOY. Keep four csc-sys cores. Synthetic
+accounts/media only, no institutional MFA or external mail. Preserve protected
+history, deadlines, holds and the ten original dirty documentation PNGs.
 
-P = var/qualification35/profile-20261119T044302Z-8d3c93/
-N = P/native-small-profile/
+## Current integrated result
 
-## Current result and failure attribution
+Main HEAD0b6fba0; pending coherent local commit includes a bounded student Begin
+optimization: validate template features from the existing handoff health query,
+reuse only that request-local declaration for the identical template/version.
+Current page/settings/window/capture/source and actual native admission remain
+freshly checked. Unsupported templates refuse before account restriction; changed
+versions require another feature query. No policy, clock, timeout, native binary,
+management command, shared cache or durable state change.
 
-Runtime is committed bf11e59 (bounded decoders); 28f57c8 fixes the diagnostic
-unit mock. Class14 reached all 35 students / 140 verified GCC-GDB panes and eight
-peak observations through 324.9 seconds. Its private opaque tunnel then expired
-at its DEFAULT 3600 seconds. csc-tunnel.log proves that assertion. Outer roles had
-7200-second bounds; the inner limit was missed. No ten-minute peak or protected
-Finish pass is claimed. All root/guest/Marco/local cleanup and original authority,
-configuration, binaries and base preservation are FULL. Source/build inputs were
-verified unchanged BEFORE the harness edits. See N/class-14/ and
-[the agent report](../reports/stress/20261119T220749Z/report.md).
+Verification:9focused handoff cases;991application passes/3opt-in skips;15affected
+real-WASM/browser workflows;38authenticated grant-Begin cases;typecheck/server
+build;actual native Engine fresh-guard refusal. Actual guarded csc-sys browser
+acceptance passes1.3min, including three gateway replacements, kernel holds,
+editor buffers, Continue and protected Finish. Independent native/base/authority
+preservation and process cleanup FULL. Evidence below under begin-capability-*.
 
-Start max59.705s leaves little margin. Captures:27415accepted,445video queue
-expiries,18challenge refusals,9image-capacity refusals. Nine temporary monitoring
-input pauses affected eight students, recovered in5.5–10.8s before tunnel expiry.
-Prof requires these to remain usability/reliability findings, not be hidden by a
-future pass. No pane refusal, late navigation or disciplinary lockout preceded
-expiry. Sampled aggregate peak4026.8MiB/cap4352; minimum host available1797.9MiB;
-no memory-limit/OOM event. See N/class-14/measurement-summary.json. Prior rendered
-UX review still applies to unchanged assets; no new device review is claimed.
-
-## Validated transport correction, ready to commit locally
-
-scripts/stress_stdio_tunnel.py adds explicit finite --lifetime (1..14400s) to BOTH
-CLI entries; defaults stay3600. This changes manual-test infrastructure, not
-production freshness/deadlines/holds. Four interface regressions pass (final6.799s):
-large binary/forced short-write/half-close, invalid bounds and expiry with peer/
-listener cleanup. N/class-14 retains the original run/controller. Evidence:
-P/tunnel-lifetime-red/, tunnel-lifetime-final/. The actual guarded REMOTE entry
-also passes: remote2s/local10s, data preserved, remote traceback observed in4.153s,
-all private units/listeners cleaned. P/tunnel-remote-lifetime/.
-
-N/run-colocation.py now requires transport_lifetime_seconds and whole-workflow
-budget ordering BEFORE allocation and supplies the same lifetime to both ends.
-Its negative launch-plan regression and fresh full run are NEXT. Do not infer a
-class pass from the transport/component tests. Current main source changes are
-idle; no focused runner is active.
+The browser mock now explicitly observes the existing Starting exam heading,
+retaining no-second-sign-in/fullscreen assertions. A stale-capture fixture used
+an obsolete15s expiry and swallowed assertions inside its mock; the real contract
+is60s. The corrected test uses the contract constant and asserts actual refusal
+outside the mock. Its mutation control fails200vs409 as intended;focused5andall38
+pass. Production enforcement was unchanged. Original failed receipts retained.
 
 ## Exact next action
 
-1. Commit the validated harness correction and owned documentation/reports locally;
-   leave original PNG changes unstaged. Never push/deploy without a new instruction.
-2. Prepare class15 with a NEW profile token/data namespace, source pinned to that
-   commit. Copy the existing class14 host/observer helpers; no application/native
-   rebuild is needed. The final transport source differs from the remote smoke
-   only in CLI wording; stage/pin its exact final bytes into the STOPPED private
-   stage. Preserve every prior profile and failure.
-3. Check an intentionally3600s transport plan refuses BEFORE Marco/guest allocation.
-   For the valid plan use driver6600s, transport7200s on both ends, roles7200s,
-   observer7200s/loop7100s, local7800s. Explicit budgets:ramp4500s,peak600s,
-   Finish600s,cleanup300s. Keep all resource/authority/startup guards unchanged.
-   If needed reclaim ONLY clean unmapped cache from the positively EMPTY owned
-   test slice; never alter host cache/production or stop ordinary user work.
-4. Run the existing owned durable controller. Before allocation verify all nine
-   active private assets and mirrors match plan-class14 hashes, including exact
-   WASM f61ee3946b1f2675e6fc17a9393e648b27b3fa3616e778f7a1b99bd0b9a81835.
-   Read the actual-WASM focused result before releasing its one-time model gate.
-5. Complete35/140/600s and protected simultaneous Finish. Record latency, temporary
-   input holds and recovery; do not weaken enforcement or call the experience
-   flawless merely because assertions pass. Independently collect/review root,
-   base, Marco, local, source/build/image cleanup and preservation. Use the existing
-   N/cleanup-class11.py with the NEW profile/observer identity, only after real
-   server/native shutdown; it is profile-parametric. Update report/checkpoint.
+Freeze/commit the qualified Start correction and the minimal manual-test change:
+EXAM_STRESS_PARTICIPANTS=15 selects15accounts from the existing guarded35-account
+fixture. The root diagnostic accepts ONLY that exact first15 subset, requires no
+other account to have any native attempt, retains full snapshot/clock/archive
+and cleanup checks. Focused subset refusal and all45bridge checks pass;typecheck
+passes. No new actual student accounts or production changes.
 
-## Other current artifact qualification (no deployment)
+Prepare the stopped private csc app copies and a new code-only test bundle that
+changes ONLY browser_bridge.py from the qualified17-file native bundle. Retain
+original bundle. Native production binaries remain byte-identical; their physical
+installation/full-race evidence still applies. Pin a fresh15-participant plan,
+all lifetimes and exact build assets; run the actual password-prompt focus and
+READ it before releasing the15/60/600s/protected simultaneous-Finish test.
+In parallel prepare the new matched image and repeat its assets/startup/CURRENT
+recovery qualification; oldbf11image evidence does not qualify the edited app.
+After complete15success:commit report,push,then deploy frozen matched artifacts
+through existing guarded web/native procedure. Admin-only sessions may be
+invalidated per prior approval; student/uncertain activity still blocks. No35/70
+capacity claim. No deployment has occurred yet.
 
-985application tests/3unrelated opt-in skips,10real-WASM/browser capture cases,
-focused worker lifecycle/fault tests, typecheck/build pass. Actual csc-sys decoder
-component:70authored streams/840accepted,61.158s,p95 948/max1515ms,342MiB peak,
-zero memory events; FULL cleanup. Components are not class capacity.
-[Decoder report](../reports/stress/20261119T214006Z/report.md).
+## Failed prior runs and preserved evidence
 
-Native08ac3f0 read-only scan optimization reduces measured Watch CPU84.7%; full
-native/CLI races,build/vet and actual editor/hold/Continue/protected Finish pass.
-Current17-file bundle:/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279;
-manifest58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56.
-The exact bundle now passes physical native installation:four files,three reloaded
-roles and seven real SSH/collection/original-deadline checks. P/native-install-decoder/.
-Independent guest/base/production preservation and process cleanup FULL.
+Class15 FAILED at34th Start after33students/132panes. Read-only recovery found the
+SAME ACTIVE interval and visible workspace; no Start replay/refund. Duplicate
+feature query cost6.694s. Full independent cleanup/preservation passes. Corrected
+7200s transport did not expire. Report:reports/stress/20261120T002218Z/report.md.
+Class14 reached35/140but private tunnel expired at default3600s after324.9peak
+seconds. Explicit lifetime correction has4local/actual remote expiry regressions.
+Its9input pauses/8students and59.705sStart remain findings. Prof reviewed the new
+class15 reliability finding: recovery is sound; no extra UI change needed, class
+latency/refusals must remain reported. No fresh device review claimed.
 
-Image ssh-exam-qualification:decoder-bf11e59, Config
-86e4a9b48e39b815cc7e3b4a8c30a5a37d0e3cc07a258737cb736002e9839003,
-passes actual startup/CURRENT recovery63.19s:13signed exchanges/62s delay,
-25served assets,41table contracts,seeded purge rechecks,zero extra starts and
-original snapshot/current purge ledger preserved. Private container/keys/data
-cleanup passes. P/decoder-image-startup-recovery/. Engine and Config identities
-are distinct and bound; image reuses verified base runtime/clock.
-
-Actual two-file csc-sys Compose validates with its EnvironmentFile. Isolated
-installed nginx1.24/four-worker/private-network maintenance/routing and real
-reload pass; reopening0.24s, synthetic TLS and workers removed. Production files,
-service and authority preserved. P/csc-proxy-qualified-result.json and
-release-host-independent-cleanup.json. Current connectionWorkers remains default32;
-40is PROPOSED, not applied. Full release procedure:
-[pre-final matched release](pre-final-matched-release.md). Existing media coverage
-and fresh production guards belong to separately authorized deployment preparation.
-Agent consolidation was completed previously; do not repeat it.70capacity remains
-unqualified. Latest ETA:assuming the fresh class passes,1–2hours afterward for
-remaining release preparation; the failed harness run adds the needed rerun first.
+P=var/qualification35/profile-20261119T044302Z-8d3c93/;N=P/native-small-profile/.
+New checks:P/begin-capability-application/,begin-capability-browser-final/,
+begin-grant-interface-final/,begin-capability-native/independent-cleanup.json,
+begin-capture-oracle-red/,begin-capture-oracle-final/,fifteen-bridge-all/.
+Class evidence:N/class-14/,class-15/. No active root guest after native acceptance.
+Current original native bundle:/var/tmp/ssh-exam-browser-native-upload.idlecallback43bf55e02ef84279;
+17-file manifest58f6f6016c97ab3b5f6e72f72324aaba7dfd22859d377618389210b38206df56.
+Physical installation and actual csc nginx/private-TLS reload pass with FULL
+preservation:P/native-install-decoder/,csc-proxy-qualified-result.json.
+Old imagebf11e59 startup/CURRENT63.19s remains scoped to those old bytes.
+Deployment/migration/forward-recovery plan:docs/pre-final-matched-release.md.
+Original three-agent consolidation was already completed; do not repeat it.
