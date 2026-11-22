@@ -1,8 +1,9 @@
 # Fifteen-second interruption grace
 
-Requested November 22, 2026; implemented and tested locally, not deployed.
-Nothing in production is changed. The instructor chose to pause typing during
+Requested and deployed November 22, 2026, as runtime/controller df3c434 on csc-sys.
+The instructor chose to pause typing during
 this window and restore it automatically once the required checks pass.
+[Deployment, preservation and recovery](interruption-grace-release.md).
 
 ## Student behavior and policy
 
@@ -117,12 +118,11 @@ The exact-source receipts, logs and per-test images are private under
 and WASM/SSH, with synthetic media and mocked authority where stated in the tests;
 they are not new privileged native-freeze or class-capacity qualification.
 
-No SQL migration or new CLI management operation is required. Before a future
-production cutover, qualify the exact matched release using the existing release
-workflow and require a new push/deploy instruction. Existing database fields and
-native wire contracts are unchanged. Rolling back the code restores the prior
-grace policy; preserve current attempts, audit, media and account holds rather
-than restoring an older database. Do not restart around active exams.
+No SQL migration or new CLI management operation is required. Existing database
+fields and native wire contracts are unchanged. The deployed transition permits
+only qualified forward recovery with the same candidate and CURRENT data;
+reopening the previous policy writer is refused. Preserve attempts, audit, media,
+account holds and the original recovery snapshot. Do not restart around active exams.
 
 Local cleanup: all owned durable test runners exited and their cgroups are empty;
 the final browser listener is closed. Failed and successful receipts are retained,

@@ -1,5 +1,13 @@
 # Main-bug release readiness
 
+CURRENT November22: interruption-grace runtime/controller df3c434 is pushed,
+deployed and online on csc-sys. External38/38assets, healthy container, fresh
+signed roles and41data-preservation contracts pass. Native binaries/PIDs unchanged;
+admin session retained. Guarded cutover88.325s; no schema migration or media copy.
+Recovery preserves CURRENT data and uses the qualified same-candidate forward
+path. [Current deployment](interruption-grace-release.md). Older CURRENT entries
+below are historical where superseded.
+
 CURRENT November1 evening Chicago: runtime5163b20/schema37 and matchedCLI are
 pushed, deployed and online. Public admission reopened19:26:40; conversion enabled
 19:27:52. Strict preservation of41authoritytables/110web/175native histories,

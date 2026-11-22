@@ -1,5 +1,37 @@
 # Interruption grace release preparation
 
+## Deployed November 22, 2026
+
+Runtime/controller df3c434 is pushed and deployed on csc-sys. Admissions reopened
+at22:38:03.895UTC (16:38Chicago); external TLS serves all38 frozen assets byte for
+byte. The web container is healthy. The admin-only session was preserved; the
+drain found zero unfinished exams, held access, pending clock operations or owned
+TCP connections. All41 authority-table contracts, prior audit and management
+requests pass preservation. No schema migration or native installation/restart
+occurred; all five native executable hashes and four service PIDs are unchanged.
+The owned background-video pause is released and both deployment runners exited0.
+
+The latest push/deploy instruction began22:30:29UTC. Reopening took7m35s including
+online staging/preparation; guarded cutover took88.325s. External acceptance
+finished22:38:47UTC. External maintenance503 with Retry-After60 was observed;
+no gateway error was observed. The stopped metadata snapshot is307,732,480bytes,
+with597,432bytes of other small files. All1,850,839,831recording bytes were reused
+from verified shared recovery objects; zero media objects were copied. The
+previous image was retained locally for recovery inspection. Preparation and
+cutover completed on their first execution; no recovery/restart retry was needed.
+
+Image Config: `sha256:b764a8f93f14057dcec6e984e80242ff1929bc9a4f58ec59e161a013bf038567`.
+Private evidence: `var/interruption-grace/release-20261122/`, especially
+`production-acceptance.json`, `external-acceptance.json` and the launch receipts.
+Root recovery state:
+`/var/tmp/ssh-exam-interruption-20261122-df3c434-49bdf1ca-state`.
+Recovery must retain CURRENT data and the original snapshot, using the frozen
+controller's qualified forward resume. The old policy writer cannot reopen.
+Future deployment requires a new instruction. Larger35/70 capacity is unqualified;
+this release does not claim a new class stress pass.
+
+## Preparation record (completed)
+
 November 22, 2026. Preparation and guarded deployment are authorized. The site
 stays online until every preparation gate passes. Preserve all existing data and
 the ten uncommitted documentation screenshots. No new design decision is open.
@@ -40,5 +72,6 @@ qualification passes policy holds/Continue, shell/editor preservation, original
 interval and protected Finish; independent guest/host preservation is FULL.
 The nginx binary changed after the old receipt, so a fresh private-network test
 was run: actual reload/reopen0.230s, production nginx/configuration/authority
-unchanged. Code-only upload is blocked pending the exact approval requested by
-automatic tool review. Host backup preparation/cutover have not started.
+unchanged. The exact code-only upload initially required explicit approval from
+automatic tool review. The renewed push/deploy instruction authorized it; upload,
+host preparation and cutover subsequently passed as recorded above.

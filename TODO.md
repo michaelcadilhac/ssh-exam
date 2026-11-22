@@ -1,4 +1,8 @@
-November 22 interruption grace is implemented and tested locally, not deployed. One 15-second window covers overlapping browser/connection
+November 22 interruption grace is pushed and deployed on csc-sys (runtime/controller df3c434). Public admissions reopened at22:38:04UTC;
+38/38external assets and41data-preservation contracts pass. Native binaries/PIDs
+and the admin session are unchanged. Guarded cutover88.3s; no media recopied.
+[Deployment and recovery](docs/interruption-grace-release.md).
+One 15-second window covers overlapping browser/connection
 interruptions, pausing typing while preserving available capture and the running
 clock. Recovery needs fresh challenged capture and current server approval. Native
 holds and authoritative deadlines remain enforced. This intentionally replaces

@@ -5,14 +5,14 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-## November 22 local policy change: interruption grace
+## November 22 deployed policy change: interruption grace
 
 All detected browser-condition interruptions share one 15-second recovery window.
 Typing pauses immediately; available capture continues. Fresh challenged capture
 and current server approval restore typing automatically before expiry. Repeated
 or changing failures cannot restart the window. The exam timer continues.
 Confirmed SSH loss, native holds, revocation, Finish and deadlines retain their
-existing safety boundaries. This is implemented locally, not deployed; see
+existing safety boundaries. Runtime/controller df3c434 is deployed on csc-sys; see
 [behavior and verification](docs/interruption-grace.md).
 
 November19: the matched runtimef8abea7 described below is now deployed on csc-sys,

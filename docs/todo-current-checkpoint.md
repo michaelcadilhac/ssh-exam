@@ -1,56 +1,37 @@
-# Current checkpoint — interruption grace complete locally
+# Current checkpoint — interruption grace deployed
 
-## Release preparation — upload approval pending
+November 22, 2026. Runtime/controller df3c434 is pushed and deployed on csc-sys.
+Admissions reopened22:38:03.895UTC; external acceptance finished22:38:47UTC.
+All38public assets match; container healthy; fresh signed roles and41authority
+preservation contracts pass. Native binaries and four service PIDs are unchanged.
+The existing admin session was preserved. No student activity was interrupted,
+no SQL migration ran, no media was recopied and no native role restarted.
+Guarded cutover88.325s; instruction-to-reopening7m35s including online preparation.
+Owned preparation/apply runners exited0 and the background-video pause is released.
 
-Candidate/controller df3c434 is frozen. Sixty controller and34 preservation checks,
-exact-image UID10001/all38asset checks,63.739s signed-poll expiry/CURRENT-data
-recovery, actual single-student release-native browser/kernel hold/Continue/
-protected Finish, and refreshed real-nginx/reload qualification all PASS. Root
-native preservation is FULL; its owned unit is inactive/empty. No native service
-installation or production configuration/student-record change occurred.
+One15-second window pauses typing during interruptions and preserves available
+capture. Fresh verification restores typing automatically. Overlapping failures
+cannot restart the cutoff. Connection/upload uncertainty stays technical, never
+fabricated track loss or a student violation. Original clocks, ownership, native
+holds and protected files remain authoritative. No new management setting or
+unresolved design decision was introduced.
 
-Automatic approval review blocked the 302.3MiB private code-only upload, requiring
-explicit approval of this exact payload/destination despite Deploy authorization.
-The question dialog is pending. Do NOT retry or indirectly execute that transfer
-before the answer. Site remains online; no release staging or maintenance began.
-Exact upload SHA256 a7ab68b2ed2021507fc3e662b1f945fddaca2cd15de7e39a07776d5fa588d4d9;
-destination `/var/tmp/ssh-exam-interruption-20261122-df3c434-49bdf1ca` on csc-sys.
-Bundle/locations/audits/receipts: `var/interruption-grace/release-20261122/`.
-Next after approval: upload the unchanged audited bundle; fresh independently
-bridged native guard; real-host prepare/backup-coverage and guarded cutover. Reuse
-the existing csc_guard_bridge and fresh_native_cohort_guard before-only workflow;
-no native stop/install/start. Full procedure: [release prep](interruption-grace-release.md).
+Local feature evidence:72affected app/interface checks,15built-asset browser cases,
+real long-upload/coalesced-input recovery,>60s retained-control recovery, native
+races, build and typecheck. Exact frozen release:60controller/34preservation cases,
+UID10001/all38assets,63.739s startup/poll-expiry/CURRENT-data recovery with zero
+extra starts, actual single-student native/browser hold/Continue/protected Finish,
+and real-nginx reload all pass. No new full-app or class-capacity pass is claimed.
+Larger35/70capacity remains unqualified.
 
-November 22, 2026. Implemented/tested locally; NOT pushed or deployed. The local
-commit containing this checkpoint is the validated milestone. Production untouched;
-ten pre-existing dirty documentation PNGs remain unstaged.
+[Policy and evidence](interruption-grace.md).
+[Deployment and recovery](interruption-grace-release.md).
+Private receipts: `var/interruption-grace/release-20261122/`.
+Root state: `/var/tmp/ssh-exam-interruption-20261122-df3c434-49bdf1ca-state`.
+Recovery is same-candidate forward recovery with CURRENT data and the original
+snapshot; the old policy writer cannot reopen. No recovery retry was needed.
+Ten pre-existing modified documentation PNGs remain unstaged and uncommitted.
 
-One 15-second window pauses typing and preserves available capture. Fresh checks
-restore typing automatically. Overlapping observed condition failures do not
-restart the cutoff. Connection/upload uncertainty remains a technical wait, never
-fabricated track loss or a student policy report. Input stays blocked through
-asynchronous verification, including coalesced React updates. Timer/deadlines,
-ownership, native holds and protected files remain unchanged. No native code,
-SQL migration, management setting or unresolved design decision was added.
-[Policy, implementation and evidence](interruption-grace.md).
-
-Final verification: 72 affected state/ledger/public-interface checks; 15 current
-built-asset browser cases (1.9m); real retained long-upload/coalesced-input case
-(35.3s); actual >60s retained-control recovery; native evidence race checks;
-production build and TypeScript checks. Separate local gateway qualification
-passed three existing policy/restart workflows on the preceding UI snapshot;
-unchanged contracts are reused, not claimed as new privileged qualification.
-The full app run had 996 passes, four obsolete policy assertions corrected/passing
-in the affected run, and three opt-in skips. No second full-app or class-capacity
-pass is claimed. All failed evidence remains available.
-
-Private exact source/build manifests, logs, images and owned-runner cleanup receipt:
-`var/interruption-grace/20261122/`. No owned test processes or final listener remain.
-Next action requires a NEW push/deploy instruction. Before production, qualify
-exact release installation/preservation/recovery and privileged native timing in
-the agreed idle disposable environment; no csc-sys test during the live final.
-No new schema migration is required. Preserve current data/holds on rollback.
-
-Previous deployment: runtime f8abea7/controller 5fa4b10, November 19, complete.
-Receipt: `reports/stress/20261120T020804Z/deployment.json`. Larger 35/70 capacity
-remains unqualified. The new grace feature is not deployed.
+Current task complete after recording/pushing these receipts. No further deployment
+or optional hardening is authorized by this checkpoint; future deployment needs a
+new instruction. Preserve all existing submissions, history, clocks and holds.
