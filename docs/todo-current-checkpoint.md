@@ -1,14 +1,25 @@
 # Current checkpoint — interruption grace complete locally
 
-## Authorized release preparation in progress
+## Release preparation — upload approval pending
 
-November 22: the instructor authorized preparing/qualifying the missing release
-and the existing Deploy authorization remains active afterward. Three bounded
-milestones and acceptance gates: [release preparation](interruption-grace-release.md).
-Current production: no unfinished web attempts, one admin session; installed and
-loaded native binaries unchanged. No production mutations yet. Controller milestone passes60 public-controller and34 preservation checks. Next:
-freeze the controller/source commit, build and bind the release image, then run
-joined native and exact-image startup/recovery acceptance. Evidence: `var/interruption-grace/release-20261122/`.
+Candidate/controller df3c434 is frozen. Sixty controller and34 preservation checks,
+exact-image UID10001/all38asset checks,63.739s signed-poll expiry/CURRENT-data
+recovery, actual single-student release-native browser/kernel hold/Continue/
+protected Finish, and refreshed real-nginx/reload qualification all PASS. Root
+native preservation is FULL; its owned unit is inactive/empty. No native service
+installation or production configuration/student-record change occurred.
+
+Automatic approval review blocked the 302.3MiB private code-only upload, requiring
+explicit approval of this exact payload/destination despite Deploy authorization.
+The question dialog is pending. Do NOT retry or indirectly execute that transfer
+before the answer. Site remains online; no release staging or maintenance began.
+Exact upload SHA256 a7ab68b2ed2021507fc3e662b1f945fddaca2cd15de7e39a07776d5fa588d4d9;
+destination `/var/tmp/ssh-exam-interruption-20261122-df3c434-49bdf1ca` on csc-sys.
+Bundle/locations/audits/receipts: `var/interruption-grace/release-20261122/`.
+Next after approval: upload the unchanged audited bundle; fresh independently
+bridged native guard; real-host prepare/backup-coverage and guarded cutover. Reuse
+the existing csc_guard_bridge and fresh_native_cohort_guard before-only workflow;
+no native stop/install/start. Full procedure: [release prep](interruption-grace-release.md).
 
 November 22, 2026. Implemented/tested locally; NOT pushed or deployed. The local
 commit containing this checkpoint is the validated milestone. Production untouched;

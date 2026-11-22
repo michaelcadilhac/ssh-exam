@@ -32,3 +32,13 @@ preservation cases PASS locally. Public apply, student/unknown refusal, expired
 session handling, exact source/cohort/scope refusal, forward CURRENT-data repair
 and recovery of an already-running candidate are exercised. Docker/systemd/
 root/native/proxy are mocked in this layer; exact-image and real-host gates remain.
+
+Frozen source/controller df3c434: exact-image startup/recovery passes63.739s with
+13signed exchanges,38served assets,41preserved authority tables, seeded physical
+purge rechecks and zero extra starts. Actual release-native browser/kernel
+qualification passes policy holds/Continue, shell/editor preservation, original
+interval and protected Finish; independent guest/host preservation is FULL.
+The nginx binary changed after the old receipt, so a fresh private-network test
+was run: actual reload/reopen0.230s, production nginx/configuration/authority
+unchanged. Code-only upload is blocked pending the exact approval requested by
+automatic tool review. Host backup preparation/cutover have not started.
