@@ -1,5 +1,17 @@
 # Current checkpoint — interruption grace complete locally
 
+## Deployment request — stopped before maintenance
+
+November 22: read-only production check returns public HTTPS200, zero unfinished
+web attempts and one live session (role not inspected). No production writes,
+service restart, admission fence or backup began. Candidate9c7ad0e is feature-tested,
+but no frozen exact release image/recovery receipt or supported controller scope
+exists for this monitoring-policy change. Privileged native timing remains
+unqualified. The deployment contract requires stopping this attempt before
+maintenance. Next: a separate release-preparation milestone, then a qualified
+cutover. Private receipt: `var/interruption-grace/20261122/deployment-request.json`.
+No new design choice is required to prepare that release.
+
 November 22, 2026. Implemented/tested locally; NOT pushed or deployed. The local
 commit containing this checkpoint is the validated milestone. Production untouched;
 ten pre-existing dirty documentation PNGs remain unstaged.
