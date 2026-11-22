@@ -163,6 +163,9 @@ class FastUI(unittest.TestCase):
             raise AssertionError('Unexpected Docker mutation: '+str(args))
         if len(args) > 1 and args[1].endswith('/web-ui-ops/inventory-web.py'):
             if self.busy: raise RuntimeError('Synthetic existing guard reports BUSY')
+            with database_file(self.data/'metadata.sqlite') as db:
+                sessions=deploy.deployment_sessions.activity(db,int(time.time()*1000),self.release['fast_ui'].get('allow_admin_sessions',False))
+            if sessions['blocking']: raise RuntimeError('BUSY: live student or unapproved session remains')
             return json.dumps({'guard': 'PASS', 'scope': 'STOPPED' if args[-1]=='stopped' else 'RUNNING', 'image': self.current, 'attempts': 1, 'history_sha256': self.history()})
         return REAL_COMMAND(arguments, timeout)
 
@@ -337,6 +340,62 @@ class FastUI(unittest.TestCase):
             (self.bundle/'release.json').write_text(json.dumps(self.release))
             self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
             self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
+    def interruption_policy(self,allow_admin=True):
+        self.notification_policy()
+        self.release['fast_ui'].update(reviewed_scope='interruption-grace-v1',allow_admin_sessions=allow_admin)
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def session(self,role,expires=None):
+        with database_file(self.data/'metadata.sqlite') as db:
+            db.execute('INSERT OR REPLACE INTO sessions VALUES(?,?,?,?,?,?)',('synthetic-token',role,'synthetic-user',None,expires if expires is not None else int(time.time()*1000)+60000,'synthetic-csrf'))
+
+    def test_interruption_policy_admin_only_public_apply_preserves_current_data(self):
+        self.interruption_policy();self.session('admin');before=self.history()
+        self.cli('prepare');result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(self.history(),before)
+        self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertTrue(self.running);self.assertFalse(any('native-cohort' in part for call in self.calls for part in call))
+        with database_file(self.data/'metadata.sqlite') as db:self.assertEqual(db.execute('SELECT role FROM sessions').fetchall(),[('admin',)])
+
+    def test_interruption_policy_student_and_unknown_sessions_refuse_before_fence(self):
+        self.interruption_policy();self.cli('prepare');before=self.history()
+        for role in ('student','unknown'):
+            with self.subTest(role=role):
+                self.session(role);self.cli('apply',expect=1)
+                self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
+                self.assertEqual(self.history(),before)
+        self.session('student',expires=int(time.time()*1000)-1)
+        result,_=self.cli('apply');self.assertEqual(result['phase'],'ONLINE')
+
+    def test_interruption_policy_without_admin_exception_keeps_strict_session_guard(self):
+        self.interruption_policy(allow_admin=False);self.session('admin');self.cli('prepare')
+        self.cli('apply',expect=1);self.assertFalse(self.stopped_calls())
+
+    def test_interruption_policy_current_data_forward_recovery_preserves_snapshot(self):
+        self.interruption_policy();self.cli('prepare');before=self.history();self.fail_start=True
+        self.cli('apply',expect=1);snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite')
+        _,error=self.cli('rollback',expect=1);self.assertIn('qualified forward resume',error)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(self.history(),before);self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_interruption_policy_running_candidate_resumes_without_extra_start(self):
+        self.interruption_policy();self.cli('prepare')
+        with patch.object(deploy.Rollout,'finish_web_running',side_effect=RuntimeError('Synthetic preopening interruption')):
+            self.cli('apply',expect=1)
+        snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite');starts=len([call for call in self.calls if call[:3]==['/usr/bin/systemctl','start','ssh-exam.service']])
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+        self.assertEqual(len([call for call in self.calls if call[:3]==['/usr/bin/systemctl','start','ssh-exam.service']]),starts)
+
+    def test_interruption_policy_requires_exact_scope_source_cohort_and_admin_flag(self):
+        self.interruption_policy();original=json.loads(json.dumps(self.release))
+        for field,value in [('previous_reader_policy_compatible',True),('reviewed_scope','interruption-grace-v2'),('qualified_source','2'*40),('old_cli_sha256','3'*64),('worker_cli_sha256','unknown'),('allow_admin_sessions','yes')]:
+            with self.subTest(field=field):
+                self.release=json.loads(json.dumps(original));target=self.release if field.endswith('sha256') else self.release['fast_ui'];target[field]=value
+                (self.bundle/'release.json').write_text(json.dumps(self.release))
+                self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+                self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
 
     def test_dashboard_timezone_apply_and_forward_recovery_preserve_current_data(self):
         self.reviewed_web_cli(scope='exam-dashboard-timezone-v1');before=self.history()

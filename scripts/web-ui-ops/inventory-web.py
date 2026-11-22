@@ -2,6 +2,7 @@ from pathlib import Path
 import datetime,hashlib,json,os,sqlite3,subprocess,time,urllib.request,sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import deployment_pause
+import deployment_sessions
 import docker_image_identity
 stage=Path(sys.argv[1]); release=json.loads((stage/'release.json').read_text()); settings=release['fast_ui']
 root=Path(settings['project'])
@@ -54,8 +55,9 @@ if present:
   counts['video_unmapped_while_owned_pause']=counts.pop('video_unmapped_complete')
   allowed_video={key:counts.pop(key) for key in list(counts) if key.endswith('_while_owned_pause')}
  else:allowed_video={}
+session_activity=deployment_sessions.activity(db,now,settings.get('allow_admin_sessions',False))
+counts['sessions']=session_activity['blocking']
 for key,q,args in [
- ('sessions','SELECT count(*) FROM sessions WHERE expires>?',(now,)),
  ('continuations','SELECT count(*) FROM continuations WHERE consumed=0 AND expires>?',(now,)),
  ('future_deadlines','SELECT count(*) FROM attempts WHERE deadline>? OR original_deadline>?',(now,now)),
  ('grant_reviews',"SELECT count(*) FROM grant_issuance_previews WHERE status='REVIEW' AND expires>?",(now,)),
@@ -75,7 +77,7 @@ if stopped:
  container=inspect_container()
  assert not container['State']['Running'],'Unknown running gateway; do not take it over'
  assert subprocess.check_output(['systemctl','show','ssh-exam.service','-p','ActiveState','--value'],text=True,timeout=15).strip()=='inactive'
- print(json.dumps({'guard':'PASS','scope':'STOPPED','counts':counts,'video_pause':{'owned':pause,'stable_backlog':allowed_video} if present else None,'attempts':historical,'history_sha256':history_hash,'image':container['Image'],'fresh_native_guard_required':True,'production_writes':False}),flush=True)
+ print(json.dumps({'guard':'PASS','scope':'STOPPED','counts':counts,'session_activity':session_activity,'video_pause':{'owned':pause,'stable_backlog':allowed_video} if present else None,'attempts':historical,'history_sha256':history_hash,'image':container['Image'],'fresh_native_guard_required':True,'production_writes':False}),flush=True)
  raise SystemExit(0)
 snapshot=json.loads(db.execute('SELECT payload FROM agent_snapshot WHERE agent=?',(c['agent']['id'],)).fetchone()[0])
 h=snapshot['health'];roles=h['native_roles'];age=now-roles['observed']
@@ -100,4 +102,4 @@ for family in ('tcp','tcp6'):
 assert len(pids)==2 and connections==0,('BUSY/UNCERTAIN',len(pids),connections)
 with urllib.request.urlopen('http://127.0.0.1:3001/health/ready',timeout=5) as response:ready=json.load(response)
 assert ready['ready'] and ready['productionReady'] and not ready['maintenance']
-print(json.dumps({'guard':'PASS','host':'marco','at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'counts':counts,'video_pause':{'owned':pause,'stable_backlog':allowed_video} if present else None,'attempts':historical,'history_sha256':history_hash,'image':container['Image'],'container_processes':len(pids),'owned_tcp_connections':connections,'snapshot_age_ms':age,'nginx_sha256':hashlib.sha256(Path(settings['nginx_site']).read_bytes()).hexdigest(),'config_sha256':hashlib.sha256((root/'deploy/config/config.json').read_bytes()).hexdigest(),'env_sha256':hashlib.sha256(Path(settings['environment']).read_bytes()).hexdigest(),'production_writes':False}),flush=True)
+print(json.dumps({'guard':'PASS','host':'marco','at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'counts':counts,'session_activity':session_activity,'video_pause':{'owned':pause,'stable_backlog':allowed_video} if present else None,'attempts':historical,'history_sha256':history_hash,'image':container['Image'],'container_processes':len(pids),'owned_tcp_connections':connections,'snapshot_age_ms':age,'nginx_sha256':hashlib.sha256(Path(settings['nginx_site']).read_bytes()).hexdigest(),'config_sha256':hashlib.sha256((root/'deploy/config/config.json').read_bytes()).hexdigest(),'env_sha256':hashlib.sha256(Path(settings['environment']).read_bytes()).hexdigest(),'production_writes':False}),flush=True)

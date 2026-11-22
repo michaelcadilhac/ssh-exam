@@ -66,6 +66,22 @@ writer compatibility must be false. Use the existing forward CURRENT-data/origin
 snapshot recovery; old-writer reopening is refused. Pending SMTP delivery remains
 a drain blocker. See [policy and evidence](wake-lock-notifications.md).
 
+The exact `reviewed-web-read/interruption-grace-v1` scope installs the shared
+15-second browser interruption policy and verified input recovery, retaining
+schema37 and every installed/loaded native executable. It requires the full
+qualified source, separately pinned installed CLI and loaded source worker, and
+`previous_reader_policy_compatible: false`. Recovery uses the running candidate
+and CURRENT data; an older policy is never reopened automatically.
+
+For this scope, `allow_admin_sessions: true` implements the instructor-approved
+admin-only exception. Only unexpired sessions whose role is exactly `admin` are
+excluded from the blocking count, and the read-only receipt reports them. Student
+and unknown roles, live attempt/native ownership, TCP connections and every other
+drain condition still refuse. The default remains a complete session drain.
+This flag does not delete sessions or permit native service restarts. Scope,
+public-controller recovery and exact-image qualification are recorded in
+[the release preparation](interruption-grace-release.md).
+
 The separate exact mode `reviewed-web-native`, scope
 `live-exam-execution-policy-v1`, coordinates the matched native transition. It is
 not an unchanged-native attestation. Its release pins all four old/new native

@@ -18,6 +18,9 @@ older native/web writers cannot be restored or reopened in that scope.
 The reviewed-web-read/synchronized-monitoring-playback-v1 scope installs only
 the additive recording reader and UI, retaining schema37 and the native/CLI
 cohort. Its previous reader remains compatible with CURRENT data.
+The exact interruption-grace-v1 web-policy scope retains all native executables
+and requires CURRENT-data forward recovery. Its explicit allow_admin_sessions
+flag ignores only authenticated admin sessions; student/unknown sessions refuse.
 
 Root-private release.json/image-assets.json are required. release.fast_ui supplies
 absolute project, data, environment, nginx_site, nginx_main, shared_store,
@@ -49,6 +52,7 @@ import uuid
 
 from shared_backup import atomic_json, digest, monitoring_copy_scratch, private_directory, signature, sync_directory
 import deployment_pause
+import deployment_sessions
 import docker_image_identity
 import public_reopen_readiness
 
@@ -118,6 +122,9 @@ class Rollout:
         mode = self.settings.get('mode', 'ui')
         if mode not in ('ui', 'reviewed-web-read', 'reviewed-web-cli', 'reviewed-web-native'):
             raise ValueError('Unknown deployment mode; use ui or an explicitly registered reviewed scope')
+        allow_admin = self.settings.get('allow_admin_sessions', False)
+        if type(allow_admin) is not bool or (allow_admin and (mode != 'reviewed-web-read' or self.settings.get('reviewed_scope') != 'interruption-grace-v1')):
+            raise ValueError('Admin-only session drain requires the exact interruption-grace-v1 scope and an explicit boolean')
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
@@ -154,17 +161,18 @@ class Rollout:
         elif mode == 'reviewed-web-read':
             capture_scope = self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1'
             notification_scope = self.settings.get('reviewed_scope') == 'wake-lock-notifications-v1'
+            grace_scope = self.settings.get('reviewed_scope') == 'interruption-grace-v1'
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1', 'wake-lock-notifications-v1')
+                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
-                    or self.settings.get('previous_reader_policy_compatible') is not (not (capture_scope or notification_scope))
+                    or self.settings.get('previous_reader_policy_compatible') is not (not (capture_scope or notification_scope or grace_scope))
                     or self.settings.get('unchanged_backend_protocol_native') is not False):
                 raise ValueError('Reviewed recording reader requires its exact schema37 scope, qualified source and explicit matching previous-reader policy')
             if (not re.fullmatch('[a-f0-9]{64}', self.release['cli_sha256'])
                     or self.release['old_cli_sha256'] != self.release['cli_sha256']
                     or not re.fullmatch('[a-f0-9]{64}', self.release['worker_cli_sha256'])
-                    or (not notification_scope and self.release['worker_cli_sha256'] != self.release['cli_sha256'])):
+                    or (not (notification_scope or grace_scope) and self.release['worker_cli_sha256'] != self.release['cli_sha256'])):
                 raise ValueError('Reviewed recording reader must retain the installed and loaded native CLI cohort')
         elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
@@ -263,7 +271,7 @@ class Rollout:
         return self.settings.get('mode') == 'reviewed-web-native'
 
     def forward_web(self):
-        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('binary-vp9-capture-v1', 'wake-lock-notifications-v1'))
+        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1'))
                 or (self.settings.get('mode') == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'exam-dashboard-timezone-v1'))
 
     def transition(self):
@@ -477,7 +485,7 @@ class Rollout:
             command(arguments+(['--fence'] if fenced else []))
         sync_directory(self.state)
         inputs = [self.state/name for name in ('release.json', 'image-assets.json', 'previous-image-assets.json', 'previous-image.tar', 'normal.conf', 'fenced.conf', 'configuration.json')]
-        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'docker_image_identity.py', 'public_reopen_readiness.py')]
+        inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'deployment_sessions.py', 'docker_image_identity.py', 'public_reopen_readiness.py')]
         inputs += sorted(self.state.glob('image-identity-*.json'))
         if self.matched_native():
             inputs.append(SCRIPTS/'fresh_native_cohort_guard.py')
