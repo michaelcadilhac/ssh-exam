@@ -20,6 +20,7 @@ import { TerminalMenu } from "./terminal-menu.js";
 import {
   FOCUS_GRACE_MS,
   FOCUS_GRACE_REASON,
+  examConditionsReady,
   focusGraceSeconds,
 } from "../../../packages/protocol/focus-grace.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
@@ -125,9 +126,16 @@ export function Workspace({
     setExecutionPolicy(next);
   };
   const focusLostAt = useRef<number | null>(null);
+  const graceReason = useRef("");
+  const graceRecovery = useRef<Promise<void> | null>(null);
+  const graceExpired = useRef(false);
+  const graceOnlyTechnical = useRef(false);
+  const graceTechnicalWait = useRef(false);
+  const authenticationGapRef = useRef(false);
   const warnings = useRef(new Set<number>());
   const [attempt, setAttempt] = useState(attemptRef.current),
     [focusSeconds, setFocusSeconds] = useState<number | null>(null),
+    [interruptionPending, setInterruptionPending] = useState(false),
     [connected, setConnected] = useState(false),
     [hasConnected, setHasConnected] = useState(false),
     [locked, setLocked] = useState(attemptRef.current.state === "LOCKED"),
@@ -357,7 +365,7 @@ export function Workspace({
     attempt.state === "PREPARING" && (authenticationGap || recoveryExpired);
   const coveredByState =
     !!dialog ||
-    focusSeconds !== null ||
+    interruptionPending ||
     locked ||
     preflightRecovery ||
     ended ||
@@ -429,7 +437,20 @@ export function Workspace({
   });
   const clearFocusWarning = () => {
     focusLostAt.current = null;
+    graceReason.current = "";
+    graceRecovery.current = null;
+    graceOnlyTechnical.current = false;
+    graceTechnicalWait.current = false;
     setFocusSeconds(null);
+    setInterruptionPending(false);
+  };
+  const stopGapCapture = () => {
+    capture.current?.stop();
+    setScreen(false);
+    setCamera(false);
+    (navigator as any).keyboard?.unlock?.();
+    keyboard.current = false;
+    setKeys(false);
   };
   const sendPendingPolicy = () => {
     if (
@@ -440,8 +461,9 @@ export function Workspace({
     )
       send({ type: "incident", ...pendingPolicy.current });
   };
-  const incident = (reason: string) => {
+  const commitIncident = (reason: string) => {
     if (!armed.current) return;
+    graceExpired.current = true;
     clearFocusWarning();
     ++activationEpoch.current;
     localLocked.current = true;
@@ -466,32 +488,197 @@ export function Workspace({
       };
       sendPendingPolicy();
     } else send({ type: "incident", reason, diagnostics });
-    void capture.current?.sample("screen");
   };
-  const focusChanged = (focused: boolean) => {
+  const finishGrace = () => {
+    if (
+      graceOnlyTechnical.current &&
+      attemptRef.current.state === "ACTIVE" &&
+      !authenticationGapRef.current
+    ) {
+      // Coordination delay is not evidence of a student policy violation.
+      // Keep input blocked and require fresh verification when it returns.
+      graceTechnicalWait.current = true;
+      setFocusSeconds(null);
+      return;
+    }
+    if (attemptRef.current.state === "LOCKED" || authenticationGapRef.current) {
+      graceExpired.current = true;
+      clearFocusWarning();
+      localLocked.current = true;
+      setLocked(true);
+      if (authenticationGapRef.current) stopGapCapture();
+    } else commitIncident(FOCUS_GRACE_REASON);
+  };
+  const focusChanged = (
+    focused: boolean,
+    reason?: string,
+    held = false,
+    forced = false,
+  ) => {
+    // An old hold without its original cutoff cannot receive a fresh grace
+    // merely because its page was opened again. Keep existing review required.
+    if (
+      held &&
+      attemptRef.current.state === "LOCKED" &&
+      focusLostAt.current === null &&
+      !Number.isFinite(attemptRef.current.focus_lost_at)
+    )
+      return;
     if (
       (!armed.current || attemptRef.current.state !== "ACTIVE") &&
-      !activating.current
+      !activating.current &&
+      !(
+        authenticationGapRef.current &&
+        focusLostAt.current !== null &&
+        !graceExpired.current
+      ) &&
+      !(
+        attemptRef.current.state === "LOCKED" &&
+        !graceExpired.current &&
+        (held || focusLostAt.current !== null)
+      )
     ) {
       clearFocusWarning();
       return;
     }
+    // Upload/verification failure does not mean a live sharing track ended.
+    // Report physical browser conditions separately from technical input gates.
+    const ready = { ...conditions(), focus: focused };
+    const browserReady = examConditionsReady(ready, !!settings.webcam);
+    if (graceTechnicalWait.current && (!browserReady || held)) {
+      // A new observed condition loss after technical waiting gets its own
+      // first observation; the unknown transport interval proves no violation.
+      clearFocusWarning();
+    }
     const lost = focusLostAt.current;
-    if (lost !== null && performance.now() - lost >= FOCUS_GRACE_MS) {
-      incident(FOCUS_GRACE_REASON);
+    if (!browserReady || held) graceOnlyTechnical.current = false;
+    if (
+      lost !== null &&
+      performance.now() - lost >= FOCUS_GRACE_MS &&
+      !graceTechnicalWait.current
+    ) {
+      finishGrace();
       return;
     }
-    if (focused) {
+    const healthy =
+      !forced &&
+      captureFailures.current.size === 0 &&
+      !held &&
+      !authenticationGapRef.current &&
+      (attemptRef.current.state === "ACTIVE" ||
+        (activating.current && attemptRef.current.state === "PREPARING")) &&
+      examConditionsReady(ready, !!settings.webcam) &&
+      online.current &&
+      bound.current &&
+      controlReady.current;
+    if (healthy) {
       if (lost !== null) {
-        clearFocusWarning();
-        send({ type: "focus", focused: true });
+        if (attemptRef.current.state === "PREPARING") {
+          clearFocusWarning();
+          return;
+        }
+        if (graceRecovery.current) return;
+        const generation = attemptRef.current.generation;
+        // Reuse the existing fresh, challenged all-source readiness check. A
+        // queued sample from before recovery cannot clear this interruption.
+        const recovery = capture
+          .current!.verifyForBegin(!!settings.webcam)
+          .then(async () => {
+            if (
+              focusLostAt.current !== lost ||
+              !armed.current ||
+              generation !== attemptRef.current.generation ||
+              attemptRef.current.state !== "ACTIVE"
+            )
+              return;
+            const canonical = await api(
+              `/student/attempts/${id}/status`,
+              undefined,
+              page,
+            );
+            if (
+              canonical.attempt?.id !== id ||
+              canonical.attempt.state !== "ACTIVE" ||
+              canonical.attempt.generation !== generation ||
+              canonical.authenticationGap ||
+              focusLostAt.current !== lost ||
+              !armed.current ||
+              attemptRef.current.state !== "ACTIVE" ||
+              attemptRef.current.generation !== generation
+            )
+              return;
+            if (
+              performance.now() - lost >= FOCUS_GRACE_MS &&
+              !graceTechnicalWait.current
+            ) {
+              finishGrace();
+              return;
+            }
+            const current = conditions();
+            if (
+              !examConditionsReady(current, !!settings.webcam) ||
+              captureFailures.current.size ||
+              !bound.current ||
+              !online.current ||
+              !controlReady.current
+            )
+              return;
+            clearFocusWarning();
+            // Recovery can be fully coalesced by React. Restore the live gate
+            // after verified facts even when covered never changed in a render.
+            browserSSH.setInputEnabled(!coveredRef.current && interaction());
+            send({
+              type: "conditions",
+              generation,
+              connected: true,
+              ready: current,
+            });
+          })
+          .catch(() => {})
+          .finally(() => {
+            if (graceRecovery.current === recovery)
+              graceRecovery.current = null;
+          });
+        graceRecovery.current = recovery;
       }
     } else if (lost === null) {
-      focusLostAt.current = performance.now();
-      setFocusSeconds(FOCUS_GRACE_MS / 1000);
-      send({ type: "focus", focused: false });
+      setInterruptionPending(true);
+      graceOnlyTechnical.current =
+        browserReady && !held && !authenticationGapRef.current;
+      const firstServerLoss = attemptRef.current.focus_lost_at;
+      const elapsed = Number.isFinite(firstServerLoss)
+        ? Math.max(
+            0,
+            serverClock.current.now +
+              performance.now() -
+              serverClock.current.at -
+              firstServerLoss,
+          )
+        : 0;
+      focusLostAt.current = performance.now() - elapsed;
+      graceReason.current =
+        reason ||
+        readinessMessage(ready, settings.webcam, "continuing") ||
+        "Connection interrupted";
+      setFocusSeconds(
+        focusGraceSeconds(focusLostAt.current, performance.now()),
+      );
+      if (elapsed >= FOCUS_GRACE_MS) {
+        finishGrace();
+        return;
+      }
+      browserSSH.setInputEnabled(false);
+      send({
+        type: "conditions",
+        generation: attemptRef.current.generation,
+        connected: online.current && bound.current && controlReady.current,
+        ready,
+      });
+      void capture.current?.sample("screen").catch(() => {});
     }
   };
+  const incident = (reason: string) =>
+    focusChanged(document.hasFocus(), reason, false, true);
   const interaction = () =>
     captureFailures.current.size === 0 &&
     !localLocked.current &&
@@ -898,6 +1085,10 @@ export function Workspace({
         if (healthy) captureFailures.current.delete(source);
         else captureFailures.current.add(source);
         setCaptureDelayed(captureFailures.current.size !== 0);
+        focusChanged(
+          document.hasFocus(),
+          healthy ? undefined : `${source} capture interrupted`,
+        );
         // React may coalesce failed/healthy samples back to the same rendered
         // state. Refresh the ingress gate from live facts too; otherwise its
         // immediate failure revocation can survive recovery indefinitely.
@@ -918,8 +1109,15 @@ export function Workspace({
       // reset recovery feedback or invalidate an in-progress recovery action.
       if (gap === lastAuthenticationGap) return;
       lastAuthenticationGap = gap;
+      authenticationGapRef.current = gap;
       setAuthenticationGap(gap);
       if (gap) {
+        if (
+          attemptRef.current.start &&
+          !graceExpired.current &&
+          !pendingPolicy.current
+        )
+          focusChanged(document.hasFocus(), "SSH connection interrupted", true);
         setRecoveryFeedback(null);
         ++activationEpoch.current;
         browserSSH.setInputEnabled(false);
@@ -931,12 +1129,8 @@ export function Workspace({
           armed.current = false;
           setLocked(true);
         }
-        capture.current?.stop();
-        setScreen(false);
-        setCamera(false);
-        (navigator as any).keyboard?.unlock?.();
-        keyboard.current = false;
-        setKeys(false);
+        if (focusLostAt.current === null || graceExpired.current)
+          stopGapCapture();
       }
     };
     const interrupt = () => {
@@ -948,6 +1142,8 @@ export function Workspace({
       setConnected(false);
       if (networkLossAt.current === null)
         networkLossAt.current = performance.now();
+      if (attemptRef.current.start && !graceExpired.current)
+        incident("Connection interrupted");
     };
     const contactExpired = () => {
       if (attemptRef.current.monitoring_mode !== "v1") {
@@ -1053,6 +1249,12 @@ export function Workspace({
           }
           updateAuthenticationGap(!!m.authenticationGap);
           if (m.attempt.state === "LOCKED") {
+            if (!graceExpired.current && !pendingPolicy.current)
+              focusChanged(
+                document.hasFocus(),
+                m.attempt.reason || "Connection interrupted",
+                true,
+              );
             armed.current = false;
             localLocked.current = true;
             setLocked(true);
@@ -1150,7 +1352,7 @@ export function Workspace({
           if (m.code === "page-ownership") {
             if (m.pane) remove(m.pane);
             setMessage(m.error);
-            incident(m.error);
+            commitIncident(m.error);
           } else if (m.pane && !panes.current.get(m.pane)?.opened) {
             const p = panes.current.get(m.pane);
             if (!p) return; // A closed/retired opening cannot cover healthy work.
@@ -1259,10 +1461,21 @@ export function Workspace({
       )
         incident("Required fullscreen/capture condition lost");
       focusChanged(r.focus);
+      if (armed.current)
+        send({
+          type: "conditions",
+          generation: attemptRef.current.generation,
+          connected: online.current && bound.current && controlReady.current,
+          ready: r,
+        });
       if (attemptRef.current.state === "PREPARING")
         send({ type: "preflight-contact" });
-      else if (r.fullscreen && r.visible && r.keyboard && r.screen)
-        send({ type: "heartbeat", ready: r });
+      else if (armed.current)
+        send({
+          type: "heartbeat",
+          generation: attemptRef.current.generation,
+          ready: r,
+        });
       if (
         (armed.current ||
           (attemptRef.current.monitoring_mode === "v1" &&
@@ -1289,16 +1502,18 @@ export function Workspace({
       if (focusLostAt.current !== null) {
         if (
           (!armed.current || attemptRef.current.state !== "ACTIVE") &&
+          attemptRef.current.state !== "LOCKED" &&
+          !authenticationGapRef.current &&
           !activating.current
         )
           clearFocusWarning();
-        else {
+        else if (!graceTechnicalWait.current) {
           const left = focusGraceSeconds(
             focusLostAt.current,
             performance.now(),
           );
           setFocusSeconds(left);
-          if (left === 0) incident(FOCUS_GRACE_REASON);
+          if (left === 0) finishGrace();
         }
       }
       setClock(
@@ -1353,6 +1568,12 @@ export function Workspace({
             result.serverNow,
           );
           if (result.attempt.state === "LOCKED") {
+            if (!graceExpired.current && !pendingPolicy.current)
+              focusChanged(
+                document.hasFocus(),
+                result.attempt.reason || "Connection interrupted",
+                true,
+              );
             armed.current = false;
             localLocked.current = true;
             setLocked(true);
@@ -1410,10 +1631,11 @@ export function Workspace({
           keyboard.current = false;
           setKeys(false);
           incident("Workspace exited fullscreen");
-        }
+        } else focusChanged(document.hasFocus());
       },
       visibility = () => {
         if (document.hidden) incident("Document became hidden");
+        else focusChanged(document.hasFocus());
       };
     window.addEventListener("blur", blur);
     window.addEventListener("focus", focus);
@@ -1535,8 +1757,18 @@ export function Workspace({
         300,
       );
       armed.current = true;
+      if (
+        epoch !== activationEpoch.current ||
+        !bound.current ||
+        !online.current ||
+        !controlReady.current
+      ) {
+        commitIncident(reason);
+        throw Error(
+          `${reason}. Reconnect and request instructor authorization.`,
+        );
+      }
       incident(reason);
-      throw Error(`${reason}. Reconnect and request instructor authorization.`);
     }
     focusChanged(r.focus);
   };
@@ -1619,6 +1851,7 @@ export function Workspace({
     setClock(serverClock.current.now);
     armed.current = attemptRef.current.state === "ACTIVE";
     if (armed.current) {
+      graceExpired.current = false;
       confirmActivation(epoch);
       setStartOutcomeUnknown(false);
       localLocked.current = false;
@@ -1717,6 +1950,7 @@ export function Workspace({
     localLocked.current = false;
     setLocked(false);
     armed.current = true;
+    graceExpired.current = false;
     setResumedGeneration(attemptRef.current.generation);
     for (const p of panes.current.values()) {
       p.fit.fit();
@@ -1929,14 +2163,65 @@ export function Workspace({
             Exam resumed.
           </div>
         )}
-      {focusSeconds !== null && attempt.state === "ACTIVE" && !locked && (
-        <div className="focus-warning" role="alert" aria-live="polite">
-          <span aria-hidden="true">⚠</span>
-          <strong>
-            Return to the exam · {focusSeconds}s before work pauses
-          </strong>
-        </div>
-      )}
+      {focusSeconds !== null &&
+        ["ACTIVE", "LOCKED"].includes(attempt.state) && (
+          <div className="focus-warning" role="alert" aria-live="polite">
+            <span aria-hidden="true">⚠</span>
+            <strong>
+              Typing paused · {focusSeconds}s to restore exam checks
+            </strong>
+            <span>{graceReason.current}</span>
+            {!isFullscreen && (
+              <button
+                onClick={() =>
+                  action(async () => {
+                    await fullscreen();
+                    await lockKeyboard();
+                    focusChanged(document.hasFocus());
+                  })
+                }
+              >
+                Return to fullscreen
+              </button>
+            )}
+            {isFullscreen && !keys && (
+              <button
+                onClick={() =>
+                  action(async () => {
+                    await lockKeyboard();
+                    focusChanged(document.hasFocus());
+                  })
+                }
+              >
+                Lock keyboard
+              </button>
+            )}
+            {!screen && (
+              <button
+                onClick={() =>
+                  action(async () => {
+                    await capture.current!.setup("screen");
+                    focusChanged(document.hasFocus());
+                  })
+                }
+              >
+                Restore screen sharing
+              </button>
+            )}
+            {settings.webcam && !camera && (
+              <button
+                onClick={() =>
+                  action(async () => {
+                    await capture.current!.setup("webcam");
+                    focusChanged(document.hasFocus());
+                  })
+                }
+              >
+                Restore webcam
+              </button>
+            )}
+          </div>
+        )}
       {attempt.state === "PREPARING" && (
         <div className="preflight" inert={coveredByState}>
           <button
@@ -2059,6 +2344,7 @@ export function Workspace({
         </div>
       )}
       {(locked || (!connected && attempt.state === "ACTIVE")) &&
+        focusSeconds === null &&
         !ended &&
         !protecting && (
           <div className="lock-overlay">

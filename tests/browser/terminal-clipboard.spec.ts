@@ -121,9 +121,13 @@ test("covered and locked terminals cannot replace or paste the attempt clipboard
   await paste(page);
   await expect.poll(() => pasted(f)).toBe("allowed");
   await page.evaluate(() => document.exitFullscreen());
-  await expect(
-    page.getByRole("heading", { name: "Work paused" }),
-  ).toBeVisible();
+  await expect(page.locator(".focus-warning")).toBeVisible();
+  output(f, osc("grace-blocked"));
+  await page.keyboard.press("Control+Shift+V");
+  expect(pasted(f)).toBe("allowed");
+  await expect(page.getByRole("heading", { name: "Work paused" })).toBeVisible({
+    timeout: 20000,
+  });
   output(f, osc("locked"));
   await page.keyboard.press("Control+Shift+V");
   expect(pasted(f)).toBe("allowed");

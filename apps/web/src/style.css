@@ -945,6 +945,8 @@ summary {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  width: min(720px, calc(100% - 32px));
   max-width: calc(100% - 32px);
   padding: 14px 20px;
   color: var(--warning);
@@ -952,9 +954,9 @@ summary {
   border: 2px solid var(--warning-accent);
   border-radius: 8px;
   box-shadow: 0 4px 20px var(--shadow);
-  pointer-events: none;
+  pointer-events: auto;
 }
-.focus-warning > span {
+.focus-warning > span[aria-hidden] {
   font-size: 26px;
 }
 

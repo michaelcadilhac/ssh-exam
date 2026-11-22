@@ -1,3 +1,10 @@
+November 22 interruption grace is implemented and tested locally, not deployed. One 15-second window covers overlapping browser/connection
+interruptions, pausing typing while preserving available capture and the running
+clock. Recovery needs fresh challenged capture and current server approval. Native
+holds and authoritative deadlines remain enforced. This intentionally replaces
+the former focus-only grace and immediate browser-condition escalation.
+[Policy and evidence](docs/interruption-grace.md).
+
 November19 matched release DEPLOYED on csc-sys and externally verified online.
 Runtimef8abea7; controller5fa4b10. All25publicassets match,41data contracts preserved,
 native roles verified,32connection limit unchanged,SSH/relay retained. Cutover460.5s.

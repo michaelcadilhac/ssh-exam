@@ -322,9 +322,9 @@ export class Lifecycle {
       )
         this.store.db
           .prepare(
-            "UPDATE attempts SET state='LOCKED',generation=generation+1,reason=? WHERE id=?",
+            "UPDATE attempts SET state='LOCKED',generation=generation+1,reason=?,focus_lost_at=COALESCE(focus_lost_at,?) WHERE id=?",
           )
-          .run(reason, id);
+          .run(reason, now(), id);
       if (granted)
         this.store.db
           .prepare("DELETE FROM continuations WHERE attempt=?")
@@ -353,6 +353,7 @@ export class Lifecycle {
             `Exam interrupted: ${a.username}`,
             `${a.exam}: ${JSON.stringify(reason)}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
             reason,
+            (b.focus_lost_at ?? now()) + FOCUS_GRACE_MS,
           );
       }
       this.store.audit("gateway", "lock", id, reason);
@@ -905,9 +906,9 @@ export class Lifecycle {
             "Monitoring authorization expired; instructor authorization required";
       this.store.db
         .prepare(
-          "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=? WHERE id=?",
+          "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=?,focus_lost_at=COALESCE(focus_lost_at,?) WHERE id=?",
         )
-        .run(remote.generation || 0, reason, id);
+        .run(remote.generation || 0, reason, now(), id);
       this.store.interruptions.pause(this.store.attempt(id), reason);
       if (remote.reason && remote.reason !== reason)
         this.store.interruptions.pause(

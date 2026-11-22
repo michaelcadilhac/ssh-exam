@@ -5,7 +5,7 @@ import {
   type Page,
   type APIRequestContext,
 } from "@playwright/test";
-import { simulatedMedia, ready } from "./transition-fixture.js";
+import { simulatedMedia, ready, gate } from "./transition-fixture.js";
 
 async function begin(page: Page, username: string) {
   await simulatedMedia(page);
@@ -15,13 +15,9 @@ async function begin(page: Page, username: string) {
   ).toBe(true);
   await page.getByLabel("Exam ID", { exact: true }).fill("retained-restart");
   await page.getByLabel("Username").fill(username);
-  await page
-    .getByRole("button", { name: "Sign in", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByLabel("Password", { exact: true }).fill("shared-password");
-  await page
-    .getByRole("button", { name: "Continue", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByRole("button", { name: "Check setup and practice", exact: true })
     .click({ timeout: 10000 });
@@ -100,10 +96,10 @@ function sameInterval(original: any) {
   );
 }
 
-test("capture recovery restores terminal input when React coalesces the failed and healthy samples", async ({
+test("capture recovery restores terminal input after coalesced samples and a long verification outage", async ({
   page,
 }) => {
-  test.setTimeout(45000);
+  test.setTimeout(60000);
   page.setDefaultTimeout(5000);
   // Delay only React's null MessageChannel task, not capture, sockets, worker
   // messages or browser timers. This makes the otherwise load-dependent pair of
@@ -124,9 +120,13 @@ test("capture recovery restores terminal input when React coalesces the failed a
       }
     };
   });
-  let failNext = false;
+  let failNext = false,
+    failUpload = false;
   await page.route("**/capture-challenges", async (route) => {
-    if (failNext && route.request().postDataJSON().source === "screen") {
+    if (
+      (failNext || failUpload) &&
+      route.request().postDataJSON().source === "screen"
+    ) {
       failNext = false;
       await route.fulfill({
         status: 503,
@@ -136,6 +136,12 @@ test("capture recovery restores terminal input when React coalesces the failed a
   });
   const original = await begin(page, "retained15"),
     before = await runtime(page);
+  const reverified = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/monitoring-readiness") &&
+      response.status() === 200,
+    { timeout: 15000 },
+  );
   await page.locator(".xterm-helper-textarea").last().focus();
   await page.keyboard.type("coalesced-private-");
   await expect(page.locator(".xterm-rows")).toContainText("coalesced-private-");
@@ -180,16 +186,63 @@ test("capture recovery restores terminal input when React coalesces the failed a
         port.dispatchEvent(new MessageEvent("message", { data: null }));
     });
   }
+  await (await reverified).finished();
+  // A successful upload precedes the recovery's readiness/status handshake.
+  // Observe a subsequent canonical response before asserting actual input.
+  await page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/attempts/${original.id}/status`) &&
+      response.status() === 200,
+    { timeout: 5000 },
+  );
   await expect(
     page.getByText("Monitoring verification delayed · input blocked", {
       exact: true,
     }),
   ).toHaveCount(0);
+  await expect(page.locator(".workspace .window-area")).not.toHaveAttribute(
+    "inert",
+    "",
+  );
   await page.locator(".xterm-helper-textarea").last().focus();
   await page.keyboard.type("recovered");
   await page.keyboard.press("Enter");
   await expect(page.locator(".xterm-rows")).toContainText(
     "Echo: coalesced-private-recovered",
+  );
+  const failedAgain = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/capture-challenges") &&
+      response.status() === 503,
+    { timeout: 7000 },
+  );
+  failUpload = true;
+  await (await failedAgain).finished();
+  await page.waitForTimeout(17000);
+  expect(
+    (await (await page.request.get("/api/student/exam")).json()).attempt,
+  ).toMatchObject({ ...sameInterval(original), state: "ACTIVE" });
+  await expect(page.locator(".workspace .window-area")).toHaveAttribute(
+    "inert",
+    "",
+  );
+  await expect(
+    page.getByRole("heading", {
+      name: /^(Work paused|Instructor review required)$/,
+    }),
+  ).toHaveCount(0);
+  failUpload = false;
+  await expect(page.locator(".workspace .window-area")).not.toHaveAttribute(
+    "inert",
+    "",
+    { timeout: 10000 },
+  );
+  await page.locator(".xterm-helper-textarea").last().focus();
+  await expect(page.locator(".xterm-helper-textarea").last()).toBeFocused();
+  await page.keyboard.type("slow-verification-recovered");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".xterm-rows")).toContainText(
+    "Echo: slow-verification-recovered",
   );
   expect(
     (await (await page.request.get("/api/student/exam")).json()).attempt,
@@ -304,10 +357,7 @@ test("an actual gateway restart re-verifies the same live SSH and private shell 
     });
   });
   page.on("response", (response) => {
-    if (
-      isChallengedCapture(response.url()) &&
-      response.status() === 200
-    )
+    if (isChallengedCapture(response.url()) && response.status() === 200)
       uploads++;
   });
   const original = await begin(page, "retained07");
@@ -522,7 +572,7 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
   await page.keyboard.type("approved-private-");
   await expect(page.locator(".xterm-rows")).toContainText("approved-private-");
   await page.evaluate(() => document.exitFullscreen());
-  await expect(page.locator(".lock-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(page.locator(".lock-overlay")).toBeVisible({ timeout: 20000 });
   const paused = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(paused).toMatchObject({
@@ -627,10 +677,7 @@ test("proxy failure and gateway restart preserve a policy hold and its scoped ap
   await expect(keyboard).toHaveAttribute("aria-pressed", "true");
   await page.waitForResponse(
     (response) => {
-      if (
-        !isChallengedCapture(response.url()) ||
-        response.status() !== 200
-      )
+      if (!isChallengedCapture(response.url()) || response.status() !== 200)
         return false;
       const sample = captureMetadata(response.request());
       return (
@@ -689,6 +736,7 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   test.setTimeout(75000);
   page.setDefaultTimeout(5000);
   let releaseReports = false;
+  const firstReport = gate();
   const dropped: any[] = [],
     forwarded: any[] = [],
     receipts: any[] = [],
@@ -704,6 +752,7 @@ test("a policy report lost across gateway replacement is acknowledged before pos
       if (message.type === "incident") {
         if (!releaseReports) {
           dropped.push(message);
+          firstReport.release();
           return;
         }
         forwarded.push(message);
@@ -712,6 +761,15 @@ test("a policy report lost across gateway replacement is acknowledged before pos
     });
     upstream.onMessage((raw) => {
       const message = JSON.parse(String(raw));
+      // Keep the browser at its own expiry boundary until its report exists.
+      // The gateway still enforces/persists its hold independently; delaying
+      // these observations makes the lost-report fault deterministic.
+      if (
+        message.type === "state" &&
+        message.attempt?.state === "LOCKED" &&
+        dropped.length === 0
+      )
+        return;
       if (message.type === "incident-recorded") {
         receipts.push(message);
         if (receipts.length === 1) {
@@ -722,6 +780,18 @@ test("a policy report lost across gateway replacement is acknowledged before pos
       socket.send(raw);
     });
   });
+  await page.route("**/api/student/attempts/*/status", async (route) => {
+    const response = await route.fetch();
+    if (
+      (await response.json()).attempt?.state === "LOCKED" &&
+      dropped.length === 0
+    )
+      await Promise.race([
+        firstReport.promise,
+        new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+      ]);
+    await route.fulfill({ response });
+  });
   const original = await begin(page, "retained12"),
     before = await runtime(page),
     owner = JSON.parse(original.registered_owner);
@@ -729,7 +799,9 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   await page.keyboard.type("policy-private-");
   await expect(page.locator(".xterm-rows")).toContainText("policy-private-");
   await page.evaluate(() => document.exitFullscreen());
-  await expect.poll(() => dropped.length, { timeout: 5000 }).toBeGreaterThan(0);
+  await expect
+    .poll(() => dropped.length, { timeout: 20000 })
+    .toBeGreaterThan(0);
   const policyCutoff = await page.evaluate(() => performance.now());
   await page
     .getByRole("button", { name: "Restore fullscreen", exact: true })
@@ -744,10 +816,14 @@ test("a policy report lost across gateway replacement is acknowledged before pos
   // conditions recover. Observe a full five-second capture cadence; do not
   // inject initial-setup failures or require a negative frame that cannot exist.
   await page.waitForTimeout(5500);
-  expect(captures.filter((sample) => sample.monotonic > policyCutoff)).toEqual([]);
+  expect(captures.filter((sample) => sample.monotonic > policyCutoff)).toEqual(
+    [],
+  );
   expect(
     (await (await page.request.get("/api/student/exam")).json()).attempt.state,
-  ).toBe("ACTIVE");
+  ).toBe("LOCKED");
+  // The server's independent first-loss expiry still holds the attempt even
+  // while the client incident/receipt is withheld.
   await restart(page, before.pid);
   releaseReports = true;
   await expect
@@ -765,7 +841,9 @@ test("a policy report lost across gateway replacement is acknowledged before pos
     .poll(() => receipts.length, { timeout: 5000 })
     .toBeGreaterThan(0);
   await page.waitForTimeout(5500);
-  expect(captures.filter((sample) => sample.monotonic > policyCutoff)).toEqual([]);
+  expect(captures.filter((sample) => sample.monotonic > policyCutoff)).toEqual(
+    [],
+  );
   const login = await request.post("/api/admin/login", {
     headers: { origin: "http://localhost:3100" },
     data: { username: "instructor", password: "fixture-password" },
@@ -877,7 +955,7 @@ test("gateway recovery completes a durably recorded policy pause rejected by nat
   await page.evaluate(() => document.exitFullscreen());
   await expect
     .poll(async () => (await runtime(page)).refusedRetainedPauses, {
-      timeout: 10000,
+      timeout: 20000,
     })
     .toContain(original.id);
   await expect
@@ -942,10 +1020,7 @@ test("gateway recovery completes a durably recorded policy pause rejected by nat
     await keyboard.click();
   await page.waitForResponse(
     (response) => {
-      if (
-        !isChallengedCapture(response.url()) ||
-        response.status() !== 200
-      )
+      if (!isChallengedCapture(response.url()) || response.status() !== 200)
         return false;
       const sample = captureMetadata(response.request());
       return (

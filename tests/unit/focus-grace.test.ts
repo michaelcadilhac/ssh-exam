@@ -50,11 +50,11 @@ function setup(state = "ACTIVE") {
     },
   };
 }
-it("retains an active connection through focus loss up to 60 seconds, without extending deadline", async () => {
+it("retains an active connection through focus loss up to 15 seconds, without extending deadline", async () => {
   const f = setup(),
     deadline = f.store.attempt("a").deadline;
   await reportFocus(f.life, "a", false);
-  f.advance(59999);
+  f.advance(14999);
   await f.life.tick();
   expect(f.store.attempt("a").state).toBe("ACTIVE");
   await reportFocus(f.life, "a", true);
@@ -72,7 +72,7 @@ it("repeated blur and heartbeats cannot restart the server countdown", async () 
   f.advance(12000);
   await reportFocus(f.life, "a", false);
   expect(f.store.attempt("a").focus_lost_at).toBe(first);
-  f.advance(48000);
+  f.advance(3000);
   await f.life.tick();
   expect(f.store.attempt("a")).toMatchObject({
     state: "LOCKED",
@@ -83,7 +83,7 @@ it("repeated blur and heartbeats cannot restart the server countdown", async () 
 it("a late focus return cannot evade the cutoff between server timer ticks", async () => {
   const f = setup();
   await reportFocus(f.life, "a", false);
-  f.advance(60000);
+  f.advance(15000);
   await reportFocus(f.life, "a", true);
   expect(f.store.attempt("a").state).toBe("LOCKED");
   await reportFocus(f.life, "a", true);
@@ -93,11 +93,9 @@ it("does not delay other incidents or lost-network enforcement", async () => {
   const f = setup();
   f.advance(1000, false);
   await reportFocus(f.life, "a", false);
-  f.advance(59001, false);
+  f.advance(15000, false);
   await f.life.tick();
-  expect(f.store.attempt("a").reason).toBe(
-    "Client contact exceeded 60 seconds",
-  );
+  expect(f.store.attempt("a").reason).toBe(FOCUS_GRACE_REASON);
 });
 it("ignores focus changes during preflight and keeps start/continue readiness strict", async () => {
   const f = setup("PREPARING");
@@ -123,20 +121,50 @@ it("ignores focus changes during preflight and keeps start/continue readiness st
       type: "heartbeat",
       ready: { ...ready, visible: false },
     }).success,
-  ).toBe(false);
+  ).toBe(true);
   expect(
     messageSchema.safeParse({
       v: 1,
       type: "heartbeat",
       ready: { ...ready, fullscreen: false },
     }).success,
-  ).toBe(false);
+  ).toBe(true);
 });
-it("shows a countdown with a full 60 seconds, including a monotonic zero start", () => {
+it("shows a countdown with a full 15 seconds, including a monotonic zero start", () => {
   expect(focusGraceSeconds(null, 0)).toBeNull();
-  expect(focusGraceSeconds(0, 0)).toBe(60);
-  expect(focusGraceSeconds(0, 1)).toBe(60);
-  expect(focusGraceSeconds(0, 1000)).toBe(59);
-  expect(focusGraceSeconds(0, 59999)).toBe(1);
-  expect(focusGraceSeconds(0, 60000)).toBe(0);
+  expect(focusGraceSeconds(0, 0)).toBe(15);
+  expect(focusGraceSeconds(0, 1)).toBe(15);
+  expect(focusGraceSeconds(0, 1000)).toBe(14);
+  expect(focusGraceSeconds(0, 14999)).toBe(1);
+  expect(focusGraceSeconds(0, 15000)).toBe(0);
+});
+
+it("contains real SSH loss immediately but preserves the first grace and delays its notification", async () => {
+  const f = setup();
+  const first = Date.now();
+  const deadline = f.store.attempt("a").deadline;
+  await f.life.lock("a", "SSH transport lost");
+  expect(f.store.attempt("a")).toMatchObject({
+    state: "LOCKED",
+    focus_lost_at: first,
+    deadline,
+  });
+  expect(f.paused()).toBe(1);
+  expect(
+    f.store.db
+      .prepare(
+        "SELECT next FROM outbox WHERE subject LIKE 'Exam interrupted:%'",
+      )
+      .get(),
+  ).toEqual({ next: first + 15000 });
+  f.advance(5000);
+  await f.life.lock("a", "SSH transport lost");
+  expect(f.store.attempt("a").focus_lost_at).toBe(first);
+  expect(
+    f.store.db
+      .prepare(
+        "SELECT count(*) AS n FROM outbox WHERE subject LIKE 'Exam interrupted:%'",
+      )
+      .get(),
+  ).toEqual({ n: 1 });
 });

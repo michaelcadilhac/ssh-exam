@@ -91,6 +91,7 @@ it("fresh frames and technical identity transfer never cure a gap or genuine neg
     const proof = f.ledger.issueForNativeChallenge(f.binding, f.request());
     f.at(negative ? 1000 : WINDOW);
     f.full(negative ? { ...ready, visible: false } : ready);
+    if (negative) f.at(16000);
     const next = {
       ...owner,
       generation: owner.generation + 1,
@@ -246,6 +247,7 @@ it("never aligns a witnessed gap, a negative or unknown focus history", () => {
       f.at(WINDOW);
       f.full();
     }
+    if (mode === "negative") f.at(15000);
     const before = f.ledger.inspect(f.binding);
     expect(() =>
       f.ledger.issueForNativeChallenge(f.binding, {
@@ -363,7 +365,7 @@ it("combined capture preserves original challenge age and requires every saved c
   ).toThrow(/challenge/);
 });
 
-it("late negative combined capture cannot hide behind newer positive policy, while older blur cannot restart an already-restored focus grace", () => {
+it("older capture losses cannot supersede newer verified recovery; a fresh loss still expires", () => {
   const f = fixture();
   const old = f.ledger.issueBrowserChallenge(f.binding, "screen");
   const fresh = f.ledger.issueBrowserChallenge(f.binding, "webcam");
@@ -385,6 +387,9 @@ it("late negative combined capture cannot hide behind newer positive policy, whi
     ...ready,
     fullscreen: false,
   });
+  expect(f.ledger.inspect(f.binding).state).toBe("fresh");
+  f.policy({ ...ready, fullscreen: false });
+  f.at(17000);
   expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
   expect(() =>
     f.ledger.issueForNativeChallenge(f.binding, f.request()),
@@ -406,13 +411,13 @@ it("combined focus loss keeps the existing grace and cannot mature across missin
   observe(false, 2);
   f.at(10000);
   observe(false, 3);
-  f.at(15000);
+  f.at(14000);
   observe(false, 4);
-  f.at(59999);
+  f.at(14999);
   expect(f.ledger.issueForNativeChallenge(f.binding, f.request()).age_ms).toBe(
     59999,
   );
-  f.at(60000);
+  f.at(15000);
   expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
   const gap = fixture(false);
   const challenge = gap.ledger.issueBrowserChallenge(gap.binding, "screen");
@@ -555,11 +560,16 @@ it("does not replay an old bootstrap proof as current coverage after a short gap
 });
 
 it.each(["fullscreen", "visible", "keyboard", "screen", "webcam"] as const)(
-  "keeps actual %s loss sticky instead of automatically recovering it",
+  "allows fifteen seconds for %s recovery and makes unresolved expiry sticky",
   (condition) => {
     const f = fixture();
     f.full();
     f.policy({ ...ready, [condition]: false });
+    expect(f.ledger.inspect(f.binding)).toMatchObject({
+      state: "fresh",
+      remainingMS: 15000,
+    });
+    f.at(15000);
     expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
     expect(() => f.policy()).toThrow(/policy-blocked/);
     expect(() =>
@@ -578,13 +588,50 @@ it.each(["fullscreen", "visible", "keyboard", "screen", "webcam"] as const)(
   },
 );
 
+it.each([
+  "fullscreen",
+  "visible",
+  "keyboard",
+  "screen",
+  "webcam",
+  "focus",
+] as const)(
+  "restores %s inside fifteen seconds without a new clock, coverage or owner",
+  (condition) => {
+    const f = fixture();
+    f.full();
+    const initial = f.ledger.inspect(f.binding).coverageEpoch;
+    f.at(1000);
+    f.full({ ...ready, [condition]: false });
+    expect(f.ledger.inspect(f.binding).remainingMS).toBe(15000);
+    f.at(15999);
+    f.full();
+    expect(f.ledger.inspect(f.binding)).toMatchObject({
+      state: "fresh",
+      coverageEpoch: initial,
+      gaps: 0,
+      remainingMS: WINDOW,
+    });
+  },
+);
+
+it("changing failed conditions cannot restart the shared grace", () => {
+  const f = fixture();
+  f.full({ ...ready, visible: false });
+  f.at(10000);
+  f.full({ ...ready, webcam: false });
+  expect(f.ledger.inspect(f.binding).remainingMS).toBe(5000);
+  f.at(15000);
+  expect(() => f.full()).toThrow(/policy-blocked/);
+});
+
 it("preserves focus grace across repeated reports, clips evidence to its cutoff and never accepts late restoration", () => {
   const f = fixture();
   f.full({ ...ready, focus: false });
   const coverage = f.ledger.inspect(f.binding).coverageEpoch;
   f.at(10000);
   f.full({ ...ready, focus: false });
-  f.at(59500);
+  f.at(14500);
   f.full({ ...ready, focus: false });
   const proof = f.ledger.issueForNativeChallenge(
     f.binding,
@@ -596,7 +643,7 @@ it("preserves focus grace across repeated reports, clips evidence to its cutoff 
     remainingMS: 500,
     gaps: 0,
   });
-  f.at(60000);
+  f.at(15000);
   expect(() => f.policy()).toThrow(/policy-blocked/);
   expect(f.ledger.inspect(f.binding).state).toBe("policy-blocked");
 });
@@ -606,7 +653,7 @@ it("does not mature stale blur across an unknown monitoring gap into a policy vi
   f.full({ ...ready, focus: false });
   const original = f.ledger.issueForNativeChallenge(f.binding, f.request());
   // No observations across this interval: e.g. a suspended gateway. Required
-  // monitoring expires at60s alongside the focus grace. Time alone proves no
+  // monitoring observations expire at 60s, after the 15s recovery cutoff. Time alone proves no
   // continuous blur; work still stops and the old coverage cannot be restored.
   f.at(60001);
   expect(f.ledger.inspect(f.binding)).toMatchObject({
@@ -741,6 +788,12 @@ it("uses only monotonic time and refuses backwards/nonfinite clock readings", ()
   expect(() => f.ledger.inspect(f.binding)).toThrow(/clock/);
   f.at(NaN);
   expect(() => f.ledger.inspect(f.binding)).toThrow(/clock/);
+});
+
+it("keeps full evidence-window arithmetic headroom when grace is shorter", () => {
+  const f = fixture();
+  f.at(Number.MAX_SAFE_INTEGER - 20000);
+  expect(() => f.ledger.registerTrustedOwner(owner, true)).toThrow(/clock/);
 });
 
 it("new frames alone cannot extend expired complete-policy evidence", () => {

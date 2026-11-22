@@ -5,6 +5,16 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 22 local policy change: interruption grace
+
+All detected browser-condition interruptions share one 15-second recovery window.
+Typing pauses immediately; available capture continues. Fresh challenged capture
+and current server approval restore typing automatically before expiry. Repeated
+or changing failures cannot restart the window. The exam timer continues.
+Confirmed SSH loss, native holds, revocation, Finish and deadlines retain their
+existing safety boundaries. This is implemented locally, not deployed; see
+[behavior and verification](docs/interruption-grace.md).
+
 November19: the matched runtimef8abea7 described below is now deployed on csc-sys,
 with controller5fa4b10. Fifteen students/60terminals pass the reduced600s release
 gate; larger35/70capacity remains unqualified. External assets, native roles and
@@ -141,7 +151,8 @@ narrow displays; unknown server outcomes retain reconciliation. Starting files
 show one fetched summary with same-dialog choices. Date controls say Start dates;
 add-student focus follows its entry mode. Completed protected reviews omit live
 connection status; practice and timer-pause constraints are explained beside their
-controls. The initial focus warning displays the existing 60-second grace.
+controls. The November 22 policy above supersedes the original focus-only warning
+with a shared 15-second interruption warning.
 Maintenance messages make no promise about uninterrupted exams. These changes
 are implemented/tested locally, not deployed; see docs/stress-remediation.md.
 
@@ -1127,7 +1138,7 @@ deleted, and an already committed interval is never reset by this correction.
 
 Monitoring socket liveness and exam-state ordering are separate checks. Each bind and two-second preflight/heartbeat request uses a one-use connection-local confirmation value; the gateway echoes it only on the authenticated, page-owned socket. A reply within 15 seconds refreshes liveness even if a newer HTTP snapshot has overtaken its state. Apply state through the existing monotonic snapshot/generation checks independently. HTTP replies, unknown/replayed confirmations, replies from a retired socket and replies at or beyond the timeout cannot renew liveness, bind a replacement page or unlock a paused attempt. Before committing a new start, require a currently confirmed monitoring connection. Timeout diagnostics record only numeric acknowledgment age and rejected-snapshot counts, never confirmation values or credentials.
 
-Activation diagnostics must name the failed conditions (monitoring binding/acknowledgment, offline browser, SSH control, fullscreen, keyboard lock, visibility and required capture) in both the student error and durable server audit/log. Focus lost during activation uses the same 60-second grace as active work. A later watchdog acknowledgment of the same pause must retain the initiating reason and record its own cause separately; lease expiry and server reboot are distinct reasons.
+Activation diagnostics must name the failed conditions (monitoring binding/acknowledgment, offline browser, SSH control, fullscreen, keyboard lock, visibility and required capture) in both the student error and durable server audit/log. Recoverable condition loss after a committed activation uses the same 15-second grace as active work. A later watchdog acknowledgment of the same pause must retain the initiating reason and record its own cause separately; lease expiry and server reboot are distinct reasons.
 
 Persist an operation/attempt identifier before making the remote activation request. After a timeout or lost response, query that operation instead of creating another attempt. A server-committed start remains started even if the browser never receives the acknowledgment. In that case, recover to a locked attempt with the original deadline, not to a fresh preflight.
 
@@ -1284,7 +1295,19 @@ Supply pointer-accessible controls and usable keyboard navigation. Do not redefi
 
 Request fullscreen on the root containing the toolbar, taskbar, windows, dialogs, and webcam/status widgets. Maximizing a terminal must never call the browser Fullscreen API.
 
-Monitor `fullscreenchange`, top-level window focus/blur, and document visibility. Arm interruption detection only after the explicit start/continue handshake, not during setup permission dialogs. Allow only the focus-loss grace period: show a prominent warning with seconds remaining for 20 continuous seconds, clearing it immediately on return. Keep capture, heartbeats and execution-lease renewal running while the page remains visible/fullscreen and other conditions stay healthy. Block terminal interaction while unfocused, retain the authenticated connections, and resume normally on focus return before expiry. Repeated blur events do not restart the timer. Enforce expiry independently on the webserver from its first received loss report, including when the client stops sending incidents; a late focus report cannot clear an expired interval. Require focus for Begin/Continue. Fullscreen exit, hidden documents, required capture failure and the existing network grace keep their own immediate/bounded rules and are not extended to 20 seconds. This is client-reported browser focus, not monitor attestation.
+Monitor `fullscreenchange`, top-level focus/blur, visibility, keyboard lock,
+required capture and connection health. Arm interruption detection after explicit
+activation, not during setup permission dialogs. Show one 15-second countdown
+from the first loss; pause terminal input immediately and keep capture running
+where available, including an immediate screen-sample attempt. Offer the controls
+needed to restore fullscreen, keyboard lock or sharing. Restore typing only after
+fresh challenged capture, complete readiness and current ACTIVE server approval.
+Repeated or overlapping losses cannot restart the interval; late replies cannot
+clear expiry. The webserver also enforces its first received loss independently.
+Require complete readiness for Start/Resume. Confirmed SSH death and native holds
+remain contained immediately; capture during grace does not authorize execution.
+Deadlines and Finish remain authoritative. This is client-reported browser state,
+not monitor attestation. See [the policy](docs/interruption-grace.md).
 
 Before student SSH sign-in, feature-detect a secure context, enabled fullscreen, screen capture and Keyboard Lock. Honor recognized embedding/permissions-policy restrictions and already-denied permissions where queryable. When requirements are unavailable, show the compatibility message and instructor sign-in link, and omit the student sign-in form entirely rather than displaying disabled fields. Block reconnection and preflight entry as well; recheck in the action handler before opening any authentication request or SSH relay. Keep instructor sign-in available. Do not request fullscreen, capture or keyboard permissions merely to load the login page. Browser branding alone is not a capability check.
 
@@ -2092,11 +2115,11 @@ Automate what is practical and provide a signed-off manual matrix for browser/OS
 - Concurrent/double Begin requests create one attempt and one canonical deadline.
 - Lost activation acknowledgment reconciles the existing attempt instead of granting a new timer.
 - Browser clock changes, refresh, new terminals, reconnects, and locks do not extend the deadline.
-- Switching internal windows never locks; application switching/fullscreen exit does.
+- Switching internal windows never interrupts; recoverable application switching/fullscreen exit pauses typing with the shared 15-second grace.
 - The local overlay and gateway both reject input, paste, terminal creation, and hidden-window input after a lock.
 - A still-open page with healthy streams and retained SSH transports recovers within 15 seconds; a reload, expired grace, or lost SSH transport does not.
 - Stale/new page instances cannot take over automatically. Queued input is not replayed after reconnect.
-- Required capture cessation locks, while repeated identical valid images do not automatically imply cheating or a stalled track.
+- Required capture cessation pauses typing and shares the 15-second recovery window; identical valid images do not automatically imply cheating or a stalled track.
 - Instructor approval alone does not activate an unready page; current fullscreen, streams, state, and deadline checks are required.
 - Single-use/stale continuation authorizations and an approval racing expiration cannot restore ended access.
 - The class-agent deadline and execution lease work when the application, browser, or callback network is stopped.

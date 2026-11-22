@@ -115,10 +115,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
     });
   });
   page.on("response", (response) => {
-    if (
-      isChallengedCapture(response.url()) &&
-      response.status() === 200
-    )
+    if (isChallengedCapture(response.url()) && response.status() === 200)
       uploads++;
   });
   const { original, runtime } = await beginRetained(page, "retained01");
@@ -136,7 +133,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   expect(originalInput?.epoch).toMatch(/^[a-f0-9]{64}$/);
   const beforePauseUploads = uploads;
   await page.evaluate(() => document.exitFullscreen());
-  await expect(page.locator(".lock-overlay")).toBeVisible({ timeout: 10000 });
+  await expect(page.locator(".lock-overlay")).toBeVisible({ timeout: 20000 });
   const paused = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   expect(paused.state).toBe("LOCKED");
@@ -189,10 +186,7 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
     .toBeGreaterThan(beforePauseUploads);
   await page.waitForResponse(
     (response) => {
-      if (
-        !isChallengedCapture(response.url()) ||
-        response.status() !== 200
-      )
+      if (!isChallengedCapture(response.url()) || response.status() !== 200)
         return false;
       const sample = captureMetadata(response.request());
       return (
@@ -327,7 +321,15 @@ test("negotiated retained WASM Begin preserves its actual transport through poli
   expect(current.length).toBeGreaterThan(0);
   for (const binding of current) binding.send();
   await expect(reconnecting).toHaveCount(0, { timeout: 5000 });
+  // Transport reconnection precedes fresh capture verification. Do not type
+  // through the still-inert workspace while that independent check finishes.
+  await expect(page.locator(".workspace .window-area")).not.toHaveAttribute(
+    "inert",
+    "",
+    { timeout: 10000 },
+  );
   await page.locator(".xterm-helper-textarea").last().focus();
+  await expect(page.locator(".xterm-helper-textarea").last()).toBeFocused();
   await page.keyboard.type("post-control");
   await page.keyboard.press("Enter");
   await expect(page.locator(".xterm-rows")).toContainText(
@@ -388,10 +390,7 @@ test("retained WASM SSH control recovery preserves its authenticated worker and 
     socket.connectToServer();
   });
   page.on("response", (response) => {
-    if (
-      isChallengedCapture(response.url()) &&
-      response.status() === 200
-    )
+    if (isChallengedCapture(response.url()) && response.status() === 200)
       uploads++;
   });
   const { original, runtime } = await beginRetained(page, "retained02");

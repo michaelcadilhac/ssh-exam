@@ -1,24 +1,35 @@
-# Current checkpoint — matched release deployed and online
+# Current checkpoint — interruption grace complete locally
 
-November19,2026. Instructor requested15students/60terminals then commit/push/deploy.
-Class21 passed600.924speak/20fleetchecks/all15protected submissions+archives;
-independent native/base/observer/Marco/local cleanup FULL. Source/build preserved.
-Runtime/imagef8abea7; harness2395473; deployment controller5fa4b10. All pushed.
-Reports: reports/stress/20261120T020804Z/report.md and deployment.json.
+November 22, 2026. Implemented/tested locally; NOT pushed or deployed. The local
+commit containing this checkpoint is the validated milestone. Production untouched;
+ten pre-existing dirty documentation PNGs remain unstaged.
 
-Production csc-sys ONLINE,externalHTTPS/all25assets exact,41data contracts preserved,
-matched native roles healthy. Schema37unchanged;32connectionworkers/2GiB/twoCPUweb/
-4hostcores retained. SSH/relay preserved. Cutover460.5s. Old nginx-path attempt
-53cd7909 cancelled safely before restart; corrective54web+72matchedtests pass.
-Expiredafter-guard refreshed through qualifiedSAME-candidate/CURRENT recovery;
-zero extra web starts,originalsnapshot/ledger preserved,backgroundpause RELEASED.
+One 15-second window pauses typing and preserves available capture. Fresh checks
+restore typing automatically. Overlapping observed condition failures do not
+restart the cutoff. Connection/upload uncertainty remains a technical wait, never
+fabricated track loss or a student policy report. Input stays blocked through
+asynchronous verification, including coalesced React updates. Timer/deadlines,
+ownership, native holds and protected files remain unchanged. No native code,
+SQL migration, management setting or unresolved design decision was added.
+[Policy, implementation and evidence](interruption-grace.md).
 
-Remote completed stage:/var/tmp/ssh-exam-pre-final-20261120-f8abea7-9bf5d1a1;
-state=stage+-state. Private local evidence:
-var/qualification35/profile-20261119T044302Z-8d3c93/nginx-release-plan/.
-Recordingbaseline reused1,703,356,361bytes; no new media copy atcutover. Current
-DBsnapshot268,439,552bytes; nativebackup328,273,920bytes. Keep recovery evidence.
+Final verification: 72 affected state/ledger/public-interface checks; 15 current
+built-asset browser cases (1.9m); real retained long-upload/coalesced-input case
+(35.3s); actual >60s retained-control recovery; native evidence race checks;
+production build and TypeScript checks. Separate local gateway qualification
+passed three existing policy/restart workflows on the preceding UI snapshot;
+unchanged contracts are reused, not claimed as new privileged qualification.
+The full app run had 996 passes, four obsolete policy assertions corrected/passing
+in the affected run, and three opt-in skips. No second full-app or class-capacity
+pass is claimed. All failed evidence remains available.
 
-Deployment task complete.35/70co-location capacity remains unqualified; do not
-claim this is a fresh90-minute pass. Optional larger-class work/Finish diagnostics
-are separate future work,not deployment blockers. Preserve10existingdirtydocsPNGs.
+Private exact source/build manifests, logs, images and owned-runner cleanup receipt:
+`var/interruption-grace/20261122/`. No owned test processes or final listener remain.
+Next action requires a NEW push/deploy instruction. Before production, qualify
+exact release installation/preservation/recovery and privileged native timing in
+the agreed idle disposable environment; no csc-sys test during the live final.
+No new schema migration is required. Preserve current data/holds on rollback.
+
+Previous deployment: runtime f8abea7/controller 5fa4b10, November 19, complete.
+Receipt: `reports/stress/20261120T020804Z/deployment.json`. Larger 35/70 capacity
+remains unqualified. The new grace feature is not deployed.

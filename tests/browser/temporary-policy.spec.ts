@@ -159,7 +159,7 @@ test("brief focus loss during slow activation gets the existing grace period", a
   await expect(page.locator(".focus-warning")).toBeVisible();
   expect(
     await page.evaluate(() => (window as any).__initialFocusWarnings[0]),
-  ).toMatch(/(?:59|60)s before work pauses/);
+  ).toMatch(/(?:14|15)s to restore exam checks/);
   expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(0);
   await page.evaluate(() => {
     Object.defineProperty(document, "hasFocus", {
@@ -171,7 +171,7 @@ test("brief focus loss during slow activation gets the existing grace period", a
   await expect(page.locator(".focus-warning")).toHaveCount(0);
 });
 
-test("active focus warning starts at the actual sixty-second grace instead of the old twenty-second display", async ({
+test("active interruption warning starts at the approved fifteen-second grace", async ({
   page,
 }) => {
   const f = await fixture(page);
@@ -195,13 +195,13 @@ test("active focus warning starts at the actual sixty-second grace instead of th
   await expect(page.locator(".focus-warning")).toBeVisible();
   expect(
     await page.evaluate(() => (window as any).__activeFocusWarnings[0]),
-  ).toContain("60s before work pauses");
+  ).toContain("15s to restore exam checks");
   expect(
     f.model.messages.filter((message) => message.type === "incident"),
   ).toEqual([]);
 });
 
-test("activation reports the specific lost condition in the UI and incident log", async ({
+test("activation gives recoverable fullscreen loss fifteen seconds without a second Begin", async ({
   page,
 }) => {
   const f = await fixture(page);
@@ -230,14 +230,12 @@ test("activation reports the specific lost condition in the UI and incident log"
     page.getByRole("button", { name: "2. Enter fullscreen", exact: true }),
   ).toHaveAttribute("aria-pressed", "false");
   wait.release();
-  await expect(page.getByRole("dialog")).toContainText(
-    "Exam activation paused: fullscreen lost; keyboard lock lost",
-  );
-  await expect
-    .poll(() => f.model.messages.filter((m) => m.type === "incident").length)
-    .toBe(1);
-  expect(f.model.messages.find((m) => m.type === "incident").reason).toBe(
-    "Exam activation paused: fullscreen lost; keyboard lock lost",
-  );
-  await expect(page.locator(".winbox")).toHaveCount(0);
+  await expect(page.locator(".focus-warning")).toBeVisible();
+  expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(0);
+  await page
+    .getByRole("button", { name: "Return to fullscreen", exact: true })
+    .click();
+  await expect(page.locator(".focus-warning")).toHaveCount(0);
+  await expect(page.locator(".winbox")).toHaveCount(1);
+  expect(f.model.messages.filter((m) => m.type === "incident")).toHaveLength(0);
 });

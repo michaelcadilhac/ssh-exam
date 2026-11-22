@@ -414,7 +414,7 @@ test("actual native kernel hold and explicit Continue preserve the same browser 
     policyCycle++;
     if (cause === "policy")
       await page.evaluate(() => document.exitFullscreen());
-    await expect(page.locator(".lock-overlay")).toBeVisible();
+    await expect(page.locator(".lock-overlay")).toBeVisible({ timeout: 20000 });
     await expect
       .poll(
         async () => {

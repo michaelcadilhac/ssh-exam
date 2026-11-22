@@ -1086,6 +1086,16 @@ it("signed technical continuation proves the original live stream and cannot tur
     );
     const blocked = await f.authenticated(route, request);
     expect(blocked.statusCode, blocked.body).toBe(409);
+    // Negative readiness blocks technical bootstrap immediately, without turning
+    // a brief recoverable interruption into a new policy generation.
+    expect(f.store.attempt(f.id).generation).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 15020));
+    const expired = await f.authenticated("/api/agent/monitoring-evidence", {
+      ...f.challenge,
+      owner,
+      nonce: hash(randomUUID()),
+    });
+    expect(expired.statusCode, expired.body).toBe(409);
     expect(
       f.store.db
         .prepare(
@@ -1103,7 +1113,7 @@ it("signed technical continuation proves the original live stream and cannot tur
   } finally {
     await f.close();
   }
-});
+}, 30000);
 
 it("signed files-only bootstrap binds the new connection/page, original owner, current approval and fresh capture", async () => {
   const f = await activeEvidenceFixture(false, false, true);
@@ -1801,6 +1811,16 @@ it("captured genuine policy loss uses durable existing lock policy; restart and 
       loss = await f.upload({ ...f.ready, fullscreen: false });
     expect(loss.statusCode, loss.body).toBe(200);
     expect(f.store.attempt(f.id)).toMatchObject({
+      state: "ACTIVE",
+      generation: 0,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 15020));
+    const expired = await f.authenticated("/api/agent/monitoring-evidence", {
+      ...f.challenge,
+      nonce: hash(randomUUID()),
+    });
+    expect(expired.statusCode, expired.body).toBe(409);
+    expect(f.store.attempt(f.id)).toMatchObject({
       state: "LOCKED",
       generation: 1,
       start: before.start,
@@ -1836,7 +1856,7 @@ it("captured genuine policy loss uses durable existing lock policy; restart and 
     await reopened?.app.close();
     await f.close();
   }
-});
+}, 30000);
 
 it("accepted signed native start records historical ownership, canonical signing fences page confusion, and completion can retain it after page logout", async () => {
   const f = await fixture();

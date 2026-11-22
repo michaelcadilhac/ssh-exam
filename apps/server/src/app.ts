@@ -110,6 +110,7 @@ import { registerAgentManagement } from "./agent-management.js";
 import { ExamDefinitions } from "./exam-definitions.js";
 import { AdministratorManagement } from "./administrator-management.js";
 import { reportFocus } from "./focus-grace.js";
+import { examConditionsReady } from "../../../packages/protocol/focus-grace.js";
 import { Lifecycle } from "./lifecycle.js";
 import { RosterManagement } from "./roster-management.js";
 import {
@@ -4243,6 +4244,22 @@ export async function createApp(
           });
           return;
         }
+        if (m.type === "conditions") {
+          if (m.generation === a.generation)
+            await reportFocus(
+              life,
+              a.id,
+              examConditionsReady(m.ready, !!JSON.parse(a.settings).webcam),
+              { ...m.ready, connected: m.connected },
+            );
+          send(ws, {
+            type: "state",
+            attempt: store.attempt(a.id),
+            serverNow: now(),
+            authenticationGap: authenticationGap(a.id),
+          });
+          return;
+        }
         if (m.type === "focus") {
           await reportFocus(life, a.id, m.focused);
           send(ws, {
@@ -4268,6 +4285,15 @@ export async function createApp(
           return;
         }
         if (m.type === "heartbeat") {
+          if (m.generation !== undefined && m.generation !== a.generation) {
+            send(ws, {
+              type: "state",
+              attempt: a,
+              serverNow: now(),
+              authenticationGap: authenticationGap(a.id),
+            });
+            return;
+          }
           // Receipt is not execution authorization. Do not make browser
           // contact wait for SSH, a clock reset or a native commit/reply.
           // Old clients ignore this distinct type and still receive state.
@@ -4278,7 +4304,14 @@ export async function createApp(
               confirmation: m.confirmation,
             });
           if (!life.expireDeadline(a.id))
-            await reportFocus(life, a.id, m.ready.focus);
+            await reportFocus(
+              life,
+              a.id,
+              examConditionsReady(m.ready, !!JSON.parse(a.settings).webcam) &&
+                (a.monitoring_mode === "v1"
+                  ? conn?.alive !== false
+                  : !!conn?.alive && healthy(a)),
+            );
           if (closingSessions) return;
           a = store.attempt(a.id);
           if (
@@ -4297,7 +4330,7 @@ export async function createApp(
               (a.monitoring_mode !== "v1" && !healthy(a)) ||
               (JSON.parse(a.settings).webcam && !m.ready.webcam)
             ) {
-              await life.lock(a.id, "Required SSH/capture health lost");
+              await reportFocus(life, a.id, false);
             } else {
               store.db
                 .prepare("UPDATE attempts SET last_contact=? WHERE id=?")
@@ -4444,6 +4477,7 @@ export async function createApp(
             throw Error("Unknown pane");
           }
           if (m.type === "input") {
+            if (a.focus_lost_at !== null) return;
             if (m.generation !== a.generation)
               throw Error("Stale input generation");
             if (c.writableLength > 65536) throw Error("PTY backpressure");
@@ -4460,6 +4494,7 @@ export async function createApp(
             }
           }
           if (m.type === "resize") {
+            if (a.focus_lost_at !== null) return;
             if (c.inputEpoch) {
               // The optimistic window can resize before its native context
               // arrives. Discard that captured packet without a false modal,
@@ -4560,8 +4595,9 @@ export async function createApp(
       );
     });
     ws.on("close", () => {
-      if (boundAttemptID && owned && sockets.get(boundAttemptID) === ws)
+      if (boundAttemptID && owned && sockets.get(boundAttemptID) === ws) {
         sockets.delete(boundAttemptID);
+      }
     });
   });
   for (const row of store.db

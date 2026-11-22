@@ -1,3 +1,4 @@
+import { INTERRUPTION_GRACE_REASON } from "../../packages/protocol/focus-grace.js";
 import { test, expect, type Page } from "@playwright/test";
 import {
   fixture,
@@ -113,12 +114,14 @@ test("Stay on browser Back or reload retains fullscreen, page, terminals and mon
   // Navigation protection cannot mask a real fullscreen departure.
   await page.evaluate(() => document.exitFullscreen());
   await expect
-    .poll(() =>
-      f.model.messages
-        .filter((m) => m.type === "incident")
-        .map((m) => m.reason),
+    .poll(
+      () =>
+        f.model.messages
+          .filter((m) => m.type === "incident")
+          .map((m) => m.reason),
+      { timeout: 20000 },
     )
-    .toContain("Workspace exited fullscreen");
+    .toContain(INTERRUPTION_GRACE_REASON);
 });
 
 test("accepting Leave still reports actual departure", async ({ page }) => {

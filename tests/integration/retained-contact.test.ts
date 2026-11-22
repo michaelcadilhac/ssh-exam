@@ -42,7 +42,9 @@ it.each(["legacy", "v1"])(
           deadline: before.deadline,
           generation: before.generation + 1,
         });
-        expect(f.store.attempt(f.id).reason).toContain("focus");
+        expect(f.store.attempt(f.id).reason).toBe(
+          "Required exam conditions were not restored within 15 seconds",
+        );
       }
       f.store.db
         .prepare("UPDATE attempts SET deadline=? WHERE id=?")

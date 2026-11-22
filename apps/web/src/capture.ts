@@ -134,14 +134,14 @@ export class Capture {
     const t = this.streams.get(source)?.getVideoTracks()[0];
     return !!t && t.readyState === "live" && !t.muted;
   }
-  async sample(source: string): Promise<void> {
+  async sample(source: string, forceChallenged = false): Promise<void> {
     if (this.stopped) return;
     const pending = this.busy.get(source);
     if (pending) {
       await pending;
       return;
     }
-    const task = this.sampleOnce(source);
+    const task = this.sampleOnce(source, false, forceChallenged);
     this.busy.set(source, task);
     try {
       const verified = await task;
@@ -153,18 +153,20 @@ export class Capture {
   private async sampleOnce(
     source: string,
     forceJPEG = false,
+    forceChallenged = false,
   ): Promise<boolean> {
     if (!this.sampleAllowed()) return false;
     // Obtain the nonce BEFORE sampling. Queued legacy images cannot be
     // relabelled with a fresh nonce or refresh readiness on arrival.
-    const challenge = this.preflight()
-      ? await api(
-          `/student/attempts/${this.id}/capture-challenges`,
-          { source },
-          this.page,
-          this.abort.signal,
-        )
-      : null;
+    const challenge =
+      this.preflight() || forceChallenged
+        ? await api(
+            `/student/attempts/${this.id}/capture-challenges`,
+            { source },
+            this.page,
+            this.abort.signal,
+          )
+        : null;
     if (this.stopped || !this.sampleAllowed()) return false;
     const video = this.videos.get(source)!;
     if (!video.videoWidth || !video.videoHeight) throw Error("No video frame");
@@ -237,7 +239,7 @@ export class Capture {
             this.encoder.reset(source);
             this.videoRetryAt.set(source, performance.now() + 60_000);
             if (this.stopped || !this.sampleAllowed()) return false;
-            return this.sampleOnce(source, true);
+            return this.sampleOnce(source, true, forceChallenged);
           }
         }
       }
@@ -320,7 +322,7 @@ export class Capture {
       throw Error(
         "Restore screen sharing and any required webcam, then try Start exam again. Your exam has not started.",
       );
-    await Promise.all(sources.map((source) => this.sample(source)));
+    await Promise.all(sources.map((source) => this.sample(source, true)));
     const result = await api(
       `/student/attempts/${this.id}/monitoring-readiness`,
       undefined,

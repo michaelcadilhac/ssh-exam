@@ -1,7 +1,10 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { monitoringBootTimeMS } from "./monitoring-clock.js";
-import { FOCUS_GRACE_MS } from "../../../packages/protocol/focus-grace.js";
+import {
+  FOCUS_GRACE_MS,
+  examConditionsReady,
+} from "../../../packages/protocol/focus-grace.js";
 import {
   isCaptureReadinessSnapshot,
   type CaptureReadinessSnapshot,
@@ -120,7 +123,9 @@ export class MonitoringEvidenceLedger {
     if (
       !Number.isFinite(now) ||
       now < this.lastClock ||
-      now > Number.MAX_SAFE_INTEGER - FOCUS_GRACE_MS
+      now >
+        Number.MAX_SAFE_INTEGER -
+          Math.max(FOCUS_GRACE_MS, MONITORING_EVIDENCE_WINDOW_MS)
     )
       refuse("clock");
     this.lastClock = now;
@@ -399,8 +404,7 @@ export class MonitoringEvidenceLedger {
       const observedUntil = this.componentUntil(e);
       // An expired observation cannot prove continuous blur through an earlier
       // unknown interval. Keep work blocked, not a fabricated policy violation.
-      if (observedUntil <= e.focusLost + FOCUS_GRACE_MS && now >= observedUntil)
-        e.focusUnverified = true;
+      if (now >= observedUntil) e.focusUnverified = true;
       if (!e.focusUnverified && now - e.focusLost >= FOCUS_GRACE_MS)
         e.blocked = true;
     }
@@ -488,18 +492,7 @@ export class MonitoringEvidenceLedger {
     if (!parsed.success || (e.policy && c.ordinal <= e.policy.ordinal))
       return refuse("challenge");
     const r = parsed.data;
-    if (
-      !r.fullscreen ||
-      !r.visible ||
-      !r.keyboard ||
-      !r.screen ||
-      (e.webcam && !r.webcam)
-    ) {
-      e.blocked = true;
-      this.gap(e);
-      return;
-    }
-    if (!r.focus) e.focusLost ??= now;
+    if (!examConditionsReady(r, e.webcam)) e.focusLost ??= now;
     else {
       e.focusLost = undefined;
       e.focusUnverified = false;
@@ -537,7 +530,8 @@ export class MonitoringEvidenceLedger {
   // Runtime authenticated capture path: one challenge precedes both the JPEG
   // and its policy snapshot. Call only AFTER decoding and current-page checks.
   // Older positive policy cannot replace a newer observation; any genuine
-  // fullscreen/capture/keyboard loss remains sticky even when delivered late.
+  // Only the newest challenged policy observation may restore/start grace.
+  // An older image is retained without replacing newer readiness facts.
   confirmValidatedCapture(
     binding: MonitoringEvidenceBinding,
     challenge: string,
@@ -561,20 +555,9 @@ export class MonitoringEvidenceLedger {
       r = parsed.data;
     if (old && (sequence <= old.sequence || c.ordinal <= old.ordinal))
       return refuse("sequence");
-    if (
-      !r.fullscreen ||
-      !r.visible ||
-      !r.keyboard ||
-      !r.screen ||
-      (e.webcam && !r.webcam)
-    ) {
-      e.blocked = true;
-      this.gap(e);
-      return;
-    }
     e.frames.set(source, { issued: c.issued, ordinal: c.ordinal, sequence });
     if (!e.policy || c.ordinal > e.policy.ordinal) {
-      if (!r.focus) e.focusLost ??= now;
+      if (!examConditionsReady(r, e.webcam)) e.focusLost ??= now;
       else {
         e.focusLost = undefined;
         e.focusUnverified = false;

@@ -466,9 +466,9 @@ test("real gateway approval reaches the paused WASM SSH page without reload, rep
   const original = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
   await page.evaluate(() => document.exitFullscreen());
-  await expect(
-    page.locator('[data-continuation-state="waiting"]'),
-  ).toBeVisible();
+  await expect(page.locator('[data-continuation-state="waiting"]')).toBeVisible(
+    { timeout: 20000 },
+  );
   const posts: string[] = [];
   page.on("request", (r) => {
     if (

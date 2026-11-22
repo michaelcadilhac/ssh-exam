@@ -20,6 +20,7 @@ async function rowCommand(page: Page, label: string, command: string) {
 test("sandbox auto-enrolls, resumes without an instructor, preserves the deadline and retains repeat history", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await simulatedMedia(page);
   await studentSignIn(page, "sandbox", "student04");
   await page.getByRole("button", { name: "Check setup and practice" }).click();
@@ -45,9 +46,9 @@ test("sandbox auto-enrolls, resumes without an instructor, preserves the deadlin
   if (process.env.EXAM_BROWSER_SSH === "1")
     expect(originalOwner).not.toBeNull();
   await page.evaluate(() => document.exitFullscreen());
-  await expect(
-    page.getByRole("heading", { name: "Work paused" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Work paused" })).toBeVisible({
+    timeout: 20000,
+  });
   await expect
     .poll(
       async () =>
@@ -444,7 +445,9 @@ test("instructor adds and imports students, cancels an attempt without removing 
   await editing
     .getByRole("button", { name: "Apply changes", exact: true })
     .click();
-  await expect(editing.getByRole("status").filter({ hasText: /^Settings saved$/ })).toHaveCount(2);
+  await expect(
+    editing.getByRole("status").filter({ hasText: /^Settings saved$/ }),
+  ).toHaveCount(2);
   await editing.getByRole("button", { name: "Done", exact: true }).click();
   for (const name of names) {
     const current = (await grants(name))[0],
@@ -1232,9 +1235,10 @@ test("webcam preflight uses consecutive steps and student can sign out before st
   ).toBeVisible();
 });
 
-test("simulated capture workspace opens retained SSH terminals and locks on fullscreen exit", async ({
+test("simulated capture workspace opens retained SSH terminals and locks after fullscreen grace", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   await page.addInitScript(() => {
     const NativeResizeObserver = window.ResizeObserver;
     window.ResizeObserver = class extends NativeResizeObserver {
@@ -1390,7 +1394,7 @@ test("simulated capture workspace opens retained SSH terminals and locks on full
       name: "Instructor review required",
       exact: true,
     }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20000 });
   await expect(menu).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "New terminal", exact: true }),
@@ -2150,21 +2154,19 @@ async function setExamFocus(
     window.dispatchEvent(new Event(value ? "focus" : "blur"));
   }, focused);
 }
-test("focus grace preserves work until sixty seconds, clears on return and expires exactly once", async ({
+test("focus grace preserves work until fifteen seconds, clears on return and expires exactly once", async ({
   page,
 }) => {
   test.setTimeout(FOCUS_GRACE_MS + 45000);
-  expect(FOCUS_GRACE_MS).toBe(60000);
+  expect(FOCUS_GRACE_MS).toBe(15000);
   await startFocusGraceExam(page, "student08");
   const initial = (await (await page.request.get("/api/student/exam")).json())
     .attempt;
-  const warning = page
-    .getByRole("alert")
-    .filter({ hasText: "Return to the exam" });
+  const warning = page.locator(".focus-warning");
   await setExamFocus(page, false);
-  await expect(warning).toContainText("60s before work pauses");
+  await expect(warning).toContainText("15s to restore exam checks");
   await page.waitForTimeout(2200);
-  await expect(warning).toContainText(/5[678]s before work pauses/);
+  await expect(warning).toContainText(/1[123]s to restore exam checks/);
   await page.screenshot({ path: test.info().outputPath("focus-warning.png") });
   await setExamFocus(page, true);
   await expect(warning).toHaveCount(0);
@@ -2194,16 +2196,16 @@ test("focus grace preserves work until sixty seconds, clears on return and expir
     .not.toBeNull();
   const lost = (await (await page.request.get("/api/student/exam")).json())
     .attempt.focus_lost_at;
-  await page.waitForTimeout(20000);
+  await page.waitForTimeout(5000);
   await setExamFocus(page, false);
-  await page.waitForTimeout(FOCUS_GRACE_MS - 24000);
+  await page.waitForTimeout(FOCUS_GRACE_MS - 9000);
   const stillActive = await (
     await page.request.get("/api/student/exam")
   ).json();
   expect(stillActive.attempt.state).toBe("ACTIVE");
   expect(stillActive.sshConnected).toBe(true);
   expect(stillActive.attempt.focus_lost_at).toBe(lost);
-  await expect(warning).toContainText(/\b[1-5]s before work pauses/);
+  await expect(warning).toContainText(/\b[1-5]s to restore exam checks/);
   await expect
     .poll(
       async () =>
@@ -2238,10 +2240,26 @@ for (const [violation, username] of [
   ["fullscreen", "student07"],
   ["visibility", "student09"],
 ]) {
-  test(`focus grace does not delay ${violation} lock`, async ({ page }) => {
+  test(`overlapping ${violation} loss shares the first interruption cutoff`, async ({
+    page,
+  }) => {
+    test.setTimeout(35000);
     await startFocusGraceExam(page, username);
+    const initial = (await (await page.request.get("/api/student/exam")).json())
+      .attempt;
     await setExamFocus(page, false);
-    await expect(page.getByRole("alert")).toContainText("Return to the exam");
+    const warning = page.locator(".focus-warning");
+    await expect(warning).toContainText("15s to restore exam checks");
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get("/api/student/exam")).json()).attempt
+            .focus_lost_at,
+      )
+      .not.toBeNull();
+    const first = (await (await page.request.get("/api/student/exam")).json())
+      .attempt.focus_lost_at;
+    await page.waitForTimeout(5000);
     if (violation === "fullscreen")
       await page.evaluate(() => document.exitFullscreen());
     else
@@ -2252,12 +2270,32 @@ for (const [violation, username] of [
         });
         document.dispatchEvent(new Event("visibilitychange"));
       });
+    const overlap = (await (await page.request.get("/api/student/exam")).json())
+      .attempt;
+    expect(overlap.state).toBe("ACTIVE");
+    expect(overlap.focus_lost_at).toBe(first);
+    await expect(page.locator(".workspace .window-area")).toHaveAttribute(
+      "inert",
+      "",
+    );
     await expect(
       page.getByRole("heading", { name: "Work paused" }),
-    ).toBeVisible({ timeout: 3000 });
-    await expect(
-      page.getByRole("alert").filter({ hasText: "Return to the exam" }),
-    ).toHaveCount(0);
+    ).toBeVisible({ timeout: 12000 });
+    // The local barrier can render before the independently enforced durable
+    // state arrives. Require that actual state rather than a fleeting snapshot.
+    await expect
+      .poll(
+        async () =>
+          (await (await page.request.get("/api/student/exam")).json()).attempt
+            .state,
+      )
+      .toBe("LOCKED");
+    const held = (await (await page.request.get("/api/student/exam")).json())
+      .attempt;
+    expect(held.reason).toBe(FOCUS_GRACE_REASON);
+    expect(held.deadline).toBe(initial.deadline);
+    expect(held.generation).toBe(initial.generation + 1);
+    await expect(warning).toHaveCount(0);
   });
 }
 

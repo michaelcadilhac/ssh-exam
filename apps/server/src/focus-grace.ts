@@ -5,12 +5,15 @@ import {
   FOCUS_GRACE_REASON,
 } from "../../../packages/protocol/focus-grace.js";
 
-// Only page-bound, authenticated messages reach this function. Repeated blur
-// reports cannot restart a grace interval, and a late focus report cannot unlock it.
+// Also used for required-condition observations. The historical storage name is
+// retained: one interval covers ALL overlapping failures, not one per condition.
+// Only page-bound authenticated observations reach this entry. Repeated losses
+// cannot restart the interval, and a late recovery cannot unlock it.
 export async function reportFocus(
   life: Lifecycle,
   id: string,
   focused: boolean,
+  observation?: Record<string, boolean>,
 ) {
   const a = life.store.attempt(id);
   if (a.state !== "ACTIVE") return;
@@ -23,11 +26,19 @@ export async function reportFocus(
     (!focused && a.focus_lost_at !== null)
   )
     return;
-  life.store.db
-    .prepare(
-      focused
-        ? "UPDATE attempts SET focus_lost_at=NULL WHERE id=? AND state='ACTIVE'"
-        : "UPDATE attempts SET focus_lost_at=COALESCE(focus_lost_at,?) WHERE id=? AND state='ACTIVE'",
-    )
-    .run(...(focused ? [id] : [now(), id]));
+  life.store.db.transaction(() => {
+    life.store.db
+      .prepare(
+        focused
+          ? "UPDATE attempts SET focus_lost_at=NULL WHERE id=? AND state='ACTIVE'"
+          : "UPDATE attempts SET focus_lost_at=COALESCE(focus_lost_at,?) WHERE id=? AND state='ACTIVE'",
+      )
+      .run(...(focused ? [id] : [now(), id]));
+    life.store.audit(
+      "browser",
+      focused ? "interruption-grace-cleared" : "interruption-grace-started",
+      id,
+      observation ? JSON.stringify(observation) : "",
+    );
+  })();
 }

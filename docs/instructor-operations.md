@@ -1,5 +1,20 @@
 # Instructor operations
 
+## November 22 local follow-up: interruption grace
+
+Implemented locally, not deployed: a brief interruption pauses typing and shows
+15 seconds to restore exam checks. Available screenshots continue, including an
+immediate capture attempt. Typing returns automatically after fresh capture checks
+and server approval; no instructor action is needed for a verified recovery within
+the window. Repeated failures share the original cutoff. The exam timer continues.
+
+An unresolved interruption requires the existing **Allow resume** workflow. A lost
+SSH connection or native safety hold remains contained immediately; the grace does
+not recreate programs, bypass approval or extend the deadline. A closed page or
+stopped screen share cannot guarantee a screenshot. The matching CLI remains
+`examctl web interruptions show ATTEMPT` and
+`examctl web interruptions authorize ATTEMPT`; see [policy and verification](interruption-grace.md).
+
 ## Files-only Resume candidate (November4; not deployed)
 
 **Review → Allow resume** and the matching `examctl web interruptions authorize`
@@ -599,8 +614,8 @@ Interface previews using disposable test data:
 ### Activation and cancelled preflights
 
 An activation pause names the failed browser/connection conditions and records that
-reason in the incident audit and server log. Brief focus loss during activation has
-the same 20-second grace period as active work. The countdown continues after a
+reason in the incident audit and server log. Recoverable condition loss after a
+committed activation has the same 15-second grace as active work. The countdown continues after a
 server-committed start. A later execution-lease timeout does not replace the original
 pause reason; the class-server cause is recorded separately.
 

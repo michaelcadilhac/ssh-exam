@@ -101,8 +101,22 @@ test("contact-only acknowledgements never thaw a policy lock", async ({
   await expect(
     page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
-  const previous = f.model.messages.length;
-  await expect.poll(() => f.model.messages.length).toBeGreaterThan(previous);
+  // Receipts are not authority, even if they claim ACTIVE after a real hold.
+  for (let index = 0; index < 3; index++) {
+    f.model.socket!.send(
+      JSON.stringify({
+        type: "monitoring-contact",
+        attempt: f.model.attempt.id,
+        confirmation: crypto.randomUUID(),
+        state: "ACTIVE",
+      }),
+    );
+    await page.waitForTimeout(100);
+    await expect(page.locator(".workspace .window-area")).toHaveAttribute(
+      "inert",
+      "",
+    );
+  }
   await expect(
     page.getByRole("heading", { name: "Work paused" }),
   ).toBeVisible();
@@ -132,7 +146,8 @@ test("real browser SSH keeps contact and terminal input when only final heartbea
   page.on("response", (response) => {
     if (
       loseState &&
-      (response.url().endsWith("/frames") || isChallengedCapture(response.url())) &&
+      (response.url().endsWith("/frames") ||
+        isChallengedCapture(response.url())) &&
       response.status() === 200
     )
       uploads++;

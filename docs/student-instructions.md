@@ -73,11 +73,16 @@ Keep the original page and terminals open. **Do not reload to fix a pause.** A
 temporary update or monitoring delay may recover automatically while the original
 page and connection still work. A delay or timeout alone is not a misconduct finding.
 
-If the exam loses focus while remaining fullscreen and visible, a warning counts
-down **60 seconds**. Return before it reaches zero to avoid a pause. Leaving
-fullscreen or hiding the exam page pauses work immediately. Missing screen/webcam
-sharing or other required checks can also pause input. Check whether the countdown
-is running or paused.
+**Local update, not yet deployed:** If a required check is interrupted, typing
+pauses and a warning gives you **15 seconds** to restore it. Return to the exam
+and use any restore buttons shown. Typing returns automatically after the checks
+pass; you do not need to ask your instructor for a brief, verified recovery.
+Screenshots continue where possible. Repeated interruptions share the same window.
+Connection delays may instead show **Reconnecting** while typing stays paused;
+a timeout alone is not a reported student violation.
+
+The exam timer keeps running unless your instructor pauses it. If the warning
+expires with required checks still missing, follow the review instructions below.
 
 Request instructor review when asked. After approval, restore missing screen/webcam
 sharing, fullscreen and keyboard checks, then choose **Resume exam**. This uses the

@@ -121,6 +121,16 @@ export const readySchema = z.object({
   webcam: z.boolean(),
 });
 export { readinessMessage } from "./readiness.js";
+const observedReadySchema = z
+  .object({
+    fullscreen: z.boolean(),
+    focus: z.boolean(),
+    visible: z.boolean(),
+    keyboard: z.boolean(),
+    screen: z.boolean(),
+    webcam: z.boolean(),
+  })
+  .strict();
 export const messageSchema = z.discriminatedUnion("type", [
   z.object({
     v: z.literal(1),
@@ -130,10 +140,23 @@ export const messageSchema = z.discriminatedUnion("type", [
   z.object({
     v: z.literal(1),
     type: z.literal("heartbeat"),
+    generation: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .optional(),
     confirmation: z.string().uuid().optional(),
-    ready: readySchema.extend({ focus: z.boolean() }),
+    ready: observedReadySchema,
   }),
   z.object({ v: z.literal(1), type: z.literal("focus"), focused: z.boolean() }),
+  z.object({
+    v: z.literal(1),
+    type: z.literal("conditions"),
+    generation: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    connected: z.boolean(),
+    ready: observedReadySchema,
+  }),
   z.object({
     v: z.literal(1),
     type: z.literal("incident"),

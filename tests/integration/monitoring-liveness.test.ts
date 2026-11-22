@@ -140,7 +140,7 @@ it("rejects malformed monitoring and retired page ownership without acknowledgin
     f.send({
       type: "heartbeat",
       confirmation: invalid,
-      ready: { ...monitoringReady, screen: false },
+      ready: { ...monitoringReady, screen: "not-a-boolean" },
     });
     await vi.waitFor(() =>
       expect(f.messages.some((m) => m.type === "error")).toBe(true),
