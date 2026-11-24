@@ -1,7 +1,8 @@
 # Native hold alerts and SSH closure diagnostics
 
-November 23 implemented/tested locally. No deployment or production mutation is
-authorized. Private incident evidence stays outside Git under
+November 23 implemented/tested locally; pushed November 24. Deployment is now
+authorized, with [matched release qualification/status](display-alerts-release.md).
+No deployment has occurred. Private incident evidence stays outside Git under
 `var/investigations/` (private).
 
 ## Bounded delivery plan

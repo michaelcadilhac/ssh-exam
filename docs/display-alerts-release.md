@@ -26,6 +26,43 @@ Preserve the ten existing documentation screenshot edits.
    data and the original snapshot on failure; use only qualified forward recovery.
    Announce reopening immediately and record elapsed/maintenance time separately.
 
-Private receipts and frozen artifacts: `var/display-alerts-release/20261124/`.
-Next action: implement and run the focused controller regression before broad
-qualification. No production action has been taken for this release.
+## Qualified locally; production drain blocked
+
+Frozen runtime/controller/CLI source: 55d2397. Six new controller workflows
+reproduce the old refusal and pass after registration; the full controller
+cohort passes 66 tests and the preservation cohort passes 34. Both real nginx/
+TLS templates pass normal/fenced routing, timing-field privacy and reload checks.
+The production nginx executable still matches the previous real-host reload
+qualification. Runtime dependencies, native binaries and service PIDs are unchanged.
+
+The exact image passes startup and recovery: 46 assets read as UID 10001 and
+served byte for byte, 13 signed exchanges, stale/missing policy refusal, all 41
+preservation contracts, physical-purge/background-writer negative controls and
+already-running CURRENT-data recovery with no additional start or snapshot
+replacement. Six browser workflows against the frozen artifacts pass real
+WASM SSH/Begin, four WebSocket closure modes and Chromium's actual display API.
+Prior notification, diagnostic, native-race and display-policy functional
+evidence remains applicable to unchanged application/native source. No new class
+stress or physical multi-monitor/human-consent acceptance is claimed.
+
+Image Config: `sha256:7c1abc6e2a8d844c5fb1c1516d30d773cf009b3163fc4a9954cbdbc822ad7d65`.
+Private receipts, the 21-file candidate and its pinned image/CLI/helpers:
+`var/display-alerts-release/20261124/frozen-artifacts.json`. The image archive
+is hard-linked locally; no recording/media data was copied or uploaded.
+The csc-sys nginx candidate preserves its existing certificate paths and adds
+only the qualified safe log fields relative to its previous site template.
+The unchanged guarded CLI installer and native guard are retained byte for byte.
+
+Production acquired a fresh student exam during preparation. No service,
+configuration, CLI, clock, account or student record was changed for deployment.
+Existing unexpired student logins are also a drain blocker. No upload, maintenance
+fence, native installer or final stopped snapshot has run. Old inventory/history
+pins predate the new exam and must never be reused for cutover.
+
+Next action once idle: refresh aggregate web/native/drain and current recovery
+coverage, bind fresh metadata to these exact artifacts, then stage and qualify
+the real class-side CLI before/after proof without restarting its loaded worker.
+Use the strict source guard and fresh bounded receipt; do not substitute mere CLI
+availability for the history/configuration/PID proof. Complete the qualified
+controller's preparation and guarded cutover. A busy/uncertain result leaves
+production online; no session deletion or relaxed guard is authorized.

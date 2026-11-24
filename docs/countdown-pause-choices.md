@@ -1,6 +1,7 @@
 # Explicit countdown pause choices
 
-November 23, 2026. Implemented/tested locally; not pushed or deployed.
+November 23, 2026 implementation; pushed November 24, not deployed.
+[Matched release qualification/status](display-alerts-release.md).
 
 Bounded milestone: the instructor attempt row offers **Pause until reconnect**
 and **Pause indefinitely** for a stopped student's running countdown, without a

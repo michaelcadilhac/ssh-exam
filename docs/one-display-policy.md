@@ -1,6 +1,7 @@
 # One-display policy
 
-Implemented and tested locally. Not pushed, deployed or enabled in production.
+Implemented, tested and pushed. Not deployed or enabled in production.
+[Matched release qualification/status](display-alerts-release.md).
 
 ## Bounded delivery plan
 
