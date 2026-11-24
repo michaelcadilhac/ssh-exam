@@ -123,8 +123,10 @@ class Rollout:
         if mode not in ('ui', 'reviewed-web-read', 'reviewed-web-cli', 'reviewed-web-native'):
             raise ValueError('Unknown deployment mode; use ui or an explicitly registered reviewed scope')
         allow_admin = self.settings.get('allow_admin_sessions', False)
-        if type(allow_admin) is not bool or (allow_admin and (mode != 'reviewed-web-read' or self.settings.get('reviewed_scope') != 'interruption-grace-v1')):
-            raise ValueError('Admin-only session drain requires the exact interruption-grace-v1 scope and an explicit boolean')
+        admin_scope = ((mode == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'interruption-grace-v1')
+                       or (mode == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1'))
+        if type(allow_admin) is not bool or (allow_admin and not admin_scope):
+            raise ValueError('Admin-only session drain requires an exact qualified scope and an explicit boolean')
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
@@ -176,19 +178,22 @@ class Rollout:
                 raise ValueError('Reviewed recording reader must retain the installed and loaded native CLI cohort')
         elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1', 'unified-exam-student-list-v1', 'exam-dashboard-timezone-v1')
+                    or self.settings.get('reviewed_scope') not in ('latest-student-settings-and-cli-help-v1', 'bulk-next-attempt-read-v1', 'unified-exam-student-list-v1', 'exam-dashboard-timezone-v1', 'display-alert-diagnostics-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
                     or type(self.settings.get('previous_reader_policy_compatible')) is not bool):
                 raise ValueError('Reviewed web/CLI mode requires schema37, an exact registered reviewed scope, qualified source and explicit previous-reader compatibility')
-            if (self.settings.get('reviewed_scope') in ('unified-exam-student-list-v1', 'exam-dashboard-timezone-v1')
+            if (self.settings.get('reviewed_scope') in ('unified-exam-student-list-v1', 'exam-dashboard-timezone-v1', 'display-alert-diagnostics-v1')
                     and self.settings['previous_reader_policy_compatible'] is not False):
-                raise ValueError('This reviewed scope requires previous_reader_policy_compatible=false; an older writer can discard exam settings or student history')
+                raise ValueError('This reviewed scope requires previous_reader_policy_compatible=false; an older writer can discard exam settings, student history or current policy')
             if self.settings.get('unchanged_backend_protocol_native') is True:
                 raise ValueError('Reviewed backend semantics changed; do not attest unchanged UI-only contracts')
             if (any(not re.fullmatch('[a-f0-9]{64}', self.release[key]) for key in ('old_cli_sha256', 'cli_sha256'))
                     or self.release['old_cli_sha256'] == self.release['cli_sha256']):
                 raise ValueError('Reviewed CLI transition requires distinct qualified old/new binary digests')
+            if (self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1'
+                    and not re.fullmatch('[a-f0-9]{64}', self.release.get('worker_cli_sha256', ''))):
+                raise ValueError('Pin the separately loaded source worker without restarting it')
         else:
             if self.settings.get('unchanged_backend_protocol_native') is not True:
                 raise ValueError('Review and attest unchanged backend/protocol/native contracts before this UI-only workflow')
@@ -272,7 +277,7 @@ class Rollout:
 
     def forward_web(self):
         return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1'))
-                or (self.settings.get('mode') == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'exam-dashboard-timezone-v1'))
+                or (self.settings.get('mode') == 'reviewed-web-cli' and self.settings.get('reviewed_scope') in ('exam-dashboard-timezone-v1', 'display-alert-diagnostics-v1')))
 
     def transition(self):
         path = Path(self.release['native_update']['transition_receipt'])

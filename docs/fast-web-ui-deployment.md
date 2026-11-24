@@ -82,6 +82,18 @@ This flag does not delete sessions or permit native service restarts. Scope,
 public-controller recovery and exact-image qualification are recorded in
 [the release preparation](interruption-grace-release.md).
 
+The exact `reviewed-web-cli/display-alert-diagnostics-v1` scope combines the
+pause-choice UI, opt-in one-display policy, native-hold notification fix and
+bounded browser/proxy diagnostics. It requires schema 37, the exact qualified
+source, distinct installed old/new CLI digests and a separately pinned unchanged
+loaded source worker. No native service is restarted. Its explicit boolean
+`allow_admin_sessions` supports the same admin-only exception; students and
+unknown roles still refuse. The previous writer can omit the display policy and
+native notification, so compatibility must be false. Recovery uses the same
+candidate, CURRENT data and original snapshot; old-writer reopening is refused.
+The standalone CLI installer must verify before/after history, configuration and
+all native process identities. [Release qualification](display-alerts-release.md).
+
 The separate exact mode `reviewed-web-native`, scope
 `live-exam-execution-policy-v1`, coordinates the matched native transition. It is
 not an unchanged-native attestation. Its release pins all four old/new native

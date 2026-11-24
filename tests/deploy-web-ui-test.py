@@ -397,6 +397,59 @@ class FastUI(unittest.TestCase):
                 self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
                 self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
 
+    def display_alert_policy(self, allow_admin=True):
+        self.reviewed_web_cli(scope='display-alert-diagnostics-v1')
+        self.release['worker_cli_sha256']='8'*64
+        self.release['fast_ui']['allow_admin_sessions']=allow_admin
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def test_display_alert_policy_admin_only_apply_preserves_all_authority(self):
+        self.display_alert_policy();self.session('admin');before=self.history()
+        self.cli('prepare');result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE');self.assertEqual(self.history(),before)
+        self.assertEqual(len(result['proof']['preserved_tables']),41)
+        self.assertEqual(result['video_pause']['status'],'RELEASED')
+        self.assertFalse(any('native-cohort' in part for call in self.calls for part in call))
+        with database_file(self.data/'metadata.sqlite') as db:self.assertEqual(db.execute('SELECT role FROM sessions').fetchall(),[('admin',)])
+
+    def test_display_alert_policy_student_unknown_and_strict_admin_refuse_before_fence(self):
+        self.display_alert_policy();self.cli('prepare');before=self.history()
+        for role in ('student','unknown'):
+            self.session(role);self.cli('apply',expect=1)
+            self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
+            self.assertEqual(self.history(),before)
+        self.session('student',expires=int(time.time()*1000)-1)
+        result,_=self.cli('apply');self.assertEqual(result['phase'],'ONLINE')
+
+    def test_display_alert_policy_without_admin_exception_remains_strict(self):
+        self.display_alert_policy(allow_admin=False);self.session('admin');self.cli('prepare')
+        self.cli('apply',expect=1);self.assertFalse(self.stopped_calls())
+
+    def test_display_alert_policy_failed_start_recovers_current_data_and_original_snapshot(self):
+        self.display_alert_policy();self.cli('prepare');before=self.history();self.fail_start=True
+        self.cli('apply',expect=1);snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite')
+        _,error=self.cli('rollback',expect=1);self.assertIn('qualified forward resume',error)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(self.history(),before);self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_display_alert_policy_running_candidate_recovers_without_restart(self):
+        self.display_alert_policy();self.cli('prepare')
+        with patch.object(deploy.Rollout,'finish_web_running',side_effect=RuntimeError('Synthetic preopening interruption')):
+            self.cli('apply',expect=1)
+        snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite');calls=list(self.calls)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+        self.assertEqual(sum(a[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for a in self.calls),sum(a[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for a in calls))
+
+    def test_display_alert_policy_refuses_wrong_scope_source_cohort_or_compatibility(self):
+        self.display_alert_policy();original=json.loads(json.dumps(self.release))
+        for field,value in [('previous_reader_policy_compatible',True),('reviewed_scope','display-alert-diagnostics-v2'),('qualified_source','2'*40),('old_cli_sha256','c'*64),('worker_cli_sha256','unknown'),('allow_admin_sessions','yes')]:
+            with self.subTest(field=field):
+                self.release=json.loads(json.dumps(original));target=self.release if field.endswith('sha256') else self.release['fast_ui'];target[field]=value
+                (self.bundle/'release.json').write_text(json.dumps(self.release))
+                self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+                self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
     def test_dashboard_timezone_apply_and_forward_recovery_preserve_current_data(self):
         self.reviewed_web_cli(scope='exam-dashboard-timezone-v1');before=self.history()
         self.cli('prepare');self.fail_start=True;self.cli('apply',expect=1)

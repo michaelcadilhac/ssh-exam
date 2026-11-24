@@ -37,9 +37,9 @@ p.add_argument('--docker-host',default='unix:///var/run/docker.sock')
 p.add_argument('--fresh-after-seconds',type=int,default=62)
 p.add_argument('--proof-repair',action='store_true',help='Qualify proof-only recovery with the ORIGINAL frozen controller/proof, corrected nonce verifier and no service replacement')
 p.add_argument('--old-preservation',type=Path,help='Exact historical verifier blob for hosts without the original Git object; its digest is pinned')
-p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1','disconnect-diagnostics-v1','pre-final-monitoring-v2','binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1','interruption-grace-v1'),default='live-exam-execution-policy-v1')
+p.add_argument('--reviewed-scope',choices=('live-exam-execution-policy-v1','files-only-resume-v1','monitoring-timeouts-v2','review-countdown-policy-v1','disconnect-diagnostics-v1','pre-final-monitoring-v2','binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1','interruption-grace-v1','display-alert-diagnostics-v1'),default='live-exam-execution-policy-v1')
 a=p.parse_args()
-WEB_ONLY_SCOPES=('binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1','interruption-grace-v1')
+WEB_ONLY_SCOPES=('binary-vp9-capture-v1','exam-dashboard-timezone-v1','wake-lock-notifications-v1','interruption-grace-v1','display-alert-diagnostics-v1')
 assert 60 <= a.fresh_after_seconds <= 90, 'Exercise a real publisher interval, not a fast mock'
 assert a.docker_host in ('unix:///var/run/docker.sock',f'unix:///run/user/{os.getuid()}/docker.sock')
 assert Path(a.docker_host.removeprefix('unix://')).is_socket()
@@ -256,7 +256,7 @@ else:
     rollout=object.__new__(deploy.Rollout);rollout.project=project;rollout.data=data;rollout.state=state
     rollout.settings={'mode':'reviewed-web-native','reviewed_scope':a.reviewed_scope};rollout.record={'phase':'NATIVE_UPDATED'}
     if a.reviewed_scope in WEB_ONLY_SCOPES:
-        rollout.settings.update(mode='reviewed-web-cli' if a.reviewed_scope=='exam-dashboard-timezone-v1' else 'reviewed-web-read',previous_reader_policy_compatible=False)
+        rollout.settings.update(mode='reviewed-web-cli' if a.reviewed_scope in ('exam-dashboard-timezone-v1','display-alert-diagnostics-v1') else 'reviewed-web-read',previous_reader_policy_compatible=False)
         rollout.record['phase']='RUNNING_GATED'
     rollout.release={'schema':37,'old_image_config_id':qualified['config_id']}
     rollout.image={'config_id':qualified['config_id'],'tag':a.image,'layers':qualified['layers']}

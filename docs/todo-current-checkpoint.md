@@ -1,6 +1,11 @@
 # Current checkpoint — native alerts and SSH close diagnostics complete locally
 
-November 24 push/deploy instruction: deployment stopped before maintenance.
+November 24: release preparation and deployment are now explicitly authorized.
+The exact combined controller scope passes all 66 public-controller regressions;
+CURRENT-data/image/CLI/nginx qualification is in progress with production online.
+[Current release plan](display-alerts-release.md). Earlier blocked attempt follows.
+
+Earlier November 24 push/deploy instruction: deployment stopped before maintenance.
 The pending set includes the one-display server policy and matching examctl
 flag, not just UI changes. `scripts/deploy-web-ui` has no registered reviewed
 web/CLI scope for that combination, and no frozen matched image/CLI installation
