@@ -1692,10 +1692,18 @@ export function Workspace({
         .catch(() => {});
     }, 2000);
     const offline = () => {
+      browserSSH.reportDiagnostic({
+        stage: "browser-lifecycle",
+        cause: "network-offline",
+      });
       online.current = false;
       interrupt();
     };
     const onlineAgain = () => {
+      browserSSH.reportDiagnostic({
+        stage: "browser-lifecycle",
+        cause: "network-online",
+      });
       online.current = true;
       // A fresh bind on a new socket is required after the offline interval.
       if (ws.current?.readyState === WebSocket.OPEN) ws.current.close();
@@ -1715,6 +1723,10 @@ export function Workspace({
         } else focusChanged(document.hasFocus());
       },
       visibility = () => {
+        browserSSH.reportDiagnostic({
+          stage: "browser-lifecycle",
+          cause: document.hidden ? "document-hidden" : "document-visible",
+        });
         if (document.hidden) incident("Document became hidden");
         else focusChanged(document.hasFocus());
       };
@@ -1727,7 +1739,12 @@ export function Workspace({
         tools.current.open = false;
     };
     document.addEventListener("pointerdown", closeTools);
-    const leave = () => {
+    const leave = (event: PageTransitionEvent) => {
+      browserSSH.reportDiagnostic({
+        stage: "browser-lifecycle",
+        cause: "page-hide",
+        page_persisted: event.persisted,
+      });
       if (armed.current) incident("Page closing or reloading");
     };
     window.addEventListener("pagehide", leave);

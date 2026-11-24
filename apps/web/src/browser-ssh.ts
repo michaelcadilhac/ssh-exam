@@ -1,5 +1,8 @@
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
-import { safeSSHDiagnostic } from "../../../packages/protocol/ssh-diagnostics.js";
+import {
+  safeSSHDiagnostic,
+  type SSHDiagnostic,
+} from "../../../packages/protocol/ssh-diagnostics.js";
 import { terminalInputChunks } from "./terminal-input.js";
 import { socket } from "./api.js";
 import type { CapturedPaneInput } from "../../../packages/protocol/index.js";
@@ -89,7 +92,7 @@ export class BrowserSSH {
     }
   }
   begin(s: WebSocket, auth: (v: any) => void) {
-    this.close();
+    this.close(false, "replace");
     this.browserMode = false;
     this.attach(s, auth);
   }
@@ -122,6 +125,34 @@ export class BrowserSSH {
       control.send(JSON.stringify(message));
     } catch {
       control.close();
+    }
+  }
+  reportDiagnostic(value: SSHDiagnostic) {
+    try {
+      const diagnostic = safeSSHDiagnostic(value);
+      if (!diagnostic) return;
+      const control = this.control;
+      if (control?.readyState !== 1) return;
+      control.send(
+        JSON.stringify({
+          v: 1,
+          type: "browser-diagnostic",
+          diagnostic: {
+            ...diagnostic,
+            ...(typeof document !== "undefined"
+              ? {
+                  visible: document.visibilityState === "visible",
+                  focused: document.hasFocus(),
+                }
+              : {}),
+            ...(typeof navigator !== "undefined"
+              ? { online: navigator.onLine !== false }
+              : {}),
+          },
+        }),
+      );
+    } catch {
+      /* Browser state and observation failures never change work. */
     }
   }
   private initialize() {
@@ -165,9 +196,7 @@ export class BrowserSSH {
         return;
       }
       if (m.type === "transport-diagnostic") {
-        const diagnostic = safeSSHDiagnostic(m.diagnostic);
-        if (diagnostic)
-          this.sendControl({ v: 1, type: "browser-diagnostic", diagnostic });
+        this.reportDiagnostic(m.diagnostic);
         return;
       }
       if (m.type === "loss" || m.type === "fatal") {
@@ -177,7 +206,7 @@ export class BrowserSSH {
           diagnostic: safeSSHDiagnostic(m.diagnostic),
         });
         this.emit({ type: "loss" });
-        this.close();
+        this.close(false, "transport-loss");
         return;
       }
       // A retired worker's already-posted output/EOF must not affect a later
@@ -217,13 +246,9 @@ export class BrowserSSH {
         this.stopped
       )
         return;
-      this.sendControl({
-        v: 1,
-        type: "browser-diagnostic",
-        diagnostic: { stage: "worker-error", cause: "worker-error" },
-      });
+      this.reportDiagnostic({ stage: "worker-error", cause: "worker-error" });
       this.emit({ type: "loss" });
-      this.close();
+      this.close(false, "worker-error");
     };
   }
   private request(op: string, args: any): Promise<any> {
@@ -245,7 +270,7 @@ export class BrowserSSH {
     s.addEventListener("close", () => {
       if (this.control !== s || this.stopped) return;
       if (!this.authenticated) {
-        this.close();
+        this.close(false, "control-close");
         return;
       }
       this.controlReady = false;
@@ -260,7 +285,7 @@ export class BrowserSSH {
       let promise = this.controlReplies.get(m.id);
       if (!promise) {
         if (m.op === "connect") {
-          this.close(true);
+          this.close(true, "replace");
           this.browserMode = true;
           this.initialize();
           this.token = m.args.controlToken;
@@ -407,7 +432,7 @@ export class BrowserSSH {
     if (m.type === "browser-notify") {
       if (m.op === "close") {
         this.emit({ type: "loss" });
-        this.close();
+        this.close(false, "server-request");
       } else if (m.op === "input-framed" || m.op === "resize-framed") {
         this.framed(
           m.args.pane,
@@ -621,7 +646,7 @@ export class BrowserSSH {
       performance.now() - this.disconnected > OPERATION_TIMEOUT_MS
     ) {
       this.emit({ type: "loss" });
-      this.close();
+      this.close(false, "recovery-expired");
       return;
     }
     const s = socket("/browser/ssh");
@@ -651,7 +676,7 @@ export class BrowserSSH {
           performance.now() - this.disconnected > OPERATION_TIMEOUT_MS
         ) {
           this.emit({ type: "loss" });
-          this.close();
+          this.close(false, "recovery-expired");
           return;
         }
         this.disconnected = 0;
@@ -662,7 +687,16 @@ export class BrowserSSH {
       this.handle(m);
     };
   }
-  close(keepControl = false) {
+  close(
+    keepControl = false,
+    intent: NonNullable<SSHDiagnostic["close_intent"]> = "caller",
+  ) {
+    if (this.worker && this.browserMode && !this.stopped)
+      this.reportDiagnostic({
+        stage: "browser-client-close",
+        cause: "client-close",
+        close_intent: intent,
+      });
     ++this.lifecycle;
     this.setInputEnabled(false);
     this.controlReady = false;

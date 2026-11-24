@@ -1,10 +1,14 @@
-November23 native-hold **notification fix implemented/tested locally, not
+November 23 native-hold **notification fix implemented/tested locally, not
 deployed**: authenticated native callbacks now share the existing interruption
 notice and atomic durable state with gateway locks. Replay/restart do not
-duplicate; prompt recovery cancels pending mail.53affected application tests,
-5notification browser workflows, typecheck and server build pass. The SSH closure
-investigation found no initiating cause; bounded browser/proxy diagnostics remain
-in progress. [Plan/evidence](docs/native-hold-alerts-and-disconnect-observability.md).
+duplicate; prompt recovery cancels pending mail. 53 affected application tests,
+5 notification browser workflows, typecheck and server build pass. The SSH closure
+investigation found no initiating cause: the byte adapter discarded normal close
+codes. Bounded current-transport socket/lifecycle diagnostics and timestamped safe
+proxy logs are now implemented/tested locally. 37 focused/gateway checks, actual
+nginx/TLS/reload/privacy checks, native diagnostic races, build/typecheck and the
+final 22-case browser cohort pass. No deployment or production mail was performed.
+[Plan/evidence](docs/native-hold-alerts-and-disconnect-observability.md).
 
 November23 **one-display policy implemented/tested locally; not deployed or
 enabled**. Exam settings and `examctl web exams create|update --single-display

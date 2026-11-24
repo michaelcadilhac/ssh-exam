@@ -69,6 +69,72 @@ it("the loaded JS producer explicitly negotiates framing separately from the WAS
   );
   client.close();
 });
+it("publishes safe close/lifecycle context before worker termination and rejects late retired-worker metadata", async () => {
+  vi.stubGlobal("document", {
+    visibilityState: "hidden",
+    hasFocus: () => false,
+  });
+  vi.stubGlobal("navigator", { onLine: false });
+  const { client, start } = fixture(),
+    first = await start();
+  first.worker.respond({
+    type: "transport-diagnostic",
+    diagnostic: {
+      stage: "relay-socket-close",
+      cause: "peer-close",
+      close_code: 1006,
+      was_clean: false,
+    },
+  });
+  expect(JSON.parse(first.socket.send.mock.calls.at(-1)![0])).toMatchObject({
+    type: "browser-diagnostic",
+    diagnostic: {
+      close_code: 1006,
+      was_clean: false,
+      visible: false,
+      focused: false,
+      online: false,
+    },
+  });
+  client.close(false, "sign-out");
+  expect(JSON.parse(first.socket.send.mock.calls.at(-1)![0])).toMatchObject({
+    type: "browser-diagnostic",
+    diagnostic: { stage: "browser-client-close", close_intent: "sign-out" },
+  });
+  expect(first.worker.terminate.mock.invocationCallOrder[0]).toBeGreaterThan(
+    first.socket.send.mock.invocationCallOrder.at(-1)!,
+  );
+  const second = await start();
+  second.socket.send.mockClear();
+  first.worker.respond({
+    type: "transport-diagnostic",
+    diagnostic: {
+      stage: "relay-socket-close",
+      cause: "peer-close",
+      close_code: 1000,
+      was_clean: true,
+    },
+  });
+  expect(second.socket.send).not.toHaveBeenCalled();
+  client.close();
+});
+it("a diagnostic send failure cannot close the control socket or terminate SSH", async () => {
+  const { client, start } = fixture(),
+    { socket, worker } = await start();
+  socket.send.mockImplementation(() => {
+    throw Error("sink unavailable");
+  });
+  expect(() =>
+    client.reportDiagnostic({
+      stage: "browser-lifecycle",
+      cause: "document-hidden",
+    }),
+  ).not.toThrow();
+  expect(socket.close).not.toHaveBeenCalled();
+  expect(worker.terminate).not.toHaveBeenCalled();
+  expect(client.active).toBe(true);
+  client.close();
+});
 const retainedOwner = () => ({
   attempt: crypto.randomUUID(),
   exam: "midterm",

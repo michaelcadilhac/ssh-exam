@@ -4,7 +4,7 @@ map $http_upgrade $connection_upgrade {
     '' close;
 }
 # Deliberately omit query strings, cookies and bodies from access logs.
-log_format exam_safe '$remote_addr $request_method $uri $status $body_bytes_sent';
+log_format exam_safe '$remote_addr $request_method $uri $status $body_bytes_sent time=$time_iso8601 msec=$msec connection=$connection request_seconds=$request_time upstream_status=$upstream_status upstream_connect_seconds=$upstream_connect_time upstream_seconds=$upstream_response_time';
 server {
     listen 80;
     server_name exam.example.edu;

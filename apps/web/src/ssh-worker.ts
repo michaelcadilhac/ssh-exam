@@ -1,8 +1,15 @@
+import { installRelaySocketDiagnostics } from "./relay-socket-diagnostics.js";
+
 const queued: any[] = [];
 let ready = false;
 const scope = globalThis as any;
+const nativePost = scope.postMessage.bind(scope);
+const relayDiagnostics = installRelaySocketDiagnostics(scope, (diagnostic) =>
+  nativePost({ type: "transport-diagnostic", diagnostic }),
+);
 const deliver = (data: any) => {
   try {
+    if (data.op === "connect") relayDiagnostics.select(data.args?.url);
     scope.examSSHrequest(JSON.stringify(data));
   } finally {
     if (data.op === "answers") {
@@ -15,7 +22,6 @@ scope.onmessage = (event: MessageEvent) => {
   if (!ready) queued.push(event.data);
   else deliver(event.data);
 };
-const nativePost = scope.postMessage.bind(scope);
 scope.postMessage = (value: any) => {
   if (value.type === "ready") {
     ready = true;

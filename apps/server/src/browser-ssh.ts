@@ -443,7 +443,12 @@ export class BrowserConnection extends Connection {
     }
     if (m.type === "browser-diagnostic") {
       if (this.closed) return true;
-      this.observe(m.diagnostic);
+      const terminal =
+        (m.diagnostic?.stage === "relay-socket-close" &&
+          ["peer-close", "client-close"].includes(m.diagnostic?.cause)) ||
+        (m.diagnostic?.stage === "browser-client-close" &&
+          m.diagnostic?.cause === "client-close");
+      this.observe(m.diagnostic, undefined, terminal);
       return true;
     }
     if (m.type === "browser-pane-closed") {

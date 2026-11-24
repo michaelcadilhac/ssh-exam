@@ -226,3 +226,62 @@ it("browser failure diagnostics preserve stage/correlation but cannot mutate aut
   expect(c.alive).toBe(true);
   c.close();
 });
+it("retains bounded final browser socket metadata after ordinary diagnostics fill the budget, without changing authority", () => {
+  const socket = Object.assign(new EventEmitter(), {
+    readyState: 1,
+    send: (_s: string) => {},
+    close: () => {},
+  });
+  const c = new BrowserConnection(
+    "synthetic",
+    "exam",
+    {} as any,
+    new Agent({} as any),
+    socket as any,
+  );
+  const observations: any[] = [];
+  let losses = 0;
+  c.alive = true;
+  c.onLoss = () => losses++;
+  c.onTransportDiagnostic = (v) => observations.push(v);
+  for (const stage of ["connect", "command", "open", "handoff"])
+    for (const cause of [
+      "started",
+      "timeout",
+      "cancelled",
+      "eof",
+      "closed",
+      "reset",
+      "broken-pipe",
+      "unknown",
+      "operation-rejected",
+    ])
+      c.receive({ type: "browser-diagnostic", diagnostic: { stage, cause } });
+  expect(observations).toHaveLength(32);
+  const close = {
+    stage: "relay-socket-close",
+    cause: "peer-close",
+    close_code: 1006,
+    was_clean: false,
+    visible: false,
+    focused: false,
+    online: false,
+  };
+  c.receive({ type: "browser-diagnostic", diagnostic: close });
+  expect(observations.at(-1)).toEqual(close);
+  for (let i = 0; i < 100; i++)
+    c.receive({ type: "browser-diagnostic", diagnostic: close });
+  expect(observations).toHaveLength(33);
+  c.receive({
+    type: "browser-diagnostic",
+    diagnostic: {
+      stage: "browser-client-close",
+      cause: "client-close",
+      close_intent: "transport-loss",
+    },
+  });
+  expect(observations).toHaveLength(34);
+  expect(losses).toBe(0);
+  expect(c.alive).toBe(true);
+  c.close();
+});

@@ -25,6 +25,10 @@ export const sshDiagnostic = z
       "operation",
       "control-close",
       "control-grace-expired",
+      "relay-socket-close",
+      "relay-socket-error",
+      "browser-client-close",
+      "browser-lifecycle",
     ]),
     cause: z.enum([
       "started",
@@ -41,8 +45,33 @@ export const sshDiagnostic = z
       "worker-error",
       "peer-close",
       "unknown",
+      "client-close",
+      "socket-error",
+      "page-hide",
+      "document-hidden",
+      "document-visible",
+      "network-offline",
+      "network-online",
     ]),
     close_code: z.number().int().min(1000).max(4999).optional(),
+    was_clean: z.boolean().optional(),
+    page_persisted: z.boolean().optional(),
+    visible: z.boolean().optional(),
+    focused: z.boolean().optional(),
+    online: z.boolean().optional(),
+    close_intent: z
+      .enum([
+        "caller",
+        "replace",
+        "transport-loss",
+        "worker-error",
+        "control-close",
+        "server-request",
+        "recovery-expired",
+        "sign-out",
+        "sign-in-failed",
+      ])
+      .optional(),
   })
   .strict();
 export type SSHDiagnostic = z.infer<typeof sshDiagnostic>;

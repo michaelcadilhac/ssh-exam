@@ -39,6 +39,10 @@ const diagnosticAccounts = {
   relaydiag01: 10047,
   relaydiag02: 10048,
   relaydiag03: 10049,
+  relaydiag04: 10050,
+  relaydiag05: 10051,
+  relaydiag06: 10052,
+  relaydiag07: 10053,
 };
 const setupHealthAccounts = {
   setupbusy01: 12050,
@@ -103,7 +107,7 @@ const relay = browserMode
   : null;
 const relayObservations = new Map<string, number>();
 const relayReferences = new Map<string, string>();
-const closeDiagnosticRelays = new Map<string, () => void>();
+const closeDiagnosticRelays = new Map<string, (mode?: string) => void>();
 if (relay) {
   relay.on("connection", (ws, req) => {
     if (req.headers.origin !== "http://localhost:3100") {
@@ -145,8 +149,13 @@ if (relay) {
         else if (t.username !== "relaydiag02") release();
       });
       if (Object.hasOwn(diagnosticAccounts, t.username))
-        closeDiagnosticRelays.set(t.username, () => {
-          ws.close(4001, "PRIVATE-close-reason");
+        closeDiagnosticRelays.set(t.username, (mode = "private") => {
+          if (mode === "abnormal") ws.terminate();
+          else
+            ws.close(
+              mode === "normal" ? 1000 : mode === "going-away" ? 1001 : 4001,
+              "PRIVATE-close-reason",
+            );
           upstream.destroy();
         });
       ws.on("message", (bytes, binary) => {
@@ -1561,7 +1570,10 @@ app.post("/api/fixture/diagnostic-relay-close", async (req) => {
     !closeDiagnosticRelays.has(username)
   )
     throw Error("No owned diagnostic relay");
-  closeDiagnosticRelays.get(username)!();
+  const mode = (req.body as any).mode ?? "private";
+  if (!["private", "normal", "going-away", "abnormal"].includes(mode))
+    throw Error("Unknown diagnostic close mode");
+  closeDiagnosticRelays.get(username)!(mode);
   return { closed: true };
 });
 app.get("/api/fixture/transport-diagnostics", async () => ({
@@ -1574,9 +1586,13 @@ app.get("/api/fixture/transport-diagnostics", async () => ({
     .all(),
   attempts: store.db
     .prepare(
-      "SELECT username,state,start,deadline FROM attempts WHERE username IN ('relaydiag01','relaydiag02')",
+      `SELECT username,state,start,deadline FROM attempts WHERE username IN (${Object.keys(
+        diagnosticAccounts,
+      )
+        .map(() => "?")
+        .join(",")})`,
     )
-    .all(),
+    .all(...Object.keys(diagnosticAccounts)),
 }));
 app.get("/api/fixture/runtime", async () => ({
   recoveryCompatibility: {

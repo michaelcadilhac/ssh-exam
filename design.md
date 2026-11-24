@@ -12,7 +12,11 @@ including replay/restart deduplication, existing grace, recovery cancellation an
 student-review fallback. Hold/history/notice commit together; explicit prior
 notification suppression is preserved. This corrects a missing callback-path
 email without changing enforcement, clocks or delivery policy. Tested locally,
-not deployed. Additional closure diagnostics remain in progress;
+not deployed. Current-transport browser socket code/cleanliness, close requests
+and page/network context now cross the existing bounded diagnostic flow. Proxy
+logs gain safe timing/connection fields. These untrusted hints never change
+enforcement; the original initiating disconnect remains unexplained. Focused,
+native diagnostic race, nginx/TLS and 22 browser workflows pass;
 [plan and evidence](docs/native-hold-alerts-and-disconnect-observability.md).
 
 ## November 23 local one-display policy

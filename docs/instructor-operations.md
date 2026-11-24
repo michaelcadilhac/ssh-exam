@@ -1,5 +1,16 @@
 # Instructor operations
 
+## November 23 local native alerts and close diagnostics
+
+Not deployed. Native class-server interruptions now share the normal durable
+instructor notice; replay/restart do not create duplicates and recovery cancels
+unsent mail. Existing Notifications and `examctl web alerts list/show/remind`
+inspect these episodes. Browser socket close code/cleanliness, local close
+requests and page/network context are bounded metadata in the existing transport
+diagnostic logs. The nginx candidate adds safe timestamps/durations. These hints
+never authorize work or prove misconduct. No production test email or deployment
+was performed. [Scope, evidence and inspection](native-hold-alerts-and-disconnect-observability.md).
+
 ## November 22 local follow-up: interruption grace
 
 Implemented locally, not deployed: a brief interruption pauses typing and shows

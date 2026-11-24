@@ -1,21 +1,24 @@
-# Current checkpoint — native hold email fixed locally; closure diagnostics next
+# Current checkpoint — native alerts and SSH close diagnostics complete locally
 
-November23 notification milestone: signed native LOCKED callbacks now atomically
-record the interruption and its existing durable email episode. Gateway/native
-overlap, replay/restart, student requests, explicit notification suppression and
-successful recovery preserve one notice per interruption. No clock, hold,
-authorization, SMTP retry or15-second notification-grace policy change.
-53affected application tests (including actual synthetic SMTP),5notification
-browser workflows, typecheck and server build pass. Old implementation fails the
-new signed-callback regressions. [Plan/evidence](native-hold-alerts-and-disconnect-observability.md).
-Private receipts: `var/native-hold-alerts/20261123/`.
+November 23: native LOCKED callbacks now atomically record the interruption and
+its durable notification. Gateway overlap, replay/restart, student requests,
+explicit suppression and recovery preserve one notice per interruption.
+Local notification commit: 2e8fd61. No clock, hold, approval or mail-policy change.
 
-Next authorized action: add bounded current-transport browser socket-close and
-lifecycle diagnostics, plus useful proxy log timestamps, after the read-only
-incident investigation found no initiating cause. coder/websocket1.8.15 maps
-normal/going-away closes to EOF, losing the historical code. No production change
-or email was sent. Do not stop after the notification increment; diagnostic work
-remains authorized. No open policy question.
+Read-only investigation found no initiating SSH cause. The byte adapter maps
+normal/going-away closes to EOF, losing their original codes. New bounded browser
+diagnostics retain socket code/cleanliness, deliberate close requests and page/
+network observations; nginx candidates add safe timestamps and durations.
+These hints never change enforcement or establish misconduct. Both milestones
+are implemented/tested locally; no production changes or emails were sent.
+[Scope, findings and operator inspection](native-hold-alerts-and-disconnect-observability.md).
+
+Verification: 53 affected notification checks, 37 diagnostic/gateway checks,
+5 notification browser checks and the final combined 22-browser cohort pass,
+along with typecheck/build, native diagnostic races and actual nginx/TLS/reload/
+privacy checks. All 62 frozen source/assets match; owned runners/listeners are
+gone. Private receipts: `var/native-hold-alerts/20261123/` and
+`var/ssh-close-diagnostics/20261123/`. No open decision or remaining task blocker.
 
 ## Previous local milestone — one display
 
@@ -44,7 +47,8 @@ Last deployed runtime/controller remains df3c434, November22 on csc-sys;
 [deployment/recovery](interruption-grace-release.md). Larger35/70capacity remains
 unqualified. Do not reuse local functional evidence as release readiness.
 
-Next action only on a new instruction: qualify a frozen matched web/CLI release,
-including preservation/recovery and consenting synthetic physical-display/browser
-acceptance before enabling for a class. No SQL/native-authority migration is
-needed. Preserve ten pre-existing modified documentation PNGs, left unstaged.
+Next action only on a new instruction: prepare a frozen matched release and
+qualify preservation/recovery/reopening, including the nginx logging reload.
+Physical-display/browser acceptance remains before enabling the one-display
+policy for a class. No database/native-authority migration is needed for these
+increments. Preserve ten pre-existing modified documentation PNGs, left unstaged.

@@ -98,6 +98,8 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                 secure = port()
             candidate = root/(site+'-'+str(fenced)+'.conf')
             source = repository/'deploy/nginx'/site
+            access = root/(site+'-'+str(fenced)+'.access.log')
+            log_name = 'ssh_exam_safe' if site == 'ssh-exam.cadilhac.name.conf' else 'exam_safe'
             if args.baseline:
                 candidate.write_bytes(source.read_bytes())
             else:
@@ -110,7 +112,7 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                 text = text.replace('listen 80;', f'listen 127.0.0.1:{plain};')
                 text = text.replace('listen 443 ssl;', f'listen 127.0.0.1:{secure} ssl;')
                 text = re.sub(r'127\.0\.0\.1:300[01]\b', f'127.0.0.1:{upstream.server_port}', text)
-                text = re.sub(r'access_log [^;]+;', 'access_log off;', text)
+                text = re.sub(r'access_log [^;]+;', f'access_log {access} {log_name};', text)
                 text = re.sub(r'ssl_certificate [^;]+;', f'ssl_certificate {root}/cert.pem;', text)
                 text = re.sub(r'ssl_certificate_key [^;]+;', f'ssl_certificate_key {root}/key.pem;', text)
                 return text + (f'\nserver {{ listen 127.0.0.1:{secure} ssl; server_name unrelated.test; '
@@ -206,17 +208,31 @@ with tempfile.TemporaryDirectory(prefix='ssh-exam-maintenance-') as temporary:
                     while request('/')[0] != 503:
                         assert time.monotonic() < until
                         time.sleep(.05)
+                assert request('/diagnostic-safe?password=DO_NOT_LOG')[0] == 200
                 upstream.shutdown(); upstream.server_close(); thread.join(timeout=5); stopped = True
                 assert not thread.is_alive()
                 for path in (*paths, '/api/agent/status', '/api/student/attempts/synthetic/status', '/api/student/attempts/synthetic/finish'):
                     for method in ('GET', 'POST'):
                         unavailable(path, method)
                 assert request('/', host='unrelated.test')[0] == 200
+                if not args.baseline:
+                    until = time.monotonic()+3
+                    while not access.exists() or '/diagnostic-safe' not in access.read_text():
+                        assert time.monotonic() < until, 'Diagnostic request was not logged'
+                        time.sleep(.025)
+                    text = access.read_text()
+                    assert 'DO_NOT_LOG' not in text and 'password=' not in text, 'Query leaked into safe access log'
+                    diagnostic = next(line for line in text.splitlines() if '/diagnostic-safe ' in line)
+                    for pattern in (r'time=\d{4}-\d\d-\d\dT', r'msec=\d+\.\d+', r'connection=\d+',
+                                    r'request_seconds=\d+\.\d+', r'upstream_status=200',
+                                    r'upstream_connect_seconds=\d+\.\d+', r'upstream_seconds=\d+\.\d+'):
+                        assert re.search(pattern, diagnostic), (pattern, diagnostic)
                 if args.browser:
                     subprocess.run(['node', str(repository/'tests/nginx-maintenance-browser.mjs'), f'https://127.0.0.1:{secure}', str(args.output/site/str(fenced))], check=True, timeout=60)
                 receipt = {'site': site, 'fenced': fenced, 'healthy_agent_status_finish_preserved': True, 'ordinary_401_preserved': True,
                            'unrelated_site_preserved': True, 'upstream_unavailable': '503 with Retry-After and HTML/JSON', 'syntax': 'PASS'}
                 if reload_receipt: receipt['reload'] = reload_receipt
+                if not args.baseline: receipt['safe_access_timing_and_query_privacy'] = 'PASS'
                 receipts.append(receipt)
                 print(json.dumps(receipt), flush=True)
             finally:

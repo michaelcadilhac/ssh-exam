@@ -207,11 +207,16 @@ function App() {
     );
   const logout = async () =>
     navigate("signout", async () => {
+      browserSSH.reportDiagnostic({
+        stage: "browser-client-close",
+        cause: "client-close",
+        close_intent: "sign-out",
+      });
       // The retained control socket must finish SSH cleanup before invalidation.
       await api(user?.role === "admin" ? "/admin/logout" : "/logout", {});
       if (user?.role === "admin") history.replaceState(null, "", "/admin");
       ++authAttempt.current;
-      browserSSH.close();
+      browserSSH.close(false, "sign-out");
       authSocket?.close();
       setCsrf("");
       setReservation(null);
@@ -295,7 +300,7 @@ function App() {
       if (m.type === "error") {
         receivedError = true;
         retainAuthMessages();
-        browserSSH.close();
+        browserSSH.close(false, "sign-in-failed");
         clearAuthAnswers();
         setError(m.error);
         setAuthPhase("idle");
