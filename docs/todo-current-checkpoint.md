@@ -10,8 +10,11 @@ one-display policy and matching CLI; native-origin interruption notifications;
 bounded SSH/browser lifecycle diagnostics and safe nginx timing logs. Idle
 student login tokens may remain through deployment only after every independent
 work/hold/pending-operation/process/TCP guard passes. No sessions were cleared.
-The one-display requirement remains off for existing exams pending physical
-multi-display/human-consent acceptance before classroom enablement.
+The instructor explicitly enabled one-display verification for final on November
+24 at 09:46 Chicago; the revision-checked CLI confirms it, with other fields unchanged.
+No attempt was unfinished at activation. Physical multi-display acceptance remains
+unperformed; the actual Chromium API and policy refusal/recovery were tested locally.
+Private activation evidence: `var/one-display-enable/20261124/`.
 
 Verification: 71 controller, 34 preservation and six native-proof refresher checks;
 real nginx/TLS; exact-image startup/poll expiry/background writers/CURRENT-data
