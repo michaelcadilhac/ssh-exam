@@ -1,3 +1,13 @@
+November 24: **matched release pushed, deployed and online on csc-sys** at
+10:41:31 UTC (04:41 Chicago), runtime/CLI 55d2397 and controller c7a36f7.
+Automatic checks preserved live exams and the original-deadline account hold;
+46 external assets, 41 authority contracts, 250 native histories and all native
+PIDs pass. Idle login records may remain only with a fully clear work/hold/
+connection drain. No native restart/schema migration; original snapshot/CURRENT
+data preserved. The display requirement stays off pending physical acceptance.
+[Deployment and recovery](docs/display-alerts-release.md). Earlier dated local
+qualification records below are superseded by this deployment status.
+
 November 23 native-hold **notification fix implemented/tested locally, not
 deployed**: authenticated native callbacks now share the existing interruption
 notice and atomic durable state with gateway locks. Replay/restart do not

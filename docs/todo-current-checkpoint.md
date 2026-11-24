@@ -1,43 +1,35 @@
-# Current checkpoint — release artifacts qualified; active exam blocks cutover
+# Current checkpoint — deployed and online
 
-November 24: push, release qualification and guarded deployment are authorized.
-The public-repository push clarification is resolved. Runtime/controller/CLI
-candidate source 55d2397 is frozen; [release evidence and next steps](display-alerts-release.md).
+November 24: authorized automatic deployment is complete. Runtime/CLI 55d2397,
+controller c7a36f7. Admissions reopened 10:41:31 UTC (04:41 Chicago). The active
+20-minute watch is complete; no recurring production timer was installed.
+[Deployment, recovery and evidence](display-alerts-release.md).
 
-All 66 public-controller regressions, 34 preservation checks and real nginx/TLS
-checks pass. The exact image passes signed startup/poll expiry/background-writer
-preservation and already-running CURRENT-data recovery: 46 assets, 41 authority
-contracts, 13 signed exchanges, no extra restart or replaced snapshot. Six new
-artifact-browser workflows pass actual WASM SSH/Begin, close codes and the real
-Chromium display API. Prior application/native functional evidence is reused
-only for unchanged source. Human/physical-display acceptance remains before
-requiring that opt-in policy for a class.
+Deployed: explicit countdown pause choices/faster clock confirmation; opt-in
+one-display policy and matching CLI; native-origin interruption notifications;
+bounded SSH/browser lifecycle diagnostics and safe nginx timing logs. Idle
+student login tokens may remain through deployment only after every independent
+work/hold/pending-operation/process/TCP guard passes. No sessions were cleared.
+The one-display requirement remains off for existing exams pending physical
+multi-display/human-consent acceptance before classroom enablement.
 
-Production acquired a running exam during preparation; earlier unexpired student
-sessions remain too. No deployment upload, fence, service operation, CLI install,
-configuration/student-record change or media copy occurred. Keep production online.
-The old native/history inventory is stale now and must not authorize cutover.
-Private identities/receipts/frozen candidate: `var/display-alerts-release/20261124/`.
+Verification: 71 controller, 34 preservation and six native-proof refresher checks;
+real nginx/TLS; exact-image startup/poll expiry/background writers/CURRENT-data
+recovery; six exact-artifact browser workflows. Production passes 46/46 external
+assets, 41 authority contracts, prior audit/requests, 250 unchanged native histories,
+all four native PIDs, unchanged loaded worker and an actual signed CLI read.
+No native restart, schema migration, interrupted exam or restored database.
 
-Next once idle: refresh current web/native drain and recovery coverage, bind fresh
-metadata to the frozen candidate, stage and verify the guarded real-host CLI
-transition while retaining the loaded worker, then execute controller preparation
-and cutover. Do not rebuild the image, reuse stale history, remove student sessions
-or bypass a busy guard. November 24 approval: idle student login tokens may stay
-valid while every independent work/hold/pending-operation/process/TCP check passes.
-That narrow exception is being qualified; no running exam may be interrupted.
-The instructor requests automatic cutover after a successful drain, with checks
-approximately every 20 minutes. Keep this task active; next initial check is
-07:04 UTC (01:04 Chicago). Record each check privately and retain the frozen image.
-Preserve the ten original
-modified documentation screenshots, left unstaged. Last production runtime remains
-df3c434; the notification/display/diagnostic/pause-choice changes are not deployed.
+Guarded cutover 266.17 seconds, including a safely fenced expired-proof refusal
+and qualified forward resume of the already-running healthy candidate. Original
+snapshot identity unchanged; video pause released. Snapshot: 355 MB metadata,
+about 682 KB small files, 2.19 GB recordings reused with zero new media objects.
+The original-deadline account hold was preserved until its natural release.
 
-Previous functional increments remain pushed and locally tested: c1482ef
-(pause choices/clock confirmation), a2857a8 (FUTURE architecture evaluation),
-328cb42 (opt-in display policy), 2e8fd61 (native alerts), bda731e (close diagnostics).
-See [pause choices](countdown-pause-choices.md), [display policy](one-display-policy.md)
-and [alerts/closure evidence](native-hold-alerts-and-disconnect-observability.md).
-Larger 35/70-student capacity remains unqualified. Current production recovery is
-[the November 22 release](interruption-grace-release.md); use CURRENT data and its
-qualified forward recovery, never an older writer or restored historical snapshot.
+Private complete evidence, recovery state locations and frozen inputs:
+`var/display-alerts-release/20261124/`. No remaining deployment action or decision.
+Any future deployment needs a new instruction. Larger 35/70 capacity remains
+unqualified. Preserve the ten pre-existing modified documentation PNGs unstaged.
+Optional next work is tighter proof-refresh/launch orchestration; do not widen
+freshness or add it to this completed deployment. Other background/user work
+must preserve the deployed CURRENT data and use compatible forward recovery.

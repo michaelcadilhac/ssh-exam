@@ -1,5 +1,52 @@
 # Display policy, alerts and disconnect diagnostics release
 
+## Deployed November 24, 2026
+
+Runtime/CLI 55d2397 and controller c7a36f7 are pushed and deployed on csc-sys.
+Admissions reopened at **10:41:31 UTC (04:41 Chicago)** after automatic read-only
+checks about every 20 minutes. No exam was interrupted. A completed attempt's
+normal original-deadline account restriction was preserved until it cleared.
+All 46 external assets match the frozen image; 41 authority-table contracts,
+prior audit/management requests, all 250 native histories and all four native
+service PIDs pass preservation. The loaded source worker is unchanged. The exact
+signed root CLI read succeeds. No schema migration or native service restart ran.
+The display requirement remains off on every existing exam pending physical
+acceptance before classroom enablement.
+
+The stopped snapshot contains 355,262,464 database bytes and 681,916 other small
+bytes. It reused 2,188,943,660 recording bytes from verified shared recovery
+objects, with zero new snapshot media objects. Guarded cutover took **266.17 s**.
+Preparation was first recorded at 00:20 Chicago; the intervening automatic watch
+waited for exams and the deadline-bound hold. Recorded preparation-to-reopening
+was about 4 h 21 min, mostly that authorized wait. External maintenance 503 with
+Retry-After 60 and subsequent 200 were observed. No recording was duplicated in
+the stopped snapshot; no database was restored or original snapshot replaced.
+
+The first private upload's final receipt had an owned scripting error after
+extraction; every staged file and the archive were reverified before repairing
+that receipt. The initial final guard needed its candidate image cache loaded
+first; this was corrected while the old site stayed online. The strict native
+proof caught a transient agent descendant, which exited without intervention;
+the unchanged guard then passed. During cold startup the 90-second proof expired.
+The healthy running candidate stayed fenced. One bounded read-only diagnosis
+confirmed expiry and unchanged data; a fresh strict proof and the qualified
+forward resume reopened it without another web restart. The original snapshot's
+device/inode/size/mtime are unchanged. Safety deadlines were not widened.
+
+For future execution, prepare all commentary/next arguments before acquiring a
+short-lived proof and refresh-and-launch contiguously, as used for this resume.
+Additional automation/hardening is follow-up work, outside this deployment.
+
+Recovery state: `/var/tmp/ssh-exam-display-alerts-20261124-c7a36f7-d30d8e67-state`.
+Use its frozen controller and CURRENT data for compatible forward recovery; the
+older writer may not reopen. Never restore its database snapshot over newer work.
+The owned video pause is released and the automatic watch is complete; no recurring
+production deploy timer was installed. Evidence: `var/display-alerts-release/20261124/`,
+including production/external acceptance, completion and the preserved failure receipts.
+No real student sign-in, MFA, media capture or test email was used for acceptance.
+
+## Preparation history
+
 November 24, 2026: release preparation and guarded deployment authorized.
 Production stays online until the exact candidate and recovery path pass.
 Preserve the ten existing documentation screenshot edits.

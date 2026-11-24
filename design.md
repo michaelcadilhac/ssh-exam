@@ -5,6 +5,17 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 24 deployed release
+
+The matched pause-choice UI, opt-in display policy/CLI, native-origin notifications
+and bounded browser/proxy diagnostics are pushed and deployed on csc-sys,
+runtime/CLI 55d2397, controller c7a36f7. Admissions reopened at 04:41 Chicago.
+Idle student login records can remain only after all independent live-work,
+hold, operation and connection checks pass. No account hold, deadline, native
+process or historical attempt was changed to admit deployment. Existing exams'
+display requirement remains off pending physical acceptance. The earlier local
+notes below are historical. [Deployment and recovery](docs/display-alerts-release.md).
+
 ## November 23 local native interruption notifications
 
 Signed class-server holds now share the gateway's durable interruption notice,

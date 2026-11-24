@@ -1,6 +1,7 @@
 # One-display policy
 
-Implemented, tested and pushed. Not deployed or enabled in production.
+Implemented, tested, pushed and deployed November 24. The requirement remains
+off for existing exams pending physical acceptance before classroom enablement.
 [Matched release qualification/status](display-alerts-release.md).
 
 ## Bounded delivery plan

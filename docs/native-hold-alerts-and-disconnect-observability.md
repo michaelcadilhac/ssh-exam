@@ -1,8 +1,8 @@
 # Native hold alerts and SSH closure diagnostics
 
-November 23 implemented/tested locally; pushed November 24. Deployment is now
-authorized, with [matched release qualification/status](display-alerts-release.md).
-No deployment has occurred. Private incident evidence stays outside Git under
+November 23 implemented/tested locally; pushed and deployed November 24. See
+[matched deployment, qualification and recovery](display-alerts-release.md).
+Private incident evidence stays outside Git under
 `var/investigations/` (private).
 
 ## Bounded delivery plan
@@ -167,4 +167,5 @@ cutover; do not restart SSH, the relay or native exam services for these changes
 Preserve current database/outbox/episodes, history and native state for rollback.
 A compatible old web image reads the additive records but restores the native
 notification gap and lacks new close diagnostics. Old nginx formatting loses
-timing context. No push/deployment is authorized by this local task.
+timing context. The separate November 24 instruction authorized the matched
+cutover now recorded in the release document.

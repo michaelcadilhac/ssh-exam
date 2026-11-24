@@ -1,6 +1,6 @@
 # Explicit countdown pause choices
 
-November 23, 2026 implementation; pushed November 24, not deployed.
+November 23, 2026 implementation; pushed and deployed November 24.
 [Matched release qualification/status](display-alerts-release.md).
 
 Bounded milestone: the instructor attempt row offers **Pause until reconnect**
@@ -31,7 +31,7 @@ native code/contracts. Preserve pre-existing documentation screenshots.
 CLI equivalents remain `examctl web clocks pause-timer ATTEMPT --revision N`
 (indefinite), the same with `--resume-on-work` (until successful exam resumption),
 and `resume-timer` (explicit immediate countdown resume). Existing controls are
-already deployed; the two-choice interface and faster display are local changes.
+deployed, including the two-choice interface and faster display.
 
 Verification:24affected HTTP/clock/signed-dispatch/automatic-resume checks pass,
 as do TypeScript and the production build. Final built assets pass five focused
