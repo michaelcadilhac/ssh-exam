@@ -164,7 +164,7 @@ class FastUI(unittest.TestCase):
         if len(args) > 1 and args[1].endswith('/web-ui-ops/inventory-web.py'):
             if self.busy: raise RuntimeError('Synthetic existing guard reports BUSY')
             with database_file(self.data/'metadata.sqlite') as db:
-                sessions=deploy.deployment_sessions.activity(db,int(time.time()*1000),self.release['fast_ui'].get('allow_admin_sessions',False))
+                sessions=deploy.deployment_sessions.activity(db,int(time.time()*1000),self.release['fast_ui'].get('allow_admin_sessions',False),self.release['fast_ui'].get('allow_idle_student_sessions',False))
             if sessions['blocking']: raise RuntimeError('BUSY: live student or unapproved session remains')
             return json.dumps({'guard': 'PASS', 'scope': 'STOPPED' if args[-1]=='stopped' else 'RUNNING', 'image': self.current, 'attempts': 1, 'history_sha256': self.history()})
         return REAL_COMMAND(arguments, timeout)
@@ -449,6 +449,101 @@ class FastUI(unittest.TestCase):
                 (self.bundle/'release.json').write_text(json.dumps(self.release))
                 self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
                 self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
+    def idle_student_policy(self):
+        self.display_alert_policy()
+        self.release['fast_ui']['allow_idle_student_sessions']=True
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def test_idle_student_login_survives_public_cutover_without_session_deletion(self):
+        self.idle_student_policy();self.session('student')
+        with database_file(self.data/'metadata.sqlite') as db:before=db.execute('SELECT * FROM sessions').fetchall()
+        self.cli('prepare');result,_=self.cli('apply')
+        self.assertEqual(result['phase'],'ONLINE')
+        with database_file(self.data/'metadata.sqlite') as db:self.assertEqual(db.execute('SELECT * FROM sessions').fetchall(),before)
+        self.assertEqual(len(result['proof']['preserved_tables']),41)
+
+    def test_idle_student_unknown_role_still_refuses_before_fence(self):
+        self.idle_student_policy();self.session('unknown');self.cli('prepare')
+        self.cli('apply',expect=1);self.assertFalse(self.stopped_calls())
+        self.assertEqual(self.site.read_text(),'original synthetic site')
+
+    def test_idle_student_exception_cannot_opt_in_other_scopes_or_nonboolean(self):
+        self.idle_student_policy();original=json.loads(json.dumps(self.release))
+        for field,value in [('reviewed_scope','exam-dashboard-timezone-v1'),('mode','ui'),('allow_idle_student_sessions','yes')]:
+            self.release=json.loads(json.dumps(original));self.release['fast_ui'][field]=value
+            self.release['fast_ui']['allow_admin_sessions']=False
+            (self.bundle/'release.json').write_text(json.dumps(self.release))
+            self.cli('prepare',expect=1);self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
+    def test_idle_student_real_sql_still_refuses_preflight_running_hold_and_pending_clock(self):
+        self.idle_student_policy();self.session('student')
+        self.config.write_text(json.dumps({'mode':'production','maintenance':False,'origin':'https://ssh-exam.cadilhac.name','agent':{'id':'class'}}))
+        self.cli('prepare');actual_query=self.actual_idle_sql()
+        def query(arguments):
+            # Synthetic fixture owner only; production ownership checks stay root.
+            with patch.object(deploy.deployment_pause,'OWNER_UID',os.geteuid()):return actual_query(arguments)
+        args=[sys.executable,REPOSITORY/'scripts/web-ui-ops/inventory-web.py',self.state,37]
+        baseline=json.loads(query(args));self.assertEqual(baseline['session_activity']['allowed_student_tokens'],1)
+        changes=[("UPDATE attempts SET state='PREPARING'",'unfinished'), ("UPDATE attempts SET state='ACTIVE'",'unfinished'), ("UPDATE attempts SET state='LOCKED'",'unfinished'), ("UPDATE attempts SET access_state='HELD'",'unreleased'), ("UPDATE attempts SET protected=0",'unprotected'), ("UPDATE attempts SET policy_state='RESTORING'",'policy_access_errors'), ("UPDATE attempts SET deadline=9999999999999",'future_deadlines'), ("UPDATE attempts SET original_deadline=9999999999999",'future_deadlines'), ("INSERT INTO clock_reset_requests(id,attempt,body,status) VALUES('pending-clock','history','{}','pending')",'pending_clock')]
+        for change,clause in changes:
+            with self.subTest(change=change):
+                with database_file(self.data/'metadata.sqlite') as db:db.execute(change)
+                try:
+                    with self.assertRaisesRegex(RuntimeError,clause):query(args)
+                finally:
+                    with database_file(self.data/'metadata.sqlite') as db:
+                        db.execute("UPDATE attempts SET state='COMPLETED',access_state='RELEASED',protected=1,policy_state='NORMAL',deadline=10,original_deadline=10")
+                        db.execute('DELETE FROM clock_reset_requests')
+                self.assertEqual(json.loads(query(args))['guard'],'PASS')
+        self.assertFalse(self.stopped_calls())
+
+    def test_idle_student_real_running_inventory_refuses_live_ssh_worker_or_tcp(self):
+        # Run the unchanged public inventory script and real SQLite queries.
+        # Only Docker, procfs and readiness transports are synthetic adapters.
+        import builtins
+        from types import SimpleNamespace
+        self.idle_student_policy();self.session('student')
+        self.config.write_text(json.dumps({'mode':'production','maintenance':False,'origin':'https://ssh-exam.cadilhac.name','agent':{'id':'class'}}))
+        health=self.snapshot();health['health'].update(production_ready=True,missing=[])
+        with database_file(self.data/'metadata.sqlite') as db:db.execute('UPDATE agent_snapshot SET payload=?',(json.dumps(health),))
+        self.cli('prepare');self.actual_idle_sql()
+        script=REPOSITORY/'scripts/web-ui-ops/inventory-web.py'
+        def observe(extra_worker=False,tcp=False):
+            class Proc:
+                def __init__(self,path):self.path=path
+                def read_text(self):
+                    if '/task/' in self.path:return ('12346 12347' if extra_worker else '12346') if self.path=='/proc/12345/task/12345/children' else ''
+                    if self.path.endswith('/net/tcp'):return 'header\n'+('0: 0100007F:1234 0100007F:5678 01 0:0 00:0 0 0 0 4242\n' if tcp else '')
+                    if self.path.endswith('/net/tcp6'):return 'header\n'
+                    raise AssertionError('Unexpected procfs read: '+self.path)
+                def iterdir(self):return ['/proc/12345/fd/4'] if tcp and self.path=='/proc/12345/fd' else []
+            def path(value):return Proc(str(value)) if str(value).startswith('/proc/') else Path(value)
+            imports=builtins.__import__
+            def importing(name,*args,**kwargs):return SimpleNamespace(Path=path) if name=='pathlib' else imports(name,*args,**kwargs)
+            bindings=dict(vars(builtins));bindings['__import__']=importing
+            def host(args,**unused):
+                result=self.command(['/usr/bin/docker',*args[1:]] if str(args[0])=='docker' else args)
+                if list(map(str,args[:2]))==['docker','inspect']:
+                    value=json.loads(result);value[0]['State']['Pid']=12345;return json.dumps(value)
+                return result
+            readlink=os.readlink
+            def link(value):return 'socket:[4242]' if str(value)=='/proc/12345/fd/4' else readlink(value)
+            connections=[];connect=sqlite3.connect
+            def connection(*args,**kwargs):
+                value=connect(*args,**kwargs);connections.append(value);return value
+            out=io.StringIO()
+            try:
+                with patch.object(sys,'argv',[str(script),str(self.state),'37']),patch.object(deploy.deployment_pause,'OWNER_UID',os.geteuid()),patch('subprocess.check_output',host),patch('urllib.request.urlopen',self.urlopen),patch('os.readlink',link),patch('sqlite3.connect',connection),redirect_stdout(out):
+                    runpy.run_path(str(script),init_globals={'__builtins__':bindings},run_name='__main__')
+                return json.loads(out.getvalue())
+            finally:
+                for value in connections:value.close()
+        self.assertEqual(observe()['owned_tcp_connections'],0)
+        for flags in [(True,False),(False,True)]:
+            with self.subTest(extra_worker=flags[0],tcp=flags[1]),self.assertRaisesRegex(AssertionError,'BUSY/UNCERTAIN'):observe(*flags)
+        self.assertEqual(observe()['container_processes'],2)
+        self.assertFalse(self.stopped_calls())
 
     def test_dashboard_timezone_apply_and_forward_recovery_preserve_current_data(self):
         self.reviewed_web_cli(scope='exam-dashboard-timezone-v1');before=self.history()

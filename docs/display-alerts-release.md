@@ -66,3 +66,36 @@ Use the strict source guard and fresh bounded receipt; do not substitute mere CL
 availability for the history/configuration/PID proof. Complete the qualified
 controller's preparation and guarded cutover. A busy/uncertain result leaves
 production online; no session deletion or relaxed guard is authorized.
+
+## Approved idle-login exception and automatic continuation
+
+November 24: the instructor approved preserving idle student login tokens while
+allowing deployment only when every independent work/hold/operation/connection
+guard passes. `allow_idle_student_sessions: true` is an explicit boolean limited
+to this exact reviewed web/CLI scope. Unknown roles and other scopes remain strict.
+The default is unchanged. The real inventory script still refuses PREPARING,
+ACTIVE and LOCKED attempts, unprotected/unreleased work, future deadlines,
+pending clock changes, extra SSH/preflight workers and owned live TCP sockets.
+No login is deleted or expired. All 71 public-controller regressions pass,
+including committed actual-SQL refusal/repair probes, actual inventory process/
+socket checks through explicitly synthetic host adapters, and session preservation
+through cutover. The adapter's root-ownership and Docker-path fixture corrections
+are recorded privately; no product guard was weakened to fix those fixtures.
+
+`scripts/observe-native-cli-cohort.py PRIVATE_STAGE` refreshes the pinned strict
+native proof in-process as root after the standalone CLI install. It verifies all
+four actual installed executable hashes, separately preserves the loaded worker,
+and publishes only the existing nonce-bound private receipt. It changes no service
+or student authority. Six focused protected-file/producer/receipt/CLI tests pass;
+the real class-side native proof remains mandatory once the host is idle. Existing
+90-second proof expiry is unchanged. Do not run a proof refresher while another
+root deployment controller is running; on expiry, retain the fence, finish the
+controller and use the qualified fresh-proof/forward-resume boundary.
+
+Automatic continuation is authorized with checks approximately every 20 minutes.
+The active agent records read-only checks under the private release directory and
+continues the qualified cutover only after all gates pass. Any newer student exam
+also blocks it. This does not install a recurring production deploy timer, relax
+admission or promise a restart at the current student's nominal deadline.
+The runtime image and CLI remain the exact 55d2397 artifacts; only deployment
+helpers/receipts are newly qualified and independently pinned. Do not rebuild them.

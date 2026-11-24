@@ -94,6 +94,14 @@ candidate, CURRENT data and original snapshot; old-writer reopening is refused.
 The standalone CLI installer must verify before/after history, configuration and
 all native process identities. [Release qualification](display-alerts-release.md).
 
+November 24 approval: this exact scope may additionally set the boolean
+`allow_idle_student_sessions: true`. This excludes persisted student login tokens
+from the session count without deleting or expiring them. The independent real
+SQL guards still refuse preflight/running/review holds, unprotected/unreleased
+work, future deadlines and pending operations. The running-process/TCP guard
+still refuses live SSH/preflight connections, even without an attempt row.
+Unknown roles remain blocking. Other scopes and the default remain strict.
+
 The separate exact mode `reviewed-web-native`, scope
 `live-exam-execution-policy-v1`, coordinates the matched native transition. It is
 not an unchanged-native attestation. Its release pins all four old/new native

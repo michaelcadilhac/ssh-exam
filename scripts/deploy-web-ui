@@ -127,6 +127,10 @@ class Rollout:
                        or (mode == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1'))
         if type(allow_admin) is not bool or (allow_admin and not admin_scope):
             raise ValueError('Admin-only session drain requires an exact qualified scope and an explicit boolean')
+        allow_students = self.settings.get('allow_idle_student_sessions', False)
+        if type(allow_students) is not bool or (allow_students and not (
+                mode == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1')):
+            raise ValueError('Idle student login tokens require the exact display-alert-diagnostics-v1 scope and an explicit boolean; all independent live-work guards remain mandatory')
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
@@ -492,7 +496,7 @@ class Rollout:
         inputs = [self.state/name for name in ('release.json', 'image-assets.json', 'previous-image-assets.json', 'previous-image.tar', 'normal.conf', 'fenced.conf', 'configuration.json')]
         inputs += [SCRIPTS/name for name in ('deploy-web-ui', 'backup', 'shared_backup.py', 'render-rollout-nginx', 'deployment_pause.py', 'deployment_sessions.py', 'docker_image_identity.py', 'public_reopen_readiness.py')]
         inputs += sorted(self.state.glob('image-identity-*.json'))
-        if self.matched_native():
+        if self.matched_native() or self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1':
             inputs.append(SCRIPTS/'fresh_native_cohort_guard.py')
         inputs += [OPS/name for name in ('inventory-web.py', 'preservation.py', 'qualify-old-workers.py')]
         inputs += [SCRIPTS.parent/'deploy/nginx'/name for name in ('maintenance-maps.conf', 'maintenance-response.conf')]

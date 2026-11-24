@@ -23,9 +23,12 @@ Next once idle: refresh current web/native drain and recovery coverage, bind fre
 metadata to the frozen candidate, stage and verify the guarded real-host CLI
 transition while retaining the loaded worker, then execute controller preparation
 and cutover. Do not rebuild the image, reuse stale history, remove student sessions
-or bypass a busy guard. One new policy question is pending: may idle student
-logins remain, preserved, once every independent live-work/drain check passes?
-The current strict session guard remains until that is decided and qualified.
+or bypass a busy guard. November 24 approval: idle student login tokens may stay
+valid while every independent work/hold/pending-operation/process/TCP check passes.
+That narrow exception is being qualified; no running exam may be interrupted.
+The instructor requests automatic cutover after a successful drain, with checks
+approximately every 20 minutes. Keep this task active; next initial check is
+07:04 UTC (01:04 Chicago). Record each check privately and retain the frozen image.
 Preserve the ten original
 modified documentation screenshots, left unstaged. Last production runtime remains
 df3c434; the notification/display/diagnostic/pause-choice changes are not deployed.
