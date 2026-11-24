@@ -1,5 +1,28 @@
 # Current checkpoint — native alerts and SSH close diagnostics complete locally
 
+November 24 push/deploy instruction: deployment stopped before maintenance.
+The pending set includes the one-display server policy and matching examctl
+flag, not just UI changes. `scripts/deploy-web-ui` has no registered reviewed
+web/CLI scope for that combination, and no frozen matched image/CLI installation
+and CURRENT-data recovery qualification exists for it. Reusing an older scope
+or attesting unchanged backend/CLI would be false. Production remains unchanged;
+no maintenance, service operation or student-record change was attempted.
+Push was also rejected by automatic approval review: the existing user-owned
+origin `https://github.com/michaelcadilhac/ssh-exam` is public, and review requires
+explicit authorization for that public destination. No push succeeded. Read-only
+GitHub metadata and SSH confirm visibility/ownership; the 62 changed paths exclude
+data/key/environment/archive paths and checked private-key/incident markers.
+Public HTTPS returns 200. The ten pre-existing documentation screenshot edits
+remain local and unstaged. Await the public-push answer separately from release
+qualification; neither blocker authorizes weakening a guard.
+
+Release-preparation milestone required before another cutover: register/review
+the exact combined web/CLI policy transition, qualify its admin-only drain and
+forward CURRENT-data recovery, freeze the matched image/CLI/nginx candidates,
+and run exact-image startup/preservation/recovery. Keep one-display enforcement
+off pending physical-display acceptance. This is a release blocker, not another
+application feature or a request to approve routine local work.
+
 November 23: native LOCKED callbacks now atomically record the interruption and
 its durable notification. Gateway overlap, replay/restart, student requests,
 explicit suppression and recovery preserve one notice per interruption.
@@ -47,7 +70,7 @@ Last deployed runtime/controller remains df3c434, November22 on csc-sys;
 [deployment/recovery](interruption-grace-release.md). Larger35/70capacity remains
 unqualified. Do not reuse local functional evidence as release readiness.
 
-Next action only on a new instruction: prepare a frozen matched release and
+Next release milestone: prepare a frozen matched release and
 qualify preservation/recovery/reopening, including the nginx logging reload.
 Physical-display/browser acceptance remains before enabling the one-display
 policy for a class. No database/native-authority migration is needed for these
