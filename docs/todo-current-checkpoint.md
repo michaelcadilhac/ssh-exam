@@ -1,37 +1,34 @@
-# Current checkpoint — interruption grace deployed
+# Current checkpoint — explicit pause choices complete locally
 
-November 22, 2026. Runtime/controller df3c434 is pushed and deployed on csc-sys.
-Admissions reopened22:38:03.895UTC; external acceptance finished22:38:47UTC.
-All38public assets match; container healthy; fresh signed roles and41authority
-preservation contracts pass. Native binaries and four service PIDs are unchanged.
-The existing admin session was preserved. No student activity was interrupted,
-no SQL migration ran, no media was recopied and no native role restarted.
-Guarded cutover88.325s; instruction-to-reopening7m35s including online preparation.
-Owned preparation/apply runners exited0 and the background-video pause is released.
+November23: the instructor attempt More menu now offers Pause until reconnect
+and Pause indefinitely for a stopped student's running countdown, without a
+checkbox dialog. Reuses the existing resume-on-work authorization; the countdown
+restarts only after successful exam resumption, never login/setup/approval alone.
+Working students retain direct pause. No native/backend/schema change.
+Pending clock confirmations refresh promptly for at most15seconds, then return
+to normal polling, including after failed HTTP replies. Native confirmation and
+stale-data/input/clock safeguards remain authoritative.
 
-One15-second window pauses typing during interruptions and preserves available
-capture. Fresh verification restores typing automatically. Overlapping failures
-cannot restart the cutoff. Connection/upload uncertainty stays technical, never
-fabricated track loss or a student violation. Original clocks, ownership, native
-holds and protected files remain authoritative. No new management setting or
-unresolved design decision was introduced.
+Validated local increment:24affected HTTP/clock/automatic-resume/signed-dispatch
+cases,14built-asset instructor browser workflows, typecheck and production build
+pass. Original virtual-clock fixture failure is retained; its final test measures
+real elapsed time. Mobile menu visually inspected; test images remain private.
+No new native race, full-app, class-capacity or release-installation pass claimed.
+[Scope and evidence](countdown-pause-choices.md).
+Private receipts/source manifests: `var/countdown-pause-choices/20261123/`.
+The local commit containing this checkpoint is the completed milestone; NOT pushed
+or deployed. No open design decision. Production clocks/services were not modified
+by this UI work. A separate fresh inspection found the student already ACTIVE
+with his countdown running; no pause-mode correction was performed.
 
-Local feature evidence:72affected app/interface checks,15built-asset browser cases,
-real long-upload/coalesced-input recovery,>60s retained-control recovery, native
-races, build and typecheck. Exact frozen release:60controller/34preservation cases,
-UID10001/all38assets,63.739s startup/poll-expiry/CURRENT-data recovery with zero
-extra starts, actual single-student native/browser hold/Continue/protected Finish,
-and real-nginx reload all pass. No new full-app or class-capacity pass is claimed.
-Larger35/70capacity remains unqualified.
+Last deployed runtime/controller remains df3c434, November22 on csc-sys, with
+38external assets/41authority contracts verified, native PIDs/binaries unchanged
+and88.325s guarded cutover. [Deployment/recovery](interruption-grace-release.md).
+The fifteen-second interruption grace is deployed. Larger35/70capacity remains
+unqualified. Recovery preserves CURRENT data and the original snapshot, using
+same-candidate forward recovery; the old policy writer cannot reopen.
 
-[Policy and evidence](interruption-grace.md).
-[Deployment and recovery](interruption-grace-release.md).
-Private receipts: `var/interruption-grace/release-20261122/`.
-Root state: `/var/tmp/ssh-exam-interruption-20261122-df3c434-49bdf1ca-state`.
-Recovery is same-candidate forward recovery with CURRENT data and the original
-snapshot; the old policy writer cannot reopen. No recovery retry was needed.
-Ten pre-existing modified documentation PNGs remain unstaged and uncommitted.
-
-Current task complete after recording/pushing these receipts. No further deployment
-or optional hardening is authorized by this checkpoint; future deployment needs a
-new instruction. Preserve all existing submissions, history, clocks and holds.
+Next action only on a new instruction: qualify the exact new web release and its
+installation/preservation/recovery path before push/deploy. No production change
+is authorized by this checkpoint. Preserve submissions, history, deadlines, holds
+and ten pre-existing modified documentation PNGs, which remain unstaged.

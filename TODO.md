@@ -1,3 +1,10 @@
+November23 countdown UI follow-up is implemented/tested locally, not deployed:
+explicit Pause until reconnect / Pause indefinitely choices replace the stopped
+student's checkbox dialog. Pending time changes refresh promptly without claiming
+unconfirmed native application. Existing clock, hold and CLI contracts remain.
+Verification:24affected app checks,14browser workflows, types and build pass.
+[Milestone and evidence](docs/countdown-pause-choices.md).
+
 November 22 interruption grace is pushed and deployed on csc-sys (runtime/controller df3c434). Public admissions reopened at22:38:04UTC;
 38/38external assets and41data-preservation contracts pass. Native binaries/PIDs
 and the admin session are unchanged. Guarded cutover88.3s; no media recopied.

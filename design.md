@@ -5,6 +5,15 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 23 local countdown presentation
+
+Stopped attempts offer explicit Pause until reconnect / Pause indefinitely
+actions. The automatic mode resumes only after successful exam resumption;
+sign-in/setup/approval alone leave the countdown paused. These reuse the existing
+audited clock intent and native confirmation. Pending clock changes trigger a
+bounded faster dashboard refresh, while committed time stays authoritative.
+Implemented/tested locally, not deployed; [evidence](docs/countdown-pause-choices.md).
+
 ## November 22 deployed policy change: interruption grace
 
 All detected browser-condition interruptions share one 15-second recovery window.

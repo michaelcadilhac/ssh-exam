@@ -374,6 +374,13 @@ attempt's **More** menu for clock actions. **Review** opens monitoring,
 incidents and recovery for that particular attempt. Controls support keyboard navigation
 and Escape; opening review focuses Close review, never Authorize resume.
 
+November23 local UI follow-up (not deployed): for a stopped student's running
+countdown, **More → Pause until reconnect** keeps the remaining time until the
+student successfully resumes the exam after sign-in/setup; **Pause indefinitely**
+requires **Resume countdown** later. Both preserve the existing exam lock and
+resume-approval requirements. Working students retain the direct **Pause countdown**
+action. [Timer behavior and CLI](attempt-clock-management.md).
+
 **New exam** and **Exam settings** configure the name, start window, duration, default
 webcam requirement, terminal count and root-approved material template. See
 [Creating an exam template](template-authoring.md) for authoring and installation.
@@ -405,8 +412,10 @@ before confirmation. Clock changes are capped at 100 attempts per request. Each 
 has a persisted identity and revision, so retrying cannot add time twice. Pending changes
 remain visible on the attempt row, and partial failures remain in the action dialog.
 
-A disconnected clock change stays pending until the agent confirms it at reconnection or
-its signed outbound check before deadline collection. Absolute reset deadlines and additive
+A disconnected clock change stays pending until the class server confirms it.
+Its authenticated clock poll runs once per second even without student SSH;
+reconnection is not required. The local November23 UI refreshes pending changes
+every second for up to fifteen seconds, then returns to normal polling. Absolute reset deadlines and additive
 extensions survive delivery delays/restarts. Unavailable timing verification freezes work
 at the last committed deadline and defers packaging; restore HTTPS/signature trust to recover.
 A reset or extension does not authorize a locked student to resume or reopen finished work.

@@ -1,14 +1,14 @@
 # Attempt inspection and clock management
 
-Current baseline: timer controls deployed November6 at09:36:52UTC. The optional
-automatic countdown resume described below is implemented/tested locally only.
-Historical C1e evidence remains in todo-progress.md. Tests use synthetic records
-and keys; this follow-up changes no production records or installed services.
+Current baseline: countdown pause, automatic resume-on-work and signed clock
+dispatch are installed. November23's local UI follow-up replaces the stopped
+student's checkbox dialog with explicit pause choices and refreshes pending clock
+confirmation sooner; it is not deployed. [Scope and evidence](countdown-pause-choices.md).
+Historical dated qualification below remains evidence for unchanged controls.
 
 ## Supported CLI workflow
 
-November6 timer controls deployed at09:36:52UTC. The optional automatic
-countdown resume below is a subsequent local change, not deployed. The instructor explicitly approved pausing only the countdown while
+The instructor explicitly approved pausing only the countdown while
 the student continues working under normal monitoring. Monitoring loss still
 holds work; countdown pause neither thaws a hold nor authorizes SSH recovery.
 
@@ -21,10 +21,13 @@ sudo examctl web clocks resume-timer ATTEMPT --revision CURRENT_REVISION
 sudo examctl web interruptions authorize ATTEMPT --help
 ```
 
-The admin attempt menu offers **Pause countdown** / **Resume countdown**. A
-working student pauses directly. For a stopped student, the small pause dialog
-offers **Automatically resume countdown when the student resumes work**, off by
-default. The row then shows **Countdown resumes with student**.
+The locally updated attempt menu offers stopped students **Pause until reconnect**
+and **Pause indefinitely**, without an extra dialog. The automatic choice shows
+**Paused until reconnect** and starts the saved countdown only after successful
+**Resume exam**. Merely signing in, reconnecting SSH or completing setup does not
+start it. Working students retain **Pause countdown**; a paused countdown offers
+**Resume countdown**. The deployed older interface uses a pause dialog with an
+automatic-resume checkbox, off by default.
 The student sees **Countdown paused** and a fixed remaining time. Time changes
 while paused change that saved remainder; countdown resume uses the original
 request instant and native wall/boot binding, so retries never add time twice.
@@ -74,9 +77,9 @@ permanent read caches. Full native reset history remains in examctl info. Curren
 presence is an observation, never execution permission. Use a new management
 request ID for a fresh read; reusing one intentionally returns its old snapshot.
 
-## Automatic countdown resume (local follow-up)
+## Automatic countdown resume
 
-The checkbox and `--resume-on-work` require a stopped (`LOCKED`) unfinished
+The automatic choice and `--resume-on-work` require a stopped (`LOCKED`) unfinished
 attempt. They authorize one future clock change for that exact pause; they do
 not allow access or change monitoring requirements. Sign-in, preflight, Allow
 resume, failed native restoration and failed browser input acknowledgement leave
@@ -181,6 +184,10 @@ Never interpret acceptance or an old cached reply as proof of the current native
 deadline. Inspect fresh web clocks show CLOCK_REQUEST_UUID, web attempts show
 ATTEMPT and native info. CLI validates target/child identity and explicit native
 status, including complete per-target batch results, before reporting success.
+The website's normal five-second refresh can delay the displayed confirmation.
+The November23 local UI now refreshes every second while a clock change is pending,
+for at most fifteen seconds, then falls back to the normal rate. It continues to
+display the committed clock until native application is confirmed.
 
 Shared ClockControl.stage is synchronous: eligibility, exact intent, revision,
 timestamp and audit commit without any SSH/network/systemd wait in SQLite.

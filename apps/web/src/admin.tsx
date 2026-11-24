@@ -105,9 +105,8 @@ export function Admin({
     [alerts, setAlerts] = useState(false);
   const [selection, setSelection] = useState(new Set<string>());
   const [timerBusy, setTimerBusy] = useState<string | null>(null);
-  const [pausingTimer, setPausingTimer] = useState<any>(null);
-  const [resumeOnWork, setResumeOnWork] = useState(false);
-  const [timerError, setTimerError] = useState("");
+  const clockPending = useRef(false);
+  const fastClockRefreshUntil = useRef(0);
   const timerRequests = useRef(
     new Map<
       string,
@@ -177,7 +176,8 @@ export function Admin({
   };
   soundRef.current = sound;
   const requestPending = useRef(0),
-    lastUpdate = useRef(0);
+    lastUpdate = useRef(0),
+    lastRefreshAttempt = useRef(0);
   const version = useRef(0),
     serverOffset = useRef(0),
     seen = useRef(new Set<string>()),
@@ -195,6 +195,7 @@ export function Admin({
       q = { ...query.current },
       review = selectedRef.current?.id;
     requestPending.current = request;
+    lastRefreshAttempt.current = performance.now();
     try {
       const [list, result] = await Promise.all([
         api(`/admin/exams?lifecycle=${q.lifecycle}`),
@@ -212,6 +213,15 @@ export function Admin({
       )
         return;
       lastUpdate.current = performance.now();
+      const pending =
+        !!result &&
+        (result.students.some((s: any) =>
+          s.attempts.some((a: any) => !!a.pendingClockReset),
+        ) ||
+          !!result.reviewAttempt?.pendingClockReset);
+      if (pending && !clockPending.current)
+        fastClockRefreshUntil.current = performance.now() + 15000;
+      clockPending.current = pending;
       setExams(list);
       setData(result);
       setStale(false);
@@ -265,8 +275,17 @@ export function Admin({
   useEffect(() => {
     void refresh();
     const timer = setInterval(() => {
-      if (!requestPending.current) void refresh();
-    }, 5000);
+      const interval =
+        clockPending.current &&
+        performance.now() < fastClockRefreshUntil.current
+          ? 1000
+          : 5000;
+      if (
+        !requestPending.current &&
+        performance.now() - lastRefreshAttempt.current >= interval
+      )
+        void refresh();
+    }, 1000);
     return () => {
       ++version.current;
       clearInterval(timer);
@@ -293,6 +312,8 @@ export function Admin({
       setStale(true);
   }, [clock, data]);
   const clearView = () => {
+    clockPending.current = false;
+    fastClockRefreshUntil.current = 0;
     setInterruptionRows(new Set());
     ++version.current;
     setData(null);
@@ -507,20 +528,19 @@ export function Admin({
       timerRequests.current.set(a.id, body);
     }
     setTimerBusy(a.id);
-    setTimerError("");
     try {
       const result = await api(`/admin/attempts/${a.id}/timer`, body);
       setNotice(
         result.confirmed
-          ? `Countdown ${timerAction === "pause" ? "paused" : "resumed"}.`
+          ? automatic
+            ? "Countdown paused until reconnect."
+            : `Countdown ${timerAction === "pause" ? "paused" : "resumed"}.`
           : `${timerAction === "pause" ? "Pausing" : "Resuming"} countdown…`,
       );
       timerRequests.current.delete(a.id);
-      setPausingTimer(null);
       await refresh();
     } catch (error) {
-      if (pausingTimer) setTimerError((error as Error).message);
-      else setError((error as Error).message);
+      setError((error as Error).message);
     } finally {
       setTimerBusy(null);
     }
@@ -1528,7 +1548,7 @@ export function Admin({
                                           timerPaused(a) && (
                                             <span>
                                               {a.timer_resume_on_work
-                                                ? "Countdown resumes with student"
+                                                ? "Paused until reconnect"
                                                 : "Countdown paused"}
                                             </span>
                                           )}
@@ -1617,29 +1637,43 @@ export function Admin({
                                             children="More"
                                             actions={[
                                               ...(a.monitoring_mode === "v1"
-                                                ? [
-                                                    {
-                                                      label: timerPaused(a)
-                                                        ? "Resume countdown"
-                                                        : "Pause countdown",
-                                                      disabled:
-                                                        !editable ||
-                                                        !!timerBusy,
-                                                      onSelect: () => {
-                                                        if (
-                                                          !timerPaused(a) &&
-                                                          a.state === "LOCKED"
-                                                        ) {
-                                                          setResumeOnWork(
-                                                            false,
-                                                          );
-                                                          setTimerError("");
-                                                          setPausingTimer(a);
-                                                        } else
-                                                          void changeTimer(a);
+                                                ? !timerPaused(a) &&
+                                                  a.state === "LOCKED"
+                                                  ? [
+                                                      {
+                                                        label:
+                                                          "Pause until reconnect",
+                                                        disabled:
+                                                          !editable ||
+                                                          !!timerBusy,
+                                                        onSelect: () =>
+                                                          void changeTimer(
+                                                            a,
+                                                            true,
+                                                          ),
                                                       },
-                                                    },
-                                                  ]
+                                                      {
+                                                        label:
+                                                          "Pause indefinitely",
+                                                        disabled:
+                                                          !editable ||
+                                                          !!timerBusy,
+                                                        onSelect: () =>
+                                                          void changeTimer(a),
+                                                      },
+                                                    ]
+                                                  : [
+                                                      {
+                                                        label: timerPaused(a)
+                                                          ? "Resume countdown"
+                                                          : "Pause countdown",
+                                                        disabled:
+                                                          !editable ||
+                                                          !!timerBusy,
+                                                        onSelect: () =>
+                                                          void changeTimer(a),
+                                                      },
+                                                    ]
                                                 : []),
                                               {
                                                 label: "Reset time remaining",
@@ -1899,47 +1933,6 @@ export function Admin({
                 }}
               >
                 {removingBusy ? "Deleting…" : "Delete student"}
-              </button>
-            </div>
-          </Modal>
-        )}
-        {pausingTimer && (
-          <Modal
-            title={`Pause countdown for ${pausingTimer.username}`}
-            onClose={() => {
-              if (!timerBusy) setPausingTimer(null);
-            }}
-          >
-            <p>
-              The student's remaining time will stay fixed. Terminal work can
-              continue while the countdown is paused.
-            </p>
-            <label>
-              <input
-                type="checkbox"
-                checked={resumeOnWork}
-                disabled={!!timerBusy}
-                onChange={(event) => setResumeOnWork(event.target.checked)}
-              />
-              Automatically resume countdown when the student resumes work
-            </label>
-            {timerError && (
-              <p role="alert" className="warn">
-                {timerError}
-              </p>
-            )}
-            <div className="actions">
-              <button
-                disabled={!!timerBusy}
-                onClick={() => setPausingTimer(null)}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={!!timerBusy}
-                onClick={() => void changeTimer(pausingTimer, resumeOnWork)}
-              >
-                {timerBusy ? "Pausing…" : "Pause countdown"}
               </button>
             </div>
           </Modal>

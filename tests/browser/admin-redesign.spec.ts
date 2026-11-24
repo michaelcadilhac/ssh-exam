@@ -1084,18 +1084,7 @@ test("stopped students can pause countdown manually with a steady displayed rema
     .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
     .click();
   await page
-    .getByRole("menuitem", { name: "Pause countdown", exact: true })
-    .click();
-  const pauseDialog = page.getByRole("dialog", {
-    name: "Pause countdown for bob",
-    exact: true,
-  });
-  await expect(pauseDialog).toContainText(
-    "Terminal work can continue while the countdown is paused.",
-  );
-  await expect(pauseDialog.getByRole("checkbox")).not.toBeChecked();
-  await pauseDialog
-    .getByRole("button", { name: "Pause countdown", exact: true })
+    .getByRole("menuitem", { name: "Pause indefinitely", exact: true })
     .click();
   await expect(group.locator(".attempt-clock")).toContainText(
     "Countdown paused",
@@ -1119,6 +1108,9 @@ test("stopped students can pause countdown manually with a steady displayed rema
       .filter((c) => c.path.endsWith("/timer"))
       .map((c) => c.body.timerAction),
   ).toEqual(["pause", "resume"]);
+  expect(
+    s.calls.find((c) => c.path.endsWith("/timer"))?.body.resumeOnWork,
+  ).toBeUndefined();
   expect(s.rows.find((s) => s.username === "bob")!.attempts[0]).toMatchObject({
     original_deadline: original,
     state: "LOCKED",
@@ -1134,29 +1126,24 @@ test("stopped countdown can resume automatically with the student and be manuall
   await group
     .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
     .click();
-  await page
-    .getByRole("menuitem", { name: "Pause countdown", exact: true })
-    .click();
-  const dialog = page.getByRole("dialog", {
-    name: "Pause countdown for bob",
-    exact: true,
-  });
+  const menu = page.getByRole("menu");
+  await expect(
+    menu.getByRole("menuitem", { name: "Pause indefinitely", exact: true }),
+  ).toBeVisible();
   expect(
-    await dialog.evaluate(
+    await menu.evaluate(
       (element) => element.scrollWidth <= element.clientWidth,
     ),
   ).toBe(true);
-  await dialog
-    .getByRole("checkbox", {
-      name: "Automatically resume countdown when the student resumes work",
-    })
-    .check();
-  await dialog
-    .getByRole("button", { name: "Pause countdown", exact: true })
-    .click();
+  await page.screenshot({
+    path: test.info().outputPath("pause-choices-mobile.png"),
+  });
+  await menu
+    .getByRole("menuitem", { name: "Pause until reconnect", exact: true })
+    .press("Enter");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(group.locator(".attempt-clock")).toContainText(
-    "Countdown resumes with student",
+    "Paused until reconnect",
   );
   expect(
     s.calls.find((c) => c.path.endsWith("/timer"))?.body.resumeOnWork,
@@ -1168,7 +1155,7 @@ test("stopped countdown can resume automatically with the student and be manuall
     .getByRole("menuitem", { name: "Resume countdown", exact: true })
     .click();
   await expect(group.locator(".attempt-clock")).not.toContainText(
-    "Countdown resumes with student",
+    "Paused until reconnect",
   );
 });
 
@@ -1177,8 +1164,14 @@ test("working students keep direct countdown pause without a resume-work dialog"
 }) => {
   page.setDefaultTimeout(5000);
   const s = await fixture(page, false, false, true);
-  s.rows.find((student) => student.username === "bob")!.attempts[0].state =
-    "ACTIVE";
+  Object.assign(
+    s.rows.find((student) => student.username === "bob")!.attempts[0],
+    {
+      state: "ACTIVE",
+      connected: true,
+      working: true,
+    },
+  );
   await page.reload();
   await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
   const group = page.getByRole("rowgroup", { name: "bob", exact: true });
@@ -1195,6 +1188,76 @@ test("working students keep direct countdown pause without a resume-work dialog"
   expect(
     s.calls.find((call) => call.path.endsWith("/timer"))?.body.resumeOnWork,
   ).toBeUndefined();
+});
+
+test("confirmed added time appears promptly without displaying the pending increase as applied", async ({
+  page,
+}) => {
+  page.setDefaultTimeout(5000);
+  const s = await fixture(page, false, false, true);
+  const bob = s.rows.find((row) => row.username === "bob")!.attempts[0];
+  const group = page.getByRole("rowgroup", { name: "bob", exact: true });
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
+  await dialog.getByRole("button", { name: "Add time", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(group.locator(".attempt-clock")).toContainText(
+    "Clock change pending",
+  );
+  await expect(group.locator(".attempt-clock time")).toHaveText(/^[45]:/);
+  bob.deadline += 300000;
+  bob.clock_revision++;
+  bob.pendingClockReset = null; // Native-confirmed fixture projection, not optimistic UI.
+  await expect(group.locator(".attempt-clock")).not.toContainText(
+    "Clock change pending",
+    { timeout: 3000 },
+  );
+  await expect(group.locator(".attempt-clock time")).toHaveText(/^9:/);
+  expect(
+    s.calls.filter((c) => c.path.endsWith("/attempts/clocks")),
+  ).toHaveLength(1);
+});
+
+test("unconfirmed clock changes return to normal polling after a bounded fast refresh", async ({
+  page,
+}) => {
+  test.setTimeout(45000);
+  const s = await fixture(page, false, false, true);
+  const group = page.getByRole("rowgroup", { name: "bob", exact: true });
+  await group
+    .getByRole("button", { name: "Actions for bob attempt 1", exact: true })
+    .click();
+  await page.getByRole("menuitem", { name: "Add time", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add time", exact: true });
+  await dialog.getByRole("button", { name: "Add time", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(group.locator(".attempt-clock")).toContainText(
+    "Clock change pending",
+  );
+  const initial = s.dashboards;
+  // Use real time: virtual browser time can outrun the Node route's HTTP reply
+  // and leave the first poll outstanding throughout the synthetic interval.
+  await page.waitForTimeout(17000);
+  expect(s.dashboards - initial).toBeGreaterThanOrEqual(5);
+  const afterBudget = s.dashboards;
+  await page.waitForTimeout(10000);
+  expect(s.dashboards - afterBudget).toBeGreaterThanOrEqual(1);
+  expect(s.dashboards - afterBudget).toBeLessThanOrEqual(3);
+  await expect(group.locator(".attempt-clock")).toContainText(
+    "Clock change pending",
+  );
+  await expect(group.locator(".attempt-clock time")).toHaveText(/^[45]:/);
+  expect(
+    s.calls.filter((c) => c.path.endsWith("/attempts/clocks")),
+  ).toHaveLength(1);
+  const beforeErrors = s.dashboards;
+  s.failDashboard = true;
+  await page.waitForTimeout(11000);
+  expect(s.dashboards - beforeErrors).toBeGreaterThanOrEqual(1);
+  expect(s.dashboards - beforeErrors).toBeLessThanOrEqual(3);
 });
 
 test("ended retained sessions offer same-deadline files-only resume approval", async ({
