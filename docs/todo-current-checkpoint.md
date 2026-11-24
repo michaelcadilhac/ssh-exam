@@ -7,14 +7,15 @@ web/CLI scope for that combination, and no frozen matched image/CLI installation
 and CURRENT-data recovery qualification exists for it. Reusing an older scope
 or attesting unchanged backend/CLI would be false. Production remains unchanged;
 no maintenance, service operation or student-record change was attempted.
-Push was also rejected by automatic approval review: the existing user-owned
-origin `https://github.com/michaelcadilhac/ssh-exam` is public, and review requires
-explicit authorization for that public destination. No push succeeded. Read-only
-GitHub metadata and SSH confirm visibility/ownership; the 62 changed paths exclude
-data/key/environment/archive paths and checked private-key/incident markers.
-Public HTTPS returns 200. The ten pre-existing documentation screenshot edits
-remain local and unstaged. Await the public-push answer separately from release
-qualification; neither blocker authorizes weakening a guard.
+The instructor explicitly authorized the existing public destination after
+automatic approval review requested that clarification. Push to
+`https://github.com/michaelcadilhac/ssh-exam` succeeded November 24 through
+18b54b9, including functional tip bda731e and all earlier pending commits.
+The audited 62 changed paths exclude data/key/environment/archive paths and
+checked private-key/incident markers. Public HTTPS returned 200 during the
+deployment check. Ten pre-existing documentation screenshot edits remain local
+and unstaged. Public-push permission is resolved; release qualification remains
+the deployment blocker. No guard was weakened.
 
 Release-preparation milestone required before another cutover: register/review
 the exact combined web/CLI policy transition, qualify its admin-only drain and
