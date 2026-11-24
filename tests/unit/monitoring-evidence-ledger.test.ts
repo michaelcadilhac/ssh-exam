@@ -141,11 +141,11 @@ it("technical recovery waits through focus grace without declaring a violation o
     remainingMS: WINDOW - 1000,
   });
 });
-function fixture(webcam = true, limit = 32) {
+function fixture(webcam = true, limit = 32, singleDisplay = false) {
   let now = 0,
     sequence = 0;
   const ledger = new MonitoringEvidenceLedger("class", () => now, limit);
-  const binding = ledger.registerTrustedOwner(owner, webcam);
+  const binding = ledger.registerTrustedOwner(owner, webcam, singleDisplay);
   const frame = (source: "screen" | "webcam") =>
     ledger.confirmValidatedFrame(
       binding,
@@ -153,13 +153,13 @@ function fixture(webcam = true, limit = 32) {
       source,
       ++sequence,
     );
-  const policy = (value = ready) =>
+  const policy = (value: Record<string, unknown> = ready) =>
     ledger.confirmPolicy(
       binding,
       ledger.issueBrowserChallenge(binding, "policy"),
       value,
     );
-  const full = (value = ready) => {
+  const full = (value: Record<string, unknown> = ready) => {
     frame("screen");
     if (webcam) frame("webcam");
     policy(value);
@@ -184,6 +184,98 @@ function fixture(webcam = true, limit = 32) {
     },
   };
 }
+
+it("required display evidence refuses old/unknown observations and clips known extra-display grace", () => {
+  const f = fixture(false, 32, true);
+  for (const display of [undefined, "unavailable"]) {
+    f.full({ ...ready, display });
+    expect(() =>
+      f.ledger.issueForNativeChallenge(f.binding, f.request()),
+    ).toThrow(/technical-gap/);
+  }
+  f.full({ ...ready, display: "single" });
+  expect(
+    f.ledger.issueForNativeChallenge(f.binding, f.request()).complete,
+  ).toBe(true);
+  f.at(1000);
+  f.full({ ...ready, display: "multiple" });
+  const proof = f.ledger.issueForNativeChallenge(f.binding, f.request());
+  expect(proof.age_ms).toBe(WINDOW - 15000);
+  f.at(16000);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/policy-blocked/);
+});
+
+it("revoked display verification breaks coverage without creating a policy violation, then needs fresh facts", () => {
+  const f = fixture(false, 32, true);
+  f.full({ ...ready, display: "multiple" });
+  f.at(14000);
+  f.full({ ...ready, display: "unavailable" });
+  f.at(30000);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/technical-gap/);
+  expect(f.ledger.inspect(f.binding).state).not.toBe("policy-blocked");
+  f.full({ ...ready, display: "single" });
+  expect(
+    f.ledger.issueForNativeChallenge(f.binding, f.request()).complete,
+  ).toBe(true);
+});
+
+it("current display policy changes invalidate facts and in-flight challenges without changing native owner", () => {
+  const f = fixture(false);
+  f.full();
+  const before = f.ledger.issueForNativeChallenge(f.binding, f.request());
+  const stale = f.ledger.issueBrowserChallenge(f.binding, "policy");
+  f.ledger.setSingleDisplayRequired(f.binding, true);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/technical-gap/);
+  expect(() =>
+    f.ledger.confirmPolicy(f.binding, stale, { ...ready, display: "single" }),
+  ).toThrow(/challenge/);
+  f.full({ ...ready, display: "single" });
+  const after = f.ledger.issueForNativeChallenge(f.binding, f.request());
+  expect(after.owner).toEqual(before.owner);
+  expect(after.coverage_epoch).not.toBe(before.coverage_epoch);
+});
+
+it("unavailable display verification does not mask genuine overlapping condition loss", () => {
+  const f = fixture(false, 32, true);
+  f.full({ ...ready, display: "unavailable", fullscreen: false });
+  f.at(15000);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/policy-blocked/);
+});
+it("an authenticated unavailable-display notice immediately invalidates pending positives and cannot mature into a violation while waiting for the next image", () => {
+  const f = fixture(false, 32, true);
+  f.full({ ...ready, display: "multiple" });
+  const delayed = f.ledger.issueBrowserChallenge(f.binding, "policy");
+  f.at(14999);
+  f.ledger.noteDisplayUnavailable(f.binding);
+  f.at(17000);
+  expect(() =>
+    f.ledger.confirmPolicy(f.binding, delayed, { ...ready, display: "single" }),
+  ).toThrow(/challenge/);
+  expect(() =>
+    f.ledger.issueForNativeChallenge(f.binding, f.request()),
+  ).toThrow(/technical-gap/);
+  expect(f.ledger.inspect(f.binding).state).not.toBe("policy-blocked");
+  // Repeated unknown reports do not invalidate challenges issued since the
+  // transition; capture can continue, but does not confer execution permission.
+  const current = f.ledger.issueBrowserChallenge(f.binding, "policy");
+  f.ledger.noteDisplayUnavailable(f.binding);
+  f.ledger.confirmPolicy(f.binding, current, {
+    ...ready,
+    display: "unavailable",
+  });
+  f.full({ ...ready, display: "single" });
+  expect(
+    f.ledger.issueForNativeChallenge(f.binding, f.request()).complete,
+  ).toBe(true);
+});
 
 it("aligns a pristine restarted stream only to a verified policy-report cohort without refreshing facts", () => {
   const f = fixture();

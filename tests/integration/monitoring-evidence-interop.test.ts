@@ -23,12 +23,13 @@ it("gateway ledger proofs cross the real native test-binary verifier without ref
     screen: true,
     webcam: true,
     focus: true,
+    display: "single",
   };
   let now = 0,
     seq = 0,
     vector = 0;
   const ledger = new MonitoringEvidenceLedger("class", () => now);
-  const binding = ledger.registerTrustedOwner(owner, true);
+  const binding = ledger.registerTrustedOwner(owner, true, true);
   const full = () => {
     for (const source of ["screen", "webcam"] as const)
       ledger.confirmValidatedFrame(

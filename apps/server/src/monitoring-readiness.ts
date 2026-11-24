@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Attempt } from "./db.js";
 import { monitoringBootTimeMS } from "./monitoring-clock.js";
 import { readinessMessage } from "../../../packages/protocol/index.js";
+import { displayObservation } from "../../../packages/protocol/display-policy.js";
 
 // Runtime callers: authenticated capture-challenges/frames/challenged routes.
 // This observes capture readiness only. It is NOT a native execution permit,
@@ -16,6 +17,7 @@ const policy = z
     keyboard: z.boolean(),
     screen: z.boolean(),
     webcam: z.boolean(),
+    display: displayObservation.optional(),
   })
   .strict();
 type Source = "screen" | "webcam";
@@ -28,6 +30,7 @@ export type CaptureReadinessSnapshot = Readonly<{
   generation: number;
   settings: string;
   webcam: boolean;
+  singleDisplay: boolean;
   policy: Readonly<{ issued: number; ordinal: number; value: Policy }>;
   frames: ReadonlyArray<
     Readonly<{
@@ -52,6 +55,7 @@ type Entry = {
   scope: string;
   touched: number;
   webcam: boolean;
+  singleDisplay: boolean;
   ordinal: number;
   requireAfterOrdinal: number;
   tickets: Map<string, Ticket>;
@@ -93,6 +97,9 @@ const refuse = (kind: string): never => {
 };
 
 export class MonitoringReadiness {
+  constructor(
+    private singleDisplayRequired: (a: Attempt) => boolean = () => false,
+  ) {}
   private entries = new Map<string, Entry>();
   private lastClock = 0;
   private now() {
@@ -120,6 +127,7 @@ export class MonitoringReadiness {
       a.generation,
       a.settings,
       a.registered_owner,
+      this.singleDisplayRequired(a),
     ]);
   }
   issue(
@@ -156,6 +164,7 @@ export class MonitoringReadiness {
         scope,
         touched: now,
         webcam,
+        singleDisplay: this.singleDisplayRequired(a),
         ordinal: 0,
         requireAfterOrdinal: 0,
         tickets: new Map(),
@@ -255,7 +264,7 @@ export class MonitoringReadiness {
     });
     // A late negative observation must not be hidden by an earlier-arriving
     // positive reply. Require a challenge issued AFTER learning of that loss.
-    if (readinessMessage(value, entry.webcam, "Begin"))
+    if (readinessMessage(value, entry.webcam, "Begin", entry.singleDisplay))
       entry.requireAfterOrdinal = entry.ordinal;
     if (!entry.policy || ticket.ordinal > entry.policy.ordinal)
       entry.policy = { issued: ticket.issued, ordinal: ticket.ordinal, value };
@@ -303,6 +312,7 @@ export class MonitoringReadiness {
       generation: a.generation,
       settings: a.settings,
       webcam: entry.webcam,
+      singleDisplay: entry.singleDisplay,
       policy: Object.freeze({
         ...entry.policy,
         value: Object.freeze({ ...entry.policy.value }),
@@ -330,7 +340,12 @@ export class MonitoringReadiness {
       age < WINDOW &&
       !!entry.policy &&
       entry.policy.ordinal > entry.requireAfterOrdinal &&
-      !readinessMessage(entry.policy.value, entry.webcam, "Begin");
+      !readinessMessage(
+        entry.policy.value,
+        entry.webcam,
+        "Begin",
+        entry.singleDisplay,
+      );
     return { complete, age_ms: age, observation_only: true };
   }
 }

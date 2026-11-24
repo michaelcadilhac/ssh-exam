@@ -19,6 +19,7 @@ vi.mock("../../apps/server/src/monitoring-clock.js", () => ({
 
 it.each([
   "ordinary",
+  "single-display",
   "callback-before-ack",
   "callback-before-lost-ack",
   "callback-before-policy-lock",
@@ -445,6 +446,7 @@ it.each([
       const definition = {
         id: "ordinary",
         name: "Initial SSH grant",
+        ...(scenario === "single-display" ? { single_display: true } : {}),
         duration: 5400,
         webcam: true,
         template: "v1",
@@ -1080,6 +1082,7 @@ it.each([
             focus: true,
             visible: true,
             webcam: false,
+            ...(scenario === "single-display" ? { display: "single" } : {}),
           },
         });
       if (scenario === "preflight-before-window") {
@@ -1106,6 +1109,17 @@ it.each([
         grant_begin_intent: null,
       });
       await freshCapture(app, id, page, headers);
+      if (scenario === "single-display") {
+        const missing = await begin();
+        expect(missing.statusCode, missing.body).toBe(409);
+        expect(missing.json().code).toBe("monitoring_challenge_not_ready");
+        expect(store.attempt(id)).toMatchObject({
+          start: null,
+          deadline: null,
+          grant_begin_intent: null,
+        });
+        await freshCapture(app, id, page, headers, false, "single");
+      }
       if (scenario.startsWith("health-")) {
         if (scenario === "health-busy-prior-intent")
           new AttemptGrants(store, config.agent.id).begin(

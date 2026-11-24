@@ -31,6 +31,47 @@ const attempt = (id = "synthetic") =>
     settings: '{"webcam":true}',
     state: "PREPARING",
   }) as Attempt;
+it("required display verification gates Start snapshots and invalidates older challenges on policy change", () => {
+  let required = false;
+  const captures = new MonitoringReadiness(() => required),
+    a = attempt();
+  let seq = 0;
+  const capture = (display?: string) => {
+    for (const source of ["screen", "webcam"]) {
+      const ticket = captures.issue(a, page, source, seq);
+      captures.confirm(
+        a,
+        page,
+        {
+          source,
+          seq: ++seq,
+          challenge: ticket.challenge,
+          readiness: { ...readiness, ...(display ? { display } : {}) },
+        },
+        { id: source + seq, hash: "hash" },
+      );
+    }
+  };
+  capture();
+  expect(captures.inspect(a, page).complete).toBe(true);
+  const stale = captures.issue(a, page, "screen", seq);
+  required = true;
+  expect(captures.inspect(a, page).complete).toBe(false);
+  expect(() =>
+    captures.confirm(
+      a,
+      page,
+      { source: "screen", seq: ++seq, challenge: stale.challenge, readiness },
+      { id: "old", hash: "hash" },
+    ),
+  ).toThrow(/replaced/);
+  for (const status of [undefined, "multiple", "unavailable"]) {
+    capture(status);
+    expect(captures.inspect(a, page).complete).toBe(false);
+  }
+  capture("single");
+  expect(captures.inspect(a, page).complete).toBe(true);
+});
 it("bounded steady capture supports both sources without exhausting tickets", () => {
   const ledger = new MonitoringReadiness(),
     a = attempt();
@@ -47,81 +88,93 @@ it("bounded steady capture supports both sources without exhausting tickets", ()
     clock.now += 5000;
   }
 });
-it("provisional snapshots promote only as original-age evidence for an exact trusted ACTIVE owner and cannot be restored from JSON", () => {
-  const owner = {
-      attempt: "12345678-1234-1234-1234-123456789abc",
-      exam: "synthetic",
-      username: "student",
-      uid: 10001,
-      transport_hash: "a".repeat(64),
-      boot: "11111111-1111-4111-8111-111111111111",
-      page_epoch: "b".repeat(64),
-      input_epoch: "c".repeat(64),
-      generation: 0,
-      clock_revision: 0,
-    },
-    a = {
-      ...attempt(owner.attempt),
-      page_hash: owner.page_epoch,
-      start: null,
-      registered_owner: null,
-    },
-    captures = new MonitoringReadiness();
-  for (const source of ["screen", "webcam"]) {
-    const ticket = captures.issue(a, owner.page_epoch, source, 0);
-    captures.confirm(
-      a,
-      owner.page_epoch,
-      { source, seq: 1, challenge: ticket.challenge, readiness },
-      { id: source, hash: "synthetic" },
-    );
-  }
-  const snapshot = captures.snapshotBeforeStart(a, owner.page_epoch);
-  clock.now = 14000;
-  const live = new MonitoringEvidenceLedger("class"),
-    binding = live.registerTrustedOwner(owner, true);
-  expect(() =>
-    live.seedValidatedBegin(
-      binding,
-      JSON.parse(JSON.stringify(snapshot)),
-      "e".repeat(64),
-    ),
-  ).toThrow(/ownership/);
-  live.seedValidatedBegin(binding, snapshot, "e".repeat(64));
-  expect(
-    live.issueForNativeChallenge(binding, {
-      type: "monitoring-execution-challenge-v1",
-      agent: "class",
-      nonce: "d".repeat(64),
-      owner,
-      after_sequence: 0,
-      coverage_epoch: "",
-    }),
-  ).toMatchObject({
-    age_ms: 4000,
-    sequence: 1,
-    coverage_epoch: "e".repeat(64),
-  });
-  expect(() =>
-    live.seedValidatedBegin(binding, snapshot, "e".repeat(64)),
-  ).toThrow(/ownership/);
-  expect(() =>
-    captures.snapshotBeforeStart(
-      { ...a, state: "ACTIVE", start: 1 },
-      owner.page_epoch,
-    ),
-  ).toThrow(/fresh/i);
-  const stale = new MonitoringEvidenceLedger("class"),
-    staleBinding = stale.registerTrustedOwner(owner, true);
-  clock.now = 70000;
-  expect(() =>
-    stale.seedValidatedBegin(staleBinding, snapshot, "e".repeat(64)),
-  ).toThrow(/technical-gap/);
-  expect(stale.inspect(staleBinding)).toMatchObject({
-    state: "technical-gap",
-    sequence: 0,
-  });
-});
+it.each([false, true])(
+  "provisional snapshots promote only as original-age evidence for an exact trusted ACTIVE owner and cannot be restored from JSON (single display=%s)",
+  (singleDisplay) => {
+    const owner = {
+        attempt: "12345678-1234-1234-1234-123456789abc",
+        exam: "synthetic",
+        username: "student",
+        uid: 10001,
+        transport_hash: "a".repeat(64),
+        boot: "11111111-1111-4111-8111-111111111111",
+        page_epoch: "b".repeat(64),
+        input_epoch: "c".repeat(64),
+        generation: 0,
+        clock_revision: 0,
+      },
+      a = {
+        ...attempt(owner.attempt),
+        page_hash: owner.page_epoch,
+        start: null,
+        registered_owner: null,
+      },
+      captures = new MonitoringReadiness(() => singleDisplay);
+    for (const source of ["screen", "webcam"]) {
+      const ticket = captures.issue(a, owner.page_epoch, source, 0);
+      captures.confirm(
+        a,
+        owner.page_epoch,
+        {
+          source,
+          seq: 1,
+          challenge: ticket.challenge,
+          readiness: {
+            ...readiness,
+            ...(singleDisplay ? { display: "single" } : {}),
+          },
+        },
+        { id: source, hash: "synthetic" },
+      );
+    }
+    const snapshot = captures.snapshotBeforeStart(a, owner.page_epoch);
+    expect(snapshot.singleDisplay).toBe(singleDisplay);
+    clock.now = 14000;
+    const live = new MonitoringEvidenceLedger("class"),
+      binding = live.registerTrustedOwner(owner, true, singleDisplay);
+    expect(() =>
+      live.seedValidatedBegin(
+        binding,
+        JSON.parse(JSON.stringify(snapshot)),
+        "e".repeat(64),
+      ),
+    ).toThrow(/ownership/);
+    live.seedValidatedBegin(binding, snapshot, "e".repeat(64));
+    expect(
+      live.issueForNativeChallenge(binding, {
+        type: "monitoring-execution-challenge-v1",
+        agent: "class",
+        nonce: "d".repeat(64),
+        owner,
+        after_sequence: 0,
+        coverage_epoch: "",
+      }),
+    ).toMatchObject({
+      age_ms: 4000,
+      sequence: 1,
+      coverage_epoch: "e".repeat(64),
+    });
+    expect(() =>
+      live.seedValidatedBegin(binding, snapshot, "e".repeat(64)),
+    ).toThrow(/ownership/);
+    expect(() =>
+      captures.snapshotBeforeStart(
+        { ...a, state: "ACTIVE", start: 1 },
+        owner.page_epoch,
+      ),
+    ).toThrow(/fresh/i);
+    const stale = new MonitoringEvidenceLedger("class"),
+      staleBinding = stale.registerTrustedOwner(owner, true, singleDisplay);
+    clock.now = 70000;
+    expect(() =>
+      stale.seedValidatedBegin(staleBinding, snapshot, "e".repeat(64)),
+    ).toThrow(/technical-gap/);
+    expect(stale.inspect(staleBinding)).toMatchObject({
+      state: "technical-gap",
+      sequence: 0,
+    });
+  },
+);
 it("capacity refuses without evicting current evidence; abandoned scopes expire", () => {
   const ledger = new MonitoringReadiness();
   for (let i = 0; i < 512; i++)

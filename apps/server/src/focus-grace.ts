@@ -12,11 +12,30 @@ import {
 export async function reportFocus(
   life: Lifecycle,
   id: string,
-  focused: boolean,
-  observation?: Record<string, boolean>,
+  focused: boolean | null,
+  observation?: Record<string, unknown>,
 ) {
   const a = life.store.attempt(id);
   if (a.state !== "ACTIVE") return;
+  if (focused === null) {
+    // An unavailable display check cannot prove continuous non-compliance.
+    // Challenged monitoring evidence separately prevents execution until fresh
+    // positive checks return. Do not expire grace into a policy accusation.
+    if (a.focus_lost_at !== null) {
+      life.store.db
+        .prepare(
+          "UPDATE attempts SET focus_lost_at=NULL WHERE id=? AND state='ACTIVE'",
+        )
+        .run(id);
+      life.store.audit(
+        "browser",
+        "interruption-verification-unavailable",
+        id,
+        JSON.stringify(observation ?? {}),
+      );
+    }
+    return;
+  }
   if (a.focus_lost_at !== null && now() - a.focus_lost_at >= FOCUS_GRACE_MS) {
     await life.lock(id, FOCUS_GRACE_REASON);
     return;

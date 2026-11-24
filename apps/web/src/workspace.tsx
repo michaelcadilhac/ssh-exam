@@ -14,6 +14,11 @@ import {
 import { OPERATION_TIMEOUT_MS } from "../../../packages/protocol/timeouts.js";
 import { NO_RESUME_EXPIRY } from "../../../packages/protocol/interruption-management.js";
 import { Capture } from "./capture.js";
+import { DisplayVerification } from "./display-verification.js";
+import {
+  displayReadinessMessage,
+  type DisplayObservation,
+} from "../../../packages/protocol/display-policy.js";
 import { Modal } from "./modal.js";
 import { isSandbox } from "../../../packages/protocol/sandbox.js";
 import { TerminalMenu } from "./terminal-menu.js";
@@ -21,6 +26,7 @@ import {
   FOCUS_GRACE_MS,
   FOCUS_GRACE_REASON,
   examConditionsReady,
+  examConditionsVerdict,
   focusGraceSeconds,
 } from "../../../packages/protocol/focus-grace.js";
 import { readinessMessage } from "../../../packages/protocol/readiness.js";
@@ -350,6 +356,27 @@ export function Workspace({
   const terminalLimit = executionPolicy?.terminals ?? settings.terminals;
   const sandbox = isSandbox(settings.id);
   const id = reservation.id;
+  const displayRequired = useRef(reservation.singleDisplayRequired === true);
+  const [singleDisplayRequired, setSingleDisplayRequired] = useState(
+    displayRequired.current,
+  );
+  const [displayStatus, setDisplayStatus] =
+    useState<DisplayObservation>("unavailable");
+  const displayVerifier = useRef<DisplayVerification | null>(null);
+  const displayChanged = useRef(() => {});
+  useEffect(() => {
+    const verifier = new DisplayVerification((value) => {
+      setDisplayStatus(value);
+      if (displayRequired.current && value !== "single")
+        browserSSH.setInputEnabled(false);
+      displayChanged.current();
+    });
+    displayVerifier.current = verifier;
+    return () => {
+      verifier.dispose();
+      displayVerifier.current = null;
+    };
+  }, [id]);
   const page = reservation.page;
   const directory = attempt.work_path || reservation.work_path || "/work";
   const ended = [
@@ -434,6 +461,9 @@ export function Workspace({
     keyboard: keyboard.current,
     screen: !!capture.current?.healthy("screen"),
     webcam: !!capture.current?.healthy("webcam"),
+    ...(displayRequired.current
+      ? { display: displayVerifier.current?.status() ?? "unavailable" }
+      : {}),
   });
   const clearFocusWarning = () => {
     focusLostAt.current = null;
@@ -544,7 +574,31 @@ export function Workspace({
     // Upload/verification failure does not mean a live sharing track ended.
     // Report physical browser conditions separately from technical input gates.
     const ready = { ...conditions(), focus: focused };
-    const browserReady = examConditionsReady(ready, !!settings.webcam);
+    const verdict = examConditionsVerdict(
+      ready,
+      !!settings.webcam,
+      displayRequired.current,
+    );
+    const browserReady = verdict !== false;
+    if (verdict === null && !held && !authenticationGapRef.current) {
+      const first = !graceTechnicalWait.current;
+      focusLostAt.current ??= performance.now();
+      graceOnlyTechnical.current = true;
+      graceTechnicalWait.current = true;
+      setFocusSeconds(null);
+      setInterruptionPending(true);
+      browserSSH.setInputEnabled(false);
+      if (first) {
+        send({
+          type: "conditions",
+          generation: attemptRef.current.generation,
+          connected: online.current && bound.current && controlReady.current,
+          ready,
+        });
+        void capture.current?.sample("screen").catch(() => {});
+      }
+      return;
+    }
     if (graceTechnicalWait.current && (!browserReady || held)) {
       // A new observed condition loss after technical waiting gets its own
       // first observation; the unknown transport interval proves no violation.
@@ -567,7 +621,7 @@ export function Workspace({
       !authenticationGapRef.current &&
       (attemptRef.current.state === "ACTIVE" ||
         (activating.current && attemptRef.current.state === "PREPARING")) &&
-      examConditionsReady(ready, !!settings.webcam) &&
+      examConditionsReady(ready, !!settings.webcam, displayRequired.current) &&
       online.current &&
       bound.current &&
       controlReady.current;
@@ -616,7 +670,11 @@ export function Workspace({
             }
             const current = conditions();
             if (
-              !examConditionsReady(current, !!settings.webcam) ||
+              !examConditionsReady(
+                current,
+                !!settings.webcam,
+                displayRequired.current,
+              ) ||
               captureFailures.current.size ||
               !bound.current ||
               !online.current ||
@@ -658,7 +716,12 @@ export function Workspace({
       focusLostAt.current = performance.now() - elapsed;
       graceReason.current =
         reason ||
-        readinessMessage(ready, settings.webcam, "continuing") ||
+        readinessMessage(
+          ready,
+          settings.webcam,
+          "continuing",
+          displayRequired.current,
+        ) ||
         "Connection interrupted";
       setFocusSeconds(
         focusGraceSeconds(focusLostAt.current, performance.now()),
@@ -679,7 +742,11 @@ export function Workspace({
   };
   const incident = (reason: string) =>
     focusChanged(document.hasFocus(), reason, false, true);
+  displayChanged.current = () => focusChanged(document.hasFocus());
   const interaction = () =>
+    (attemptRef.current.state === "PREPARING" ||
+      !displayRequired.current ||
+      displayVerifier.current?.status() === "single") &&
     captureFailures.current.size === 0 &&
     !localLocked.current &&
     bound.current &&
@@ -1212,6 +1279,20 @@ export function Workspace({
         if (m.type === "state") {
           if (m.attempt?.id !== id) return;
           const fresh = confirmation.confirm(m.confirmation ?? m.binding);
+          if (
+            (fresh || bound.current) &&
+            typeof m.singleDisplayRequired === "boolean" &&
+            m.singleDisplayRequired !== displayRequired.current
+          ) {
+            displayRequired.current = m.singleDisplayRequired;
+            setSingleDisplayRequired(m.singleDisplayRequired);
+            if (
+              m.singleDisplayRequired &&
+              displayVerifier.current?.status() !== "single"
+            )
+              browserSSH.setInputEnabled(false);
+            displayChanged.current();
+          }
           if (fresh || bound.current) acceptExecutionPolicy(m.executionPolicy);
           const accepted = acceptSnapshot(m.attempt, m.serverNow);
           if (
@@ -1748,6 +1829,8 @@ export function Workspace({
     // same grace as focus loss while working, without relaxing any other guard.
     if (
       focusLostAt.current !== null &&
+      !graceOnlyTechnical.current &&
+      !graceTechnicalWait.current &&
       performance.now() - focusLostAt.current >= FOCUS_GRACE_MS
     )
       failures.push(FOCUS_GRACE_REASON);
@@ -1890,14 +1973,24 @@ export function Workspace({
     online.current &&
     controlReady.current &&
     performance.now() - lastAck.current < OPERATION_TIMEOUT_MS &&
-    !readinessMessage(conditions(), settings.webcam) &&
+    !readinessMessage(
+      conditions(),
+      settings.webcam,
+      "resuming",
+      displayRequired.current,
+    ) &&
     effectiveDeadline(attemptRef.current) >
       serverClock.current.now + performance.now() - serverClock.current.at;
   const continueExam = async (automaticTechnical = false) => {
     const epoch = activationEpoch.current;
     if (automaticTechnical && !automaticReady())
       throw Error("Checking the connection…");
-    const readiness = readinessMessage(conditions(), settings.webcam);
+    const readiness = readinessMessage(
+      conditions(),
+      settings.webcam,
+      "resuming",
+      displayRequired.current,
+    );
     if (readiness) throw Error(readiness);
     ++snapshotEpoch.current;
     const result = await api(
@@ -2222,6 +2315,26 @@ export function Workspace({
             )}
           </div>
         )}
+      {singleDisplayRequired && !ended && (
+        <div className="display-verification" role="status">
+          <span>
+            {displayStatus === "single"
+              ? "One display detected."
+              : displayReadinessMessage({ display: displayStatus }, true)}
+          </span>
+          {displayStatus !== "single" && (
+            <button
+              onClick={() =>
+                action(async () => {
+                  await displayVerifier.current?.verify();
+                })
+              }
+            >
+              Check displays
+            </button>
+          )}
+        </div>
+      )}
       {attempt.state === "PREPARING" && (
         <div className="preflight" inert={coveredByState}>
           <button
@@ -2278,7 +2391,8 @@ export function Workspace({
               !screen ||
               (settings.webcam && !camera) ||
               !keys ||
-              !isFullscreen
+              !isFullscreen ||
+              (singleDisplayRequired && displayStatus !== "single")
             }
             onClick={() => setDialog({ kind: "begin" })}
           >

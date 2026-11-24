@@ -141,6 +141,7 @@ export async function fixture(
   exam = "sandbox",
   duration = 300,
   webcam = false,
+  singleDisplay = false,
 ) {
   await observeScreens(page);
   await simulatedMedia(page, webcam);
@@ -153,6 +154,7 @@ export async function fixture(
     template: "sample-exam",
     earliest: 0,
     latest: 8640000000000000,
+    ...(singleDisplay ? { single_display: true } : {}),
   };
   const now = Date.now();
   // These UI-only ordinary fixtures model the public initial permission and
@@ -191,6 +193,7 @@ export async function fixture(
           }
         : null;
   const model = {
+    singleDisplayRequired: singleDisplay,
     signedIn: true,
     state: initial,
     attempt: {
@@ -241,6 +244,7 @@ export async function fixture(
     messages: [] as any[],
   };
   const snapshot = () => ({
+    singleDisplayRequired: model.singleDisplayRequired,
     attempt: { ...model.attempt },
     serverNow: Date.now(),
     authenticationGap: model.authenticationGap,
@@ -405,6 +409,7 @@ export async function fixture(
           attempt: { ...attempt },
           serverNow: Date.now(),
           authenticationGap: false,
+          singleDisplayRequired: model.singleDisplayRequired,
         }),
       ),
   };

@@ -47,13 +47,37 @@ import {
 } from "../../../packages/protocol/monitoring-evidence.js";
 import { monitoringBootTimeMS } from "./monitoring-clock.js";
 import { nativeContinuationOutcomeRecorded } from "./native-monitoring-state.js";
+import { examConditionsVerdict } from "../../../packages/protocol/focus-grace.js";
 export class Monitoring {
   // Application wires the existing durable policy-lock workflow. Positive
   // proof is unavailable without it; an in-memory negative must not disappear
   // on restart and allow a genuine policy violation to bypass approval.
   onLivePolicyLoss?: (a: Attempt) => void;
   filesResumeConnection?: (a: Attempt, owner: MonitoringOwner) => boolean;
-  private readiness = new MonitoringReadiness();
+  private readiness = new MonitoringReadiness((a) =>
+    this.singleDisplayRequired(a),
+  );
+  singleDisplayRequired(a: Pick<Attempt, "exam">) {
+    const row = this.store.db
+      .prepare("SELECT config FROM exams WHERE id=?")
+      .get(a.exam) as { config: string } | undefined;
+    return JSON.parse(row?.config ?? "{}").single_display === true;
+  }
+  noteDisplayUnavailability(a: Attempt, ready: Record<string, unknown>) {
+    if (
+      examConditionsVerdict(
+        ready,
+        !!JSON.parse(a.settings).webcam,
+        this.singleDisplayRequired(a),
+      ) !== null
+    )
+      return;
+    const entry = this.liveBinding(a, a.page_hash ?? "");
+    if (!entry) return;
+    // Old in-flight images remain recordable, but convey no positive authority.
+    if (this.liveLedger.noteDisplayUnavailable(entry.binding))
+      entry.tickets.clear();
+  }
   private liveLedger: MonitoringEvidenceLedger;
   private pendingBegins = new Map<
     string,
@@ -306,6 +330,11 @@ export class Monitoring {
     if (!owner) return undefined;
     const encoded = JSON.stringify(owner),
       previous = this.live.get(a.id);
+    if (previous)
+      this.liveLedger.setSingleDisplayRequired(
+        previous.binding,
+        this.singleDisplayRequired(a),
+      );
     const pendingReview = this.pendingBegins.get(encoded),
       reviewedReady =
         !!pendingReview?.authorization &&
@@ -398,6 +427,7 @@ export class Monitoring {
       binding: this.liveLedger.registerTrustedOwner(
         owner,
         !!JSON.parse(a.settings).webcam,
+        this.singleDisplayRequired(a),
       ),
       tickets: new Map<string, { challenge: string; accepted: boolean }>(),
       technicalAcceptedNonce: undefined as string | undefined,
@@ -411,6 +441,7 @@ export class Monitoring {
       pending.intent === a.grant_begin_intent &&
       pending.grant === a.grant_hash &&
       pending.snapshot.settings === a.settings &&
+      pending.snapshot.singleDisplay === this.singleDisplayRequired(a) &&
       (!pending.authorization ||
         pending.authorization === this.continuationIdentity(a, true))
     ) {
@@ -806,7 +837,11 @@ export class Monitoring {
   ) {
     const encoded = JSON.stringify(owner),
       now = monitoringBootTimeMS();
-    if (!current.grant_begin_intent || !current.grant_hash)
+    if (
+      !current.grant_begin_intent ||
+      !current.grant_hash ||
+      snapshot.singleDisplay !== this.singleDisplayRequired(current)
+    )
       throw new MonitoringEvidenceUnavailable("ownership");
     for (const [key, pending] of this.pendingBegins)
       if (now >= pending.until) this.pendingBegins.delete(key);

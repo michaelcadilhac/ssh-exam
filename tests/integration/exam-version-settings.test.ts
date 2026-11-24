@@ -80,9 +80,14 @@ it("authenticated versioned web settings preserve exact source and old attempts;
       )
       .run(snapshot, Date.now(), Date.now());
     const original = store.attempt("prepared");
-    const changed = await save({ ...created.json(), template_version: next });
+    const changed = await save({
+      ...created.json(),
+      template_version: next,
+      single_display: true,
+    });
     expect(changed.statusCode, changed.body).toBe(200);
     expect(changed.json().template_version).toBe(next);
+    expect(changed.json().single_display).toBe(true);
     expect(store.attempt("prepared")).toEqual(original);
     for (const hash of ["c".repeat(64), "d".repeat(64), "latest", ""]) {
       const refused = await save({
@@ -102,6 +107,7 @@ it("authenticated versioned web settings preserve exact source and old attempts;
     );
     expect(cleared.statusCode, cleared.body).toBe(200);
     expect(cleared.json()).not.toHaveProperty("template_version");
+    expect(cleared.json().single_display).toBe(true);
     expect(store.attempt("prepared")).toEqual(original);
   } finally {
     await app.close();

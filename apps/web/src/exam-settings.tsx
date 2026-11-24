@@ -242,6 +242,21 @@ export function ExamSettings({
             <label>
               <input
                 type="checkbox"
+                checked={!!form.single_display}
+                disabled={busy}
+                onChange={(event) =>
+                  setForm({ ...form, single_display: event.target.checked })
+                }
+              />
+              Require one display
+            </label>
+            <small>
+              Students must allow display checks in desktop Chrome or Edge and
+              disconnect or disable extra displays.
+            </small>
+            <label>
+              <input
+                type="checkbox"
                 checked={form.pause_on_review}
                 disabled={busy}
                 onChange={(event) =>

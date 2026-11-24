@@ -22,6 +22,7 @@ export function sandboxExam(
         | "latest"
         | "template_version"
         | "pause_on_review"
+        | "single_display"
         | "timezone"
       >
     > = {},
@@ -37,6 +38,9 @@ export function sandboxExam(
     webcam: false,
     terminals: 4,
     template,
+    ...(limits.single_display !== undefined
+      ? { single_display: limits.single_display }
+      : {}),
     ...(limits.pause_on_review !== undefined
       ? { pause_on_review: limits.pause_on_review }
       : {}),

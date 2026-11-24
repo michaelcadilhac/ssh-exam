@@ -36,6 +36,20 @@ func TestExamReviewCountdownReplyMustConfirmTheRequestedPolicy(t *testing.T) {
 		}
 	}
 }
+func TestExamSingleDisplayReplyMustConfirmTheRequestedPolicy(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		body := map[string]any{"id": "midterm", "revision": strings.Repeat("a", 64), "changes": map[string]any{"single_display": enabled}}
+		for _, value := range []any{enabled, !enabled, nil, "true"} {
+			r := examReplyFixture()
+			r["exam"].(map[string]any)["single_display"] = value
+			raw, _ := json.Marshal(r)
+			err := validateExamResult("exams.update", body, raw)
+			if (err == nil) != (value == enabled) {
+				t.Fatal(enabled, value, err)
+			}
+		}
+	}
+}
 func TestExamResultScopeSchemaPagesAndIntentBeforeOutput(t *testing.T) {
 	encode := func(v any) json.RawMessage {
 		b, err := json.Marshal(v)

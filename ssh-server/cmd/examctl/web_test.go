@@ -73,6 +73,29 @@ func TestWebReviewCountdownHelpAndSyntax(t *testing.T) {
 	}
 }
 
+func TestWebSingleDisplayHelpAndSyntax(t *testing.T) {
+	out, code := cliProcess(t, "web", "exams", "update", "--help")
+	if code != 0 || !strings.Contains(out, "--single-display on|off") {
+		t.Fatal(code, out)
+	}
+	for _, args := range [][]string{
+		{"web", "exams", "show", "exam", "--single-display", "on"},
+		{"web", "exams", "list", "--single-display", "off"},
+		{"web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--single-display", "yes"},
+	} {
+		out, code := cliProcess(t, args...)
+		if code != 2 || !strings.Contains(out, "web help") {
+			t.Fatal(code, out)
+		}
+	}
+	for _, value := range []string{"on", "off"} {
+		out, code := cliProcess(t, "web", "exams", "update", "exam", "--revision", strings.Repeat("a", 64), "--single-display", value, "--config", "/missing")
+		if code != 1 {
+			t.Fatal("Valid setting did not reach root/config checks", code, out)
+		}
+	}
+}
+
 func TestWebTimezoneHelpAndSyntax(t *testing.T) {
 	out, code := cliProcess(t, "web", "exams", "update", "--help")
 	if code != 0 || !strings.Contains(out, "--timezone ZONE") || !strings.Contains(out, "existing dates/allowances stay fixed") {

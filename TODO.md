@@ -1,3 +1,14 @@
+November23 **one-display policy implemented/tested locally; not deployed or
+enabled**. Exam settings and `examctl web exams create|update --single-display
+on|off` share the opt-in setting. Preflight/Start/resume require a positive display
+check; topology changes use the shared 15-second typing grace. Unavailable or
+revoked verification is technical uncertainty, immediately invalidating live
+proof/pending positives without accusing the student. Clocks, saved grants,
+history and native ownership/proof formats are preserved. Focused and integrated
+HTTP/SSH/native-verifier/CLI-race checks, type/build and18browser workflows pass.
+Physical-display acceptance and exact release qualification remain before
+production enablement. [Policy, operation and evidence](docs/one-display-policy.md).
+
 November23 countdown UI follow-up is implemented/tested locally, not deployed:
 explicit Pause until reconnect / Pause indefinitely choices replace the stopped
 student's checkbox dialog. Pending time changes refresh promptly without claiming

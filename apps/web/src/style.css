@@ -337,6 +337,19 @@ h2 {
   max-width: 40%;
   overflow: hidden;
 }
+.display-verification {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  background: var(--surface-blue);
+  font-size: 14px;
+}
+.display-verification > span {
+  flex: 1 1 240px;
+  overflow-wrap: anywhere;
+}
 .preflight {
   padding: 12px;
   display: flex;

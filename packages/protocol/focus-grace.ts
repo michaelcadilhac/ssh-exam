@@ -8,13 +8,24 @@ export const FOCUS_GRACE_REASON = INTERRUPTION_GRACE_REASON;
 export function examConditionsReady(
   ready: Record<string, unknown>,
   webcam: boolean,
+  singleDisplay = false,
 ) {
   return (
     ["fullscreen", "visible", "keyboard", "screen", "focus"].every(
       (key) => ready[key] === true,
     ) &&
-    (!webcam || ready.webcam === true)
+    (!webcam || ready.webcam === true) &&
+    displayReadiness(ready, singleDisplay) === true
   );
+}
+
+export function examConditionsVerdict(
+  ready: Record<string, unknown>,
+  webcam: boolean,
+  singleDisplay = false,
+): boolean | null {
+  if (!examConditionsReady(ready, webcam)) return false;
+  return displayReadiness(ready, singleDisplay);
 }
 
 export function focusGraceSeconds(lostAt: number | null, time: number) {
@@ -22,3 +33,4 @@ export function focusGraceSeconds(lostAt: number | null, time: number) {
     ? null
     : Math.max(0, Math.ceil((lostAt + FOCUS_GRACE_MS - time) / 1000));
 }
+import { displayReadiness } from "./display-policy.js";

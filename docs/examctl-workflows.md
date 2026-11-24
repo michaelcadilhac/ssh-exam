@@ -1,5 +1,12 @@
 # Current examctl workflows
 
+November23 local addition: `examctl web exams create|update EXAM
+--single-display on|off` manages the same **Require one display** setting as Exam
+settings. Update requires the current `--revision` from `web exams show EXAM`.
+Absent means off; this is exam-wide and does not revise saved grants, clocks or
+history. The CLI and web share authorization, validation and audit. Not deployed;
+[student workflow, policy and qualification](one-display-policy.md).
+
 October26 current local workflow: saved-source issuance/source-sync and C7
 new-attempt recovery are qualified through public CLI/web/student interfaces;
 cancel-first legacy migration and033 native definition reconciliation/retirement

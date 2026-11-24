@@ -19,6 +19,7 @@ type examReplySettings struct {
 	Webcam          bool    `json:"webcam"`
 	Terminals       int     `json:"terminals"`
 	PauseOnReview   *bool   `json:"pause_on_review,omitempty"`
+	SingleDisplay   *bool   `json:"single_display,omitempty"`
 	Timezone        *string `json:"timezone,omitempty"`
 	Earliest        int64   `json:"earliest"`
 	Latest          int64   `json:"latest"`
@@ -35,7 +36,7 @@ func (s *examReplySettings) UnmarshalJSON(data []byte) error {
 	if json.Unmarshal(data, &fields) != nil {
 		return errors.New("invalid exam metadata")
 	}
-	for _, key := range []string{"template_version", "collection_file_mib", "collection_total_mib", "pause_on_review", "timezone"} {
+	for _, key := range []string{"template_version", "collection_file_mib", "collection_total_mib", "pause_on_review", "single_display", "timezone"} {
 		if raw, present := fields[key]; present && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
 			return errors.New("null optional exam metadata")
 		}

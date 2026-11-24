@@ -419,6 +419,7 @@ function App() {
         <Workspace
           reservation={{
             ...reservation,
+            singleDisplayRequired: info?.exam?.single_display === true,
             functionalTest: !!loginTest?.functionalTest,
           }}
           onSignOut={logout}

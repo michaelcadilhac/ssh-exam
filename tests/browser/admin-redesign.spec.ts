@@ -111,6 +111,7 @@ async function fixture(
     failDashboard: false,
     failSettings: false,
     pauseOnReview: false,
+    singleDisplay: false,
     timezone,
     nextGrant: null as any,
     failReview: false,
@@ -289,6 +290,7 @@ async function fixture(
           webcam: false,
           terminals: 4,
           pause_on_review: state.pauseOnReview,
+          single_display: state.singleDisplay,
           timezone: state.timezone,
           template: "sample-exam",
           template_version: "a".repeat(64),
@@ -399,6 +401,7 @@ async function fixture(
       state.calls.push({ path, body });
       if (path === "/api/admin/exams/versioned") {
         state.pauseOnReview = !!body.pause_on_review;
+        state.singleDisplay = !!body.single_display;
         return json({ ...body, revision: "updated-fixture-definition" });
       }
       if (path.endsWith("/monitoring/optimization")) {
@@ -826,6 +829,12 @@ test("exam-wide review countdown setting is clear, saved and prefilled on mobile
     dialog.getByRole("checkbox", { name, exact: true }),
   ).not.toBeChecked();
   await dialog.getByRole("checkbox", { name, exact: true }).check();
+  const display = dialog.getByRole("checkbox", {
+    name: "Require one display",
+    exact: true,
+  });
+  await expect(display).not.toBeChecked();
+  await display.check();
   expect(await dialog.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(
     true,
   );
@@ -837,12 +846,19 @@ test("exam-wide review countdown setting is clear, saved and prefilled on mobile
     state.calls.find((c) => c.path === "/api/admin/exams/versioned")?.body
       .pause_on_review,
   ).toBe(true);
+  expect(
+    state.calls.find((c) => c.path === "/api/admin/exams/versioned")?.body
+      .single_display,
+  ).toBe(true);
   await page.reload();
   await page.getByLabel("Selected exam", { exact: true }).selectOption("alpha");
   await open();
   dialog = page.getByRole("dialog", { name: "Exam settings", exact: true });
   await expect(
     dialog.getByRole("checkbox", { name, exact: true }),
+  ).toBeChecked();
+  await expect(
+    dialog.getByRole("checkbox", { name: "Require one display", exact: true }),
   ).toBeChecked();
 });
 

@@ -2652,6 +2652,7 @@ it("shares revision-checked definition writes across web and root CLI without re
     const exam = {
       id: "programming",
       name: "Programming",
+      single_display: true,
       template: "v1",
       earliest: Date.now() - 1000,
       latest: Date.now() + 3600000,
@@ -2727,13 +2728,17 @@ it("shares revision-checked definition writes across web and root CLI without re
       operation: "exams.update",
       body: {
         id: exam.id,
-        changes: { name: "Root edit" },
+        changes: { name: "Root edit", single_display: false },
         revision,
         reason: "Change the display name",
       },
     });
     const updated = f.unpack(await f.post(intent));
-    expect(updated.result.exam).toEqual({ ...exam, name: "Root edit" });
+    expect(updated.result.exam).toEqual({
+      ...exam,
+      name: "Root edit",
+      single_display: false,
+    });
     expect(
       f.unpack(
         await f.post(

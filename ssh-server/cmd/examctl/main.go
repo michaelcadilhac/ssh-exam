@@ -18,7 +18,7 @@ import (
 // Accept global flags before or after the subcommand.
 func takesValue(arg string) bool {
 	name := strings.TrimLeft(strings.SplitN(arg, "=", 2)[0], "-")
-	if name == "pause-on-review" || name == "timezone" {
+	if name == "pause-on-review" || name == "timezone" || name == "single-display" {
 		return strings.HasPrefix(arg, "-")
 	}
 	switch name {

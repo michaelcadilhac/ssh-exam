@@ -1,9 +1,11 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { z } from "zod";
+import { displayObservation } from "../../../packages/protocol/display-policy.js";
 import { monitoringBootTimeMS } from "./monitoring-clock.js";
 import {
   FOCUS_GRACE_MS,
   examConditionsReady,
+  examConditionsVerdict,
 } from "../../../packages/protocol/focus-grace.js";
 import {
   isCaptureReadinessSnapshot,
@@ -41,12 +43,15 @@ const readiness = z
     screen: z.boolean(),
     webcam: z.boolean(),
     focus: z.boolean(),
+    display: displayObservation.optional(),
   })
   .strict();
 type Entry = {
   binding: MonitoringEvidenceBinding;
   owner: Readonly<MonitoringOwner>;
   webcam: boolean;
+  singleDisplay: boolean;
+  displayUnavailable: boolean;
   challenges: Map<string, Challenge>;
   challengeOrdinal: number;
   policy?: { issued: number; ordinal: number };
@@ -142,6 +147,7 @@ export class MonitoringEvidenceLedger {
   registerTrustedOwner(
     raw: unknown,
     webcam: boolean,
+    singleDisplay = false,
   ): MonitoringEvidenceBinding {
     const parsed = monitoringOwner.safeParse(raw);
     if (!parsed.success || typeof webcam !== "boolean")
@@ -151,7 +157,8 @@ export class MonitoringEvidenceLedger {
     if (old) {
       if (
         JSON.stringify(old.owner) !== JSON.stringify(parsed.data) ||
-        old.webcam !== webcam
+        old.webcam !== webcam ||
+        old.singleDisplay !== singleDisplay
       )
         return refuse("conflict");
       return old.binding;
@@ -164,6 +171,8 @@ export class MonitoringEvidenceLedger {
       binding,
       owner: Object.freeze(parsed.data),
       webcam,
+      singleDisplay,
+      displayUnavailable: false,
       challenges: new Map(),
       challengeOrdinal: 0,
       blocked: false,
@@ -232,7 +241,8 @@ export class MonitoringEvidenceLedger {
       snapshot.attempt !== e.owner.attempt ||
       snapshot.page !== e.owner.page_epoch ||
       snapshot.generation !== e.owner.generation ||
-      snapshot.webcam !== e.webcam
+      snapshot.webcam !== e.webcam ||
+      snapshot.singleDisplay !== e.singleDisplay
     )
       return refuse("ownership");
     if (
@@ -242,7 +252,8 @@ export class MonitoringEvidenceLedger {
       !snapshot.policy.value.focus ||
       !snapshot.policy.value.keyboard ||
       !snapshot.policy.value.screen ||
-      (e.webcam && !snapshot.policy.value.webcam)
+      (e.webcam && !snapshot.policy.value.webcam) ||
+      !examConditionsReady(snapshot.policy.value, e.webcam, e.singleDisplay)
     )
       return refuse("policy-blocked");
     const required = e.webcam ? ["screen", "webcam"] : ["screen"],
@@ -478,6 +489,55 @@ export class MonitoringEvidenceLedger {
     e.coverageEpoch ??= randomBytes(32).toString("hex");
     e.coverageUntil = until;
   }
+  setSingleDisplayRequired(
+    binding: MonitoringEvidenceBinding,
+    required: boolean,
+  ) {
+    const e = this.entry(binding);
+    if (e.singleDisplay === required) return;
+    this.touch(e, this.now());
+    e.singleDisplay = required;
+    e.displayUnavailable = false;
+    // No facts/tickets collected under the old requirements may restore work.
+    // Preserve genuine policy blocks, owner identity and sequence monotonicity.
+    e.challenges.clear();
+    e.policy = undefined;
+    e.frames.clear();
+    e.focusLost = undefined;
+    e.focusUnverified = true;
+    this.gap(e);
+  }
+  noteDisplayUnavailable(binding: MonitoringEvidenceBinding) {
+    const e = this.entry(binding);
+    if (!e.singleDisplay || e.blocked || e.displayUnavailable) return false;
+    // Authenticated negative-only notification: never grants fresh readiness.
+    // Invalidate pending positive captures before touching an expiring grace.
+    e.displayUnavailable = true;
+    e.focusLost = undefined;
+    e.focusUnverified = true;
+    e.challenges.clear();
+    e.policy = undefined;
+    e.frames.clear();
+    this.gap(e);
+    return true;
+  }
+  private observeConditions(
+    e: Entry,
+    r: z.infer<typeof readiness>,
+    now: number,
+  ) {
+    const verdict = examConditionsVerdict(r, e.webcam, e.singleDisplay);
+    if (verdict === null) {
+      e.focusLost = undefined;
+      e.focusUnverified = true;
+    } else if (!verdict) {
+      e.focusLost ??= now;
+    } else {
+      e.focusLost = undefined;
+      e.focusUnverified = false;
+      e.displayUnavailable = false;
+    }
+  }
   confirmPolicy(
     binding: MonitoringEvidenceBinding,
     challenge: string,
@@ -492,11 +552,7 @@ export class MonitoringEvidenceLedger {
     if (!parsed.success || (e.policy && c.ordinal <= e.policy.ordinal))
       return refuse("challenge");
     const r = parsed.data;
-    if (!examConditionsReady(r, e.webcam)) e.focusLost ??= now;
-    else {
-      e.focusLost = undefined;
-      e.focusUnverified = false;
-    }
+    this.observeConditions(e, r, now);
     e.policy = { issued: c.issued, ordinal: c.ordinal };
     this.recompute(e, now);
   }
@@ -557,11 +613,7 @@ export class MonitoringEvidenceLedger {
       return refuse("sequence");
     e.frames.set(source, { issued: c.issued, ordinal: c.ordinal, sequence });
     if (!e.policy || c.ordinal > e.policy.ordinal) {
-      if (!examConditionsReady(r, e.webcam)) e.focusLost ??= now;
-      else {
-        e.focusLost = undefined;
-        e.focusUnverified = false;
-      }
+      this.observeConditions(e, r, now);
       e.policy = { issued: c.issued, ordinal: c.ordinal };
     }
     this.recompute(e, now);

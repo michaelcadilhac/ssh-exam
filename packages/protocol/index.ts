@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { displayObservation } from "./display-policy.js";
 import {
   DEFAULT_COLLECTION_FILE_MIB,
   DEFAULT_COLLECTION_TOTAL_MIB,
@@ -71,6 +72,7 @@ export type Exam = z.infer<typeof examSchema>;
 // Exam-wide behavior is intentionally outside immutable grant/attempt settings.
 // Adding a default to examConfiguration would change existing grant hashes.
 export const examDefinitionConfiguration = examConfiguration.extend({
+  single_display: z.boolean().optional(),
   pause_on_review: z.boolean().optional(),
   // Presentation only: outside immutable grant/attempt settings and hashes.
   timezone: z
@@ -119,6 +121,7 @@ export const readySchema = z.object({
   keyboard: z.literal(true),
   screen: z.literal(true),
   webcam: z.boolean(),
+  display: displayObservation.optional(),
 });
 export { readinessMessage } from "./readiness.js";
 const observedReadySchema = z
@@ -129,6 +132,7 @@ const observedReadySchema = z
     keyboard: z.boolean(),
     screen: z.boolean(),
     webcam: z.boolean(),
+    display: displayObservation.optional(),
   })
   .strict();
 export const messageSchema = z.discriminatedUnion("type", [

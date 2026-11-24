@@ -5,6 +5,18 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 23 local one-display policy
+
+An opt-in exam-wide **Require one display** setting verifies browser-reported
+active displays before Start/resume and watches topology/permission changes.
+Known extra displays use the shared 15-second interruption grace; typing pauses.
+Unknown/denied/revoked verification blocks input as a technical problem and cannot
+be used as positive monitoring evidence. Fresh challenged capture/current authority
+are required for recovery. Saved grant settings, original clocks, historical
+attempts and native owner/proof formats remain intact. The matching CLI flag is
+`examctl web exams update ... --single-display on|off`. Not deployed or enabled;
+[implementation, limits and evidence](docs/one-display-policy.md).
+
 ## November 23 local countdown presentation
 
 Stopped attempts offer explicit Pause until reconnect / Pause indefinitely

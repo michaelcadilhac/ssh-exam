@@ -1,8 +1,13 @@
+import { displayReadinessMessage } from "./display-policy.js";
+
 export function readinessMessage(
   input: unknown,
   requireWebcam: boolean,
   action = "resuming",
+  requireSingleDisplay = false,
 ) {
+  const display = displayReadinessMessage(input, requireSingleDisplay);
+  if (display) return display;
   const ready = (input && typeof input === "object" ? input : {}) as Record<
     string,
     unknown

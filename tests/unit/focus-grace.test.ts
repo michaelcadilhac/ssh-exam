@@ -80,6 +80,21 @@ it("repeated blur and heartbeats cannot restart the server countdown", async () 
   });
   expect(f.paused()).toBe(1);
 });
+it("technical display uncertainty cannot expire into a student policy accusation", async () => {
+  const f = setup(),
+    before = f.store.attempt("a");
+  await reportFocus(f.life, "a", false, { display: "multiple" });
+  f.advance(14000);
+  await reportFocus(f.life, "a", null, { display: "unavailable" });
+  f.advance(30000);
+  await f.life.tick();
+  expect(f.store.attempt("a")).toMatchObject({
+    state: "ACTIVE",
+    focus_lost_at: null,
+    deadline: before.deadline,
+  });
+  expect(f.paused()).toBe(0);
+});
 it("a late focus return cannot evade the cutoff between server timer ticks", async () => {
   const f = setup();
   await reportFocus(f.life, "a", false);

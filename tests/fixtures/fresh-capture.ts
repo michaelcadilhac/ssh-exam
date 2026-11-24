@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import sharp from "sharp";
 import { expect } from "vitest";
+import type { DisplayObservation } from "../../packages/protocol/display-policy.js";
 
 // Real authenticated challenge and JPEG interfaces, not a seeded freshness row.
 export async function freshCapture(
@@ -9,6 +10,7 @@ export async function freshCapture(
   page: string,
   headers: Record<string, string>,
   webcam = false,
+  display?: DisplayObservation,
 ) {
   const data = (
     await sharp({
@@ -46,6 +48,7 @@ export async function freshCapture(
           keyboard: true,
           screen: true,
           webcam,
+          ...(display ? { display } : {}),
         },
       },
     });

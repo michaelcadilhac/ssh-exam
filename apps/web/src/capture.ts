@@ -1,5 +1,6 @@
 import { api, apiBinary } from "./api.js";
 import { encodeCaptureUpload } from "../../../packages/protocol/capture-upload.js";
+import type { DisplayObservation } from "../../../packages/protocol/display-policy.js";
 import { CaptureEncoder } from "./capture-encoder.js";
 
 // Keep each five-second observation independently verifiable as an ordinary
@@ -27,7 +28,10 @@ export class Capture {
     private id: string,
     private page: string,
     private incident: (reason: string) => void,
-    private readiness: () => Record<string, boolean>,
+    private readiness: () => Record<
+      string,
+      boolean | DisplayObservation | undefined
+    >,
     private preflight: () => boolean,
     private sampleHealth?: (source: string, healthy: boolean) => boolean,
     private sampleAllowed: () => boolean = () => true,

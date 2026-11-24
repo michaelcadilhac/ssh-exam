@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { displayObservation } from "./display-policy.js";
 
 export const CAPTURE_UPLOAD_TYPE = "application/vnd.ssh-exam-capture";
 export const CAPTURE_IMAGE_LIMIT = 1_500_000;
@@ -20,6 +21,7 @@ export const captureUploadMetadata = z
         keyboard: z.boolean(),
         screen: z.boolean(),
         webcam: z.boolean(),
+        display: displayObservation.optional(),
       })
       .strict(),
     video: z
