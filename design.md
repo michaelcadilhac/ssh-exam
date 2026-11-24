@@ -5,6 +5,16 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 23 local native interruption notifications
+
+Signed class-server holds now share the gateway's durable interruption notice,
+including replay/restart deduplication, existing grace, recovery cancellation and
+student-review fallback. Hold/history/notice commit together; explicit prior
+notification suppression is preserved. This corrects a missing callback-path
+email without changing enforcement, clocks or delivery policy. Tested locally,
+not deployed. Additional closure diagnostics remain in progress;
+[plan and evidence](docs/native-hold-alerts-and-disconnect-observability.md).
+
 ## November 23 local one-display policy
 
 An opt-in exam-wide **Require one display** setting verifies browser-reported

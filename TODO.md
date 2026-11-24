@@ -1,3 +1,11 @@
+November23 native-hold **notification fix implemented/tested locally, not
+deployed**: authenticated native callbacks now share the existing interruption
+notice and atomic durable state with gateway locks. Replay/restart do not
+duplicate; prompt recovery cancels pending mail.53affected application tests,
+5notification browser workflows, typecheck and server build pass. The SSH closure
+investigation found no initiating cause; bounded browser/proxy diagnostics remain
+in progress. [Plan/evidence](docs/native-hold-alerts-and-disconnect-observability.md).
+
 November23 **one-display policy implemented/tested locally; not deployed or
 enabled**. Exam settings and `examctl web exams create|update --single-display
 on|off` share the opt-in setting. Preflight/Start/resume require a positive display

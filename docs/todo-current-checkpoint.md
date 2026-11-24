@@ -1,4 +1,23 @@
-# Current checkpoint — one-display policy complete locally
+# Current checkpoint — native hold email fixed locally; closure diagnostics next
+
+November23 notification milestone: signed native LOCKED callbacks now atomically
+record the interruption and its existing durable email episode. Gateway/native
+overlap, replay/restart, student requests, explicit notification suppression and
+successful recovery preserve one notice per interruption. No clock, hold,
+authorization, SMTP retry or15-second notification-grace policy change.
+53affected application tests (including actual synthetic SMTP),5notification
+browser workflows, typecheck and server build pass. Old implementation fails the
+new signed-callback regressions. [Plan/evidence](native-hold-alerts-and-disconnect-observability.md).
+Private receipts: `var/native-hold-alerts/20261123/`.
+
+Next authorized action: add bounded current-transport browser socket-close and
+lifecycle diagnostics, plus useful proxy log timestamps, after the read-only
+incident investigation found no initiating cause. coder/websocket1.8.15 maps
+normal/going-away closes to EOF, losing the historical code. No production change
+or email was sent. Do not stop after the notification increment; diagnostic work
+remains authorized. No open policy question.
+
+## Previous local milestone — one display
 
 November23: opt-in **Require one display** is available in Exam settings and
 `examctl web exams create|update --single-display on|off`. Existing exams default

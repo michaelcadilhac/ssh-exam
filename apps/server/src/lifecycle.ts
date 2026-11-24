@@ -294,6 +294,43 @@ export class Lifecycle {
         );
     })();
   }
+  private recordInterruption(a: Attempt, reason: string, notify = true) {
+    const prior = this.store.db
+      .prepare("SELECT * FROM incidents WHERE attempt=? AND generation=?")
+      .get(a.id, a.generation) as any;
+    const events = prior ? JSON.parse(prior.events) : [];
+    if (!events.some((event: { reason: string }) => event.reason === reason)) {
+      events.push({ at: now(), reason });
+      if (prior)
+        this.store.db
+          .prepare("UPDATE incidents SET events=? WHERE id=?")
+          .run(JSON.stringify(events.slice(-100)), prior.id);
+    }
+    if (prior) return;
+    this.store.db
+      .prepare(
+        "INSERT INTO incidents(id,attempt,generation,opened,events) VALUES(?,?,?,?,?)",
+      )
+      .run(randomUUID(), a.id, a.generation, now(), JSON.stringify(events));
+    // A native callback may follow a student review request or a gateway lock.
+    // One interruption owns one notification regardless of which arrived first.
+    if (
+      notify &&
+      !this.store.db
+        .prepare(
+          "SELECT 1 FROM alert_episodes WHERE attempt=? AND event='interruption' AND generation=? AND resolved IS NULL",
+        )
+        .get(a.id, a.generation)
+    )
+      this.notifyAttempt(
+        a,
+        "interruption",
+        `Exam interrupted: ${a.username}`,
+        `${a.exam}: ${JSON.stringify(reason)}. ${timerPaused(a) ? "Countdown paused." : `Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}.`} Open the authenticated instructor dashboard.`,
+        reason,
+        (a.focus_lost_at ?? now()) + FOCUS_GRACE_MS,
+      );
+  }
   async lock(
     id: string,
     reason: string,
@@ -331,31 +368,7 @@ export class Lifecycle {
           .run(id);
       const b = this.store.attempt(id);
       this.store.interruptions.pause(b, reason);
-      const prior = this.store.db
-        .prepare("SELECT * FROM incidents WHERE attempt=? AND generation=?")
-        .get(id, b.generation) as any;
-      const events = prior ? JSON.parse(prior.events) : [];
-      events.push({ at: now(), reason });
-      if (prior)
-        this.store.db
-          .prepare("UPDATE incidents SET events=? WHERE id=?")
-          .run(JSON.stringify(events.slice(-100)), prior.id);
-      else {
-        this.store.db
-          .prepare(
-            "INSERT INTO incidents(id,attempt,generation,opened,events) VALUES(?,?,?,?,?)",
-          )
-          .run(randomUUID(), id, b.generation, now(), JSON.stringify(events));
-        if (options.notify !== false)
-          this.notifyAttempt(
-            b,
-            "interruption",
-            `Exam interrupted: ${a.username}`,
-            `${a.exam}: ${JSON.stringify(reason)}. Remaining ${formatDuration(((a.deadline || now()) - now()) / 1000)}. Open the authenticated instructor dashboard.`,
-            reason,
-            (b.focus_lost_at ?? now()) + FOCUS_GRACE_MS,
-          );
-      }
+      this.recordInterruption(b, reason, options.notify !== false);
       this.store.audit("gateway", "lock", id, reason);
       // The receipt and web hold commit together before native I/O. A crash
       // cannot record delivery while losing the corresponding durable hold.
@@ -904,21 +917,25 @@ export class Lifecycle {
           ? a.reason
           : remote.reason ||
             "Monitoring authorization expired; instructor authorization required";
-      this.store.db
-        .prepare(
-          "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=?,focus_lost_at=COALESCE(focus_lost_at,?) WHERE id=?",
-        )
-        .run(remote.generation || 0, reason, now(), id);
-      this.store.interruptions.pause(this.store.attempt(id), reason);
-      if (remote.reason && remote.reason !== reason)
-        this.store.interruptions.pause(
-          this.store.attempt(id),
-          `Class server: ${remote.reason}`,
-        );
-      if ((remote.generation || 0) > a.generation)
+      this.store.db.transaction(() => {
         this.store.db
-          .prepare("DELETE FROM continuations WHERE attempt=?")
-          .run(id);
+          .prepare(
+            "UPDATE attempts SET state='LOCKED',generation=MAX(generation,?),reason=?,focus_lost_at=COALESCE(focus_lost_at,?) WHERE id=?",
+          )
+          .run(remote.generation || 0, reason, now(), id);
+        const held = this.store.attempt(id);
+        this.store.interruptions.pause(held, reason);
+        if (remote.reason && remote.reason !== reason)
+          this.store.interruptions.pause(
+            held,
+            `Class server: ${remote.reason}`,
+          );
+        if (held.start) this.recordInterruption(held, reason);
+        if ((remote.generation || 0) > a.generation)
+          this.store.db
+            .prepare("DELETE FROM continuations WHERE attempt=?")
+            .run(id);
+      })();
       if (
         a.state !== "LOCKED" ||
         (remote.generation || 0) > a.generation ||
