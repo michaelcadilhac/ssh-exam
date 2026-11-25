@@ -1,6 +1,7 @@
 # Student webcam preview and floating windows
 
-November 24: implemented locally; not pushed or deployed.
+Implemented November24; pushed and deployed November25 as runtime96a323e,
+controller6083777. [Deployment and recovery](student-video-preview-release.md).
 
 ## Scope and acceptance
 
@@ -80,9 +81,11 @@ All owned browser services have MainPID 0, empty/removed cgroups and the fixture
 listener closed. Final receipts and per-test output are private under
 `var/student-video-preview/20261124/`. Existing documentation PNGs are preserved.
 
-This is local completion only. Native code, schemas, grant settings and authority
+Production acceptance passes47 external asset hashes,41 preservation contracts,
+270 unchanged native histories, all native process identities and a signed CLI
+read. Native code, schemas, grant settings and authority
 wire formats do not change, so unrelated native races/class-capacity tests are
-not repeated. A future authorized release must freeze the new web image/assets
+not repeated. Any future authorized release must freeze its web image/assets
 and qualify the existing guarded deployment/preservation/recovery workflow. No
-migration or native service restart is required for this UI correction. Keep
+migration or native service restart was needed for this UI correction. Keep
 CURRENT records, recordings, attempts, account holds and original deadlines.

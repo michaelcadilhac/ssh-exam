@@ -5,16 +5,18 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
-## November 24 local student-preview correction
+## November 25 deployed student-preview correction
 
 Student screen/camera capture and the setup preview disable picture-in-picture.
 Start/Resume first close an existing pop-out belonging to this workspace; a
 refusal or bounded close failure leaves the action retryable before its authority
 request. Webcam recording continues. The 15-second grace, source verification,
 clocks and native holds are unchanged. Browser configuration can override the
-disable request. Implemented/tested locally, not pushed or deployed; 39 affected
+disable request. Pushed and deployed as runtime96a323e/controller6083777; 39 affected
 unit checks, two HTTP integration cases, 14 browser workflows and type/build pass.
-[Behavior, limits and release boundary](docs/student-video-preview.md).
+[Behavior and limits](docs/student-video-preview.md). Production passes47 exact
+external assets,41 preservation contracts and unchanged native histories/roles.
+[Deployment and recovery](docs/student-video-preview-release.md).
 
 ## November 24 deployed release
 
