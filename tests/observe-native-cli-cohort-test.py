@@ -55,6 +55,14 @@ class Observer(unittest.TestCase):
         self.producer('raise RuntimeError("synthetic guard busy")\n')
         with self.assertRaises(RuntimeError):self.observe()
         self.assertEqual(path.read_bytes(),before);self.assertIs(sys.argv,argv)
+    def test_student_preview_preserves_every_installed_binary_and_loaded_worker(self):
+        self.release['fast_ui']={'mode':'reviewed-web-read','reviewed_scope':'student-video-preview-v1'};self.producer()
+        receipt=self.observe();self.assertEqual(receipt['binary_sha256'],self.hashes)
+        self.assertEqual(receipt['worker_cli_sha256'],'9'*64)
+    def test_student_preview_unknown_version_refuses_without_publishing(self):
+        self.release['fast_ui']={'mode':'reviewed-web-read','reviewed_scope':'student-video-preview-v2'};self.producer()
+        with self.assertRaises(ValueError):self.observe()
+        self.assertFalse((self.stage/'native-guard-before.json').exists())
     def test_changed_binary_or_guard_refuses_without_publishing(self):
         self.targets['exam-login'].write_bytes(b'changed')
         with self.assertRaises(ValueError):self.observe()

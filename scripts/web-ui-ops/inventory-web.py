@@ -56,7 +56,7 @@ if present:
   allowed_video={key:counts.pop(key) for key in list(counts) if key.endswith('_while_owned_pause')}
  else:allowed_video={}
 allow_idle_students=settings.get('allow_idle_student_sessions',False)
-assert not allow_idle_students or (settings.get('mode')=='reviewed-web-cli' and settings.get('reviewed_scope')=='display-alert-diagnostics-v1'),'Unqualified idle-login exception'
+assert not allow_idle_students or (settings.get('mode'),settings.get('reviewed_scope')) in [('reviewed-web-cli','display-alert-diagnostics-v1'),('reviewed-web-read','student-video-preview-v1')],'Unqualified idle-login exception'
 session_activity=deployment_sessions.activity(db,now,settings.get('allow_admin_sessions',False),allow_idle_students)
 counts['sessions']=session_activity['blocking']
 for key,q,args in [

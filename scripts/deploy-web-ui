@@ -123,14 +123,15 @@ class Rollout:
         if mode not in ('ui', 'reviewed-web-read', 'reviewed-web-cli', 'reviewed-web-native'):
             raise ValueError('Unknown deployment mode; use ui or an explicitly registered reviewed scope')
         allow_admin = self.settings.get('allow_admin_sessions', False)
-        admin_scope = ((mode == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'interruption-grace-v1')
+        admin_scope = ((mode == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('interruption-grace-v1', 'student-video-preview-v1'))
                        or (mode == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1'))
         if type(allow_admin) is not bool or (allow_admin and not admin_scope):
             raise ValueError('Admin-only session drain requires an exact qualified scope and an explicit boolean')
         allow_students = self.settings.get('allow_idle_student_sessions', False)
         if type(allow_students) is not bool or (allow_students and not (
-                mode == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1')):
-            raise ValueError('Idle student login tokens require the exact display-alert-diagnostics-v1 scope and an explicit boolean; all independent live-work guards remain mandatory')
+                (mode == 'reviewed-web-cli' and self.settings.get('reviewed_scope') == 'display-alert-diagnostics-v1')
+                or (mode == 'reviewed-web-read' and self.settings.get('reviewed_scope') == 'student-video-preview-v1'))):
+            raise ValueError('Idle student login tokens require an exact qualified display-alert or student-preview scope and an explicit boolean; all independent live-work guards remain mandatory')
         if mode == 'reviewed-web-native':
             update = self.release.get('native_update', {})
             names = {'exam-agent', 'examctl', 'exam-login', 'exam-info'}
@@ -168,17 +169,18 @@ class Rollout:
             capture_scope = self.settings.get('reviewed_scope') == 'binary-vp9-capture-v1'
             notification_scope = self.settings.get('reviewed_scope') == 'wake-lock-notifications-v1'
             grace_scope = self.settings.get('reviewed_scope') == 'interruption-grace-v1'
+            preview_scope = self.settings.get('reviewed_scope') == 'student-video-preview-v1'
             if (self.release['schema'] != 37
-                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1')
+                    or self.settings.get('reviewed_scope') not in ('synchronized-monitoring-playback-v1', 'binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1', 'student-video-preview-v1')
                     or self.settings.get('qualified_source') != self.release['revision']
                     or not re.fullmatch('[a-f0-9]{40}', self.release['revision'])
-                    or self.settings.get('previous_reader_policy_compatible') is not (not (capture_scope or notification_scope or grace_scope))
+                    or self.settings.get('previous_reader_policy_compatible') is not (not (capture_scope or notification_scope or grace_scope or preview_scope))
                     or self.settings.get('unchanged_backend_protocol_native') is not False):
                 raise ValueError('Reviewed recording reader requires its exact schema37 scope, qualified source and explicit matching previous-reader policy')
             if (not re.fullmatch('[a-f0-9]{64}', self.release['cli_sha256'])
                     or self.release['old_cli_sha256'] != self.release['cli_sha256']
                     or not re.fullmatch('[a-f0-9]{64}', self.release['worker_cli_sha256'])
-                    or (not (notification_scope or grace_scope) and self.release['worker_cli_sha256'] != self.release['cli_sha256'])):
+                    or (not (notification_scope or grace_scope or preview_scope) and self.release['worker_cli_sha256'] != self.release['cli_sha256'])):
                 raise ValueError('Reviewed recording reader must retain the installed and loaded native CLI cohort')
         elif mode == 'reviewed-web-cli':
             if (self.release['schema'] != 37
@@ -280,7 +282,7 @@ class Rollout:
         return self.settings.get('mode') == 'reviewed-web-native'
 
     def forward_web(self):
-        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1'))
+        return ((self.settings.get('mode') == 'reviewed-web-read' and self.settings.get('reviewed_scope') in ('binary-vp9-capture-v1', 'wake-lock-notifications-v1', 'interruption-grace-v1', 'student-video-preview-v1'))
                 or (self.settings.get('mode') == 'reviewed-web-cli' and self.settings.get('reviewed_scope') in ('exam-dashboard-timezone-v1', 'display-alert-diagnostics-v1')))
 
     def transition(self):

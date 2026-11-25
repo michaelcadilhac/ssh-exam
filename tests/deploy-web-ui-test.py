@@ -403,6 +403,50 @@ class FastUI(unittest.TestCase):
         self.release['fast_ui']['allow_admin_sessions']=allow_admin
         (self.bundle/'release.json').write_text(json.dumps(self.release))
 
+    def student_preview(self):
+        self.interruption_policy()
+        self.release['fast_ui'].update(reviewed_scope='student-video-preview-v1',allow_idle_student_sessions=True)
+        (self.bundle/'release.json').write_text(json.dumps(self.release))
+
+    def test_student_preview_public_apply_preserves_idle_login_and_all_authority(self):
+        self.student_preview();self.session('student');before=self.history();self.cli('prepare')
+        result,_=self.cli('apply');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(len(result['proof']['preserved_tables']),41);self.assertEqual(self.history(),before)
+        self.assertEqual(result['video_pause']['status'],'RELEASED')
+        with database_file(self.data/'metadata.sqlite') as db:self.assertEqual(db.execute('SELECT role FROM sessions').fetchall(),[('student',)])
+        self.assertFalse(any('native-cohort' in part for call in self.calls for part in call))
+
+    def test_student_preview_running_candidate_recovers_without_restart_or_snapshot_replacement(self):
+        self.student_preview();self.cli('prepare')
+        with patch.object(deploy.Rollout,'finish_web_running',side_effect=RuntimeError('Synthetic preopening failure')):
+            self.cli('apply',expect=1)
+        snapshot=self.state/'snapshot/metadata.sqlite';identity=(snapshot.stat().st_ino,deploy.digest(snapshot));calls=list(self.calls)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual((snapshot.stat().st_ino,deploy.digest(snapshot)),identity)
+        self.assertEqual(sum(call[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for call in self.calls),sum(call[:3]==['/usr/bin/systemctl','start','ssh-exam.service'] for call in calls))
+
+    def test_student_preview_failed_start_recovers_current_data_and_refuses_old_writer(self):
+        self.student_preview();self.cli('prepare');before=self.history();self.fail_start=True
+        self.cli('apply',expect=1);snapshot=deploy.digest(self.state/'snapshot/metadata.sqlite')
+        _,error=self.cli('rollback',expect=1);self.assertIn('qualified forward resume',error)
+        result,_=self.cli('resume');self.assertEqual(result['phase'],'ONLINE')
+        self.assertEqual(self.history(),before);self.assertEqual(deploy.digest(self.state/'snapshot/metadata.sqlite'),snapshot)
+
+    def test_student_preview_unknown_login_and_busy_work_refuse_before_fence(self):
+        self.student_preview();self.session('unknown');self.cli('prepare');self.cli('apply',expect=1)
+        self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
+        self.session('student');self.busy=True;self.cli('apply',expect=1)
+        self.assertFalse(self.stopped_calls());self.assertEqual(self.site.read_text(),'original synthetic site')
+
+    def test_student_preview_requires_exact_scope_source_unchanged_cli_and_boolean_flags(self):
+        self.student_preview();original=json.loads(json.dumps(self.release))
+        for field,value in [('previous_reader_policy_compatible',True),('reviewed_scope','student-video-preview-v2'),('qualified_source','2'*40),('old_cli_sha256','3'*64),('worker_cli_sha256','unknown'),('allow_admin_sessions','yes'),('allow_idle_student_sessions','yes')]:
+            with self.subTest(field=field):
+                self.release=json.loads(json.dumps(original));target=self.release if field.endswith('sha256') else self.release['fast_ui'];target[field]=value
+                (self.bundle/'release.json').write_text(json.dumps(self.release))
+                self.cli('prepare',expect=1);self.assertFalse(self.stopped_calls())
+                self.assertFalse((self.data/deploy.deployment_pause.NAME).exists())
+
     def test_display_alert_policy_admin_only_apply_preserves_all_authority(self):
         self.display_alert_policy();self.session('admin');before=self.history()
         self.cli('prepare');result,_=self.cli('apply')

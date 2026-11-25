@@ -82,6 +82,19 @@ This flag does not delete sessions or permit native service restarts. Scope,
 public-controller recovery and exact-image qualification are recorded in
 [the release preparation](interruption-grace-release.md).
 
+The exact `reviewed-web-read/student-video-preview-v1` scope installs only the
+student picture-in-picture prevention and pre-Start/Resume closure. It requires
+schema37, the exact qualified source, unchanged installed CLI, separately pinned
+loaded worker and `previous_reader_policy_compatible: false`. Recovery resumes
+the same candidate with CURRENT data and the original snapshot, without another
+start. No native executable or service is changed. Explicit boolean
+`allow_admin_sessions` and `allow_idle_student_sessions` retain the instructor's
+approved idle-login behavior; all independent unfinished-work, hold, operation,
+process and TCP guards still apply. Unknown roles still block. The existing
+proof observer now admits this exact scope, checking all four installed binaries
+and the unchanged loaded worker without installing anything.
+[Qualification and deployment](student-video-preview-release.md).
+
 The exact `reviewed-web-cli/display-alert-diagnostics-v1` scope combines the
 pause-choice UI, opt-in one-display policy, native-hold notification fix and
 bounded browser/proxy diagnostics. It requires schema 37, the exact qualified

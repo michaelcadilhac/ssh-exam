@@ -35,9 +35,10 @@ def observe(stage):
     private_directory(stage)
     release, original = private_json(stage/'release.json')
     update = release['native_update']
-    if (release['fast_ui'].get('mode'), release['fast_ui'].get('reviewed_scope')) != (
-            'reviewed-web-cli', 'display-alert-diagnostics-v1'):
-        raise ValueError('Use the qualified CLI-only display/alert release')
+    if (release['fast_ui'].get('mode'), release['fast_ui'].get('reviewed_scope')) not in (
+            ('reviewed-web-cli', 'display-alert-diagnostics-v1'),
+            ('reviewed-web-read', 'student-video-preview-v1')):
+        raise ValueError('Use the qualified display/alert or student-preview release')
     guard = stage/'native-guard.py'
     info = guard.lstat()
     if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
