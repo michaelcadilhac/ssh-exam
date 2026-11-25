@@ -1,6 +1,10 @@
 # Student preview release
 
 November 25: preparation and guarded deployment authorized; site remains online.
+Qualified runtime96a323e/controller6083777 are privately staged but NOT deployed
+or pushed: GitHub authentication is unavailable. The SSH agent is empty and the
+configured HTTPS helper has no usable credential. The instructor was asked to
+load the GitHub key, never to send secrets. No maintenance or video pause began.
 The pending application source is 96a323e. Its only runtime changes are the
 student video elements and pre-Start/Resume floating-preview closure. Server,
 protocol, migrations, native and dependency source match deployed 55d2397.
@@ -58,3 +62,11 @@ acceptance is claimed.
 Private phase identities, frozen artifacts, results and production evidence:
 `var/student-video-preview-release/20261125/`. Total elapsed time starts with the
 deployment instruction, recorded at 21:09 UTC; maintenance is measured separately.
+
+Actual staged native/web guards pass:270 preserved native histories,186 web
+attempts, no unfinished work, login tokens, pending operations, account holds or
+live work processes/TCP owners. All loaded/installed roles and configuration are
+pinned to fresh current observations. The candidate image is cached, not selected
+by the running service. These time-bound proofs must be refreshed after the
+authentication blocker clears. The original current-release recovery archive is
+present; no media backup/copy or stopped metadata snapshot has been started.

@@ -1,4 +1,32 @@
-# Current checkpoint — local preview fix; production online
+# Current checkpoint — release staged; GitHub authentication blocked
+
+November 25: preparation/push/deployment explicitly authorized. Runtime image
+96a323e and controller6083777 are qualified and privately staged on csc-sys, but
+NOT pushed or deployed. GitHub SSH refuses publickey authentication; the existing
+`/run/user/1000/ssh-agent.socket` is empty and no HTTPS credential is available.
+The instructor has been asked to load the GitHub key; no secret was requested.
+
+Qualification:76 public-controller,34 preservation and eight observer tests pass.
+The exact image serves47 UID10001-readable assets identical to the14-workflow
+browser build. Real signed-poll startup expiry,41 preservation contracts and
+same-running-candidate recovery pass with no extra start/snapshot replacement.
+Actual root native proof preserves270 histories and all binaries/PIDs/configuration;
+the actual web guard passes all counters across186 historical attempts. These
+proofs expire and are not a future stop permit. No active work or login was found.
+
+Only private artifact staging and candidate Docker-cache loading occurred.
+The site is ONLINE on the prior55d2397 release. No maintenance, service restart,
+configuration/student-record change or background-video pause was performed.
+No deployment state directory or stopped snapshot has been created.
+
+Exact next action: after GitHub authentication is restored, push pending commits;
+recheck current inventory against the frozen baseline, refresh the strict native
+proof, then execute the qualified prepare/apply/acceptance workflow. Never rebind
+over changed history or reuse a stale proof. New history requires a fresh binding.
+The forward-only recovery uses CURRENT data and the original snapshot; no native
+restart is needed. [Plan and evidence](student-video-preview-release.md).
+Private artifacts/locations/operations: `var/student-video-preview-release/20261125/`.
+Preserve the ten pre-existing screenshot edits unstaged.
 
 November 24 follow-up: the student webcam-preview correction is implemented and
 validated locally, not pushed or deployed. Capture videos and the setup preview
