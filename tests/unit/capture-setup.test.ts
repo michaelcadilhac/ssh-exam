@@ -23,7 +23,9 @@ function fixture() {
   const stream = { getVideoTracks: () => [track], getTracks: () => [track] };
   const request = vi.fn().mockResolvedValue(stream),
     play = vi.fn().mockResolvedValue(undefined);
-  vi.stubGlobal("navigator", { mediaDevices: { getDisplayMedia: request } });
+  vi.stubGlobal("navigator", {
+    mediaDevices: { getDisplayMedia: request, getUserMedia: request },
+  });
   vi.stubGlobal("document", {
     createElement: (tag: string) =>
       tag === "video"
@@ -147,3 +149,103 @@ it("releases newly granted media if its preview cannot start", async () => {
     f.capture.stop();
   }
 });
+
+it.each(["screen", "webcam"] as const)(
+  "disables picture-in-picture on the %s capture without stopping recording",
+  async (source) => {
+    const f = fixture();
+    try {
+      await f.capture.setup(source);
+      expect(f.capture.videos.get(source)?.disablePictureInPicture).toBe(true);
+      expect(f.capture.healthy(source)).toBe(true);
+      expect(f.track.stop).not.toHaveBeenCalled();
+      expect(f.health).toHaveBeenLastCalledWith(source, true);
+    } finally {
+      f.capture.stop();
+    }
+  },
+);
+
+it.each(["capture", "preflight"])(
+  "closes an existing %s pop-out without stopping the camera or sending authority requests",
+  async (kind) => {
+    const f = fixture();
+    try {
+      await f.capture.setup("webcam");
+      let popped: HTMLVideoElement | null =
+        kind === "capture"
+          ? f.capture.videos.get("webcam")!
+          : ({ srcObject: f.stream } as unknown as HTMLVideoElement);
+      Object.defineProperty(document, "pictureInPictureElement", {
+        get: () => popped,
+        configurable: true,
+      });
+      const exit = vi.fn(async () => {
+        popped = null;
+      });
+      Object.assign(document, { exitPictureInPicture: exit });
+      vi.mocked(api).mockClear();
+      await f.capture.closeFloatingPreview();
+      expect(exit).toHaveBeenCalledOnce();
+      expect(popped).toBeNull();
+      expect(f.capture.healthy("webcam")).toBe(true);
+      expect(f.track.stop).not.toHaveBeenCalled();
+      expect(api).not.toHaveBeenCalled();
+    } finally {
+      f.capture.stop();
+    }
+  },
+);
+
+it.each(["unavailable", "unrelated"])(
+  "leaves %s picture-in-picture alone",
+  async (kind) => {
+    const f = fixture();
+    const exit = vi.fn();
+    Object.assign(document, {
+      ...(kind === "unrelated"
+        ? { pictureInPictureElement: { srcObject: {} } }
+        : {}),
+      exitPictureInPicture: exit,
+    });
+    try {
+      await f.capture.closeFloatingPreview();
+      expect(exit).not.toHaveBeenCalled();
+      expect(api).not.toHaveBeenCalled();
+    } finally {
+      f.capture.stop();
+    }
+  },
+);
+
+it.each(["rejected", "still-open", "stalled"])(
+  "refuses activation with guidance if closing a pop-out is %s",
+  async (mode) => {
+    const f = fixture();
+    try {
+      await f.capture.setup("screen");
+      Object.assign(document, {
+        pictureInPictureElement: f.capture.videos.get("screen"),
+        exitPictureInPicture: vi.fn(() =>
+          mode === "rejected"
+            ? Promise.reject(Error("Browser refused"))
+            : mode === "stalled"
+              ? new Promise<void>(() => {})
+              : Promise.resolve(),
+        ),
+      });
+      vi.mocked(api).mockClear();
+      const refused = expect(f.capture.closeFloatingPreview()).rejects.toThrow(
+        "Close the floating video preview, click the exam page, then try again.",
+      );
+      if (mode === "stalled") await vi.advanceTimersByTimeAsync(2000);
+      await refused;
+      expect(f.capture.healthy("screen")).toBe(true);
+      expect(f.track.stop).not.toHaveBeenCalled();
+      expect(api).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(1); // Only the existing capture interval.
+    } finally {
+      f.capture.stop();
+    }
+  },
+);

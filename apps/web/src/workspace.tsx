@@ -1885,6 +1885,7 @@ export function Workspace({
     activating.current = true;
     let result;
     try {
+      await capture.current!.closeFloatingPreview();
       await capture.current!.verifyForBegin(settings.webcam);
       try {
         result = await api(
@@ -2000,6 +2001,7 @@ export function Workspace({
       serverClock.current.now + performance.now() - serverClock.current.at;
   const continueExam = async (automaticTechnical = false) => {
     const epoch = activationEpoch.current;
+    await capture.current!.closeFloatingPreview();
     if (automaticTechnical && !automaticReady())
       throw Error("Checking the connection…");
     const readiness = readinessMessage(
@@ -2416,7 +2418,13 @@ export function Workspace({
             Start exam
           </button>
           {settings.webcam && (
-            <video id="camera-preview" muted autoPlay playsInline />
+            <video
+              id="camera-preview"
+              muted
+              autoPlay
+              playsInline
+              disablePictureInPicture
+            />
           )}
           {startOutcomeUnknown ? (
             <p role="status">

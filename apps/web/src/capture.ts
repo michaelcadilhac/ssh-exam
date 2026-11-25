@@ -93,6 +93,7 @@ export class Capture {
         this.incident(`${source} track ended`);
     };
     const video = document.createElement("video");
+    video.disablePictureInPicture = true;
     video.srcObject = stream;
     video.muted = true;
     video.playsInline = true;
@@ -316,6 +317,41 @@ export class Capture {
       }
     }
     return true;
+  }
+  async closeFloatingPreview() {
+    if (this.stopped)
+      throw new DOMException("Sharing was cancelled", "AbortError");
+    // The preflight preview shares our stream but is not a capture video.
+    // Only close student capture/preview media owned by this workspace.
+    const owns = (element: Element | null | undefined) =>
+      !!element &&
+      ([...this.videos.values()].includes(element as HTMLVideoElement) ||
+        [...this.streams.values()].some(
+          (stream) => (element as HTMLVideoElement).srcObject === stream,
+        ));
+    if (!owns(document.pictureInPictureElement)) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        document.exitPictureInPicture(),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(Error("Preview close timed out")),
+            2000,
+          );
+        }),
+      ]);
+      if (owns(document.pictureInPictureElement))
+        throw Error("Preview is still open");
+    } catch {
+      throw Error(
+        "Close the floating video preview, click the exam page, then try again.",
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (this.stopped)
+      throw new DOMException("Sharing was cancelled", "AbortError");
   }
   async verifyForBegin(webcam: boolean) {
     const sources = webcam ? ["screen", "webcam"] : ["screen"];

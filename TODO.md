@@ -1,10 +1,18 @@
+November 24 webcam-preview correction **implemented/tested locally; not pushed
+or deployed**: student videos disable picture-in-picture; Start/Resume close
+existing owned pop-outs before requesting authority. Closure failure gives retry
+guidance without starting an attempt. Recording and interruption enforcement stay
+active. 39 affected unit, two HTTP integration and 14 browser workflows pass;
+typecheck/build pass. [Behavior and evidence](docs/student-video-preview.md).
+
 November 24: **matched release pushed, deployed and online on csc-sys** at
 10:41:31 UTC (04:41 Chicago), runtime/CLI 55d2397 and controller c7a36f7.
 Automatic checks preserved live exams and the original-deadline account hold;
 46 external assets, 41 authority contracts, 250 native histories and all native
 PIDs pass. Idle login records may remain only with a fully clear work/hold/
 connection drain. No native restart/schema migration; original snapshot/CURRENT
-data preserved. The display requirement stays off pending physical acceptance.
+data preserved. Display verification was off at reopening; the instructor enabled
+it for final at 09:46 Chicago, as recorded in the current checkpoint.
 [Deployment and recovery](docs/display-alerts-release.md). Earlier dated local
 qualification records below are superseded by this deployment status.
 

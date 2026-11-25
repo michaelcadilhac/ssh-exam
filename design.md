@@ -5,6 +5,17 @@
 **Date:** October 9, 2026  
 **Deliverable:** A deployable, self-hosted application, its class-server components, tests, and installation documentation.
 
+## November 24 local student-preview correction
+
+Student screen/camera capture and the setup preview disable picture-in-picture.
+Start/Resume first close an existing pop-out belonging to this workspace; a
+refusal or bounded close failure leaves the action retryable before its authority
+request. Webcam recording continues. The 15-second grace, source verification,
+clocks and native holds are unchanged. Browser configuration can override the
+disable request. Implemented/tested locally, not pushed or deployed; 39 affected
+unit checks, two HTTP integration cases, 14 browser workflows and type/build pass.
+[Behavior, limits and release boundary](docs/student-video-preview.md).
+
 ## November 24 deployed release
 
 The matched pause-choice UI, opt-in display policy/CLI, native-origin notifications
@@ -12,8 +23,9 @@ and bounded browser/proxy diagnostics are pushed and deployed on csc-sys,
 runtime/CLI 55d2397, controller c7a36f7. Admissions reopened at 04:41 Chicago.
 Idle student login records can remain only after all independent live-work,
 hold, operation and connection checks pass. No account hold, deadline, native
-process or historical attempt was changed to admit deployment. Existing exams'
-display requirement remains off pending physical acceptance. The earlier local
+process or historical attempt was changed to admit deployment. Display verification
+was off at reopening; the instructor enabled it for final at 09:46 Chicago.
+The earlier local
 notes below are historical. [Deployment and recovery](docs/display-alerts-release.md).
 
 ## November 23 local native interruption notifications

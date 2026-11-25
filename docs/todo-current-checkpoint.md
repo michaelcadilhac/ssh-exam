@@ -1,4 +1,19 @@
-# Current checkpoint — deployed and online
+# Current checkpoint — local preview fix; production online
+
+November 24 follow-up: the student webcam-preview correction is implemented and
+validated locally, not pushed or deployed. Capture videos and the setup preview
+disable picture-in-picture; Start/Resume close existing owned pop-outs first.
+Refusal leaves the action retryable before authority is requested. Recording,
+monitoring and deadlines are unchanged. All 39 affected unit checks, two HTTP
+integration cases and 14 browser workflows pass; typecheck/build pass. Actual
+Chromium pop-out prevention/closure is exercised with synthetic media and mocked
+authority. [Details and private evidence](student-video-preview.md).
+
+This bounded implementation is complete. No production access, email or MFA was
+used for its tests. No new management setting, CLI command, schema or native change.
+Next release action requires a new push/deploy instruction and exact release
+qualification; the earlier production release below remains online. Preserve the
+ten pre-existing modified documentation PNGs.
 
 November 24: authorized automatic deployment is complete. Runtime/CLI 55d2397,
 controller c7a36f7. Admissions reopened 10:41:31 UTC (04:41 Chicago). The active
